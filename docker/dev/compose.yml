@@ -1,48 +1,59 @@
 services:
-  app:
-    build:
-      context: ../..
-      dockerfile: docker/dev/Dockerfile
-    ports:
-      - "${PORT}:${PORT}"
-    environment:
-      PORT: ${PORT}
-      DB_HOST: postgres
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    develop:
-      watch:
-        - action: sync
-          path: ../../app/src
-          target: /app/src
-        - action: sync
-          path: ../../app/test
-          target: /app/test
-        - action: rebuild
-          path: ../../app/package.json
-        - action: rebuild
-          path: ../../app/pnpm-lock.yaml
+    app:
+        build:
+            context: ../..
+            dockerfile: docker/dev/Dockerfile
+        ports:
+            - "${PORT}:${PORT}"
+        environment:
+            PORT: ${PORT}
+            DB_HOST: postgres
+            DB_PORT: ${DB_PORT}
+            DB_NAME: ${DB_NAME}
+            DB_USER: ${DB_USER}
+            DB_PASSWORD: ${DB_PASSWORD}
+            DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:${DB_PORT}/${DB_NAME}
+        depends_on:
+            postgres:
+                condition: service_healthy
+        volumes:
+            - ../../app/media:/app/media
+        develop:
+            watch:
+                - action: sync
+                  path: ../../app/src
+                  target: /app/src
+                - action: sync
+                  path: ../../app/test
+                  target: /app/test
+                - action: rebuild
+                  path: ../../app/package.json
+                - action: rebuild
+                  path: ../../app/pnpm-lock.yaml
 
-  postgres:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "${DB_PORT}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+    postgres:
+        image: postgres:17-alpine
+        environment:
+            POSTGRES_DB: ${DB_NAME}
+            POSTGRES_USER: ${DB_USER}
+            POSTGRES_PASSWORD: ${DB_PASSWORD}
+        ports:
+            - "${DB_PORT}:5432"
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+
+    adminer:
+        image: adminer:4
+        ports:
+            - "8081:8080"
+        depends_on:
+            postgres:
+                condition: service_healthy
 
 volumes:
-  postgres_data:
+    postgres_data:
