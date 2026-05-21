@@ -20,7 +20,7 @@ lerna-debug.log*
 /.nyc_output
 
 # IDEs and editors
-/.idea
+**/.idea
 .project
 .classpath
 .c9/
@@ -58,3 +58,4 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 .claude
 
 */pnpm-lock.yaml
+/app/generated/prisma

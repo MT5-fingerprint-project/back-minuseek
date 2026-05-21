@@ -3,7 +3,7 @@ export
 
 COMPOSE = docker compose -f docker/dev/compose.yml --env-file .env
 
-.PHONY: dev dev-build down db test test-watch logs
+.PHONY: dev dev-build down db exec migrate migrate-deploy migrate-reset test test-watch logs
 
 ## Lance l'app en mode dev avec hot-reload (Docker watch)
 dev:
@@ -17,9 +17,25 @@ dev-build:
 down:
 	$(COMPOSE) down
 
+## Ouvre un shell bash dans le container app (make exec)
+exec:
+	$(COMPOSE) exec app sh
+
 ## Ouvre un shell psql sur la DB (make db)
 db:
 	$(COMPOSE) exec postgres psql -U $(DB_USER) -d $(DB_NAME)
+
+## Crée et applique une migration (make migrate NAME=init-investigation-case)
+migrate:
+	cd app && npx prisma migrate dev --name $(NAME)
+
+## Applique les migrations en prod sans générer de fichier (make migrate-deploy)
+migrate-deploy:
+	cd app && npx prisma migrate deploy
+
+## Remet la DB à zéro et réapplique toutes les migrations (make migrate-reset)
+migrate-reset:
+	cd app && npx prisma migrate reset
 
 ## Lance les tests — tous par défaut, ou un fichier spécifique (make test FILE=src/foo/foo.spec.ts)
 test:
