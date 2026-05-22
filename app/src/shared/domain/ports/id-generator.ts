@@ -1,5 +1,5 @@
-export const ID_GENERATOR = Symbol('ID_GENERATOR');
+export const ID_GENERATOR = 'IdGenerator';
 
-export interface IIdGenerator {
+export interface IdGenerator {
   generate(): string;
 }

@@ -3,12 +3,12 @@ import { OpenInvestigationCaseCommand } from './open-investigation-case.command'
 import { InMemoryInvestigationCaseRepository } from '../../../infrastructure/persistence/in-memory-investigation-case.repository';
 import { InvestigationCaseStatusEnum } from '../../../domain/investigation-case/value-objects/investigation-case-status.vo';
 import { CaseNumberAlreadyExistsError } from '../../../domain/investigation-case/errors/case-number-already-exists.error';
-import { IIdGenerator } from '../../../../shared/domain/ports/id-generator';
+import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
 
 describe('OpenInvestigationCaseHandler', () => {
   let handler: OpenInvestigationCaseHandler;
   let repo: InMemoryInvestigationCaseRepository;
-  let idGenerator: IIdGenerator;
+  let idGenerator: IdGenerator;
 
   beforeEach(() => {
     repo = new InMemoryInvestigationCaseRepository();
