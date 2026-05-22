@@ -12,6 +12,10 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:${DB_PORT}/${DB_NAME}
+    volumes:
+      - ../../app/node_modules:/app/node_modules
+      - ../../app/generated:/app/generated
     depends_on:
       postgres:
         condition: service_healthy
@@ -20,9 +24,6 @@ services:
         - action: sync
           path: ../../app/src
           target: /app/src
-        - action: sync
-          path: ../../app/test
-          target: /app/test
         - action: rebuild
           path: ../../app/package.json
         - action: rebuild
