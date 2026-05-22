@@ -1,5 +1,5 @@
 import { InvestigationCase } from './investigation-case';
-import { InvestigationCaseStatusEnum } from './investigation-case-status.vo';
+import { InvestigationCaseStatusEnum } from '../value-objects/investigation-case-status.vo';
 
 describe('InvestigationCase', () => {
   it('ouvre un case avec status OPEN', () => {

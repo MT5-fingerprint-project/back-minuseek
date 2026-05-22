@@ -1,5 +1,5 @@
-import { InvestigationCase } from '../../domain/investigation-case';
-import { InvestigationCaseRepository } from '../../domain/ports/investigation-case.repository';
+import { InvestigationCase } from '../../domain/investigation-case/entity/investigation-case';
+import { InvestigationCaseRepository } from '../../domain/investigation-case/repository/investigation-case.repository';
 
 export class InMemoryInvestigationCaseRepository implements InvestigationCaseRepository {
   readonly store = new Map<string, InvestigationCase>();

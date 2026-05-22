@@ -24,10 +24,10 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: app/package.json
+          cache-dependency-path: app/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
         run: pnpm lint
@@ -49,10 +49,10 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: app/package.json
+          cache-dependency-path: app/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Test
         run: pnpm test
@@ -74,10 +74,10 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: app/package.json
+          cache-dependency-path: app/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         run: pnpm build

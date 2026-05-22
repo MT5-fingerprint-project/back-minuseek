@@ -1,4 +1,4 @@
-import { InvestigationCase } from '../investigation-case';
+import { InvestigationCase } from '../entity/investigation-case';
 
 export interface InvestigationCaseRepository {
   save(c: InvestigationCase): Promise<void>;

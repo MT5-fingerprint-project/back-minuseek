@@ -1,24 +1,26 @@
 import { OpenInvestigationCaseHandler } from './open-investigation-case.handler';
 import { OpenInvestigationCaseCommand } from './open-investigation-case.command';
 import { InMemoryInvestigationCaseRepository } from '../../../infrastructure/persistence/in-memory-investigation-case.repository';
-import { InvestigationCaseStatusEnum } from '../../../domain/investigation-case-status.vo';
-import { CaseNumberAlreadyExistsError } from '../../../domain/investigation-case';
+import { InvestigationCaseStatusEnum } from '../../../domain/investigation-case/value-objects/investigation-case-status.vo';
+import { CaseNumberAlreadyExistsError } from '../../../domain/investigation-case/errors/case-number-already-exists.error';
+import { IIdGenerator } from '../../../../shared/domain/ports/id-generator';
 
 describe('OpenInvestigationCaseHandler', () => {
   let handler: OpenInvestigationCaseHandler;
   let repo: InMemoryInvestigationCaseRepository;
+  let idGenerator: IIdGenerator;
 
   beforeEach(() => {
     repo = new InMemoryInvestigationCaseRepository();
-    handler = new OpenInvestigationCaseHandler(repo);
+    idGenerator = { generate: jest.fn().mockReturnValue('test-uuid') };
+    handler = new OpenInvestigationCaseHandler(repo, idGenerator);
   });
 
-  it('retourne un UUID', async () => {
+  it('retourne l\'id généré', async () => {
     const id = await handler.execute(
       new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-001'),
     );
-    expect(typeof id).toBe('string');
-    expect(id).toHaveLength(36); // format UUID
+    expect(id).toBe('test-uuid');
   });
 
   it('persiste le case dans le repository', async () => {

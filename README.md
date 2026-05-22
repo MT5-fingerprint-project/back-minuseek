@@ -35,13 +35,21 @@ cp .env.example .env
 | `DB_PASSWORD`  | Mot de passe PostgreSQL              | `change_me`                                       |
 | `DATABASE_URL` | URL de connexion complète (Prisma)   | `postgresql://user:pass@localhost:5432/dbname`    |
 
-### 2. Démarrer l'environnement de développement
+### 2. Installer les dépendances
+
+```bash
+make install
+```
+
+Les `node_modules` sont montés en volume dans le container — cette commande est requise avant le premier `make dev` et après chaque ajout de package.
+
+### 3. Démarrer l'environnement de développement
 
 ```bash
 make dev
 ```
 
-Au premier lancement, ou après modification du `Dockerfile` ou des dépendances :
+Au premier lancement, ou après modification du `Dockerfile` :
 
 ```bash
 make dev-build
@@ -57,6 +65,7 @@ L'API est disponible sur `http://localhost:<PORT>`.
 
 | Commande       | Description                                                    |
 |----------------|----------------------------------------------------------------|
+| `make install` | Installe les dépendances Node dans `app/`                     |
 | `make dev`     | Lance l'app en mode dev avec hot-reload (Docker watch)        |
 | `make dev-build` | Rebuild les images Docker puis lance en mode dev             |
 | `make down`    | Arrête tous les services Docker                               |

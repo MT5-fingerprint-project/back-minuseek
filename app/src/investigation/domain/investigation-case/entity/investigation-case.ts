@@ -1,10 +1,4 @@
-import { InvestigationCaseStatus } from './investigation-case-status.vo';
-
-export class CaseNumberAlreadyExistsError extends Error {
-  constructor(caseNumber: string) {
-    super(`Un dossier avec le numéro "${caseNumber}" existe déjà`);
-  }
-}
+import { InvestigationCaseStatus } from '../value-objects/investigation-case-status.vo';
 
 interface OpenInvestigationCaseProps {
   id: string;

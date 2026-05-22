@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { InvestigationCase } from '../../domain/investigation-case';
-import type { InvestigationCaseRepository } from '../../domain/ports/investigation-case.repository';
+import { InvestigationCase } from '../../domain/investigation-case/entity/investigation-case';
+import type { InvestigationCaseRepository } from '../../domain/investigation-case/repository/investigation-case.repository';
 
 @Injectable()
 export class PrismaInvestigationCaseRepository implements InvestigationCaseRepository {

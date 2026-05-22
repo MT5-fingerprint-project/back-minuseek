@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from './prisma/prisma.module';
 import { InvestigationModule } from './investigation/investigation.module';
+import { SharedModule } from './shared/shared.module';
 
 @Module({
-  imports: [PrismaModule, InvestigationModule],
+  imports: [SharedModule, PrismaModule, InvestigationModule],
 })
 export class AppModule { }

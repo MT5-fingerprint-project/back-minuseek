@@ -3,7 +3,7 @@ export
 
 COMPOSE = docker compose -f docker/dev/compose.yml --env-file .env
 
-.PHONY: dev dev-build down db exec migrate migrate-deploy migrate-reset test test-watch logs
+.PHONY: dev dev-build down db exec install migrate migrate-deploy migrate-reset test test-watch logs
 
 ## Lance l'app en mode dev avec hot-reload (Docker watch)
 dev:
@@ -16,6 +16,10 @@ dev-build:
 ## Arrête tous les services
 down:
 	$(COMPOSE) down
+
+## Installe les dépendances Node dans app/ (requis avant make dev)
+install:
+	pnpm install --dir app
 
 ## Ouvre un shell bash dans le container app (make exec)
 exec:
