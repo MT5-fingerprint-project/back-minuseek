@@ -58,4 +58,24 @@ export class InvestigationCase {
   get updatedAt() {
     return this._updatedAt;
   }
+
+  static reconstitute(props: {
+    id: string;
+    caseNumber: string;
+    pvNumber: string;
+    description?: string;
+    status: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }): InvestigationCase {
+    return new InvestigationCase(
+      props.id,
+      props.caseNumber,
+      props.pvNumber,
+      props.description,
+      InvestigationCaseStatus.from(props.status),
+      props.createdAt,
+      props.updatedAt,
+    );
+  }
 }

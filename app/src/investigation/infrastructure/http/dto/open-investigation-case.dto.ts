@@ -7,12 +7,19 @@ export class OpenInvestigationCaseDto {
   @IsNotEmpty()
   caseNumber: string;
 
-  @ApiProperty({ description: 'Numéro de procès-verbal associé', example: 'PV-2026-042' })
+  @ApiProperty({
+    description: 'Numéro de procès-verbal associé',
+    example: 'PV-2026-042',
+  })
   @IsString()
   @IsNotEmpty()
   pvNumber: string;
 
-  @ApiProperty({ description: 'Description facultative du dossier', example: 'Affaire de vol à main armée', required: false })
+  @ApiProperty({
+    description: 'Description facultative du dossier',
+    example: 'Affaire de vol à main armée',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   description?: string;
