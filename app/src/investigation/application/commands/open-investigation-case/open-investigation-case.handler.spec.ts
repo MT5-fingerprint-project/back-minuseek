@@ -16,7 +16,7 @@ describe('OpenInvestigationCaseHandler', () => {
     handler = new OpenInvestigationCaseHandler(repo, idGenerator);
   });
 
-  it('retourne l\'id généré', async () => {
+  it("retourne l'id généré", async () => {
     const id = await handler.execute(
       new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-001'),
     );

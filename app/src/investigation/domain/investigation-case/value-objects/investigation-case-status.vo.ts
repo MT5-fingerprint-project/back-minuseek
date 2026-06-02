@@ -15,7 +15,11 @@ export class InvestigationCaseStatus {
   private constructor(private readonly value: InvestigationCaseStatusEnum) {}
 
   static from(raw: string): InvestigationCaseStatus {
-    if (!Object.values(InvestigationCaseStatusEnum).includes(raw as InvestigationCaseStatusEnum)) {
+    if (
+      !Object.values(InvestigationCaseStatusEnum).includes(
+        raw as InvestigationCaseStatusEnum,
+      )
+    ) {
       throw new InvalidInvestigationCaseStatusError(raw);
     }
     return new InvestigationCaseStatus(raw as InvestigationCaseStatusEnum);
