@@ -11,10 +11,14 @@ describe('InvestigationCaseStatus', () => {
   });
 
   it('lève une erreur pour un statut inconnu', () => {
-    expect(() => InvestigationCaseStatus.from('INVALID')).toThrow(InvalidInvestigationCaseStatusError);
+    expect(() => InvestigationCaseStatus.from('INVALID')).toThrow(
+      InvalidInvestigationCaseStatusError,
+    );
   });
 
   it('InvestigationCaseStatus.open() retourne OPEN', () => {
-    expect(InvestigationCaseStatus.open().getValue()).toBe(InvestigationCaseStatusEnum.OPEN);
+    expect(InvestigationCaseStatus.open().getValue()).toBe(
+      InvestigationCaseStatusEnum.OPEN,
+    );
   });
 });

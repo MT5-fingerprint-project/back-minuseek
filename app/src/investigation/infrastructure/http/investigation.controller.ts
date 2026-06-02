@@ -12,9 +12,7 @@ import { CaseNumberAlreadyExistsError } from '../../domain/investigation-case/er
 import { OpenInvestigationCaseCommand } from '../../application/commands/open-investigation-case/open-investigation-case.command';
 import { OpenInvestigationCaseDto } from './dto/open-investigation-case.dto';
 import { ListInvestigationCasesDto } from './dto/list-investigation-cases.dto';
-import {
-  ListInvestigationCasesQuery
-} from '../../application/queries/list-investigation-cases/list-investigation-cases.query';
+import { ListInvestigationCasesQuery } from '../../application/queries/list-investigation-cases/list-investigation-cases.query';
 
 @ApiTags('investigation-cases')
 @Controller('investigation-cases')
