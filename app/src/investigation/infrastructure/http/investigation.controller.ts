@@ -51,7 +51,11 @@ export class InvestigationController {
   @Get()
   @ApiOperation({ summary: 'lister les affaires' })
   @ApiResponse({ status: 200, description: 'Liste paginée des affaires' })
-  @ApiResponse({ status: 404, description: 'Aucune Affaire' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Paramètres invalides (statut inconnu, page ou limit hors bornes)',
+  })
   list(@Query() dto: ListInvestigationCasesDto) {
     return this.queryBus.execute(
       new ListInvestigationCasesQuery(dto.status, dto.page, dto.limit),
