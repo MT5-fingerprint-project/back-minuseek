@@ -2,15 +2,20 @@
 export
 
 COMPOSE = docker compose -f docker/dev/compose.yml --env-file .env
+NETWORK = minuseek
 
-.PHONY: dev dev-build down db exec install migrate migrate-deploy migrate-reset test test-watch logs
+.PHONY: network dev dev-build down db exec install migrate migrate-deploy migrate-reset test test-watch logs
+
+## Crée le réseau Docker partagé avec le front s'il n'existe pas (idempotent)
+network:
+	@docker network inspect $(NETWORK) >/dev/null 2>&1 || docker network create $(NETWORK)
 
 ## Lance l'app en mode dev avec hot-reload (Docker watch)
-dev:
+dev: network
 	$(COMPOSE) up -d && $(COMPOSE) watch
 
 ## Rebuild les images puis lance en mode dev
-dev-build:
+dev-build: network
 	$(COMPOSE) up --build -d && $(COMPOSE) watch
 
 ## Arrête tous les services

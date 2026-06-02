@@ -57,6 +57,10 @@ make dev-build
 
 L'API est disponible sur `http://localhost:<PORT>`.
 
+> `make dev` crée automatiquement le réseau Docker partagé `minuseek` s'il n'existe pas.
+> Ce réseau permet au front (proxy Vite) de joindre le back via le nom de service `app`
+> sans dépendre de l'ordre de démarrage des deux projets.
+
 ---
 
 ## Commandes Makefile
@@ -69,6 +73,7 @@ L'API est disponible sur `http://localhost:<PORT>`.
 | `make dev`     | Lance l'app en mode dev avec hot-reload (Docker watch)        |
 | `make dev-build` | Rebuild les images Docker puis lance en mode dev             |
 | `make down`    | Arrête tous les services Docker                               |
+| `make network` | Crée le réseau Docker partagé `minuseek` (idempotent)        |
 | `make logs`    | Affiche les logs de l'app en temps réel                       |
 
 ### Accès aux containers

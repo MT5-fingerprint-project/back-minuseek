@@ -13,9 +13,13 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:${DB_PORT}/${DB_NAME}
+      ORIGIN: ${ORIGIN}
     volumes:
       - ../../app/node_modules:/app/node_modules
       - ../../app/generated:/app/generated
+    networks:
+      - default
+      - minuseek
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,3 +51,7 @@ services:
 
 volumes:
   postgres_data:
+
+networks:
+  minuseek:
+    external: true
