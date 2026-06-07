@@ -1,0 +1,16 @@
+model InvestigationCase {
+  id          String                 @id @default(uuid()) @db.Uuid
+  caseNumber  String                 @unique
+  pvNumber    String
+  description String?
+  status      InvestigationCaseStatus @default(OPEN)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+}
+
+enum InvestigationCaseStatus {
+  OPEN
+  IN_PROGRESS
+  UNDER_REVIEW
+  CLOSED
+}
