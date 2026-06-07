@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
-import { Trace } from '../../domain/trace';
-import { TraceRepository } from '../../domain/trace.repository';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { Trace } from '../../domain/trace/entity/trace';
+import type { TraceRepository } from '../../domain/trace/repository/trace.repository';
 
 @Injectable()
 export class PrismaTraceRepository implements TraceRepository {

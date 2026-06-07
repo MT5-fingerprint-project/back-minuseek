@@ -1,15 +1,15 @@
-import { Trace } from '../../domain/trace';
-import { TraceRepository } from '../../domain/trace.repository';
+import { Trace } from '../../domain/trace/entity/trace';
+import { TraceRepository } from '../../domain/trace/repository/trace.repository';
 
 export class InMemoryTraceRepository implements TraceRepository {
-  private readonly traces = new Map<string, Trace>();
+  readonly store = new Map<string, Trace>();
 
   save(trace: Trace): Promise<void> {
-    this.traces.set(trace.id, trace);
+    this.store.set(trace.id, trace);
     return Promise.resolve();
   }
 
   findById(id: string): Promise<Trace | null> {
-    return Promise.resolve(this.traces.get(id) ?? null);
+    return Promise.resolve(this.store.get(id) ?? null);
   }
 }

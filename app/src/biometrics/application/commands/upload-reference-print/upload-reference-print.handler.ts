@@ -1,11 +1,11 @@
 import path from 'node:path';
 import { Inject } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { Trace } from '../../../domain/trace/entity/trace';
+import { ReferencePrint } from '../../../domain/reference-print/entity/reference-print';
 import {
-  TRACE_REPOSITORY,
-  TraceRepository,
-} from '../../../domain/trace/repository/trace.repository';
+  REFERENCE_PRINT_REPOSITORY,
+  ReferencePrintRepository,
+} from '../../../domain/reference-print/repository/reference-print.repository';
 import {
   ID_GENERATOR,
   IdGenerator,
@@ -14,16 +14,16 @@ import {
   IMAGE_STORAGE,
   ImageStoragePort,
 } from '../../ports/image-storage.port';
-import { UploadTraceCommand } from './upload-trace.command';
+import { UploadReferencePrintCommand } from './upload-reference-print.command';
 
-@CommandHandler(UploadTraceCommand)
-export class UploadTraceHandler implements ICommandHandler<
-  UploadTraceCommand,
+@CommandHandler(UploadReferencePrintCommand)
+export class UploadReferencePrintHandler implements ICommandHandler<
+  UploadReferencePrintCommand,
   { id: string; path: string }
 > {
   constructor(
-    @Inject(TRACE_REPOSITORY)
-    private readonly repo: TraceRepository,
+    @Inject(REFERENCE_PRINT_REPOSITORY)
+    private readonly repo: ReferencePrintRepository,
     @Inject(IMAGE_STORAGE)
     private readonly storage: ImageStoragePort,
     @Inject(ID_GENERATOR)
@@ -31,17 +31,17 @@ export class UploadTraceHandler implements ICommandHandler<
   ) {}
 
   async execute(
-    cmd: UploadTraceCommand,
+    cmd: UploadReferencePrintCommand,
   ): Promise<{ id: string; path: string }> {
     const id = this.idGenerator.generate();
-    const relativePath = `investigation-case/${cmd.caseId}/traces/${id}${this.getExtension(cmd.originalName)}`;
+    const relativePath = `investigation-case/${cmd.caseId}/referencePrint/${id}${this.getExtension(cmd.originalName)}`;
     const storedPath = await this.storage.save(cmd.fileBuffer, relativePath);
-    const trace = Trace.upload({
+    const rp = ReferencePrint.create({
       id,
       path: storedPath,
       caseId: cmd.caseId,
     });
-    await this.repo.save(trace);
+    await this.repo.save(rp);
     return { id, path: storedPath };
   }
 

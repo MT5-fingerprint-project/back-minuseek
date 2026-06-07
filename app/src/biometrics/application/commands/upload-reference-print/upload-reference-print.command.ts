@@ -1,4 +1,4 @@
-export class UploadTraceCommand {
+export class UploadReferencePrintCommand {
   constructor(
     public readonly fileBuffer: Buffer,
     public readonly originalName: string,

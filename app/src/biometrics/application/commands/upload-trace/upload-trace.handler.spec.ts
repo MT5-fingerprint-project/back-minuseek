@@ -1,41 +1,47 @@
-import { TraceStatus } from '../../../domain/trace-status';
+import { TraceStatusEnum } from '../../../domain/trace/value-objects/trace-status.vo';
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
-import { InMemoryTraceStorageAdapter } from '../../../infrastructure/storage/in-memory-trace-storage.adapter';
-import { TraceIdGenerator } from '../../ports/trace-id-generator.port';
+import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
+import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
+import { UploadTraceCommand } from './upload-trace.command';
 import { UploadTraceHandler } from './upload-trace.handler';
 
-class FixedTraceIdGenerator implements TraceIdGenerator {
-  constructor(private readonly fixedId: string) {}
-
-  nextId(): string {
-    return this.fixedId;
-  }
-}
-
 describe('UploadTraceHandler', () => {
-  it('stores the file, persists the trace as RECEIVED, and returns its id and path', async () => {
-    const repository = new InMemoryTraceRepository();
-    const storage = new InMemoryTraceStorageAdapter();
-    const idGenerator = new FixedTraceIdGenerator('trace-123');
-    const handler = new UploadTraceHandler(repository, storage, idGenerator);
+  let handler: UploadTraceHandler;
+  let repo: InMemoryTraceRepository;
+  let storage: InMemoryImageStorageAdapter;
+  let idGenerator: IdGenerator;
 
-    const result = await handler.execute({
-      fileBuffer: Buffer.from('test-image'),
-      originalName: 'fingerprint.png',
-      mimeType: 'image/png',
-    });
+  beforeEach(() => {
+    repo = new InMemoryTraceRepository();
+    storage = new InMemoryImageStorageAdapter();
+    idGenerator = { generate: jest.fn().mockReturnValue('trace-123') };
+    handler = new UploadTraceHandler(repo, storage, idGenerator);
+  });
+
+  it('stocke le fichier sous media/{caseId}/traces, persiste la trace en RECEIVED et retourne id + path', async () => {
+    const result = await handler.execute(
+      new UploadTraceCommand(
+        Buffer.from('test-image'),
+        'fingerprint.png',
+        'image/png',
+        'case-9',
+      ),
+    );
 
     expect(result).toEqual({
-      traceId: 'trace-123',
-      path: 'media/traces/trace-123.png',
+      id: 'trace-123',
+      path: 'media/investigation-case/case-9/traces/trace-123.png',
     });
 
-    const saved = await repository.findById('trace-123');
-    expect(saved?.path).toBe('media/traces/trace-123.png');
-    expect(saved?.status).toBe(TraceStatus.RECEIVED);
-    expect(saved?.score).toBeNull();
+    const saved = await repo.findById('trace-123');
+    expect(saved?.path).toBe('media/investigation-case/case-9/traces/trace-123.png');
+    expect(saved?.status).toBe(TraceStatusEnum.RECEIVED);
+    expect(saved?.caseId).toBe('case-9');
 
-    const stored = storage.getSaved('trace-123.png');
-    expect(stored?.toString()).toBe('test-image');
+    expect(
+      storage.getSaved('investigation-case/case-9/traces/trace-123.png')?.toString(),
+    ).toBe(
+      'test-image',
+    );
   });
 });
