@@ -26,4 +26,8 @@ export class PrismaInvestigationCaseReader implements InvestigationCaseReader {
 
     return { items, total };
   }
+
+  async findById(id: string): Promise<InvestigationCaseReadModel | null> {
+    return this.prisma.investigationCase.findUnique({ where: { id } });
+  }
 }

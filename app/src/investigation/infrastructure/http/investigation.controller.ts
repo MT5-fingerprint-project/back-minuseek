@@ -3,16 +3,20 @@ import {
   ConflictException,
   Controller,
   Get,
+  NotFoundException,
+  Param,
   Post,
   Query,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CaseNumberAlreadyExistsError } from '../../domain/investigation-case/errors/case-number-already-exists.error';
+import { CaseNotFoundError } from '../../domain/investigation-case/errors/case-not-found.error';
 import { OpenInvestigationCaseCommand } from '../../application/commands/open-investigation-case/open-investigation-case.command';
 import { OpenInvestigationCaseDto } from './dto/open-investigation-case.dto';
 import { ListInvestigationCasesDto } from './dto/list-investigation-cases.dto';
 import { ListInvestigationCasesQuery } from '../../application/queries/list-investigation-cases/list-investigation-cases.query';
+import { GetInvestigationCaseQuery } from '../../application/queries/get-investigation-case/get-investigation-case.query';
 
 @ApiTags('investigation-cases')
 @Controller('investigation-cases')
@@ -58,5 +62,18 @@ export class InvestigationController {
     return this.queryBus.execute(
       new ListInvestigationCasesQuery(dto.status, dto.page, dto.limit),
     );
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: "Récupérer le détail d'une affaire" })
+  @ApiResponse({ status: 200, description: "Détail de l'affaire" })
+  @ApiResponse({ status: 404, description: 'Affaire non trouvée' })
+  async getById(@Param('id') id: string) {
+    try {
+      return await this.queryBus.execute(new GetInvestigationCaseQuery(id));
+    } catch (e) {
+      if (e instanceof CaseNotFoundError) throw new NotFoundException(e.message);
+      throw e;
+    }
   }
 }
