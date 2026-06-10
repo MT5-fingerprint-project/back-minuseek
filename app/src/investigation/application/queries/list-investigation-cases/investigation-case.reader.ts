@@ -6,6 +6,8 @@ export interface InvestigationCaseReader {
     filters: { status?: InvestigationCaseStatusEnum },
     pagination: { skip: number; take: number },
   ): Promise<{ items: InvestigationCaseReadModel[]; total: number }>;
+
+  findById(id: string): Promise<InvestigationCaseReadModel | null>;
 }
 
 export const INVESTIGATION_CASE_READER = 'InvestigationCaseReader';

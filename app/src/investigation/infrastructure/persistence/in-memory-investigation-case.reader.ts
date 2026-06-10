@@ -23,4 +23,8 @@ export class InMemoryInvestigationCaseReader implements InvestigationCaseReader 
       total: all.length,
     });
   }
+
+  findById(id: string): Promise<InvestigationCaseReadModel | null> {
+    return Promise.resolve(this.store.find((c) => c.id === id) ?? null);
+  }
 }
