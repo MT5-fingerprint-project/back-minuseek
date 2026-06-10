@@ -17,6 +17,7 @@ import { OpenInvestigationCaseDto } from './dto/open-investigation-case.dto';
 import { ListInvestigationCasesDto } from './dto/list-investigation-cases.dto';
 import { ListInvestigationCasesQuery } from '../../application/queries/list-investigation-cases/list-investigation-cases.query';
 import { GetInvestigationCaseQuery } from '../../application/queries/get-investigation-case/get-investigation-case.query';
+import { InvestigationCaseReadModel } from '../../application/queries/list-investigation-cases/investigation-case-read-model';
 
 @ApiTags('investigation-cases')
 @Controller('investigation-cases')
@@ -70,9 +71,13 @@ export class InvestigationController {
   @ApiResponse({ status: 404, description: 'Affaire non trouvée' })
   async getById(@Param('id') id: string) {
     try {
-      return await this.queryBus.execute(new GetInvestigationCaseQuery(id));
+      return await this.queryBus.execute<
+        GetInvestigationCaseQuery,
+        InvestigationCaseReadModel
+      >(new GetInvestigationCaseQuery(id));
     } catch (e) {
-      if (e instanceof CaseNotFoundError) throw new NotFoundException(e.message);
+      if (e instanceof CaseNotFoundError)
+        throw new NotFoundException(e.message);
       throw e;
     }
   }
