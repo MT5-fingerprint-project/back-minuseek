@@ -56,6 +56,10 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 .claude
+.github
 
+.dockerignore
+app/generated/prisma/
+media/
 app/dist
 /app/generated/prisma
