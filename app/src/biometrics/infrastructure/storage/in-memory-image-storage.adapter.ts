@@ -8,6 +8,11 @@ export class InMemoryImageStorageAdapter implements ImageStoragePort {
     return Promise.resolve(`media/${relativePath}`);
   }
 
+  delete(storedPath: string): Promise<void> {
+    this.files.delete(storedPath.replace(/^media\//, ''));
+    return Promise.resolve();
+  }
+
   getSaved(relativePath: string): Buffer | undefined {
     return this.files.get(relativePath);
   }

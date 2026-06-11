@@ -12,4 +12,9 @@ export class InMemoryTraceRepository implements TraceRepository {
   findById(id: string): Promise<Trace | null> {
     return Promise.resolve(this.store.get(id) ?? null);
   }
+
+  delete(id: string): Promise<void> {
+    this.store.delete(id);
+    return Promise.resolve();
+  }
 }

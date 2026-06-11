@@ -34,7 +34,7 @@ export class UploadReferencePrintHandler implements ICommandHandler<
     cmd: UploadReferencePrintCommand,
   ): Promise<{ id: string; path: string }> {
     const id = this.idGenerator.generate();
-    const relativePath = `investigation-case/${cmd.caseId}/referencePrint/${id}${this.getExtension(cmd.originalName)}`;
+    const relativePath = `investigation-case/${cmd.caseId}/reference-prints/${id}${this.getExtension(cmd.originalName)}`;
     const storedPath = await this.storage.save(cmd.fileBuffer, relativePath);
     const rp = ReferencePrint.create({
       id,

@@ -29,16 +29,18 @@ describe('UploadReferencePrintHandler', () => {
 
     expect(result).toEqual({
       id: 'ref-456',
-      path: 'media/investigation-case/case-9/referencePrint/ref-456.tiff',
+      path: 'media/investigation-case/case-9/reference-prints/ref-456.tiff',
     });
 
     const saved = await repo.findById('ref-456');
-    expect(saved?.path).toBe('media/investigation-case/case-9/referencePrint/ref-456.tiff');
+    expect(saved?.path).toBe(
+      'media/investigation-case/case-9/reference-prints/ref-456.tiff',
+    );
     expect(saved?.caseId).toBe('case-9');
 
     expect(
       storage
-        .getSaved('investigation-case/case-9/referencePrint/ref-456.tiff')
+        .getSaved('investigation-case/case-9/reference-prints/ref-456.tiff')
         ?.toString(),
     ).toBe('clean-print');
   });

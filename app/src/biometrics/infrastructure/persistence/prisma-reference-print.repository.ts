@@ -20,4 +20,8 @@ export class PrismaReferencePrintRepository implements ReferencePrintRepository 
     const row = await this.prisma.referencePrint.findUnique({ where: { id } });
     return row ? ReferencePrint.reconstitute(row) : null;
   }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.referencePrint.delete({ where: { id } });
+  }
 }

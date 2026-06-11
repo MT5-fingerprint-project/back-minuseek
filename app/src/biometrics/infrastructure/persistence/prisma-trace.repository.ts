@@ -20,4 +20,8 @@ export class PrismaTraceRepository implements TraceRepository {
     const row = await this.prisma.trace.findUnique({ where: { id } });
     return row ? Trace.reconstitute(row) : null;
   }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.trace.delete({ where: { id } });
+  }
 }

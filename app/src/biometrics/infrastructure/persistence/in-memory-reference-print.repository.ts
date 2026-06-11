@@ -12,4 +12,9 @@ export class InMemoryReferencePrintRepository implements ReferencePrintRepositor
   findById(id: string): Promise<ReferencePrint | null> {
     return Promise.resolve(this.store.get(id) ?? null);
   }
+
+  delete(id: string): Promise<void> {
+    this.store.delete(id);
+    return Promise.resolve();
+  }
 }

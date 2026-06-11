@@ -13,4 +13,9 @@ export class LocalImageStorageAdapter implements ImageStoragePort {
     await fs.writeFile(targetPath, buffer);
     return `media/${relativePath.replace(/\\/g, '/')}`;
   }
+
+  async delete(storedPath: string): Promise<void> {
+    const targetPath = path.join(process.cwd(), storedPath);
+    await fs.rm(targetPath, { force: true });
+  }
 }
