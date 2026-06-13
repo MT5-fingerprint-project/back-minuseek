@@ -1,8 +1,14 @@
 export type LayerType = 'ANNOTATION' | 'FILTER';
 
-export interface LayerSettings {
-  [key: string]: unknown;
-}
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+export type LayerSettings = { [key: string]: JsonValue };
 
 export interface LayerPrimitives {
   id: string;

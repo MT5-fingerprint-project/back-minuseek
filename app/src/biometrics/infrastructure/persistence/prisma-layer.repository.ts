@@ -16,7 +16,7 @@ export class PrismaLayerRepository implements LayerRepository {
       type,
       zIndex,
       isVisible,
-      settings: settings as any,
+      settings,
     };
     await this.prisma.layer.upsert({
       where: { id },
