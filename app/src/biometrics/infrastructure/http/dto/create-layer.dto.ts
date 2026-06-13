@@ -7,7 +7,10 @@ import {
   IsOptional,
   IsUUID,
 } from 'class-validator';
-import type { LayerType } from '../../../domain/layer/entity/layer';
+import type {
+  LayerType,
+  LayerSettings,
+} from '../../../domain/layer/entity/layer';
 
 export class CreateLayerDto {
   @ApiPropertyOptional({
@@ -39,5 +42,5 @@ export class CreateLayerDto {
     description: 'Configuration flexible du calque (filtres ou annotations)',
   })
   @IsObject()
-  settings: Record<string, unknown>;
+  settings: LayerSettings;
 }

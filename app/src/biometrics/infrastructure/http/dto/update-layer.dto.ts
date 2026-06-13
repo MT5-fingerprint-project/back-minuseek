@@ -1,4 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import type { LayerSettings } from '../../../domain/layer/entity/layer';
 import {
   IsBoolean,
   IsInt,
@@ -26,5 +27,5 @@ export class UpdateLayerDto {
   @ApiPropertyOptional()
   @IsObject()
   @IsOptional()
-  settings?: Record<string, unknown>;
+  settings?: LayerSettings;
 }

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Layer } from '../../domain/layer/entity/layer';
+import type { LayerSettings } from '../../domain/layer/entity/layer';
 import type { LayerRepository } from '../../domain/layer/repository/layer.repository';
 
 @Injectable()
@@ -31,7 +32,7 @@ export class PrismaLayerRepository implements LayerRepository {
     return Layer.reconstitute({
       ...row,
       type: row.type,
-      settings: row.settings as Record<string, unknown>,
+      settings: row.settings as LayerSettings,
     });
   }
 

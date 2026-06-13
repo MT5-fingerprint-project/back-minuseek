@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import type { LayerSettings } from '../../domain/layer/entity/layer';
 import type { LayerReader } from '../../application/queries/list-layers/layer.reader';
 import type { LayerReadModel } from '../../application/queries/list-layers/layer-read-model';
 
@@ -19,7 +20,7 @@ export class PrismaLayerReader implements LayerReader {
       type: row.type,
       zIndex: row.zIndex,
       isVisible: row.isVisible,
-      settings: row.settings as Record<string, unknown>,
+      settings: row.settings as LayerSettings,
     }));
   }
 }
