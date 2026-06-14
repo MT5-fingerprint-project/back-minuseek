@@ -34,14 +34,16 @@ describe('UploadTraceHandler', () => {
     });
 
     const saved = await repo.findById('trace-123');
-    expect(saved?.path).toBe('media/investigation-case/case-9/traces/trace-123.png');
+    expect(saved?.path).toBe(
+      'media/investigation-case/case-9/traces/trace-123.png',
+    );
     expect(saved?.status).toBe(TraceStatusEnum.RECEIVED);
     expect(saved?.caseId).toBe('case-9');
 
     expect(
-      storage.getSaved('investigation-case/case-9/traces/trace-123.png')?.toString(),
-    ).toBe(
-      'test-image',
-    );
+      storage
+        .getSaved('investigation-case/case-9/traces/trace-123.png')
+        ?.toString(),
+    ).toBe('test-image');
   });
 });

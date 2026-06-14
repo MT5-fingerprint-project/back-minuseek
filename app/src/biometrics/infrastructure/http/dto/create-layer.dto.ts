@@ -11,6 +11,7 @@ import type {
   LayerType,
   LayerSettings,
 } from '../../../domain/layer/entity/layer';
+import { IsLayerSettings } from '../validators/is-layer-settings.validator';
 
 export class CreateLayerDto {
   @ApiPropertyOptional({
@@ -42,5 +43,6 @@ export class CreateLayerDto {
     description: 'Configuration flexible du calque (filtres ou annotations)',
   })
   @IsObject()
+  @IsLayerSettings()
   settings: LayerSettings;
 }

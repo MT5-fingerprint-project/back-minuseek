@@ -38,7 +38,15 @@ describe('GetInvestigationCaseHandler', () => {
       }),
     );
 
-    const { id, caseNumber, pvNumber, description, status, createdAt, updatedAt } = await handler.execute(new GetInvestigationCaseQuery('id-1'));
+    const {
+      id,
+      caseNumber,
+      pvNumber,
+      description,
+      status,
+      createdAt,
+      updatedAt,
+    } = await handler.execute(new GetInvestigationCaseQuery('id-1'));
 
     expect(id).toBe('id-1');
     expect(caseNumber).toBe('AFF-001');
@@ -49,7 +57,7 @@ describe('GetInvestigationCaseHandler', () => {
     expect(updatedAt).toBeInstanceOf(Date);
   });
 
-  it('lève une CaseNotFoundError si l\'affaire n\'existe pas', async () => {
+  it("lève une CaseNotFoundError si l'affaire n'existe pas", async () => {
     await expect(
       handler.execute(new GetInvestigationCaseQuery('id-inexistant')),
     ).rejects.toThrow(CaseNotFoundError);
@@ -59,7 +67,9 @@ describe('GetInvestigationCaseHandler', () => {
     reader.store.push(makeCase({ id: 'id-1', caseNumber: 'AFF-001' }));
     reader.store.push(makeCase({ id: 'id-2', caseNumber: 'AFF-002' }));
 
-    const { id, caseNumber } = await handler.execute(new GetInvestigationCaseQuery('id-2'));
+    const { id, caseNumber } = await handler.execute(
+      new GetInvestigationCaseQuery('id-2'),
+    );
 
     expect(id).toBe('id-2');
     expect(caseNumber).toBe('AFF-002');

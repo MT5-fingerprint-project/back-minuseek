@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
+import { IsLayerSettings } from '../validators/is-layer-settings.validator';
 
 export class UpdateLayerDto {
   @ApiPropertyOptional()
@@ -27,5 +28,6 @@ export class UpdateLayerDto {
   @ApiPropertyOptional()
   @IsObject()
   @IsOptional()
+  @IsLayerSettings()
   settings?: LayerSettings;
 }
