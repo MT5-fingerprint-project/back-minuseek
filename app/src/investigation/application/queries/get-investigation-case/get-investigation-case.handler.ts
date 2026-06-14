@@ -9,9 +9,7 @@ import { GetInvestigationCaseQuery } from './get-investigation-case.query';
 import { CaseNotFoundError } from '../../../domain/investigation-case/errors/case-not-found.error';
 
 @QueryHandler(GetInvestigationCaseQuery)
-export class GetInvestigationCaseHandler
-  implements IQueryHandler<GetInvestigationCaseQuery>
-{
+export class GetInvestigationCaseHandler implements IQueryHandler<GetInvestigationCaseQuery> {
   constructor(
     @Inject(INVESTIGATION_CASE_READER)
     private readonly reader: InvestigationCaseReader,

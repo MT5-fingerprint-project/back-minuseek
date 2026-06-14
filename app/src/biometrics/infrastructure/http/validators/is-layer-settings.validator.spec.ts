@@ -24,7 +24,13 @@ function createDto(type: string, settings: unknown): CreateLayerDto {
 }
 
 describe('IsLayerSettings (CreateLayerDto)', () => {
-  const validCircle = { type: 'circle', x: 10, y: 20, radius: 4, color: '#ef4444' };
+  const validCircle = {
+    type: 'circle',
+    x: 10,
+    y: 20,
+    radius: 4,
+    color: '#ef4444',
+  };
   const validArrow = {
     type: 'circleArrow',
     x: 10,
@@ -59,9 +65,14 @@ describe('IsLayerSettings (CreateLayerDto)', () => {
     ['crayon avec < 2 points', { ...validPencil, points: [0, 0] }],
     ['settings null', null],
     ['settings tableau', [1, 2, 3]],
-  ])('rejette un payload ANNOTATION invalide (%s)', async (_label, settings) => {
-    expect(await settingsHasError(createDto('ANNOTATION', settings))).toBe(true);
-  });
+  ])(
+    'rejette un payload ANNOTATION invalide (%s)',
+    async (_label, settings) => {
+      expect(await settingsHasError(createDto('ANNOTATION', settings))).toBe(
+        true,
+      );
+    },
+  );
 
   it('rejette une forme d’annotation déclarée avec type FILTER', async () => {
     expect(await settingsHasError(createDto('FILTER', validCircle))).toBe(true);
@@ -85,7 +96,13 @@ describe('IsLayerSettings (UpdateLayerDto, type inféré du contenu)', () => {
 
   it('rejette une mise à jour de settings malformée', async () => {
     const dto = plainToInstance(UpdateLayerDto, {
-      settings: { type: 'circle', x: 'nope', y: 2, radius: 4, color: '#22c55e' },
+      settings: {
+        type: 'circle',
+        x: 'nope',
+        y: 2,
+        radius: 4,
+        color: '#22c55e',
+      },
     });
     expect(await settingsHasError(dto)).toBe(true);
   });

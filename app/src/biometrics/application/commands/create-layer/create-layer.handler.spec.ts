@@ -12,7 +12,13 @@ describe('CreateLayerHandler', () => {
   });
 
   it('persiste un calque ANNOTATION visible par défaut en conservant ses settings', async () => {
-    const settings = { type: 'circle', x: 10, y: 20, radius: 4, color: '#ef4444' };
+    const settings = {
+      type: 'circle',
+      x: 10,
+      y: 20,
+      radius: 4,
+      color: '#ef4444',
+    };
 
     await handler.execute(
       new CreateLayerCommand(

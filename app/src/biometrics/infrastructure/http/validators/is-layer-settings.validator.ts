@@ -1,4 +1,4 @@
-import { plainToInstance } from 'class-transformer';
+import { plainToInstance, type ClassConstructor } from 'class-transformer';
 import {
   registerDecorator,
   validateSync,
@@ -10,10 +10,9 @@ import { CircleArrowSettingsDto } from '../dto/settings/circle-arrow-settings.dt
 import { PencilSettingsDto } from '../dto/settings/pencil-settings.dto';
 import { FilterSettingsDto } from '../dto/settings/filter-settings.dto';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Ctor = new () => any;
+type SettingsDto = ClassConstructor<object>;
 
-const ANNOTATION_DTOS: Record<string, Ctor> = {
+const ANNOTATION_DTOS: Record<string, SettingsDto> = {
   circle: CircleSettingsDto,
   circleArrow: CircleArrowSettingsDto,
   pencil: PencilSettingsDto,
@@ -27,7 +26,7 @@ const ANNOTATION_DTOS: Record<string, Ctor> = {
 function pickSettingsDto(
   value: Record<string, unknown>,
   layerType: unknown,
-): Ctor | null {
+): SettingsDto | null {
   if (layerType === 'FILTER') return FilterSettingsDto;
   if (layerType === 'ANNOTATION') {
     return ANNOTATION_DTOS[value.type as string] ?? null;
@@ -49,15 +48,22 @@ export function IsLayerSettings(options?: ValidationOptions) {
       options,
       validator: {
         validate(value: unknown, args: ValidationArguments): boolean {
-          if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+          if (
+            value === null ||
+            typeof value !== 'object' ||
+            Array.isArray(value)
+          ) {
             return false;
           }
           const layerType = (args.object as { type?: unknown }).type;
-          const Dto = pickSettingsDto(value as Record<string, unknown>, layerType);
+          const Dto = pickSettingsDto(
+            value as Record<string, unknown>,
+            layerType,
+          );
           if (!Dto) return false;
 
           const instance = plainToInstance(Dto, value);
-          const errors = validateSync(instance as object, {
+          const errors = validateSync(instance, {
             whitelist: true,
             forbidNonWhitelisted: true,
           });
@@ -65,9 +71,9 @@ export function IsLayerSettings(options?: ValidationOptions) {
         },
         defaultMessage(args: ValidationArguments): string {
           const layerType = (args.object as { type?: unknown }).type;
-          return `settings is not a valid payload${
-            layerType ? ` for a ${String(layerType)} layer` : ''
-          }`;
+          const suffix =
+            typeof layerType === 'string' ? ` for a ${layerType} layer` : '';
+          return `settings is not a valid payload${suffix}`;
         },
       },
     });
