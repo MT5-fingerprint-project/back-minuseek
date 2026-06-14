@@ -11,7 +11,7 @@ export class PrismaLayerReader implements LayerReader {
   async findByFingerprintId(fingerprintId: string): Promise<LayerReadModel[]> {
     const rows = await this.prisma.layer.findMany({
       where: { fingerprintId },
-      orderBy: { zIndex: 'asc' },
+      orderBy: [{ zIndex: 'asc' }, { createdAt: 'asc' }],
     });
     return rows.map((row) => ({
       id: row.id,
