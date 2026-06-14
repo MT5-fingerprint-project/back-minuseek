@@ -81,3 +81,48 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  migrations:
+    name: Migrations à jour
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: minuseek_ci
+          POSTGRES_USER: minuseek
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U minuseek -d minuseek_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://minuseek:postgres@localhost:5432/minuseek_ci
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Appliquer les migrations commitées
+        run: npx prisma migrate deploy
+
+      # Échoue (exit code 2) si le schéma a un changement non couvert par une migration
+      - name: Vérifier qu'aucune migration ne manque
+        run: npx prisma migrate diff --from-config-datasource --to-schema prisma --exit-code

@@ -12,7 +12,7 @@ network:
 
 ## Lance l'app en mode dev avec hot-reload (Docker watch)
 dev: network
-	$(COMPOSE) up -d && $(COMPOSE) watch
+	$(COMPOSE) up --build -d && $(COMPOSE) watch
 
 ## Rebuild les images puis lance en mode dev
 dev-build: network
@@ -34,17 +34,18 @@ exec:
 db:
 	$(COMPOSE) exec postgres psql -U $(DB_USER) -d $(DB_NAME)
 
-## Crée et applique une migration (make migrate NAME=init-investigation-case)
+## Crée une migration à partir des modèles ET l'applique à la DB dev (make migrate NAME=add_layers)
+## Tourne dans un conteneur jetable : le fichier généré atterrit dans app/prisma/migrations (à commiter)
 migrate:
-	cd app && npx prisma migrate dev --name $(NAME)
+	$(COMPOSE) run --rm app pnpm prisma migrate dev --name $(NAME)
 
-## Applique les migrations en prod sans générer de fichier (make migrate-deploy)
+## Applique les migrations en attente sans rien générer (make migrate-deploy)
 migrate-deploy:
-	cd app && npx prisma migrate deploy
+	$(COMPOSE) run --rm app pnpm prisma migrate deploy
 
-## Remet la DB à zéro et réapplique toutes les migrations (make migrate-reset)
+## Réparation ponctuelle : remet la DB à zéro et rejoue toutes les migrations (DEV ONLY, destructif)
 migrate-reset:
-	cd app && npx prisma migrate reset
+	$(COMPOSE) run --rm app pnpm prisma migrate reset --force
 
 ## Lance les tests — tous par défaut, ou un fichier spécifique (make test FILE=src/foo/foo.spec.ts)
 test:
