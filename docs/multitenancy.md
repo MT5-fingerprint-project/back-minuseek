@@ -1,7 +1,7 @@
 # Multitenant — design cible (phase 2)
 
 > État : **design**, non implémenté. La phase 1 (ce qui est en place) installe Keycloak
-> et la brique de validation JWT (`src/auth/`, `KeycloakAuthGuard`) — non activée
+> et la brique de validation JWT (`src/auth/`, `JwtStrategy` + `JwtAuthGuard`, passport-jwt) — non activée
 > globalement : la protection des routes viendra avec le ticket « Login ».
 > Le realm de démo (`keycloak/dev/`) est une fixture
 > de dev uniquement, montée par la compose dev — il n'est pas utilisé en prod.
@@ -33,9 +33,11 @@ PrismaService  ── cache Map<tenant, PrismaClient> ──▶ DB de tenant-A
 
 ### 1. Résolution du tenant (déjà à portée de main)
 
-Le `KeycloakAuthGuard` (`src/auth/keycloak-auth.guard.ts`) valide déjà l'`iss` et est
-**issuer-aware** : sa map `realmsByIssuer` n'a qu'à être alimentée avec un realm par client
-(au lieu de l'unique realm de démo). Le tenant = nom du realm extrait de l'`iss` validé.
+La `JwtStrategy` (`src/auth/infrastructure/http/jwt.strategy.ts`) valide déjà l'`iss`, mais
+sur un **seul realm** (passport-jwt = un issuer fixe). Pour le multitenant, remplacer son
+`issuer`/`secretOrKeyProvider` fixes par un `secretOrKeyProvider` qui lit l'`iss` du token et
+sélectionne le bon JWKS (un realm par client). Le tenant = nom du realm extrait de l'`iss`
+validé.
 
 ### 2. TenantContext
 
