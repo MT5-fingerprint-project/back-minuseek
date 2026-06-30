@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "clean-ddd-hexagonal": {
+      "source": "ccheney/robust-skills",
+      "sourceType": "github",
+      "skillPath": "skills/clean-ddd-hexagonal/SKILL.md",
+      "computedHash": "223df951adb9adf655b139221d4a3b68a314f5a0c24c8bc137a754ce9dee5713"
+    },
+    "domain-driven-design": {
+      "source": "wondelai/skills",
+      "sourceType": "github",
+      "skillPath": "domain-driven-design/SKILL.md",
+      "computedHash": "a7e49c07fdd179ace353708c12ac7be1822942cf285b9183c906dc0019e6e336"
+    },
+    "hexagonal-architecture": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "skillPath": "skills/hexagonal-architecture/SKILL.md",
+      "computedHash": "079f825ab203e42b8a5acbefb2ba50536718e1ec31d100b9521660ba0af749dd"
+    }
+  }
+}

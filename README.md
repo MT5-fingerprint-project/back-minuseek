@@ -166,6 +166,18 @@ make migrate-reset
 
 ---
 
+## Codegraph (AI agents)
+
+Le projet utilise [codegraph](https://github.com/anthropics/codegraph) comme serveur MCP pour permettre aux agents IA (Claude Code, Antigravity, Cursor…) d'explorer le graphe de dépendances du code (callers, callees, impact analysis…).
+
+La configuration est déjà en place dans [`.mcp.json`](.mcp.json) — rien à faire si tu utilises un IDE compatible. Pour que ça fonctionne, `codegraph` doit être installé sur ta machine :
+
+```bash
+npm install -g @anthropics/codegraph   # installation globale
+```
+
+---
+
 ## Structure du projet
 
 ```
