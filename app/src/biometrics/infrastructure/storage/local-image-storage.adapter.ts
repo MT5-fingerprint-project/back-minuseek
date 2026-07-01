@@ -18,4 +18,8 @@ export class LocalImageStorageAdapter implements ImageStoragePort {
     const targetPath = path.join(process.cwd(), storedPath);
     await fs.rm(targetPath, { force: true });
   }
+
+  getUrl(storedPath: string): Promise<string> {
+    return Promise.resolve(`/${storedPath.replace(/^\/+/, '')}`);
+  }
 }
