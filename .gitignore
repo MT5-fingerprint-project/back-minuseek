@@ -55,7 +55,10 @@ pids
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-.claude
+# Claude Code : on ignore les réglages perso (settings.local.json),
+# mais on partage le symlink skills -> ../.agents/skills (source de vérité unique)
+.claude/*
+!.claude/skills
 .github
 
 .dockerignore
