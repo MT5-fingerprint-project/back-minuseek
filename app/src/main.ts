@@ -6,7 +6,8 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  app.enableCors({ origin: process.env.ORIGIN, credentials: true });
+  app.enableCors({ origin: process.env.ORIGIN ?? false, credentials: false });
+  app.useStaticAssets(join(process.cwd(), 'media'), { prefix: '/media' });
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );
