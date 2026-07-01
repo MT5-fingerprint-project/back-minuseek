@@ -26,6 +26,7 @@ import { PrismaReferencePrintReader } from './infrastructure/persistence/prisma-
 import { PrismaLayerRepository } from './infrastructure/persistence/prisma-layer.repository';
 import { PrismaLayerReader } from './infrastructure/persistence/prisma-layer.reader';
 import { LocalImageStorageAdapter } from './infrastructure/storage/local-image-storage.adapter';
+import { GcsImageStorageAdapter } from './infrastructure/storage/gcs-image-storage.adapter';
 
 @Module({
   imports: [CqrsModule],
@@ -50,7 +51,21 @@ import { LocalImageStorageAdapter } from './infrastructure/storage/local-image-s
     { provide: TRACE_READER, useClass: PrismaTraceReader },
     { provide: REFERENCE_PRINT_READER, useClass: PrismaReferencePrintReader },
     { provide: LAYER_READER, useClass: PrismaLayerReader },
-    { provide: IMAGE_STORAGE, useClass: LocalImageStorageAdapter },
+    //temporary while gcs bucket exist
+    {
+      provide: IMAGE_STORAGE,
+      useFactory: (): LocalImageStorageAdapter | GcsImageStorageAdapter => {
+        if (process.env.STORAGE_DRIVER === 'gcs') {
+          const bucket = process.env.GCS_BUCKET;
+          if (!bucket) {
+            throw new Error('STORAGE_DRIVER=gcs requires GCS_BUCKET to be set');
+          }
+          const ttl = Number(process.env.GCS_SIGNED_URL_TTL_SECONDS ?? 900);
+          return new GcsImageStorageAdapter(bucket, ttl);
+        }
+        return new LocalImageStorageAdapter();
+      },
+    },
   ],
 })
 export class BiometricsModule {}
