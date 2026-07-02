@@ -8,11 +8,8 @@ import { JwtAuthGuard } from './infrastructure/http/jwt-auth.guard';
  * (JwtStrategy) et expose le JwtAuthGuard + les décorateurs `@Public` /
  * `@CurrentUser`.
  *
- * Périmètre : ce ticket installe Keycloak et la *capacité* de validation, mais
- * ne protège PAS encore les routes — sinon l'API serait inutilisable tant que
- * le front n'a pas de login. L'activation se fera avec le ticket « Login » :
- *   - globalement  → { provide: APP_GUARD, useClass: JwtAuthGuard }
- *   - ou ciblée    → @UseGuards(JwtAuthGuard) sur les routes concernées
+ * `JwtAuthGuard` est enregistré en `APP_GUARD` global dans `AppModule`.
+ * Les routes publiques s'exemptent via `@Public()`.
  */
 @Module({
   imports: [PassportModule],
