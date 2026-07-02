@@ -127,9 +127,11 @@ Les migrations Prisma sont **versionnées dans le repo** (`app/prisma/migrations
 
 1. Modifie tes modèles dans `app/prisma/models/*.prisma`.
 2. Génère la migration (tourne dans un conteneur jetable, écrit le fichier dans le repo) :
+
    ```bash
    make migrate NAME=add_layers
    ```
+
 3. **Commite** le dossier généré `app/prisma/migrations/<timestamp>_add_layers/` avec ton code.
 
 ### Appliquer les migrations
@@ -166,6 +168,18 @@ make migrate-reset
 
 ---
 
+## Codegraph (AI agents)
+
+Le projet utilise [codegraph](https://github.com/anthropics/codegraph) comme serveur MCP pour permettre aux agents IA (Claude Code, Antigravity, Cursor…) d'explorer le graphe de dépendances du code (callers, callees, impact analysis…).
+
+La configuration est déjà en place dans [`.mcp.json`](.mcp.json) — rien à faire si tu utilises un IDE compatible. Pour que ça fonctionne, `codegraph` doit être installé sur ta machine :
+
+```bash
+npm install -g @anthropics/codegraph   # installation globale
+```
+
+---
+
 ## Structure du projet
 
 ```
@@ -188,3 +202,39 @@ back-minuseek/
 ├── Makefile
 └── .env.example
 ```
+
+## AI agents
+
+### Ce que ça apporte
+
+- **`AGENTS.md`** — conventions du repo (+ section « Directives agents » DO/DON'T) ; **`CLAUDE.md`** = `@AGENTS.md`.
+- **`.agents/skills/`** — skills maison versionnés (review pré-PR, archi & principes, sécurité, etc.), exposés à Claude via le lien symbolique `.claude/skills` et lus nativement par Codex/antigravity.
+- **`.agents/rules/`** — règles pour Antigravity (lien symbolique vers `AGENTS.md`).
+- **`.mcp.json`** — serveur MCP **codegraph** pour le repo, n'hésitez pas à mettre d'autres mcp utiles.
+- **`RTK.md`** — règle d'usage de **rtk** (proxy CLI qui économise les tokens).
+- **`docs/adr/`** — gabarit d'ADR : on consigne les décisions structurantes.
+
+### À faire par chaque dev (une fois par poste)
+
+```bash
+brew install codegraph rtk        # les 2 binaires requis
+rtk init -g                       # hook d'auto-réécriture (économie de tokens) — recommandé mais pas obligatoire
+```
+
+- **Claude Code** : approuver le serveur MCP `codegraph` au 1er lancement (prompt automatique sur `.mcp.json`).
+- **Codex** : ajouter une fois `[mcp_servers.codegraph]\ncommand = "codegraph"\nargs = ["serve","--mcp"]` dans `~/.codex/config.toml`.
+- **Windows uniquement** : si les liens symboliques apparaissent comme des fichiers texte → `git config core.symlinks true` puis re-checkout.
+
+### Skills IA (`.agents/skills/`)
+
+Les **skills** sont des instructions spécialisées que l'agent IA charge automatiquement selon le contexte de votre demande. Vous n'avez **rien à activer manuellement** : l'agent détecte les mots-clés dans votre prompt et charge le skill adapté. Vous pouvez aussi les invoquer explicitement en mentionnant leur nom.
+
+| Skill | Quand ça se déclenche | Exemple de prompt |
+|---|---|---|
+| `back-review` | Review de code / PR / diff back, audit sécurité, avant un merge sur `main` | *« Réalise une review complete de ma branche »* |
+| `architecture-review` | Doute sur le placement du code, couplage, honnêteté des tests | *« est-ce que mon service est trop couplé ? »* |
+| `api-security` | Audit sécurité OWASP, vérification d'un endpoint | *« vérifie la sécurité de cet endpoint »* |
+| `clean-ddd-hexagonal` | Design d'API, refactoring, structure hexagonale / DDD / CQRS | *« refactore ce module en archi hexagonale / Est ce que mon code respecte les principes de l'architecture hexagonale ? »* |
+| `domain-driven-design` | Modélisation métier, bounded contexts, agrégats | *« comment découper ce domaine en aggregates ? »* |
+| `hexagonal-architecture` | Ports & adapters, découplage infra, testabilité | *« ajoute un port pour ce service externe »* |
+| `product-brainstorming` | Brainstorming produit, exploration de problème | *« brainstorm avec moi sur cette feature »* |

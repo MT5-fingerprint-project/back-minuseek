@@ -16,6 +16,10 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('Minuseek API')
     .setVersion('1.0')
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      'keycloak',
+    )
     .build();
   app.setGlobalPrefix('api', { exclude: ['/docs'] });
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
