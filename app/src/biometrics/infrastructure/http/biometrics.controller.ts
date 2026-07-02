@@ -27,6 +27,7 @@ import { UploadTraceCommand } from '../../application/commands/upload-trace/uplo
 import { UploadReferencePrintCommand } from '../../application/commands/upload-reference-print/upload-reference-print.command';
 import { DeleteTraceCommand } from '../../application/commands/delete-trace/delete-trace.command';
 import { DeleteReferencePrintCommand } from '../../application/commands/delete-reference-print/delete-reference-print.command';
+import { UpsertMatchingsCommand } from '../../application/commands/upsert-matchings/upsert-matchings.command';
 import { ListTracesQuery } from '../../application/queries/list-traces/list-traces.query';
 import { ListReferencePrintsQuery } from '../../application/queries/list-reference-prints/list-reference-prints.query';
 import { TraceNotFoundError } from '../../domain/trace/errors/trace-not-found.error';
@@ -35,6 +36,7 @@ import { UploadTraceDto } from './dto/upload-trace.dto';
 import { UploadReferencePrintDto } from './dto/upload-reference-print.dto';
 import { ListTracesDto } from './dto/list-traces.dto';
 import { ListReferencePrintsDto } from './dto/list-reference-prints.dto';
+import { UpsertMatchingsDto } from './dto/upsert-matchings.dto';
 
 const IMAGE_MIME = /^image\/(png|jpe?g|tiff)$/;
 
@@ -180,6 +182,23 @@ export class BiometricsController {
         file.mimetype,
         dto.caseId,
       ),
+    );
+  }
+
+  @Post('traces/:id/matchings')
+  @HttpCode(204)
+  @ApiOperation({
+    summary:
+      "Enregistrer les scores de correspondance d'une trace avec des empreintes de référence",
+  })
+  @ApiResponse({ status: 204, description: 'Scores enregistrés' })
+  @ApiResponse({ status: 400, description: 'traceId ou scores invalides' })
+  async upsertMatchings(
+    @Param('id', ParseUUIDPipe) traceId: string,
+    @Body() dto: UpsertMatchingsDto,
+  ): Promise<void> {
+    await this.commandBus.execute(
+      new UpsertMatchingsCommand(traceId, dto.matchings),
     );
   }
 }

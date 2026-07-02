@@ -7,10 +7,15 @@ import type { ReferencePrintReader } from '../../application/queries/list-refere
 export class PrismaReferencePrintReader implements ReferencePrintReader {
   constructor(private readonly prisma: PrismaService) {}
 
-  findByCaseId(caseId: string): Promise<ReferencePrintReadModel[]> {
+  async findByCaseId(caseId: string): Promise<ReferencePrintReadModel[]> {
     return this.prisma.referencePrint.findMany({
       where: { caseId },
       orderBy: { createdAt: 'desc' },
+      include: {
+        matchings: {
+          select: { traceId: true, score: true, match: true },
+        },
+      },
     });
   }
 }
