@@ -34,8 +34,28 @@ cp .env.example .env
 | `DB_USER`      | Utilisateur PostgreSQL               | `minuseek`                                        |
 | `DB_PASSWORD`  | Mot de passe PostgreSQL              | `change_me`                                       |
 | `DATABASE_URL` | URL de connexion complète (Prisma)   | `postgresql://user:pass@localhost:5432/dbname`    |
+| `STORAGE_DRIVER` | Stockage des images : `gcs` (défaut) ou `in-memory` (hors-ligne, sans persistance) | `gcs` |
+| `GCS_BUCKET`   | Bucket GCS des images                | `minuseek-media-dev`                              |
+| `GCS_SIGNED_URL_TTL_SECONDS` | Durée de vie des URLs signées | `900`                                     |
 
-### 2. Installer les dépendances
+### 2. Accès au bucket d'images (une fois par poste)
+
+Les images vont dans le **vrai bucket GCS de dev** (`minuseek-media-dev`),
+même en local — il n'existe pas d'émulateur GCS local, et utiliser le vrai
+bucket rend le dev représentatif de la prod (URLs signées V4, CORS, IAM
+identiques). Voir `docs/adr/0003-gcs-only-image-storage.md`.
+
+Chaque dev de l'équipe a déjà les droits d'impersonation. Setup unique :
+
+```bash
+gcloud auth application-default login \
+  --impersonate-service-account=back-runtime@dev-minuseek.iam.gserviceaccount.com
+```
+
+(Prérequis : [gcloud CLI](https://cloud.google.com/sdk/docs/install) installé,
+connexion avec le compte google que vous m'avez envoyésur discord.)
+
+### 3. Installer les dépendances
 
 ```bash
 make install
@@ -43,7 +63,7 @@ make install
 
 Les `node_modules` sont montés en volume dans le container — cette commande est requise avant le premier `make dev` et après chaque ajout de package.
 
-### 3. Démarrer l'environnement de développement
+### 4. Démarrer l'environnement de développement
 
 ```bash
 make dev

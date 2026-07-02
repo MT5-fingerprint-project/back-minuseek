@@ -1,4 +1,4 @@
-# ADR-0001 — Stockage des images en bucket GCS privé + URLs signées V4 (keyless)
+# ADR-0002 — Stockage des images en bucket GCS privé + URLs signées V4 (keyless)
 
 - **Statut** : accepté
 - **Date** : 2026-07-01
