@@ -1,0 +1,80 @@
+# Déploiement continu DEV : chaque merge sur main teste, build les images
+# back + migrate (même SHA), exécute la migration PUIS déploie l'API
+# (migrate-before-traffic : un échec de migration bloque le deploy).
+# Secret requis : GCP_SA_KEY_DEV (clé JSON deploy-ci@dev-minuseek).
+# Prérequis : docker/prod/Dockerfile présent sur main (PR feat/deployment-foundation).
+name: deploy-dev
+
+on:
+  push:
+    branches: [main]
+
+concurrency: deploy-dev
+
+env:
+  REGION: europe-west1
+  PROJECT: dev-minuseek
+  AR: europe-west1-docker.pkg.dev/dev-minuseek/minuseek
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: sha
+        run: echo "short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_DEV }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - run: gcloud auth configure-docker europe-west1-docker.pkg.dev --quiet
+
+      - name: Build and push runtime + migration images (same SHA)
+        run: |
+          docker build -f docker/prod/Dockerfile --target production \
+            -t "$AR/back:${{ steps.sha.outputs.short }}" app/
+          docker build -f docker/prod/Dockerfile --target migration \
+            -t "$AR/migrate:${{ steps.sha.outputs.short }}" app/
+          docker push "$AR/back:${{ steps.sha.outputs.short }}"
+          docker push "$AR/migrate:${{ steps.sha.outputs.short }}"
+
+      - name: Run migrations (blocking)
+        run: |
+          gcloud run jobs update minuseek-migrate \
+            --image="$AR/migrate:${{ steps.sha.outputs.short }}" \
+            --region="$REGION" --project="$PROJECT" --quiet
+          gcloud run jobs execute minuseek-migrate \
+            --region="$REGION" --project="$PROJECT" --wait --quiet
+
+      - name: Deploy Cloud Run
+        run: |
+          gcloud run deploy minuseek-back \
+            --image="$AR/back:${{ steps.sha.outputs.short }}" \
+            --region="$REGION" --project="$PROJECT" --quiet
