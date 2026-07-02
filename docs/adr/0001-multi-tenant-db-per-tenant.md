@@ -13,7 +13,7 @@ La spec impose déjà des opérations **par tenant** :
 - `SUP-05` : suppression d'un tenant avec **crypto-shred** des clés ;
 - `SUP-09/10` : **backup / restauration par tenant** ;
 - `IA-12` / `IA-21` : isolation stricte, gardes tenant, aucun accès cross-tenant, SUPERADMIN sans accès métier ;
-- `BIO-01` : chiffrement des images avec une **KEK par tenant**.
+- `BIO-01` : chiffrement des images avec une **KEK par tenant**. (Non implémenté en v1, c'est du bonus)
 
 État actuel du code (mono-tenant de bout en bout) :
 - `app/src/prisma/prisma.service.ts` : `PrismaClient` en **singleton `@Global()`**, une seule `DATABASE_URL`.
@@ -25,11 +25,11 @@ La spec impose déjà des opérations **par tenant** :
 
 Adopter une architecture **une base de données PostgreSQL par tenant**, avec une **base système (control-plane) partagée**.
 
-1. **Base système** (partagée, unique) : registre des tenants (`Tenant { slug, realm, dbConnectionRef, status, createdAt }`), comptes SUPERADMIN, audit superadmin. C'est la seule base connue au démarrage.
+1. **Base système** (partagée, unique) : registre des tenants (`Tenant { slug, displayName, databaseName, identityProviderRealm, createdAt }`). C'est la seule base connue au démarrage.
 2. **Base métier par tenant** : toutes les données métier (affaires, traces, empreintes, calques, audit tenant) vivent dans la base du tenant. **Pas de colonne `tenantId`** sur les tables métier — l'isolation est physique.
 3. **Un realm Keycloak par tenant** : le claim `iss` du token identifie le tenant. Le SUPERADMIN utilise un realm système dédié.
-4. **Une KEK par tenant** pour le chiffrement (aligné `BIO-01`), référencée depuis la base système.
-5. **Résolution à la requête** : le tenant est déduit du token, puis le `PrismaClient` correspondant est résolu et propagé via un contexte (`AsyncLocalStorage`) jusqu'aux repositories.
+4. **Une KEK par tenant** pour le chiffrement (aligné `BIO-01`) (Bonus, ne pas faire en v1). Référencée depuis la base système.
+5. **Résolution à la requête** : le tenant est identifié à partir du token (claim `iss`) et validé, puis le `PrismaClient` correspondant est résolu depuis un cache par tenant. Propagation **hybride** : `AsyncLocalStorage` sur la chaîne HTTP (les repositories restent sans paramètre tenant), et tenant **explicite** aux frontières asynchrones où l'`AsyncLocalStorage` se perd (events CQRS, jobs, provisioning). Détails d'implémentation : voir [docs/multitenancy.md](../multitenancy.md).
 
 ## Conséquences
 
@@ -49,6 +49,8 @@ Adopter une architecture **une base de données PostgreSQL par tenant**, avec un
 - **Schema-per-tenant (1 base, N schémas)** — bon compromis d'isolation, mais **mal supporté par Prisma** (liaison à un schéma au `generate`), et le gain d'ops ne compense pas la complexité côté ORM.
 
 ## Impact d'implémentation (tickets de suivi)
+
+> Guide « comment faire » détaillé : [docs/multitenancy.md](../multitenancy.md) — découpage Prisma admin/tenant, services, résolution du tenant, provisioning, migrations.
 
 Voir les tickets Backlog générés à partir de cette décision :
 1. Base système (control-plane) + registre des tenants.
