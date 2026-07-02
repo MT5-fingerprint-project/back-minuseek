@@ -7,7 +7,9 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && pnpm prisma:generate-admin",
+    "prisma:generate-tenant": "prisma generate --schema=prisma/schema.prisma --config=prisma.config.ts",
+    "prisma:generate-admin": "prisma generate --schema=prisma-admin/schema.prisma --config=prisma-admin.config.ts",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
