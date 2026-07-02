@@ -5,11 +5,10 @@ import { JwtAuthGuard } from './infrastructure/http/jwt-auth.guard';
 
 /**
  * Enregistre la stratégie de validation des access tokens Keycloak
- * (JwtStrategy) et expose le JwtAuthGuard + les décorateurs `@Public` /
- * `@CurrentUser`.
+ * (JwtStrategy) et expose JwtAuthGuard + @CurrentUser.
  *
- * `JwtAuthGuard` est enregistré en `APP_GUARD` global dans `AppModule`.
- * Les routes publiques s'exemptent via `@Public()`.
+ * JwtAuthGuard est enregistré en APP_GUARD global dans AppModule —
+ * toute route exige un token valide, sans opt-out.
  */
 @Module({
   imports: [PassportModule],
