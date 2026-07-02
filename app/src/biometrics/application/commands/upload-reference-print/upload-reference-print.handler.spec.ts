@@ -17,7 +17,7 @@ describe('UploadReferencePrintHandler', () => {
     handler = new UploadReferencePrintHandler(repo, storage, idGenerator);
   });
 
-  it('stocke le fichier sous media/{caseId}/referencePrints, persiste la référence et retourne id + path', async () => {
+  it('stores the file under media/{caseId}/reference-prints, persists the reference print and returns id, path and url', async () => {
     const result = await handler.execute(
       new UploadReferencePrintCommand(
         Buffer.from('clean-print'),
@@ -30,6 +30,7 @@ describe('UploadReferencePrintHandler', () => {
     expect(result).toEqual({
       id: 'ref-456',
       path: 'media/investigation-case/case-9/reference-prints/ref-456.tiff',
+      url: '/media/investigation-case/case-9/reference-prints/ref-456.tiff',
     });
 
     const saved = await repo.findById('ref-456');

@@ -18,7 +18,7 @@ describe('UploadTraceHandler', () => {
     handler = new UploadTraceHandler(repo, storage, idGenerator);
   });
 
-  it('stocke le fichier sous media/{caseId}/traces, persiste la trace en RECEIVED et retourne id + path', async () => {
+  it('stores the file under media/{caseId}/traces, persists the trace as RECEIVED and returns id, path and url', async () => {
     const result = await handler.execute(
       new UploadTraceCommand(
         Buffer.from('test-image'),
@@ -31,6 +31,7 @@ describe('UploadTraceHandler', () => {
     expect(result).toEqual({
       id: 'trace-123',
       path: 'media/investigation-case/case-9/traces/trace-123.png',
+      url: '/media/investigation-case/case-9/traces/trace-123.png',
     });
 
     const saved = await repo.findById('trace-123');

@@ -25,8 +25,8 @@ import { PrismaTraceReader } from './infrastructure/persistence/prisma-trace.rea
 import { PrismaReferencePrintReader } from './infrastructure/persistence/prisma-reference-print.reader';
 import { PrismaLayerRepository } from './infrastructure/persistence/prisma-layer.repository';
 import { PrismaLayerReader } from './infrastructure/persistence/prisma-layer.reader';
-import { LocalImageStorageAdapter } from './infrastructure/storage/local-image-storage.adapter';
 import { GcsImageStorageAdapter } from './infrastructure/storage/gcs-image-storage.adapter';
+import { InMemoryImageStorageAdapter } from './infrastructure/storage/in-memory-image-storage.adapter';
 
 @Module({
   imports: [CqrsModule],
@@ -51,19 +51,24 @@ import { GcsImageStorageAdapter } from './infrastructure/storage/gcs-image-stora
     { provide: TRACE_READER, useClass: PrismaTraceReader },
     { provide: REFERENCE_PRINT_READER, useClass: PrismaReferencePrintReader },
     { provide: LAYER_READER, useClass: PrismaLayerReader },
-    //temporary while gcs bucket exist
     {
       provide: IMAGE_STORAGE,
-      useFactory: (): LocalImageStorageAdapter | GcsImageStorageAdapter => {
-        if (process.env.STORAGE_DRIVER === 'gcs') {
-          const bucket = process.env.GCS_BUCKET;
-          if (!bucket) {
-            throw new Error('STORAGE_DRIVER=gcs requires GCS_BUCKET to be set');
-          }
-          const ttl = Number(process.env.GCS_SIGNED_URL_TTL_SECONDS ?? 900);
-          return new GcsImageStorageAdapter(bucket, ttl);
+      useFactory: (): GcsImageStorageAdapter | InMemoryImageStorageAdapter => {
+        const driver = process.env.STORAGE_DRIVER ?? 'gcs';
+        if (driver === 'in-memory') {
+          return new InMemoryImageStorageAdapter();
         }
-        return new LocalImageStorageAdapter();
+        if (driver !== 'gcs') {
+          throw new Error(
+            `Unknown STORAGE_DRIVER "${driver}" (expected gcs | in-memory)`,
+          );
+        }
+        const bucket = process.env.GCS_BUCKET;
+        if (!bucket) {
+          throw new Error('STORAGE_DRIVER=gcs requires GCS_BUCKET to be set');
+        }
+        const ttl = Number(process.env.GCS_SIGNED_URL_TTL_SECONDS ?? 900);
+        return new GcsImageStorageAdapter(bucket, ttl);
       },
     },
   ],
