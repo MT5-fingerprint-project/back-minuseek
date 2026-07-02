@@ -13,6 +13,7 @@ services:
             DB_USER: ${DB_USER}
             DB_PASSWORD: ${DB_PASSWORD}
             DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:${DB_PORT}/${DB_NAME}
+            ADMIN_DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:${DB_PORT}/minuseek_admin
             ORIGIN: ${ORIGIN}
             KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL}
             KEYCLOAK_INTERNAL_URL: http://keycloak:8080
