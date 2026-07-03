@@ -11,7 +11,7 @@ async function bootstrap() {
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );
 
-  app.setGlobalPrefix('api', { exclude: ['/docs'] });
+  app.setGlobalPrefix('api', { exclude: ['/docs', 'data/api/*path'] });
 
   // L'image de prod pose SWAGGER_DOC=false : /docs n'existe jamais en déployé.
   if (process.env.SWAGGER_DOC !== 'false') {
@@ -23,7 +23,6 @@ async function bootstrap() {
         'keycloak',
       )
       .build();
-    app.setGlobalPrefix('api', { exclude: ['/docs', 'data/api/*path'] });
     SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
   }
 

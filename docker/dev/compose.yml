@@ -27,6 +27,7 @@ services:
             - ../../app/prisma:/app/prisma
             - ../../app/generated:/app/generated
             - ../../app/media:/app/media
+            - ${HOME}/.config/gcloud:/root/.config/gcloud:ro
         networks:
             - default
             - minuseek
