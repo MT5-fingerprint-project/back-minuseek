@@ -22,10 +22,11 @@ services:
             STORAGE_DRIVER: ${STORAGE_DRIVER}
             GCS_BUCKET: ${GCS_BUCKET}
             GCS_SIGNED_URL_TTL_SECONDS: ${GCS_SIGNED_URL_TTL_SECONDS}
+            GOOGLE_APPLICATION_CREDENTIALS: /gcloud/adc.json
         volumes:
             - ../../app/prisma:/app/prisma
             - ../../app/generated:/app/generated
-            - ../../app/media:/app/media
+            - ${GCLOUD_ADC:-~/.config/gcloud-minuseek/application_default_credentials.json}:/gcloud/adc.json:ro
         networks:
             - default
             - minuseek
