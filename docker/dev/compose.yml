@@ -18,6 +18,9 @@ services:
             KEYCLOAK_INTERNAL_URL: http://keycloak:8080
             KEYCLOAK_REALM: ${KEYCLOAK_REALM}
             KEYCLOAK_AUDIENCE: ${KEYCLOAK_AUDIENCE}
+            STORAGE_DRIVER: ${STORAGE_DRIVER}
+            GCS_BUCKET: ${GCS_BUCKET}
+            GCS_SIGNED_URL_TTL_SECONDS: ${GCS_SIGNED_URL_TTL_SECONDS}
         volumes:
             - ../../app/prisma:/app/prisma
             - ../../app/generated:/app/generated
