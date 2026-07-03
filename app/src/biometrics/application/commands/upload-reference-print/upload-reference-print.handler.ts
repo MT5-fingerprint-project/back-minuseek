@@ -19,7 +19,7 @@ import { UploadReferencePrintCommand } from './upload-reference-print.command';
 @CommandHandler(UploadReferencePrintCommand)
 export class UploadReferencePrintHandler implements ICommandHandler<
   UploadReferencePrintCommand,
-  { id: string; path: string }
+  { id: string; path: string; url: string }
 > {
   constructor(
     @Inject(REFERENCE_PRINT_REPOSITORY)
@@ -32,17 +32,18 @@ export class UploadReferencePrintHandler implements ICommandHandler<
 
   async execute(
     cmd: UploadReferencePrintCommand,
-  ): Promise<{ id: string; path: string }> {
+  ): Promise<{ id: string; path: string; url: string }> {
     const id = this.idGenerator.generate();
     const relativePath = `investigation-case/${cmd.caseId}/reference-prints/${id}${this.getExtension(cmd.originalName)}`;
     const storedPath = await this.storage.save(cmd.fileBuffer, relativePath);
-    const rp = ReferencePrint.create({
+    const referencePrint = ReferencePrint.create({
       id,
       path: storedPath,
       caseId: cmd.caseId,
     });
-    await this.repo.save(rp);
-    return { id, path: storedPath };
+    await this.repo.save(referencePrint);
+    const url = await this.storage.getUrl(storedPath);
+    return { id, path: storedPath, url };
   }
 
   private getExtension(originalName: string): string {

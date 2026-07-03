@@ -7,11 +7,13 @@ import { SharedModule } from './shared/shared.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/infrastructure/http/jwt-auth.guard';
 import { DataProxyModule } from './data-proxy/data-proxy.module';
+import { TenancyModule } from './tenancy/tenancy.module';
 
 @Module({
   imports: [
     SharedModule,
     PrismaModule,
+    TenancyModule,
     AuthModule,
     InvestigationModule,
     BiometricsModule,

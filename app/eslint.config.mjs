@@ -30,6 +30,22 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
       "prettier/prettier": ["error", { endOfLine: "auto" }],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/generated/prisma-admin**'],
+              message:
+                'generated/prisma-admin is reserved for the tenancy module (IA-21). Import from src/tenancy instead.',
+            },
+          ],
+        },
+      ],
     },
+  },
+  {
+    files: ['src/tenancy/**'],
+    rules: { 'no-restricted-imports': 'off' },
   },
 );

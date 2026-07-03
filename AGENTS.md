@@ -36,8 +36,12 @@ API du projet Minuseek— **NestJS 11 + Prisma 7 + PostgreSQL 17**, en **DDD / a
 
 ```bash
 cp .env.example .env          # variables d'env (gitignoré)
+# 1 fois par poste : les images vont dans le bucket GCS dev (ADR-0003)
+gcloud auth application-default login \
+  --impersonate-service-account=back-runtime@dev-minuseek.iam.gserviceaccount.com
 make dev                      # build + up + watch (hot-reload)
-make migrate-deploy           # OBLIGATOIRE au 1er lancement : la DB démarre vide
+make migrate-deploy           # OBLIGATOIRE au 1er lancement : la DB tenant démarre vide
+make migrate-admin-setup      # OBLIGATOIRE au 1er lancement : crée minuseek_admin + registre des tenants
 ```
 
 
@@ -48,9 +52,11 @@ make migrate-deploy           # OBLIGATOIRE au 1er lancement : la DB démarre vi
 | `make dev` / `make dev-build` | Lance le stack (rebuild d'image avec `dev-build`) |
 | `make down` / `make logs` | Stoppe le stack / suit les logs de l'app |
 | `make exec` / `make db` | Shell dans le conteneur app / `psql` sur la DB |
-| `make migrate NAME=<nom>` | Crée + applique une migration Prisma |
-| `make migrate-deploy` | Applique les migrations (sans en générer) |
-| `make migrate-reset` | Reset complet de la DB |
+| `make migrate NAME=<nom>` | Crée + applique une migration Prisma (schéma métier) |
+| `make migrate-deploy` | Applique les migrations métier (sans en générer) |
+| `make migrate-reset` | Reset complet de la DB métier |
+| `make migrate-admin-setup` | 1er lancement : crée `minuseek_admin` + migration initiale |
+| `make migrate-admin NAME=<nom>` | Crée + applique une migration sur le schéma admin |
 | `make test [FILE=...]` | Lance les tests (un fichier si `FILE=`) |
 
 Scripts pnpm (depuis `app/`) : `pnpm build`, `pnpm start:dev`, `pnpm lint`, `pnpm test`.

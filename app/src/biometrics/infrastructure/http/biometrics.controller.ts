@@ -133,7 +133,7 @@ export class BiometricsController {
   ) {
     return this.commandBus.execute<
       UploadTraceCommand,
-      { id: string; path: string }
+      { id: string; path: string; url: string }
     >(
       new UploadTraceCommand(
         file.buffer,
@@ -174,7 +174,7 @@ export class BiometricsController {
   ) {
     return this.commandBus.execute<
       UploadReferencePrintCommand,
-      { id: string; path: string }
+      { id: string; path: string; url: string }
     >(
       new UploadReferencePrintCommand(
         file.buffer,

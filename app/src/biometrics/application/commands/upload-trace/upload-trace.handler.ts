@@ -19,7 +19,7 @@ import { UploadTraceCommand } from './upload-trace.command';
 @CommandHandler(UploadTraceCommand)
 export class UploadTraceHandler implements ICommandHandler<
   UploadTraceCommand,
-  { id: string; path: string }
+  { id: string; path: string; url: string }
 > {
   constructor(
     @Inject(TRACE_REPOSITORY)
@@ -32,7 +32,7 @@ export class UploadTraceHandler implements ICommandHandler<
 
   async execute(
     cmd: UploadTraceCommand,
-  ): Promise<{ id: string; path: string }> {
+  ): Promise<{ id: string; path: string; url: string }> {
     const id = this.idGenerator.generate();
     const relativePath = `investigation-case/${cmd.caseId}/traces/${id}${this.getExtension(cmd.originalName)}`;
     const storedPath = await this.storage.save(cmd.fileBuffer, relativePath);
@@ -42,7 +42,8 @@ export class UploadTraceHandler implements ICommandHandler<
       caseId: cmd.caseId,
     });
     await this.repo.save(trace);
-    return { id, path: storedPath };
+    const url = await this.storage.getUrl(storedPath);
+    return { id, path: storedPath, url };
   }
 
   private getExtension(originalName: string): string {

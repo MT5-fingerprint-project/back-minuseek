@@ -1,0 +1,15 @@
+# Contexte de build PROD = app/ (cf. docker/prod/Dockerfile). Paths relatifs à app/.
+# Docker n'honore le .dockerignore qu'à la racine du contexte ; celui-ci slimme le
+# contexte prod (le .dockerignore racine sert le build dev, contexte = racine repo).
+
+node_modules
+dist
+generated
+media
+coverage
+*.log
+
+# Secrets : jamais d'.env dans une image (on garde les .env.example).
+**/.env
+.env*
+!.env.example

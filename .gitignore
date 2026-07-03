@@ -61,8 +61,8 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 !.claude/skills
 .github
 
-.dockerignore
 app/generated/prisma/
+app/generated/prisma-admin/
 media/
 app/dist
 /app/generated/prisma
