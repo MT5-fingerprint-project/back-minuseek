@@ -21,7 +21,7 @@ async function bootstrap() {
       'keycloak',
     )
     .build();
-  app.setGlobalPrefix('api', { exclude: ['/docs'] });
+  app.setGlobalPrefix('api', { exclude: ['/docs', 'data/api/*path'] });
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config));
 
   await app.listen(process.env.PORT ?? 3000);

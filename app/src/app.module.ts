@@ -6,6 +6,7 @@ import { BiometricsModule } from './biometrics/biometrics.module';
 import { SharedModule } from './shared/shared.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/infrastructure/http/jwt-auth.guard';
+import { DataProxyModule } from './data-proxy/data-proxy.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { JwtAuthGuard } from './auth/infrastructure/http/jwt-auth.guard';
     AuthModule,
     InvestigationModule,
     BiometricsModule,
+    DataProxyModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],
 })
