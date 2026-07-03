@@ -38,7 +38,7 @@ cp .env.example .env
 | `GCS_BUCKET`   | Bucket GCS des images                | `minuseek-media-dev`                              |
 | `GCS_SIGNED_URL_TTL_SECONDS` | Durée de vie des URLs signées | `900`                                     |
 
-### 2. Accès au bucket d'images (une fois par poste)
+### 2. Accès au bucket d'images : créer l'ADC (une fois par poste)
 
 Les images vont dans le **vrai bucket GCS de dev** (`minuseek-media-dev`),
 même en local — il n'existe pas d'émulateur GCS local, et utiliser le vrai
@@ -48,12 +48,22 @@ identiques). Voir `docs/adr/0003-gcs-only-image-storage.md`.
 Chaque dev de l'équipe a déjà les droits d'impersonation. Setup unique :
 
 ```bash
-gcloud auth application-default login \
+CLOUDSDK_CONFIG="$HOME/.config/gcloud-minuseek" gcloud auth application-default login \
   --impersonate-service-account=back-runtime@dev-minuseek.iam.gserviceaccount.com
 ```
 
+Le navigateur s'ouvre : connectez-vous avec votre compte Google d'équipe
+(celui qui a les droits GCP). `CLOUDSDK_CONFIG` isole ce credential dans
+`~/.config/gcloud-minuseek/` pour ne pas écraser votre ADC par défaut si
+vous en avez un. Le compose monte ce fichier dans le conteneur (chemin
+surchargeable via la variable d'environnement `GCLOUD_ADC`).
+
+⚠️ Lancez cette commande **avant** le premier `make dev` : si le fichier
+n'existe pas, Docker crée un dossier vide à sa place (dans ce cas,
+`rm -rf ~/.config/gcloud-minuseek` et recommencez).
+
 (Prérequis : [gcloud CLI](https://cloud.google.com/sdk/docs/install) installé,
-connexion avec le compte google que vous m'avez envoyésur discord.)
+connexion avec le compte google que vous m'avez envoyé sur discord.)
 
 ### 3. Installer les dépendances
 
