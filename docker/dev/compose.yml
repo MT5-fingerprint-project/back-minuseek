@@ -25,7 +25,6 @@ services:
         volumes:
             - ../../app/prisma:/app/prisma
             - ../../app/generated:/app/generated
-            - ../../app/media:/app/media
         networks:
             - default
             - minuseek
