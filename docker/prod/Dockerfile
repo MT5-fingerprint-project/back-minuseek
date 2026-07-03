@@ -8,7 +8,8 @@ FROM base AS build
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
-RUN pnpm prisma generate
+
+RUN pnpm prisma:generate-tenant && pnpm prisma:generate-admin
 RUN pnpm build
 
 FROM base AS prod-deps
