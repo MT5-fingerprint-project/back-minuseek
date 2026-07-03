@@ -1,0 +1,60 @@
+# Déploiement PROD : déclenché par un tag v*. AUCUN rebuild — copie des digests
+# back + migrate déjà buildés pour ce commit depuis l'AR dev (build-once : la
+# prod exécute exactement les octets validés en dev). Échoue explicitement si
+# les images du commit taggé n'existent pas en dev (= le commit n'est pas passé
+# par main).
+# ⚠️ Inerte tant que la prod est au repos : nécessite GCP_SA_KEY_PROD, l'infra
+# prod appliquée, et deploy-ci@prod dans les reader_members de l'AR dev.
+name: deploy-prod
+
+on:
+  push:
+    tags: ["v*"]
+
+concurrency: deploy-prod
+
+env:
+  REGION: europe-west1
+  PROJECT: prod-minuseek
+  AR_DEV: europe-west1-docker.pkg.dev/dev-minuseek/minuseek
+  AR_PROD: europe-west1-docker.pkg.dev/prod-minuseek/minuseek
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: sha
+        run: echo "short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_PROD }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - uses: imjasonh/setup-crane@v0.4
+
+      - name: Copy digests dev -> prod (no rebuild)
+        run: |
+          crane auth login europe-west1-docker.pkg.dev \
+            -u oauth2accesstoken -p "$(gcloud auth print-access-token)"
+          crane copy "$AR_DEV/back:${{ steps.sha.outputs.short }}" \
+                     "$AR_PROD/back:${{ steps.sha.outputs.short }}"
+          crane copy "$AR_DEV/migrate:${{ steps.sha.outputs.short }}" \
+                     "$AR_PROD/migrate:${{ steps.sha.outputs.short }}"
+
+      - name: Run migrations (blocking)
+        run: |
+          gcloud run jobs update minuseek-migrate \
+            --image="$AR_PROD/migrate:${{ steps.sha.outputs.short }}" \
+            --region="$REGION" --project="$PROJECT" --quiet
+          gcloud run jobs execute minuseek-migrate \
+            --region="$REGION" --project="$PROJECT" --wait --quiet
+
+      - name: Deploy Cloud Run
+        run: |
+          gcloud run deploy minuseek-back \
+            --image="$AR_PROD/back:${{ steps.sha.outputs.short }}" \
+            --region="$REGION" --project="$PROJECT" --quiet
