@@ -10,8 +10,8 @@ RUN pnpm install --ignore-scripts
 
 COPY app/ .
 
-RUN pnpm prisma generate
 
-# Au démarrage : applique les migrations à la DB, régénère le client Prisma
-# (le dossier generated/ étant bind-monté, l'hôte est mis à jour aussi), puis lance l'app
-CMD ["sh", "-c", "pnpm prisma migrate deploy && pnpm prisma generate && pnpm start:dev"]
+RUN pnpm prisma:generate-tenant && pnpm prisma:generate-admin
+
+
+CMD ["sh", "-c", "pnpm prisma migrate deploy && pnpm prisma:generate-tenant && pnpm prisma:generate-admin && pnpm start:dev"]
