@@ -4,7 +4,7 @@ export
 COMPOSE = docker compose -f docker/dev/compose.yml --env-file .env
 NETWORK = minuseek
 
-.PHONY: network dev dev-build down db exec install migrate migrate-deploy migrate-reset test test-watch logs
+.PHONY: network dev dev-build down db exec install migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin test test-watch logs
 
 ## Crée le réseau Docker partagé avec le front s'il n'existe pas (idempotent)
 network:
@@ -33,6 +33,15 @@ exec:
 ## Ouvre un shell psql sur la DB (make db)
 db:
 	$(COMPOSE) exec postgres psql -U $(DB_USER) -d $(DB_NAME)
+
+## 1er lancement uniquement : crée la DB admin et joue la migration initiale du registre de tenants
+migrate-admin-setup:
+	$(COMPOSE) exec postgres psql -U $(DB_USER) -d postgres -c 'CREATE DATABASE minuseek_admin;' || true
+	$(COMPOSE) run --rm app pnpm prisma migrate deploy --config=prisma-admin.config.ts
+
+## Crée une migration admin à partir du schéma prisma-admin (make migrate-admin NAME=...)
+migrate-admin:
+	$(COMPOSE) run --rm app pnpm prisma migrate dev --name $(NAME) --config=prisma-admin.config.ts
 
 ## Crée une migration à partir des modèles ET l'applique à la DB dev (make migrate NAME=add_layers)
 ## Tourne dans un conteneur jetable : le fichier généré atterrit dans app/prisma/migrations (à commiter)

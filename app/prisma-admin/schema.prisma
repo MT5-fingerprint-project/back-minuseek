@@ -1,0 +1,21 @@
+generator client {
+    provider     = "prisma-client"
+    output       = "../generated/prisma-admin"
+    moduleFormat = "cjs"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+model Tenant {
+    id                    String   @id @default(uuid()) @db.Uuid
+    slug                  String   @unique
+    displayName           String   @map("display_name")
+    databaseName          String   @unique @map("database_name")
+    identityProviderRealm String   @unique @map("identity_provider_realm")
+    createdAt             DateTime @default(now()) @map("created_at")
+    updatedAt             DateTime @updatedAt @map("updated_at")
+
+    @@map("tenant")
+}
