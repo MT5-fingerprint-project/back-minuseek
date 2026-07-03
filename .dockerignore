@@ -1,0 +1,22 @@
+# Build context filter (contexte racine = build dev `docker/dev/Dockerfile`).
+# Le build prod a son contexte sur `app/` → voir `app/.dockerignore`.
+
+**/node_modules
+app/dist
+app/generated
+app/media
+.git
+.github
+.claude
+.agents
+coverage
+**/*.log
+docs
+README.md
+
+# Secrets : jamais d'.env dans une image. On garde les .env.example.
+**/.env
+.env*
+!**/.env.example
+
+# NE PAS exclure (requis par le build) : pnpm-lock.yaml, package.json, prisma/, prisma.config.ts
