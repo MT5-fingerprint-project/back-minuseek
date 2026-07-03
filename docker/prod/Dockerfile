@@ -35,4 +35,5 @@ CMD ["node", "dist/src/main"]
 
 FROM build AS migration
 ENV NODE_ENV=production
-CMD ["pnpm", "prisma", "migrate", "deploy"]
+
+CMD ["sh", "-c", "pnpm prisma migrate deploy && pnpm prisma migrate deploy --config=prisma-admin.config.ts"]
