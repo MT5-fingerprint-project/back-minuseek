@@ -26,6 +26,7 @@ services:
         volumes:
             - ../../app/prisma:/app/prisma
             - ../../app/prisma-admin:/app/prisma-admin
+            - ../../app/scripts:/app/scripts
             - ../../app/generated:/app/generated
             - ${GCLOUD_ADC:-~/.config/gcloud-minuseek/application_default_credentials.json}:/gcloud/adc.json:ro
         networks:
