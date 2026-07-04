@@ -47,6 +47,11 @@ migrate-admin:
 seed-admin:
 	$(COMPOSE) run --rm app pnpm ts-node prisma-admin/seed.ts
 
+## Migre le schéma admin puis fan-out du schéma métier sur chaque base tenant du registre
+## (équivalent local du job de migration déployé)
+migrate-all:
+	$(COMPOSE) run --rm app sh scripts/migrate-all.sh
+
 ## Crée une migration à partir des modèles ET l'applique à la DB dev (make migrate NAME=add_layers)
 ## Tourne dans un conteneur jetable : le fichier généré atterrit dans app/prisma/migrations (à commiter)
 migrate:

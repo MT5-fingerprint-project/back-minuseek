@@ -36,4 +36,6 @@ CMD ["node", "dist/src/main"]
 FROM build AS migration
 ENV NODE_ENV=production
 
-CMD ["sh", "-c", "pnpm prisma migrate deploy && pnpm prisma migrate deploy --config=prisma-admin.config.ts"]
+# Migre le schéma admin puis fan-out du schéma métier sur chaque base tenant
+# du registre (docs/multitenancy.md).
+CMD ["sh", "scripts/migrate-all.sh"]
