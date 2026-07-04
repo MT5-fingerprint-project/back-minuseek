@@ -328,9 +328,9 @@ app/src/
     infrastructure/persistence/  { admin-prisma.service.ts, tenant-connection.service.ts, tenant-database-admin.service.ts }
     infrastructure/keycloak/     { keycloak-admin.service.ts }
     application/                 { tenant-registry.service.ts }
-  superadmin/                    # bounded context control-plane
-    application/commands/        { provision-tenant, delete-tenant, backup-tenant, restore-tenant }
-    infrastructure/http/         { superadmin.controller.ts, superadmin.guard.ts }
+  organization/                  # bounded context control-plane (ADR-0004 : nommé par le domaine, pas par l'acteur)
+    application/commands/        { create-organization, delete-organization, backup-organization, restore-organization }
+    infrastructure/http/         { organization-admin.controller.ts }   # routes @SystemRealmOnly()
   auth/                          # MultiRealmJwtStrategy (réécrite), guards existants
   investigation/ biometrics/     # inchangés sauf : injection TenantConnectionService dans les repos
 ```

@@ -12,3 +12,4 @@ On consigne ici les **décisions structurantes** du repo : choix techno, trade-o
 - [ADR-0001](0001-multi-tenant-db-per-tenant.md) — Multi-tenant : une base de données par tenant
 - [ADR-0002](0002-gcs-private-storage-signed-urls.md) — Stockage des images en bucket GCS privé + URLs signées V4 (keyless)
 - [ADR-0003](0003-gcs-only-image-storage.md) — GCS partout : suppression du stockage local, dev par impersonation
+- [ADR-0004](0004-organization-context-superadmin-authorization.md) — Organisation : bounded context métier ; superadmin : niveau d'autorisation

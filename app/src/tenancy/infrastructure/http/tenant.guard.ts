@@ -4,8 +4,10 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import type { TenantContext } from '../../application/tenant-context.service';
+import { SYSTEM_REALM_ONLY_KEY } from './system-realm-only.decorator';
 
 type TenantAwareUser = {
   tenantSlug?: string;
@@ -14,6 +16,8 @@ type TenantAwareUser = {
 
 @Injectable()
 export class TenantGuard implements CanActivate {
+  constructor(private readonly reflector: Reflector) {}
+
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<
       Request & {
@@ -26,6 +30,19 @@ export class TenantGuard implements CanActivate {
     if (!user) {
       throw new ForbiddenException();
     }
+
+    const systemRealmOnly = this.reflector.getAllAndOverride<boolean>(
+      SYSTEM_REALM_ONLY_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (systemRealmOnly) {
+      if (!user.isSystemRealm) {
+        throw new ForbiddenException();
+      }
+      return true;
+    }
+
     if (user.isSystemRealm) {
       throw new ForbiddenException();
     }
