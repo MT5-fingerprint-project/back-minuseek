@@ -104,6 +104,19 @@ describe('KeycloakAdminService', () => {
     );
   });
 
+  it('quand ORIGIN liste plusieurs origines, le redirect ne prend que le front (1re)', async () => {
+    const { service, stub } = buildService();
+    process.env.ORIGIN = 'http://localhost:5173,http://localhost:5174';
+    await service.ensureRealm('minuseek-labo-lyon', 'PTS Lyon');
+
+    expect(stub.clients.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        redirectUris: ['http://localhost:5173/*'],
+        webOrigins: ['http://localhost:5173'],
+      }),
+    );
+  });
+
   it('ne recrée ni realm ni client déjà présents (rejeu de saga)', async () => {
     const { service, stub } = buildService();
     stub.realms.findOne.mockResolvedValue({ realm: 'minuseek-labo-lyon' });
