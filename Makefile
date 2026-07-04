@@ -4,7 +4,25 @@ export
 COMPOSE = docker compose -f docker/dev/compose.yml --env-file .env
 NETWORK = minuseek
 
-.PHONY: network dev dev-build down db exec install migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin seed-admin test test-watch logs
+.PHONY: all bootstrap network dev dev-build down db exec install keycloak-setup provision migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all test test-watch logs
+
+## Tout, depuis zéro : install + stack + bootstrap + hot-reload. Rejouable sans danger.
+all:
+	@test -f .env || { echo "❌ .env manquant : cp .env.example .env d'abord"; exit 1; }
+	$(MAKE) install
+	$(MAKE) network
+	$(COMPOSE) up --build -d
+	$(MAKE) bootstrap
+	$(COMPOSE) watch
+
+## 1er lancement : attend Keycloak, migre le registre admin, crée le client
+## provisioner, puis provisionne l'organisation de démo via la vraie saga SUP-03
+bootstrap:
+	@echo "⏳ attente de Keycloak local…"
+	@until curl -sf http://localhost:8080/realms/master/.well-known/openid-configuration >/dev/null 2>&1; do sleep 2; done
+	$(MAKE) migrate-admin-setup
+	$(MAKE) keycloak-setup
+	$(MAKE) provision SLUG=tenant-demo NAME="Tenant démo"
 
 ## Crée le réseau Docker partagé avec le front s'il n'existe pas (idempotent)
 network:
@@ -43,9 +61,14 @@ migrate-admin-setup:
 migrate-admin:
 	$(COMPOSE) run --rm app pnpm prisma migrate dev --name $(NAME) --config=prisma-admin.config.ts
 
-## Amorce le registre local avec le tenant de démo (upsert, rejouable) — requis pour l'auth multi-realm
-seed-admin:
-	$(COMPOSE) run --rm app pnpm ts-node prisma-admin/seed.ts
+## Client confidentiel minuseek-provisioner sur le master local (idempotent),
+## secret écrit dans .env — prérequis one-time du provisioning
+keycloak-setup:
+	sh scripts/keycloak-setup.sh
+
+## Provisionne une organisation via la vraie saga SUP-03 (make provision SLUG=demo2 NAME="Labo 2")
+provision:
+	$(COMPOSE) run --rm app pnpm ts-node src/organization/infrastructure/cli/create-organization.cli.ts $(SLUG) "$(NAME)"
 
 ## Migre le schéma admin puis fan-out du schéma métier sur chaque base tenant du registre
 ## (équivalent local du job de migration déployé)

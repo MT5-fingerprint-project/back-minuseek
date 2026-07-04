@@ -8,6 +8,7 @@ import { JwtAuthGuard } from './auth/infrastructure/http/jwt-auth.guard';
 import { TenancyModule } from './tenancy/tenancy.module';
 import { TenantGuard } from './tenancy/infrastructure/http/tenant.guard';
 import { TenantInterceptor } from './tenancy/infrastructure/http/tenant.interceptor';
+import { OrganizationModule } from './organization/organization.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { TenantInterceptor } from './tenancy/infrastructure/http/tenant.intercep
     AuthModule,
     InvestigationModule,
     BiometricsModule,
+    OrganizationModule,
   ],
   providers: [
     //keep this order, first we find use the token, if it's ok we go to the tenant guard
