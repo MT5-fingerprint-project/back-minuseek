@@ -11,6 +11,7 @@ export interface TenantRecord {
 
 const REGISTRY_TTL_MS = 60_000;
 const NEGATIVE_TTL_MS = 10_000;
+const CACHE_MAX_ENTRIES = 1_000;
 
 interface CacheEntry {
   value: TenantRecord | null;
@@ -33,9 +34,27 @@ export class TenantRegistryService {
     const row = await this.adminPrisma.findTenantBySlug(slug);
 
     const ttl = row ? REGISTRY_TTL_MS : NEGATIVE_TTL_MS;
+    this.evictIfFull(now);
     this.cache.set(slug, { value: row, expiresAt: now + ttl });
 
     return row;
+  }
+
+  private evictIfFull(now: number): void {
+    if (this.cache.size < CACHE_MAX_ENTRIES) {
+      return;
+    }
+    for (const [slug, entry] of this.cache) {
+      if (entry.expiresAt <= now) {
+        this.cache.delete(slug);
+      }
+    }
+    for (const oldestSlug of this.cache.keys()) {
+      if (this.cache.size < CACHE_MAX_ENTRIES) {
+        return;
+      }
+      this.cache.delete(oldestSlug);
+    }
   }
 
   invalidate(slug: string): void {
