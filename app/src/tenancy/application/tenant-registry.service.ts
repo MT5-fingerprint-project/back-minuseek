@@ -57,6 +57,12 @@ export class TenantRegistryService {
     }
   }
 
+  async register(record: Omit<TenantRecord, 'id'>): Promise<TenantRecord> {
+    const created = await this.adminPrisma.createTenant(record);
+    this.invalidate(created.slug);
+    return created;
+  }
+
   invalidate(slug: string): void {
     this.cache.delete(slug);
   }

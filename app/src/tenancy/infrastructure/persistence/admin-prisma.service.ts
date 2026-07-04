@@ -32,4 +32,13 @@ export class AdminPrismaService implements OnModuleInit, OnModuleDestroy {
   findTenantBySlug(slug: string): Promise<Tenant | null> {
     return this.client.tenant.findUnique({ where: { slug } });
   }
+
+  createTenant(record: {
+    slug: string;
+    displayName: string;
+    databaseName: string;
+    identityProviderRealm: string;
+  }): Promise<Tenant> {
+    return this.client.tenant.create({ data: record });
+  }
 }
