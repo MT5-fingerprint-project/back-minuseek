@@ -4,7 +4,7 @@ export
 COMPOSE = docker compose -f docker/dev/compose.yml --env-file .env
 NETWORK = minuseek
 
-.PHONY: all bootstrap keycloak-relax-ssl network dev dev-build down db exec install keycloak-setup provision migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all test test-watch logs
+.PHONY: all bootstrap keycloak-relax-ssl network dev dev-build down db exec install keycloak-setup system-realm provision migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all test test-watch logs
 
 ## Tout, depuis zéro : install + stack + bootstrap + hot-reload. Rejouable sans danger. Ou a faire apres un reset de la DB. (make all)
 all:
@@ -22,6 +22,7 @@ bootstrap:
 	$(MAKE) keycloak-relax-ssl
 	$(MAKE) migrate-admin-setup
 	$(MAKE) keycloak-setup
+	$(MAKE) system-realm
 	$(MAKE) provision SLUG=tenant-demo NAME="Tenant démo"
 
 ## DEV only : 
@@ -70,6 +71,12 @@ migrate-admin:
 ## secret écrit dans .env — prérequis one-time du provisioning
 keycloak-setup:
 	sh scripts/keycloak-setup.sh
+
+## Realm système minuseek-system + client public admin-minuseek (app admin) +
+## client provisioner + user superadmin de dev (idempotent). En déployé, ne pas
+## passer SYSTEM_ADMIN_* : le superadmin s'y crée à la main.
+system-realm:
+	SYSTEM_ADMIN_EMAIL=admin@minuseek.local SYSTEM_ADMIN_PASSWORD=admin sh scripts/system-realm-setup.sh
 
 ## Provisionne une organisation via la vraie saga SUP-03 (make provision SLUG=demo2 NAME="Labo 2")
 provision:
