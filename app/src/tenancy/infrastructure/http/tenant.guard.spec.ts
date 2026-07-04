@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
-import { TenantGuard, type TenantContext } from './tenant.guard';
+import { TenantGuard } from './tenant.guard';
+import type { TenantContext } from '../../application/tenant-context.service';
 
 type GuardedRequest = {
   user?: { tenantSlug?: string; isSystemRealm?: boolean };
