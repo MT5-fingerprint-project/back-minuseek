@@ -4,7 +4,30 @@ export
 COMPOSE = docker compose -f docker/dev/compose.yml --env-file .env
 NETWORK = minuseek
 
-.PHONY: network dev dev-build down db exec install migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin seed-admin test test-watch logs
+.PHONY: all bootstrap keycloak-relax-ssl network dev dev-build down db exec install keycloak-setup provision migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all test test-watch logs
+
+## Tout, depuis zéro : install + stack + bootstrap + hot-reload. Rejouable sans danger. Ou a faire apres un reset de la DB. (make all)
+all:
+	@test -f .env || { echo "❌ .env manquant : cp .env.example .env d'abord"; exit 1; }
+	$(MAKE) install
+	$(MAKE) network
+	$(COMPOSE) up --build -d
+	$(MAKE) bootstrap
+	$(COMPOSE) watch
+
+## 1er lancement 
+bootstrap:
+	@echo "⏳ attente de Keycloak local…"
+	@until curl -sf http://localhost:8080/ >/dev/null 2>&1; do sleep 2; done
+	$(MAKE) keycloak-relax-ssl
+	$(MAKE) migrate-admin-setup
+	$(MAKE) keycloak-setup
+	$(MAKE) provision SLUG=tenant-demo NAME="Tenant démo"
+
+## DEV only : 
+keycloak-relax-ssl:
+	$(COMPOSE) exec -T keycloak /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user $(KC_BOOTSTRAP_ADMIN_USERNAME) --password $(KC_BOOTSTRAP_ADMIN_PASSWORD)
+	$(COMPOSE) exec -T keycloak /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE
 
 ## Crée le réseau Docker partagé avec le front s'il n'existe pas (idempotent)
 network:
@@ -43,9 +66,14 @@ migrate-admin-setup:
 migrate-admin:
 	$(COMPOSE) run --rm app pnpm prisma migrate dev --name $(NAME) --config=prisma-admin.config.ts
 
-## Amorce le registre local avec le tenant de démo (upsert, rejouable) — requis pour l'auth multi-realm
-seed-admin:
-	$(COMPOSE) run --rm app pnpm ts-node prisma-admin/seed.ts
+## Client confidentiel minuseek-provisioner sur le master local (idempotent),
+## secret écrit dans .env — prérequis one-time du provisioning
+keycloak-setup:
+	sh scripts/keycloak-setup.sh
+
+## Provisionne une organisation via la vraie saga SUP-03 (make provision SLUG=demo2 NAME="Labo 2")
+provision:
+	$(COMPOSE) run --rm app pnpm ts-node src/organization/infrastructure/cli/create-organization.cli.ts $(SLUG) "$(NAME)"
 
 ## Migre le schéma admin puis fan-out du schéma métier sur chaque base tenant du registre
 ## (équivalent local du job de migration déployé)
