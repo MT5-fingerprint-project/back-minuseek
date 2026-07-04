@@ -44,6 +44,9 @@ importers:
       class-validator:
         specifier: ^0.14.1
         version: 0.14.4
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
       jwks-rsa:
         specifier: ^3.1.0
         version: 3.2.2
@@ -108,9 +111,6 @@ importers:
       '@types/swagger-ui-express':
         specifier: ^4.1.0
         version: 4.1.8
-      dotenv:
-        specifier: ^17.4.2
-        version: 17.4.2
       eslint:
         specifier: ^9.18.0
         version: 9.39.4(jiti@2.7.0)

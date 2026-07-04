@@ -3,6 +3,7 @@ import type KeycloakAdminClient from '@keycloak/keycloak-admin-client';
 import { randomBytes } from 'node:crypto';
 import {
   CreatedUser,
+  EnsureResult,
   IdentityProviderPort,
 } from '../../application/ports/identity-provider.port';
 
@@ -15,10 +16,11 @@ const ACCESS_TOKEN_LIFESPAN_SECONDS = 300;
 export class KeycloakAdminService implements IdentityProviderPort {
   private adminClient: KeycloakAdminClient | undefined;
 
-  async ensureRealm(realm: string, displayName: string): Promise<void> {
+  async ensureRealm(realm: string, displayName: string): Promise<EnsureResult> {
     const client = await this.authenticatedClient();
     const existing = await client.realms.findOne({ realm }).catch(() => null);
-    if (!existing) {
+    const created = !existing;
+    if (created) {
       await client.realms.create({
         realm,
         displayName,
@@ -32,6 +34,7 @@ export class KeycloakAdminService implements IdentityProviderPort {
       await this.authenticatedClient();
     }
     await this.ensureFrontClient(realm);
+    return { created };
   }
 
   async deleteRealm(realm: string): Promise<void> {

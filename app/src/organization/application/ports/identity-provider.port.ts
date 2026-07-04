@@ -5,8 +5,12 @@ export interface CreatedUser {
   temporaryPassword: string | null;
 }
 
+export interface EnsureResult {
+  created: boolean;
+}
+
 export interface IdentityProviderPort {
-  ensureRealm(realm: string, displayName: string): Promise<void>;
+  ensureRealm(realm: string, displayName: string): Promise<EnsureResult>;
   deleteRealm(realm: string): Promise<void>;
   createUser(realm: string, email: string): Promise<CreatedUser>;
 }

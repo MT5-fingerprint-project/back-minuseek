@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { Pool } from 'pg';
+import { EnsureResult } from '../../application/ports/identity-provider.port';
 import { TenantDatabaseAdminPort } from '../../application/ports/tenant-database.port';
 
 const execFileAsync = promisify(execFile);
@@ -14,7 +15,7 @@ const DATABASE_NAME_PATTERN = /^[a-z0-9_]+$/;
 export class TenantDatabaseAdminService implements TenantDatabaseAdminPort {
   private readonly logger = new Logger(TenantDatabaseAdminService.name);
 
-  async ensureDatabase(databaseName: string): Promise<void> {
+  async ensureDatabase(databaseName: string): Promise<EnsureResult> {
     assertValidDatabaseName(databaseName);
     const pool = this.openAdminPool();
     try {
@@ -24,10 +25,11 @@ export class TenantDatabaseAdminService implements TenantDatabaseAdminPort {
       );
       if ((existing.rowCount ?? 0) > 0) {
         this.logger.log(`Base ${databaseName} déjà présente, inchangée`);
-        return;
+        return { created: false };
       }
       await pool.query(`CREATE DATABASE "${databaseName}"`);
       this.logger.log(`Base ${databaseName} créée`);
+      return { created: true };
     } finally {
       await pool.end();
     }

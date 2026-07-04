@@ -31,9 +31,11 @@ class InMemoryIdentityProvider implements IdentityProviderPort {
   constructor(private readonly journal: SagaJournal) {}
   private readonly usersByRealm = new Map<string, string>();
 
-  ensureRealm(realm: string): Promise<void> {
+  readonly preexistingRealms = new Set<string>();
+
+  ensureRealm(realm: string): Promise<{ created: boolean }> {
     this.journal.record(`ensureRealm:${realm}`);
-    return Promise.resolve();
+    return Promise.resolve({ created: !this.preexistingRealms.has(realm) });
   }
 
   deleteRealm(realm: string): Promise<void> {
@@ -56,9 +58,13 @@ class InMemoryIdentityProvider implements IdentityProviderPort {
 class InMemoryDatabaseAdmin implements TenantDatabaseAdminPort {
   constructor(private readonly journal: SagaJournal) {}
 
-  ensureDatabase(databaseName: string): Promise<void> {
+  readonly preexistingDatabases = new Set<string>();
+
+  ensureDatabase(databaseName: string): Promise<{ created: boolean }> {
     this.journal.record(`ensureDatabase:${databaseName}`);
-    return Promise.resolve();
+    return Promise.resolve({
+      created: !this.preexistingDatabases.has(databaseName),
+    });
   }
 
   dropDatabase(databaseName: string): Promise<void> {
@@ -102,13 +108,15 @@ class InMemoryRegistry {
 function buildHandler() {
   const journal = new SagaJournal();
   const registry = new InMemoryRegistry(journal);
+  const identityProvider = new InMemoryIdentityProvider(journal);
+  const databaseAdmin = new InMemoryDatabaseAdmin(journal);
   const handler = new CreateOrganizationHandler(
     registry as unknown as TenantRegistryService,
-    new InMemoryIdentityProvider(journal),
-    new InMemoryDatabaseAdmin(journal),
+    identityProvider,
+    databaseAdmin,
     new InMemoryInitializer(journal),
   );
-  return { handler, journal, registry };
+  return { handler, journal, registry, identityProvider, databaseAdmin };
 }
 
 describe('CreateOrganizationHandler — chemin nominal', () => {
@@ -179,6 +187,28 @@ describe('CreateOrganizationHandler — compensation', () => {
     ]);
     // Aucune ligne de registre : le tenant n'a jamais existé.
     await expect(registry.findBySlug('labo-lyon')).resolves.toBeNull();
+  });
+
+  it('ne supprime JAMAIS un realm pré-existant au rollback (régression)', async () => {
+    const { handler, journal, identityProvider } = buildHandler();
+    identityProvider.preexistingRealms.add('minuseek-labo-lyon');
+    journal.failingStep = 'migrate:minuseek_labo_lyon';
+
+    await expect(handler.execute(COMMAND)).rejects.toThrow('échec simulé');
+
+    expect(journal.calls).toContain('dropDatabase:minuseek_labo_lyon');
+    expect(journal.calls).not.toContain('deleteRealm:minuseek-labo-lyon');
+  });
+
+  it('ne supprime pas une base pré-existante au rollback (mais bien le realm créé)', async () => {
+    const { handler, journal, databaseAdmin } = buildHandler();
+    databaseAdmin.preexistingDatabases.add('minuseek_labo_lyon');
+    journal.failingStep = 'migrate:minuseek_labo_lyon';
+
+    await expect(handler.execute(COMMAND)).rejects.toThrow('échec simulé');
+
+    expect(journal.calls).not.toContain('dropDatabase:minuseek_labo_lyon');
+    expect(journal.calls).toContain('deleteRealm:minuseek-labo-lyon');
   });
 
   it('ne compense que le realm si la création de base échoue', async () => {

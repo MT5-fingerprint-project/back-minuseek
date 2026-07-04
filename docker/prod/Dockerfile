@@ -9,12 +9,11 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
 
+
 RUN pnpm prisma:generate-tenant && pnpm prisma:generate-admin
 RUN pnpm build
 
-FROM base AS prod-deps
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts
+RUN pnpm prune --prod --ignore-scripts
 
 FROM node:24-alpine AS production
 ENV NODE_ENV=production
@@ -23,9 +22,14 @@ RUN apk upgrade --no-cache
 WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
-COPY --from=prod-deps --chown=nestjs:nodejs /app/node_modules ./node_modules
-COPY --from=build     --chown=nestjs:nodejs /app/dist ./dist
-COPY --from=build     --chown=nestjs:nodejs /app/package.json ./package.json
+COPY --from=build --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=build --chown=nestjs:nodejs /app/dist ./dist
+COPY --from=build --chown=nestjs:nodejs /app/package.json ./package.json
+COPY --from=build --chown=nestjs:nodejs /app/prisma ./prisma
+COPY --from=build --chown=nestjs:nodejs /app/prisma-admin ./prisma-admin
+COPY --from=build --chown=nestjs:nodejs /app/prisma.config.ts ./prisma.config.ts
+COPY --from=build --chown=nestjs:nodejs /app/prisma-admin.config.ts ./prisma-admin.config.ts
+COPY --from=build --chown=nestjs:nodejs /app/scripts ./scripts
 RUN chown nestjs:nodejs /app
 USER nestjs
 EXPOSE 3000

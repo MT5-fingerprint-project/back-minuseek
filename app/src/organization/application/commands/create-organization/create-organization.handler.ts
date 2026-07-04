@@ -57,17 +57,25 @@ export class CreateOrganizationHandler {
     const compensations: Array<{ label: string; run: () => Promise<void> }> =
       [];
     try {
-      await this.identityProvider.ensureRealm(realm, command.displayName);
-      compensations.push({
-        label: `suppression du realm ${realm}`,
-        run: () => this.identityProvider.deleteRealm(realm),
-      });
+      const realmResult = await this.identityProvider.ensureRealm(
+        realm,
+        command.displayName,
+      );
+      if (realmResult.created) {
+        compensations.push({
+          label: `suppression du realm ${realm}`,
+          run: () => this.identityProvider.deleteRealm(realm),
+        });
+      }
 
-      await this.databaseAdmin.ensureDatabase(databaseName);
-      compensations.push({
-        label: `suppression de la base ${databaseName}`,
-        run: () => this.databaseAdmin.dropDatabase(databaseName),
-      });
+      const databaseResult =
+        await this.databaseAdmin.ensureDatabase(databaseName);
+      if (databaseResult.created) {
+        compensations.push({
+          label: `suppression de la base ${databaseName}`,
+          run: () => this.databaseAdmin.dropDatabase(databaseName),
+        });
+      }
 
       await this.databaseAdmin.migrate(databaseName);
       await this.organizationInitializer.initialize(
