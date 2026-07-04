@@ -8,7 +8,7 @@
 
 Le provisioning des tenants (`SUP-03`, cf. [ADR-0001](0001-multi-tenant-db-per-tenant.md))
 introduit le control-plane dans le code : créer un client (un labo PTS), son
-realm, sa base, son premier ADMIN. Le guide d'implémentation
+realm, sa base. Le guide d'implémentation
 (`docs/multitenancy.md` §11) avait esquissé un module **`superadmin/`** pour
 porter ces commandes. À terme, une **app d'administration** consommera ces
 endpoints (créer des organisations, gérer leurs utilisateurs, voir des stats).
@@ -44,7 +44,8 @@ domaine — seule l'autorisation diffère.
 
 4. **Les utilisateurs vivent dans Keycloak, unique annuaire** — pas de tables
    users applicatives. Deux surfaces de gestion sur le même magasin :
-   le provisioning crée le **premier ADMIN** du realm ; l'**admin
+   la création d'utilisateurs (y compris le **premier ADMIN**) est un use
+   case distinct — create-user — consommé par l'app admin ; l'**admin
    d'organisation** gère ensuite les utilisateurs *de son propre realm*
    (routes métier tenant + contrôle de rôle). Si le domaine doit un jour
    référencer des personnes (attribution d'affaires, audit), ce sera une

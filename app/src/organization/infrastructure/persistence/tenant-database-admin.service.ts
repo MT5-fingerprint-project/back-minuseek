@@ -10,7 +10,6 @@ const PROVISIONING_POOL_MAX = 2;
 
 const DATABASE_NAME_PATTERN = /^[a-z0-9_]+$/;
 
-
 @Injectable()
 export class TenantDatabaseAdminService implements TenantDatabaseAdminPort {
   private readonly logger = new Logger(TenantDatabaseAdminService.name);
