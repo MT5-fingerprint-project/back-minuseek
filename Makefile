@@ -4,7 +4,7 @@ export
 COMPOSE = docker compose -f docker/dev/compose.yml --env-file .env
 NETWORK = minuseek
 
-.PHONY: network dev dev-build down db exec install migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin test test-watch logs
+.PHONY: network dev dev-build down db exec install migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin seed-admin test test-watch logs
 
 ## Crée le réseau Docker partagé avec le front s'il n'existe pas (idempotent)
 network:
@@ -42,6 +42,10 @@ migrate-admin-setup:
 ## Crée une migration admin à partir du schéma prisma-admin (make migrate-admin NAME=...)
 migrate-admin:
 	$(COMPOSE) run --rm app pnpm prisma migrate dev --name $(NAME) --config=prisma-admin.config.ts
+
+## Amorce le registre local avec le tenant de démo (upsert, rejouable) — requis pour l'auth multi-realm
+seed-admin:
+	$(COMPOSE) run --rm app pnpm ts-node prisma-admin/seed.ts
 
 ## Crée une migration à partir des modèles ET l'applique à la DB dev (make migrate NAME=add_layers)
 ## Tourne dans un conteneur jetable : le fichier généré atterrit dans app/prisma/migrations (à commiter)
