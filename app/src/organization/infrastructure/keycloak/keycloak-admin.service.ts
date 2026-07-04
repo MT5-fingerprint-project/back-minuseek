@@ -2,9 +2,11 @@ import { Injectable } from '@nestjs/common';
 import type KeycloakAdminClient from '@keycloak/keycloak-admin-client';
 import { randomBytes } from 'node:crypto';
 import {
+  CreateUserInput,
   CreatedUser,
   EnsureResult,
   IdentityProviderPort,
+  TenantUser,
 } from '../../application/ports/identity-provider.port';
 
 const FRONT_CLIENT_ID = 'front-minuseek';
@@ -30,6 +32,7 @@ export class KeycloakAdminService implements IdentityProviderPort {
         registrationAllowed: false,
         accessTokenLifespan: ACCESS_TOKEN_LIFESPAN_SECONDS,
         bruteForceProtected: true,
+        sslRequired: process.env.KEYCLOAK_REALM_SSL_REQUIRED ?? 'external',
       });
       await this.authenticatedClient();
     }
@@ -42,19 +45,34 @@ export class KeycloakAdminService implements IdentityProviderPort {
     await client.realms.del({ realm }).catch(() => undefined);
   }
 
-  async createUser(realm: string, email: string): Promise<CreatedUser> {
+  async listUsers(realm: string): Promise<TenantUser[]> {
     const client = await this.authenticatedClient();
-    const [existing] = await client.users.find({ realm, email, exact: true });
+    const users = await client.users.find({ realm });
+    return users.map(toTenantUser);
+  }
+
+  async createUser(
+    realm: string,
+    input: CreateUserInput,
+  ): Promise<CreatedUser> {
+    const client = await this.authenticatedClient();
+    const [existing] = await client.users.find({
+      realm,
+      email: input.email,
+      exact: true,
+    });
     if (existing?.username) {
-      return { username: existing.username, temporaryPassword: null };
+      return { ...toTenantUser(existing), temporaryPassword: null };
     }
 
-    const username = email.split('@')[0];
+    const username = input.email.split('@')[0];
     const temporaryPassword = randomBytes(9).toString('base64url');
-    await client.users.create({
+    const created = await client.users.create({
       realm,
       username,
-      email,
+      email: input.email,
+      firstName: input.firstName,
+      lastName: input.lastName,
       emailVerified: true,
       enabled: true,
       credentials: [
@@ -62,7 +80,21 @@ export class KeycloakAdminService implements IdentityProviderPort {
       ],
       requiredActions: ['UPDATE_PASSWORD'],
     });
-    return { username, temporaryPassword };
+    return {
+      id: readCreatedUserId(created) ?? username,
+      username,
+      email: input.email,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      enabled: true,
+      emailVerified: true,
+      temporaryPassword,
+    };
+  }
+
+  async deleteUser(realm: string, userId: string): Promise<void> {
+    const client = await this.authenticatedClient();
+    await client.users.del({ realm, id: userId }).catch(() => undefined);
   }
 
   private async ensureFrontClient(realm: string): Promise<void> {
@@ -124,6 +156,42 @@ export class KeycloakAdminService implements IdentityProviderPort {
       realmName: 'master',
     });
   }
+}
+
+type KeycloakUserLike = {
+  id?: string;
+  username?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  enabled?: boolean;
+  emailVerified?: boolean;
+};
+
+function toTenantUser(user: KeycloakUserLike): TenantUser {
+  const id = user.id ?? user.username ?? user.email ?? '';
+  const username = user.username ?? user.email ?? id;
+  return {
+    id,
+    username,
+    email: user.email ?? username,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    enabled: user.enabled ?? false,
+    emailVerified: user.emailVerified ?? false,
+  };
+}
+
+function readCreatedUserId(created: unknown): string | null {
+  if (
+    typeof created === 'object' &&
+    created !== null &&
+    'id' in created &&
+    typeof created.id === 'string'
+  ) {
+    return created.id;
+  }
+  return null;
 }
 
 function requireEnv(name: string): string {

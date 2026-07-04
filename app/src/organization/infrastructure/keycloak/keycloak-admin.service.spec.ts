@@ -14,9 +14,23 @@ class StubAdminClient {
   };
   users = {
     find: jest
-      .fn<Promise<Array<{ username?: string }>>, [unknown]>()
+      .fn<
+        Promise<
+          Array<{
+            id?: string;
+            username?: string;
+            email?: string;
+            enabled?: boolean;
+            emailVerified?: boolean;
+          }>
+        >,
+        [unknown]
+      >()
       .mockResolvedValue([]),
-    create: jest.fn<Promise<unknown>, [unknown]>().mockResolvedValue({}),
+    create: jest
+      .fn<Promise<unknown>, [unknown]>()
+      .mockResolvedValue({ id: 'user-chef' }),
+    del: jest.fn<Promise<void>, [unknown]>().mockResolvedValue(undefined),
   };
 }
 
@@ -103,12 +117,13 @@ describe('KeycloakAdminService', () => {
 
   it('crée un utilisateur avec mot de passe temporaire à changer au premier login', async () => {
     const { service, stub } = buildService();
-    const created = await service.createUser(
-      'minuseek-labo-lyon',
-      'chef@lyon.fr',
-    );
+    const created = await service.createUser('minuseek-labo-lyon', {
+      email: 'chef@lyon.fr',
+    });
 
+    expect(created.id).toBe('user-chef');
     expect(created.username).toBe('chef');
+    expect(created.email).toBe('chef@lyon.fr');
     expect(created.temporaryPassword).toEqual(expect.any(String));
     expect(stub.users.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -124,15 +139,60 @@ describe('KeycloakAdminService', () => {
 
   it('ne recrée pas un utilisateur existant et ne renvoie aucun mot de passe', async () => {
     const { service, stub } = buildService();
-    stub.users.find.mockResolvedValue([{ username: 'chef' }]);
+    stub.users.find.mockResolvedValue([
+      {
+        id: 'user-chef',
+        username: 'chef',
+        email: 'chef@lyon.fr',
+        enabled: true,
+        emailVerified: true,
+      },
+    ]);
 
-    const created = await service.createUser(
-      'minuseek-labo-lyon',
-      'chef@lyon.fr',
-    );
+    const created = await service.createUser('minuseek-labo-lyon', {
+      email: 'chef@lyon.fr',
+    });
 
-    expect(created).toEqual({ username: 'chef', temporaryPassword: null });
+    expect(created).toEqual({
+      id: 'user-chef',
+      username: 'chef',
+      email: 'chef@lyon.fr',
+      enabled: true,
+      emailVerified: true,
+      temporaryPassword: null,
+    });
     expect(stub.users.create).not.toHaveBeenCalled();
+  });
+
+  it('liste les utilisateurs du realm tenant', async () => {
+    const { service, stub } = buildService();
+    stub.users.find.mockResolvedValue([
+      {
+        id: 'user-chef',
+        username: 'chef',
+        email: 'chef@lyon.fr',
+        enabled: true,
+        emailVerified: true,
+      },
+    ]);
+
+    await expect(service.listUsers('minuseek-labo-lyon')).resolves.toEqual([
+      {
+        id: 'user-chef',
+        username: 'chef',
+        email: 'chef@lyon.fr',
+        enabled: true,
+        emailVerified: true,
+      },
+    ]);
+  });
+
+  it('absorbe la suppression d’un utilisateur déjà absent', async () => {
+    const { service, stub } = buildService();
+    stub.users.del.mockRejectedValue(new Error('404'));
+    await expect(
+      service.deleteUser('minuseek-labo-lyon', 'user-chef'),
+    ).resolves.toBeUndefined();
   });
 
   it('absorbe la suppression d’un realm déjà absent (compensation)', async () => {
