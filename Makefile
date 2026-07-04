@@ -4,9 +4,9 @@ export
 COMPOSE = docker compose -f docker/dev/compose.yml --env-file .env
 NETWORK = minuseek
 
-.PHONY: all bootstrap network dev dev-build down db exec install keycloak-setup provision migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all test test-watch logs
+.PHONY: all bootstrap keycloak-relax-ssl network dev dev-build down db exec install keycloak-setup provision migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all test test-watch logs
 
-## Tout, depuis zéro : install + stack + bootstrap + hot-reload. Rejouable sans danger.
+## Tout, depuis zéro : install + stack + bootstrap + hot-reload. Rejouable sans danger. Ou a faire apres un reset de la DB. (make all)
 all:
 	@test -f .env || { echo "❌ .env manquant : cp .env.example .env d'abord"; exit 1; }
 	$(MAKE) install
@@ -15,14 +15,19 @@ all:
 	$(MAKE) bootstrap
 	$(COMPOSE) watch
 
-## 1er lancement : attend Keycloak, migre le registre admin, crée le client
-## provisioner, puis provisionne l'organisation de démo via la vraie saga SUP-03
+## 1er lancement 
 bootstrap:
 	@echo "⏳ attente de Keycloak local…"
-	@until curl -sf http://localhost:8080/realms/master/.well-known/openid-configuration >/dev/null 2>&1; do sleep 2; done
+	@until curl -sf http://localhost:8080/ >/dev/null 2>&1; do sleep 2; done
+	$(MAKE) keycloak-relax-ssl
 	$(MAKE) migrate-admin-setup
 	$(MAKE) keycloak-setup
 	$(MAKE) provision SLUG=tenant-demo NAME="Tenant démo"
+
+## DEV only : 
+keycloak-relax-ssl:
+	$(COMPOSE) exec -T keycloak /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user $(KC_BOOTSTRAP_ADMIN_USERNAME) --password $(KC_BOOTSTRAP_ADMIN_PASSWORD)
+	$(COMPOSE) exec -T keycloak /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE
 
 ## Crée le réseau Docker partagé avec le front s'il n'existe pas (idempotent)
 network:
