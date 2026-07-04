@@ -107,7 +107,10 @@ export class KeycloakAdminService implements IdentityProviderPort {
       return;
     }
 
-    const appOrigin = requireEnv('ORIGIN');
+    // Le redirect du client tenant vise UNIQUEMENT le front métier. C'est un env
+    // dédié, distinct de la liste CORS ORIGIN (qui inclut aussi la console admin) :
+    // on ne veut pas coupler ce redirect à l'ordre des origines CORS.
+    const frontOrigin = requireEnv('FRONT_ORIGIN');
     await client.clients.create({
       realm,
       clientId: FRONT_CLIENT_ID,
@@ -117,8 +120,8 @@ export class KeycloakAdminService implements IdentityProviderPort {
       implicitFlowEnabled: false,
       directAccessGrantsEnabled: false,
       serviceAccountsEnabled: false,
-      redirectUris: [`${appOrigin}/*`],
-      webOrigins: [appOrigin],
+      redirectUris: [`${frontOrigin}/*`],
+      webOrigins: [frontOrigin],
       attributes: {
         'pkce.code.challenge.method': 'S256',
         'post.logout.redirect.uris': '+',

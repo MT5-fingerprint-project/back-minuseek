@@ -48,7 +48,9 @@ function buildService() {
   process.env.KEYCLOAK_INTERNAL_URL = 'http://keycloak:8080';
   process.env.KEYCLOAK_ADMIN_CLIENT_ID = 'minuseek-provisioner';
   process.env.KEYCLOAK_ADMIN_CLIENT_SECRET = 'secret';
-  process.env.ORIGIN = 'https://app-dev.minuseek.fr';
+  process.env.ORIGIN =
+    'https://app-dev.minuseek.fr,https://admin-dev.minuseek.fr';
+  process.env.FRONT_ORIGIN = 'https://app-dev.minuseek.fr';
   const stub = new StubAdminClient();
   return { service: new TestableKeycloakAdminService(stub), stub };
 }
@@ -100,6 +102,21 @@ describe('KeycloakAdminService', () => {
             }) as object,
           }),
         ],
+      }),
+    );
+  });
+
+  it('le redirect vient de FRONT_ORIGIN, indépendamment de l’ordre de ORIGIN', async () => {
+    const { service, stub } = buildService();
+    // Console admin en tête de la liste CORS : le redirect ne doit PAS la prendre.
+    process.env.ORIGIN = 'http://localhost:5174,http://localhost:5173';
+    process.env.FRONT_ORIGIN = 'http://localhost:5173';
+    await service.ensureRealm('minuseek-labo-lyon', 'PTS Lyon');
+
+    expect(stub.clients.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        redirectUris: ['http://localhost:5173/*'],
+        webOrigins: ['http://localhost:5173'],
       }),
     );
   });
