@@ -1,3 +1,5 @@
+import { TenantRecord } from '../../../../tenancy/application/tenant-registry.service';
+
 export class CreateOrganizationCommand {
   constructor(
     public readonly slug: string,
@@ -5,8 +7,6 @@ export class CreateOrganizationCommand {
   ) {}
 }
 
-export interface ProvisionedOrganization {
-  slug: string;
+export interface ProvisionedOrganization extends TenantRecord {
   realm: string;
-  databaseName: string;
 }
