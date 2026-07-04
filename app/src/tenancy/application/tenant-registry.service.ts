@@ -7,6 +7,8 @@ export interface TenantRecord {
   displayName: string;
   databaseName: string;
   identityProviderRealm: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const REGISTRY_TTL_MS = 60_000;
@@ -40,6 +42,10 @@ export class TenantRegistryService {
     return row;
   }
 
+  async list(): Promise<TenantRecord[]> {
+    return this.adminPrisma.listTenants();
+  }
+
   private evictIfFull(now: number): void {
     if (this.cache.size < CACHE_MAX_ENTRIES) {
       return;
@@ -61,6 +67,12 @@ export class TenantRegistryService {
     const created = await this.adminPrisma.createTenant(record);
     this.invalidate(created.slug);
     return created;
+  }
+
+  async delete(slug: string): Promise<TenantRecord | null> {
+    const deleted = await this.adminPrisma.deleteTenantBySlug(slug);
+    this.invalidate(slug);
+    return deleted;
   }
 
   invalidate(slug: string): void {

@@ -41,4 +41,16 @@ export class AdminPrismaService implements OnModuleInit, OnModuleDestroy {
   }): Promise<Tenant> {
     return this.client.tenant.create({ data: record });
   }
+
+  listTenants(): Promise<Tenant[]> {
+    return this.client.tenant.findMany({ orderBy: { createdAt: 'asc' } });
+  }
+
+  async deleteTenantBySlug(slug: string): Promise<Tenant | null> {
+    const existing = await this.findTenantBySlug(slug);
+    if (!existing) {
+      return null;
+    }
+    return this.client.tenant.delete({ where: { slug } });
+  }
 }
