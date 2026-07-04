@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@google-cloud/storage": "^7.21.0",
+    "@keycloak/keycloak-admin-client": "^26.5.2",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/cqrs": "^11.0.0",
