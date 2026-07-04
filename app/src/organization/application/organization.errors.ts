@@ -9,3 +9,9 @@ export class OrganizationAlreadyExistsError extends Error {
     super(`Organization already exists: ${slug}`);
   }
 }
+
+export class OrganizationNotFoundError extends Error {
+  constructor(slug: string) {
+    super(`Organization not found: ${slug}`);
+  }
+}

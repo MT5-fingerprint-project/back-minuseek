@@ -84,14 +84,14 @@ export class CreateOrganizationHandler {
         command.displayName,
       );
 
-      await this.tenantRegistry.register({
+      const created = await this.tenantRegistry.register({
         slug,
         displayName: command.displayName,
         databaseName,
         identityProviderRealm: realm,
       });
 
-      return { slug, realm, databaseName };
+      return { ...created, realm };
     } catch (error) {
       await this.compensate(compensations);
       throw error;

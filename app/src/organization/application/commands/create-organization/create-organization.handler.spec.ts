@@ -1,8 +1,10 @@
 import type { TenantRegistryService } from '../../../../tenancy/application/tenant-registry.service';
 import type { TenantRecord } from '../../../../tenancy/application/tenant-registry.service';
 import type {
+  CreateUserInput,
   CreatedUser,
   IdentityProviderPort,
+  TenantUser,
 } from '../../ports/identity-provider.port';
 import type { TenantDatabaseAdminPort } from '../../ports/tenant-database.port';
 import type { OrganizationInitializerPort } from '../../ports/organization-initializer.port';
@@ -43,15 +45,37 @@ class InMemoryIdentityProvider implements IdentityProviderPort {
     return Promise.resolve();
   }
 
-  createUser(realm: string, email: string): Promise<CreatedUser> {
+  listUsers(): Promise<TenantUser[]> {
+    return Promise.resolve([]);
+  }
+
+  createUser(realm: string, input: CreateUserInput): Promise<CreatedUser> {
     this.journal.record(`createUser:${realm}`);
     const existing = this.usersByRealm.get(realm);
     if (existing) {
-      return Promise.resolve({ username: existing, temporaryPassword: null });
+      return Promise.resolve({
+        id: existing,
+        username: existing,
+        email: input.email,
+        enabled: true,
+        emailVerified: true,
+        temporaryPassword: null,
+      });
     }
-    const username = email.split('@')[0];
+    const username = input.email.split('@')[0];
     this.usersByRealm.set(realm, username);
-    return Promise.resolve({ username, temporaryPassword: 'tmp-secret' });
+    return Promise.resolve({
+      id: username,
+      username,
+      email: input.email,
+      enabled: true,
+      emailVerified: true,
+      temporaryPassword: 'tmp-secret',
+    });
+  }
+
+  deleteUser(): Promise<void> {
+    return Promise.resolve();
   }
 }
 
@@ -133,9 +157,12 @@ describe('CreateOrganizationHandler — chemin nominal', () => {
       'register:labo-lyon',
     ]);
     expect(provisioned).toEqual({
+      id: 'id-labo-lyon',
       slug: 'labo-lyon',
       realm: 'minuseek-labo-lyon',
+      displayName: 'PTS Lyon',
       databaseName: 'minuseek_labo_lyon',
+      identityProviderRealm: 'minuseek-labo-lyon',
     });
   });
 
