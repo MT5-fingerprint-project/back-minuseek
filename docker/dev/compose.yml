@@ -16,6 +16,7 @@ services:
             ADMIN_DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:${DB_PORT}/minuseek_admin
             TENANT_DATABASE_URL_TEMPLATE: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:${DB_PORT}/{db}
             ORIGIN: ${ORIGIN}
+            FRONT_ORIGIN: ${FRONT_ORIGIN}
             KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL}
             KEYCLOAK_INTERNAL_URL: http://keycloak:8080
             KEYCLOAK_SYSTEM_REALM: ${KEYCLOAK_SYSTEM_REALM}
