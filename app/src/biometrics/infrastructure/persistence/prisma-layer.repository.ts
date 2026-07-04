@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
 import { Layer } from '../../domain/layer/entity/layer';
 import type { LayerSettings } from '../../domain/layer/entity/layer';
 import type { LayerRepository } from '../../domain/layer/repository/layer.repository';
 
 @Injectable()
 export class PrismaLayerRepository implements LayerRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly tenantConnection: TenantConnectionService) {}
 
   async save(layer: Layer): Promise<void> {
+    const prisma = await this.tenantConnection.getCurrentClient();
     const { id, fingerprintId, name, type, zIndex, isVisible, settings } =
       layer.toPrimitives();
     const payload = {
@@ -19,7 +20,7 @@ export class PrismaLayerRepository implements LayerRepository {
       isVisible,
       settings,
     };
-    await this.prisma.layer.upsert({
+    await prisma.layer.upsert({
       where: { id },
       create: { id, ...payload },
       update: payload,
@@ -27,7 +28,8 @@ export class PrismaLayerRepository implements LayerRepository {
   }
 
   async findById(id: string): Promise<Layer | null> {
-    const row = await this.prisma.layer.findUnique({ where: { id } });
+    const prisma = await this.tenantConnection.getCurrentClient();
+    const row = await prisma.layer.findUnique({ where: { id } });
     if (!row) return null;
     return Layer.reconstitute({
       ...row,
@@ -37,6 +39,7 @@ export class PrismaLayerRepository implements LayerRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.layer.delete({ where: { id } });
+    const prisma = await this.tenantConnection.getCurrentClient();
+    await prisma.layer.delete({ where: { id } });
   }
 }

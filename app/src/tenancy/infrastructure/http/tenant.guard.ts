@@ -5,10 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import type { Request } from 'express';
-
-export interface TenantContext {
-  slug: string;
-}
+import type { TenantContext } from '../../application/tenant-context.service';
 
 type TenantAwareUser = {
   tenantSlug?: string;
