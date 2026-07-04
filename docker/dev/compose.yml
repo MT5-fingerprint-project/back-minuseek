@@ -17,7 +17,6 @@ services:
             ORIGIN: ${ORIGIN}
             KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL}
             KEYCLOAK_INTERNAL_URL: http://keycloak:8080
-            KEYCLOAK_REALM: ${KEYCLOAK_REALM}
             KEYCLOAK_AUDIENCE: ${KEYCLOAK_AUDIENCE}
             STORAGE_DRIVER: ${STORAGE_DRIVER}
             GCS_BUCKET: ${GCS_BUCKET}
@@ -25,6 +24,7 @@ services:
             GOOGLE_APPLICATION_CREDENTIALS: /gcloud/adc.json
         volumes:
             - ../../app/prisma:/app/prisma
+            - ../../app/prisma-admin:/app/prisma-admin
             - ../../app/generated:/app/generated
             - ${GCLOUD_ADC:-~/.config/gcloud-minuseek/application_default_credentials.json}:/gcloud/adc.json:ro
         networks:

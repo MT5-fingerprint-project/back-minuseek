@@ -7,6 +7,7 @@ import { SharedModule } from './shared/shared.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/infrastructure/http/jwt-auth.guard';
 import { TenancyModule } from './tenancy/tenancy.module';
+import { TenantGuard } from './tenancy/infrastructure/http/tenant.guard';
 
 @Module({
   imports: [
@@ -17,6 +18,10 @@ import { TenancyModule } from './tenancy/tenancy.module';
     InvestigationModule,
     BiometricsModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],
+  providers: [
+    //keep this order, first we find use the token, if it's ok we go to the tenant guard
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: TenantGuard },
+  ],
 })
 export class AppModule {}

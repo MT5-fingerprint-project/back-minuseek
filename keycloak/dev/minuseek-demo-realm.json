@@ -1,5 +1,5 @@
 {
-  "realm": "tenant-demo",
+  "realm": "minuseek-tenant-demo",
   "enabled": true,
   "displayName": "Minuseek — Tenant Demo",
   "loginTheme": "keycloak",
