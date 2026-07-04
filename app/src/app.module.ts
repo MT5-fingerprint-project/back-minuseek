@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { PrismaModule } from './prisma/prisma.module';
 import { InvestigationModule } from './investigation/investigation.module';
 import { BiometricsModule } from './biometrics/biometrics.module';
 import { SharedModule } from './shared/shared.module';
@@ -13,7 +12,6 @@ import { TenantInterceptor } from './tenancy/infrastructure/http/tenant.intercep
 @Module({
   imports: [
     SharedModule,
-    PrismaModule,
     TenancyModule,
     AuthModule,
     InvestigationModule,

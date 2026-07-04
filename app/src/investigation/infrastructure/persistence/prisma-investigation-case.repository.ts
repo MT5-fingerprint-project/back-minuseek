@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
 import { InvestigationCase } from '../../domain/investigation-case/entity/investigation-case';
 import type { InvestigationCaseRepository } from '../../domain/investigation-case/repository/investigation-case.repository';
 
 @Injectable()
 export class PrismaInvestigationCaseRepository implements InvestigationCaseRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly tenantConnection: TenantConnectionService) {}
 
   async save(c: InvestigationCase): Promise<void> {
-    await this.prisma.investigationCase.upsert({
+    const prisma = await this.tenantConnection.getCurrentClient();
+    await prisma.investigationCase.upsert({
       where: { id: c.id },
       create: {
         id: c.id,
@@ -27,7 +28,8 @@ export class PrismaInvestigationCaseRepository implements InvestigationCaseRepos
   }
 
   async existsByCaseNumber(caseNumber: string): Promise<boolean> {
-    const found = await this.prisma.investigationCase.findUnique({
+    const prisma = await this.tenantConnection.getCurrentClient();
+    const found = await prisma.investigationCase.findUnique({
       where: { caseNumber },
       select: { id: true },
     });
