@@ -36,7 +36,7 @@ function build(record: TenantRecord | null) {
   const identityProvider = {
     listUsers: (realm: string) => {
       listedRealms.push(realm);
-      return Promise.resolve(USERS);
+      return Promise.resolve({ items: USERS, total: USERS.length });
     },
   } as unknown as IdentityProviderPort;
   return {
@@ -49,11 +49,19 @@ describe('ListOrganizationUsersHandler', () => {
   it('liste les users du realm résolu depuis le registre (isolation)', async () => {
     const { handler, listedRealms } = build(DEMO_RECORD);
 
-    const users = await handler.execute(
+    const page = await handler.execute(
       new ListOrganizationUsersQuery('labo-lyon'),
     );
 
-    expect(users).toEqual(USERS);
+    expect(page.data).toEqual(USERS);
+    expect(page.meta).toEqual({
+      page: 1,
+      limit: 20,
+      itemCount: 1,
+      pageCount: 1,
+      hasPreviousPage: false,
+      hasNextPage: false,
+    });
     // Le realm interrogé vient du registre, pas d'une entrée arbitraire.
     expect(listedRealms).toEqual(['minuseek-labo-lyon']);
   });
