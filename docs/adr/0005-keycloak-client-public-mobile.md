@@ -21,6 +21,13 @@ Déclarer dans le realm export un **client OIDC public** `minuseek-mobile` :
 - ⚠️ `--import-realm` n'importe pas un realm déjà existant : recréer le volume `keycloak_data` (`docker compose down -v`) pour que le client apparaisse sur un environnement déjà démarré.
 - ⚠️ À terme, la création de ce client devra être intégrée au **provisioning multi-tenant (#6)** pour qu'il existe dans chaque realm tenant (realms = tenants, clients = apps).
 
+## Suivi
+- 2026-07-05 — ⚠️ **levé** : `KeycloakAdminService.ensureMobileClient` provisionne
+  désormais `minuseek-mobile` dans chaque realm tenant (à côté de `ensureFrontClient`).
+  Le redirect `exp://*` n'est ajouté qu'en dev via `MOBILE_ALLOW_EXPO_GO=true`
+  (fail-closed : absent en prod → seul le scheme natif `mobileminuseek://*`).
+  L'export dev `keycloak/dev/` reste la source pour le realm bootstrap `tenant-demo`.
+
 ## Alternatives écartées
 - **Réutiliser le client `front-minuseek`** — impossible : redirect URIs et scheme distincts (web vs natif) ; mélanger web et mobile sur un même client brouille les frontières et la surface de redirect.
 - **Client confidentiel (avec secret)** — impossible sur mobile : un secret embarqué dans l'app est extractible ; le pattern OAuth pour app publique est client public + PKCE.
