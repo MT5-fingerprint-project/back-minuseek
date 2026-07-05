@@ -9,6 +9,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
 } from '@nestjs/common';
 import { SystemRealmOnly } from '../../../tenancy/infrastructure/http/system-realm-only.decorator';
 import { DeleteOrganizationCommand } from '../../application/commands/delete-organization/delete-organization.command';
@@ -35,6 +36,8 @@ import {
   CreatedUser,
   TenantUser,
 } from '../../application/ports/identity-provider.port';
+import { PageDto } from '../../../shared/application/pagination/page.dto';
+import { PaginationQueryDto } from '../../../shared/infrastructure/http/dto/pagination-query.dto';
 import { CreateOrganizationDto } from './create-organization.dto';
 import { CreateOrganizationUserDto } from './create-organization-user.dto';
 
@@ -94,10 +97,13 @@ export class OrganizationController {
   }
 
   @Get(':slug/users')
-  async listUsers(@Param('slug') slug: string): Promise<TenantUser[]> {
+  async listUsers(
+    @Param('slug') slug: string,
+    @Query() dto: PaginationQueryDto,
+  ): Promise<PageDto<TenantUser>> {
     try {
       return await this.listOrganizationUsers.execute(
-        new ListOrganizationUsersQuery(slug),
+        new ListOrganizationUsersQuery(slug, dto.page, dto.limit),
       );
     } catch (error) {
       this.rethrowOrganizationError(error);

@@ -24,10 +24,20 @@ export interface CreateUserInput {
   lastName?: string;
 }
 
+export interface ListUsersInput {
+  first: number;
+  max: number;
+}
+
+export interface ListedUsers {
+  items: TenantUser[];
+  total: number;
+}
+
 export interface IdentityProviderPort {
   ensureRealm(realm: string, displayName: string): Promise<EnsureResult>;
   deleteRealm(realm: string): Promise<void>;
-  listUsers(realm: string): Promise<TenantUser[]>;
+  listUsers(realm: string, input: ListUsersInput): Promise<ListedUsers>;
   createUser(realm: string, input: CreateUserInput): Promise<CreatedUser>;
   deleteUser(realm: string, userId: string): Promise<void>;
 }
