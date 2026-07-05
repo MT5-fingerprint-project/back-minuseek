@@ -6,6 +6,8 @@ import {
   CreatedUser,
   EnsureResult,
   IdentityProviderPort,
+  ListedUsers,
+  ListUsersInput,
   TenantUser,
 } from '../../application/ports/identity-provider.port';
 
@@ -45,10 +47,13 @@ export class KeycloakAdminService implements IdentityProviderPort {
     await client.realms.del({ realm }).catch(() => undefined);
   }
 
-  async listUsers(realm: string): Promise<TenantUser[]> {
+  async listUsers(realm: string, input: ListUsersInput): Promise<ListedUsers> {
     const client = await this.authenticatedClient();
-    const users = await client.users.find({ realm });
-    return users.map(toTenantUser);
+    const [users, total] = await Promise.all([
+      client.users.find({ realm, first: input.first, max: input.max }),
+      client.users.count({ realm }),
+    ]);
+    return { items: users.map(toTenantUser), total };
   }
 
   async createUser(

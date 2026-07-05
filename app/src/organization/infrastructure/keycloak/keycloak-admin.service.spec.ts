@@ -30,6 +30,7 @@ class StubAdminClient {
     create: jest
       .fn<Promise<unknown>, [unknown]>()
       .mockResolvedValue({ id: 'user-chef' }),
+    count: jest.fn<Promise<number>, [unknown]>().mockResolvedValue(0),
     del: jest.fn<Promise<void>, [unknown]>().mockResolvedValue(undefined),
   };
 }
@@ -192,16 +193,30 @@ describe('KeycloakAdminService', () => {
         emailVerified: true,
       },
     ]);
+    stub.users.count.mockResolvedValue(1);
 
-    await expect(service.listUsers('minuseek-labo-lyon')).resolves.toEqual([
-      {
-        id: 'user-chef',
-        username: 'chef',
-        email: 'chef@lyon.fr',
-        enabled: true,
-        emailVerified: true,
-      },
-    ]);
+    await expect(
+      service.listUsers('minuseek-labo-lyon', { first: 0, max: 20 }),
+    ).resolves.toEqual({
+      items: [
+        {
+          id: 'user-chef',
+          username: 'chef',
+          email: 'chef@lyon.fr',
+          enabled: true,
+          emailVerified: true,
+        },
+      ],
+      total: 1,
+    });
+    expect(stub.users.find).toHaveBeenCalledWith({
+      realm: 'minuseek-labo-lyon',
+      first: 0,
+      max: 20,
+    });
+    expect(stub.users.count).toHaveBeenCalledWith({
+      realm: 'minuseek-labo-lyon',
+    });
   });
 
   it('absorbe la suppression d’un utilisateur déjà absent', async () => {

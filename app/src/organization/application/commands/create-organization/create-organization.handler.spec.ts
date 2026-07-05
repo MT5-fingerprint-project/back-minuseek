@@ -4,7 +4,7 @@ import type {
   CreateUserInput,
   CreatedUser,
   IdentityProviderPort,
-  TenantUser,
+  ListedUsers,
 } from '../../ports/identity-provider.port';
 import type { TenantDatabaseAdminPort } from '../../ports/tenant-database.port';
 import type { OrganizationInitializerPort } from '../../ports/organization-initializer.port';
@@ -45,8 +45,8 @@ class InMemoryIdentityProvider implements IdentityProviderPort {
     return Promise.resolve();
   }
 
-  listUsers(): Promise<TenantUser[]> {
-    return Promise.resolve([]);
+  listUsers(): Promise<ListedUsers> {
+    return Promise.resolve({ items: [], total: 0 });
   }
 
   createUser(realm: string, input: CreateUserInput): Promise<CreatedUser> {

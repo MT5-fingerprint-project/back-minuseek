@@ -4,6 +4,7 @@ import { TenancyModule } from '../../../tenancy/tenancy.module';
 import { OrganizationModule } from '../../organization.module';
 import { CreateOrganizationCommand } from '../../application/commands/create-organization/create-organization.command';
 import { CreateOrganizationHandler } from '../../application/commands/create-organization/create-organization.handler';
+import { OrganizationAlreadyExistsError } from '../../application/organization.errors';
 
 /**
  * Porte d'entrée d'amorçage du provisioning (SUP-03), sans HTTP : tant que le
@@ -39,6 +40,12 @@ async function main(): Promise<void> {
     console.log(
       `Organisation provisionnée : ${provisioned.slug} → realm=${provisioned.realm}, base=${provisioned.databaseName}`,
     );
+  } catch (error) {
+    if (error instanceof OrganizationAlreadyExistsError) {
+      console.log(`Organisation ${slug} déjà provisionnée — rien à faire.`);
+      return;
+    }
+    throw error;
   } finally {
     await applicationContext.close();
   }

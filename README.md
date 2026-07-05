@@ -65,10 +65,10 @@ n'existe pas, Docker crée un dossier vide à sa place (dans ce cas,
 (Prérequis : [gcloud CLI](https://cloud.google.com/sdk/docs/install) installé,
 connexion avec le compte google que vous m'avez envoyé sur discord.)
 
-### 3. Premier démarrage : `make all`
+### 3. Premier démarrage : `make setup-dev`
 
 ```bash
-make all
+make setup-dev
 ```
 
 Une seule commande, depuis zéro : installe les dépendances, lance le stack
@@ -83,7 +83,7 @@ le multi-tenant** :
    `minuseek-tenant-demo`, base `minuseek_tenant_demo` migrée, ligne
    `Organization`, inscription au registre.
 
-`make all` est **idempotent** : rejouable sans danger. L'API écoute ensuite sur
+`make setup-dev` est **idempotent** : rejouable sans danger. L'API écoute ensuite sur
 `http://localhost:<PORT>` ; connecte-toi sur le front (`/tenant-demo`) avec le
 user `demo` / `demo` importé dans le realm (`keycloak/dev/minuseek-demo-realm.json`).
 
@@ -101,7 +101,7 @@ Deux exceptions :
 - **une nouvelle migration a été ajoutée** → `make migrate-all` (fan-out du
   schéma métier sur toutes les bases tenant) ; `make dev` seul ne migre rien ;
 - **tu as supprimé les volumes** (`docker volume rm dev_postgres_data dev_keycloak_data`,
-  ex. pour repartir propre) → relance `make all`.
+  ex. pour repartir propre) → relance `make setup-dev`.
 
 Pour ajouter d'autres organisations de test (isolation) :
 
@@ -109,7 +109,7 @@ Pour ajouter d'autres organisations de test (isolation) :
 make provision SLUG=demo2 NAME="Labo 2"
 ```
 
-> `make dev` / `make all` créent le réseau Docker partagé `minuseek` s'il
+> `make dev` / `make setup-dev` créent le réseau Docker partagé `minuseek` s'il
 > n'existe pas — le front le rejoint via le nom de service `app`.
 
 ---
@@ -120,7 +120,7 @@ make provision SLUG=demo2 NAME="Labo 2"
 
 | Commande       | Description                                                    |
 |----------------|----------------------------------------------------------------|
-| `make all`     | **Premier lancement** : install + stack + bootstrap multi-tenant (idempotent) |
+| `make setup-dev` | **Premier lancement** : install + stack + bootstrap multi-tenant (idempotent) |
 | `make install` | Installe les dépendances Node dans `app/`                     |
 | `make dev`     | Lancements suivants : app en mode dev avec hot-reload (Docker watch) |
 | `make dev-build` | Rebuild les images Docker puis lance en mode dev             |
@@ -139,7 +139,7 @@ make provision SLUG=demo2 NAME="Labo 2"
 
 | Commande                            | Description                                                              |
 |-------------------------------------|--------------------------------------------------------------------------|
-| `make bootstrap`                    | Registre admin + client provisioner + organisation de démo (appelé par `make all`) |
+| `make bootstrap`                    | Registre admin + client provisioner + organisation de démo (appelé par `make setup-dev`) |
 | `make keycloak-setup`               | Crée le client `minuseek-provisioner` sur le `master` local, secret → `.env` |
 | `make provision SLUG=<s> NAME="<n>"` | Provisionne une organisation via la saga SUP-03 (realm + base + registre) |
 | `make migrate-all`                  | Fan-out : migre le registre admin puis **chaque base tenant**            |
