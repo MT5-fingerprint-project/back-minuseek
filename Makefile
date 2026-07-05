@@ -1,18 +1,29 @@
 -include .env
 export
 
+# ⚠️ Piège : make charge .env UNE FOIS (au parse) et exporte tout — or
+# keycloak-setup.sh RÉÉCRIT .env (secret provisioner) pendant le bootstrap, et
+# docker compose donne priorité à l'env du shell sur --env-file. Toute cible
+# compose qui doit voir le .env À JOUR doit donc passer par un sous-make
+# ($(MAKE) cible), qui relit .env. Ne pas "simplifier" en appels directs.
+
 COMPOSE = docker compose -f docker/dev/compose.yml --env-file .env
 NETWORK = minuseek
 
-.PHONY: all bootstrap keycloak-relax-ssl network dev dev-build down db exec install keycloak-setup system-realm provision migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all test test-watch logs
+.PHONY: setup-dev bootstrap wait-postgres keycloak-relax-ssl network dev dev-build up-watch down reset db exec install keycloak-setup system-realm provision migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all test test-watch logs
 
-## Tout, depuis zéro : install + stack + bootstrap + hot-reload. Rejouable sans danger. Ou a faire apres un reset de la DB. (make all)
-all:
+## Setup local complet : install + stack + bootstrap + hot-reload. Rejouable sans danger. Ou a faire apres un reset de la DB. (make setup-dev)
+setup-dev:
 	@test -f .env || { echo "❌ .env manquant : cp .env.example .env d'abord"; exit 1; }
 	$(MAKE) install
 	$(MAKE) network
-	$(COMPOSE) up --build -d
+	$(COMPOSE) build app
+	$(COMPOSE) up -d postgres keycloak-db keycloak adminer
 	$(MAKE) bootstrap
+	$(MAKE) up-watch
+
+up-watch:
+	$(COMPOSE) up -d app
 	$(COMPOSE) watch
 
 ## 1er lancement 
@@ -20,15 +31,20 @@ bootstrap:
 	@echo "⏳ attente de Keycloak local…"
 	@until curl -sf http://localhost:8080/ >/dev/null 2>&1; do sleep 2; done
 	$(MAKE) keycloak-relax-ssl
+	$(MAKE) wait-postgres
 	$(MAKE) migrate-admin-setup
 	$(MAKE) keycloak-setup
 	$(MAKE) system-realm
 	$(MAKE) provision SLUG=tenant-demo NAME="Tenant démo"
 
+wait-postgres:
+	@echo "⏳ attente de PostgreSQL local…"
+	@until $(COMPOSE) exec -T postgres pg_isready -U $(DB_USER) -d $(DB_NAME) >/dev/null 2>&1; do sleep 1; done
+
 ## DEV only : 
 keycloak-relax-ssl:
 	$(COMPOSE) exec -T keycloak /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user $(KC_BOOTSTRAP_ADMIN_USERNAME) --password $(KC_BOOTSTRAP_ADMIN_PASSWORD)
-	$(COMPOSE) exec -T keycloak /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE
+	$(COMPOSE) exec -T keycloak /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=none
 
 ## Crée le réseau Docker partagé avec le front s'il n'existe pas (idempotent)
 network:
@@ -46,6 +62,11 @@ dev-build: network
 down:
 	$(COMPOSE) down
 
+## DEV only, destructif : arrête tout ET détruit les volumes (DB métier, admin,
+## bases tenant, Keycloak). À enchaîner avec make setup-dev pour repartir sain.
+reset:
+	$(COMPOSE) down -v
+
 ## Installe les dépendances Node dans app/ (requis avant make dev)
 install:
 	pnpm install --dir app
@@ -60,7 +81,9 @@ db:
 
 ## 1er lancement uniquement : crée la DB admin et joue la migration initiale du registre de tenants
 migrate-admin-setup:
-	$(COMPOSE) exec postgres psql -U $(DB_USER) -d postgres -c 'CREATE DATABASE minuseek_admin;' || true
+	@if ! $(COMPOSE) exec -T postgres psql -U $(DB_USER) -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='minuseek_admin'" | grep -q 1; then \
+		$(COMPOSE) exec -T postgres createdb -U $(DB_USER) minuseek_admin; \
+	fi
 	$(COMPOSE) run --rm app pnpm prisma migrate deploy --config=prisma-admin.config.ts
 
 ## Crée une migration admin à partir du schéma prisma-admin (make migrate-admin NAME=...)
