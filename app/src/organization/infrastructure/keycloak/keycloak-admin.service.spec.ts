@@ -122,6 +122,48 @@ describe('KeycloakAdminService', () => {
     );
   });
 
+  it('crée le client mobile public (PKCE S256, audience) avec le seul scheme natif par défaut', async () => {
+    const { service, stub } = buildService();
+    delete process.env.MOBILE_ALLOW_EXPO_GO;
+    await service.ensureRealm('minuseek-labo-lyon', 'PTS Lyon');
+
+    expect(stub.clients.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        realm: 'minuseek-labo-lyon',
+        clientId: 'minuseek-mobile',
+        publicClient: true,
+        directAccessGrantsEnabled: false,
+        redirectUris: ['mobileminuseek://*'],
+        webOrigins: [],
+        attributes: expect.objectContaining({
+          'pkce.code.challenge.method': 'S256',
+        }) as object,
+        protocolMappers: [
+          expect.objectContaining({
+            protocolMapper: 'oidc-audience-mapper',
+            config: expect.objectContaining({
+              'included.custom.audience': 'minuseek-api',
+            }) as object,
+          }),
+        ],
+      }),
+    );
+  });
+
+  it('ajoute exp://* au redirect mobile en dev (MOBILE_ALLOW_EXPO_GO=true)', async () => {
+    const { service, stub } = buildService();
+    process.env.MOBILE_ALLOW_EXPO_GO = 'true';
+    await service.ensureRealm('minuseek-labo-lyon', 'PTS Lyon');
+    delete process.env.MOBILE_ALLOW_EXPO_GO;
+
+    expect(stub.clients.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientId: 'minuseek-mobile',
+        redirectUris: ['mobileminuseek://*', 'exp://*'],
+      }),
+    );
+  });
+
   it('ne recrée ni realm ni client déjà présents (rejeu de saga)', async () => {
     const { service, stub } = buildService();
     stub.realms.findOne.mockResolvedValue({ realm: 'minuseek-labo-lyon' });

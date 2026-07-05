@@ -12,9 +12,12 @@ import {
 } from '../../application/ports/identity-provider.port';
 
 const FRONT_CLIENT_ID = 'front-minuseek';
+const MOBILE_CLIENT_ID = 'minuseek-mobile';
 const API_AUDIENCE = 'minuseek-api';
 const LOGIN_THEME = 'minuseek';
 const ACCESS_TOKEN_LIFESPAN_SECONDS = 300;
+const MOBILE_APP_REDIRECT_URI = 'mobileminuseek://*';
+const EXPO_GO_REDIRECT_URI = 'exp://*';
 
 @Injectable()
 export class KeycloakAdminService implements IdentityProviderPort {
@@ -39,6 +42,7 @@ export class KeycloakAdminService implements IdentityProviderPort {
       await this.authenticatedClient();
     }
     await this.ensureFrontClient(realm);
+    await this.ensureMobileClient(realm);
     return { created };
   }
 
@@ -146,6 +150,46 @@ export class KeycloakAdminService implements IdentityProviderPort {
     });
   }
 
+  private async ensureMobileClient(realm: string): Promise<void> {
+    const client = await this.authenticatedClient();
+    const found = await client.clients.find({
+      realm,
+      clientId: MOBILE_CLIENT_ID,
+    });
+    if (found.length > 0) {
+      return;
+    }
+    const redirectUris = mobileRedirectUris();
+    await client.clients.create({
+      realm,
+      clientId: MOBILE_CLIENT_ID,
+      protocol: 'openid-connect',
+      publicClient: true,
+      standardFlowEnabled: true,
+      implicitFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+      serviceAccountsEnabled: false,
+      redirectUris,
+      webOrigins: [],
+      attributes: {
+        'pkce.code.challenge.method': 'S256',
+        'post.logout.redirect.uris': '+',
+      },
+      protocolMappers: [
+        {
+          name: 'minuseek-api-audience',
+          protocol: 'openid-connect',
+          protocolMapper: 'oidc-audience-mapper',
+          config: {
+            'included.custom.audience': API_AUDIENCE,
+            'access.token.claim': 'true',
+            'id.token.claim': 'false',
+          },
+        },
+      ],
+    });
+  }
+
   private async authenticatedClient(): Promise<KeycloakAdminClient> {
     this.adminClient ??= await this.createAdminClient();
     await this.adminClient.auth({
@@ -208,4 +252,12 @@ function requireEnv(name: string): string {
     throw new Error(`Variable d'environnement manquante: ${name}`);
   }
   return value;
+}
+
+function mobileRedirectUris(): string[] {
+  const uris = [MOBILE_APP_REDIRECT_URI];
+  if (process.env.MOBILE_ALLOW_EXPO_GO === 'true') {
+    uris.push(EXPO_GO_REDIRECT_URI);
+  }
+  return uris;
 }
