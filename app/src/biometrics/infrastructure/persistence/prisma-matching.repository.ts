@@ -1,17 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
 import { Matching } from '../../domain/matching/entity/matching';
 import type { MatchingRepository } from '../../domain/matching/repository/matching.repository';
 
 @Injectable()
 export class PrismaMatchingRepository implements MatchingRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly tenantConnection: TenantConnectionService) {}
 
   async upsertMany(matchings: Matching[]): Promise<void> {
-    await this.prisma.$transaction(
+    const prisma = await this.tenantConnection.getCurrentClient();
+    await prisma.$transaction(
       matchings.map((matching) => {
         const data = matching.toPrimitives();
-        return this.prisma.matching.upsert({
+        return prisma.matching.upsert({
           where: {
             traceId_referencePrintId: {
               traceId: data.traceId,
@@ -26,7 +27,8 @@ export class PrismaMatchingRepository implements MatchingRepository {
   }
 
   async findByTraceId(traceId: string): Promise<Matching[]> {
-    const rows = await this.prisma.matching.findMany({ where: { traceId } });
+    const prisma = await this.tenantConnection.getCurrentClient();
+    const rows = await prisma.matching.findMany({ where: { traceId } });
     return rows.map((row) => Matching.create(row));
   }
 }
