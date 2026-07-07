@@ -38,7 +38,7 @@ cp .env.example .env
 | `GCS_BUCKET`   | Bucket GCS des images                | `minuseek-media-dev`                              |
 | `GCS_SIGNED_URL_TTL_SECONDS` | Durée de vie des URLs signées | `900`                                     |
 
-### 2. Accès au bucket d'images (une fois par poste)
+### 2. Accès au bucket d'images : créer l'ADC (une fois par poste)
 
 Les images vont dans le **vrai bucket GCS de dev** (`minuseek-media-dev`),
 même en local — il n'existe pas d'émulateur GCS local, et utiliser le vrai
@@ -48,38 +48,69 @@ identiques). Voir `docs/adr/0003-gcs-only-image-storage.md`.
 Chaque dev de l'équipe a déjà les droits d'impersonation. Setup unique :
 
 ```bash
-gcloud auth application-default login \
+CLOUDSDK_CONFIG="$HOME/.config/gcloud-minuseek" gcloud auth application-default login \
   --impersonate-service-account=back-runtime@dev-minuseek.iam.gserviceaccount.com
 ```
 
-(Prérequis : [gcloud CLI](https://cloud.google.com/sdk/docs/install) installé,
-connexion avec le compte google que vous m'avez envoyésur discord.)
+Le navigateur s'ouvre : connectez-vous avec votre compte Google d'équipe
+(celui qui a les droits GCP). `CLOUDSDK_CONFIG` isole ce credential dans
+`~/.config/gcloud-minuseek/` pour ne pas écraser votre ADC par défaut si
+vous en avez un. Le compose monte ce fichier dans le conteneur (chemin
+surchargeable via la variable d'environnement `GCLOUD_ADC`).
 
-### 3. Installer les dépendances
+⚠️ Lancez cette commande **avant** le premier `make dev` : si le fichier
+n'existe pas, Docker crée un dossier vide à sa place (dans ce cas,
+`rm -rf ~/.config/gcloud-minuseek` et recommencez).
+
+(Prérequis : [gcloud CLI](https://cloud.google.com/sdk/docs/install) installé,
+connexion avec le compte google que vous m'avez envoyé sur discord.)
+
+### 3. Premier démarrage : `make setup-dev`
 
 ```bash
-make install
+make setup-dev
 ```
 
-Les `node_modules` sont montés en volume dans le container — cette commande est requise avant le premier `make dev` et après chaque ajout de package.
+Une seule commande, depuis zéro : installe les dépendances, lance le stack
+(Postgres + Keycloak + app), attend que Keycloak soit prêt, puis **bootstrappe
+le multi-tenant** :
 
-### 4. Démarrer l'environnement de développement
+1. crée la base système `minuseek_admin` + le registre des tenants ;
+2. crée le client confidentiel `minuseek-provisioner` sur le realm `master`
+   local et écrit son secret dans `.env` (`make keycloak-setup`) ;
+3. provisionne l'organisation de démo via la **vraie saga SUP-03**
+   (`make provision SLUG=tenant-demo NAME="Tenant démo"`) : realm
+   `minuseek-tenant-demo`, base `minuseek_tenant_demo` migrée, ligne
+   `Organization`, inscription au registre.
+
+`make setup-dev` est **idempotent** : rejouable sans danger. L'API écoute ensuite sur
+`http://localhost:<PORT>` ; connecte-toi sur le front (`/tenant-demo`) avec le
+user `demo` / `demo` importé dans le realm (`keycloak/dev/minuseek-demo-realm.json`).
+
+### 4. Démarrages suivants : `make dev`
 
 ```bash
 make dev
 ```
 
-Au premier lancement, ou après modification du `Dockerfile` :
+Les données (registre, bases tenant, realms Keycloak) vivent dans des **volumes
+Docker persistants** : `make down` ne les supprime pas, donc `make dev` suffit
+au quotidien — il ne re-bootstrappe rien.
+
+Deux exceptions :
+- **une nouvelle migration a été ajoutée** → `make migrate-all` (fan-out du
+  schéma métier sur toutes les bases tenant) ; `make dev` seul ne migre rien ;
+- **tu as supprimé les volumes** (`docker volume rm dev_postgres_data dev_keycloak_data`,
+  ex. pour repartir propre) → relance `make setup-dev`.
+
+Pour ajouter d'autres organisations de test (isolation) :
 
 ```bash
-make dev-build
+make provision SLUG=demo2 NAME="Labo 2"
 ```
 
-L'API est disponible sur `http://localhost:<PORT>`.
-
-> `make dev` crée automatiquement le réseau Docker partagé `minuseek` s'il n'existe pas.
-> Ce réseau permet au front (proxy Vite) de joindre le back via le nom de service `app`
-> sans dépendre de l'ordre de démarrage des deux projets.
+> `make dev` / `make setup-dev` créent le réseau Docker partagé `minuseek` s'il
+> n'existe pas — le front le rejoint via le nom de service `app`.
 
 ---
 
@@ -89,10 +120,11 @@ L'API est disponible sur `http://localhost:<PORT>`.
 
 | Commande       | Description                                                    |
 |----------------|----------------------------------------------------------------|
+| `make setup-dev` | **Premier lancement** : install + stack + bootstrap multi-tenant (idempotent) |
 | `make install` | Installe les dépendances Node dans `app/`                     |
-| `make dev`     | Lance l'app en mode dev avec hot-reload (Docker watch)        |
+| `make dev`     | Lancements suivants : app en mode dev avec hot-reload (Docker watch) |
 | `make dev-build` | Rebuild les images Docker puis lance en mode dev             |
-| `make down`    | Arrête tous les services Docker                               |
+| `make down`    | Arrête tous les services Docker (conserve les volumes)        |
 | `make network` | Crée le réseau Docker partagé `minuseek` (idempotent)        |
 | `make logs`    | Affiche les logs de l'app en temps réel                       |
 
@@ -103,12 +135,23 @@ L'API est disponible sur `http://localhost:<PORT>`.
 | `make exec` | Ouvre un shell `sh` dans le container app    |
 | `make db`   | Ouvre un shell `psql` sur la base PostgreSQL |
 
+### Multi-tenant (bootstrap & provisioning)
+
+| Commande                            | Description                                                              |
+|-------------------------------------|--------------------------------------------------------------------------|
+| `make bootstrap`                    | Registre admin + client provisioner + organisation de démo (appelé par `make setup-dev`) |
+| `make keycloak-setup`               | Crée le client `minuseek-provisioner` sur le `master` local, secret → `.env` |
+| `make provision SLUG=<s> NAME="<n>"` | Provisionne une organisation via la saga SUP-03 (realm + base + registre) |
+| `make migrate-all`                  | Fan-out : migre le registre admin puis **chaque base tenant**            |
+
 ### Base de données & migrations
 
 | Commande                            | Description                                                              |
 |-------------------------------------|--------------------------------------------------------------------------|
-| `make migrate NAME=<nom>`           | Crée une migration à partir des modèles et l'applique à la DB dev        |
+| `make migrate NAME=<nom>`           | Crée une migration à partir des modèles (atelier de schéma `minuseek_dev`) |
 | `make migrate-deploy`               | Applique les migrations en attente sans générer de fichier               |
+| `make migrate-admin-setup`          | Crée `minuseek_admin` + migration initiale du registre                   |
+| `make migrate-admin NAME=<nom>`     | Crée + applique une migration sur le schéma admin                        |
 | `make migrate-reset`                | ⚠️ **DEV only, destructif** — remet la base à zéro et rejoue les migrations |
 
 Exemple :

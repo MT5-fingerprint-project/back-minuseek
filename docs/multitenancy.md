@@ -265,7 +265,7 @@ KEYCLOAK_AUDIENCE       # minuseek-api (mapper d'audience identique sur tous les
 
 Trois systèmes (Postgres admin, Prisma migrate, IdP Keycloak) ⇒ **pas de transaction distribuée possible**. On orchestre dans le code (le handler), en étapes séquentielles, chacune **idempotente** (check-exists avant create). **La ligne du registre est écrite en dernier** : tant qu'elle n'existe pas, le tenant n'est pas résolu (la strategy renvoie `403`) ; son existence = provisioning réussi.
 
-`POST /superadmin/tenants { slug, adminEmail }` → `ProvisionTenantHandler` :
+`POST /api/organizations { slug, displayName }` → `CreateOrganizationHandler` — AUCUN utilisateur créé ici, la gestion des users (dont le premier ADMIN) est le use case create-user (ADR-0004) :
 
 | # | Étape | Idempotence | Compensation si échec |
 |---|-------|-------------|-----------------------|
@@ -273,8 +273,7 @@ Trois systèmes (Postgres admin, Prisma migrate, IdP Keycloak) ⇒ **pas de tran
 | 2 | créer le realm `minuseek-<slug>` (+ rôles, client, mapper audience) | `findOne` avant `create` | supprimer le realm |
 | 3 | `CREATE DATABASE minuseek_<slug>` | `SELECT FROM pg_database` avant | `DROP DATABASE` |
 | 4 | fan-out migrations sur la nouvelle base (`prisma migrate deploy`) | `migrate deploy` est idempotent | (couvert par le drop) |
-| 5 | créer le premier ADMIN dans le realm | — | — |
-| 6 | **`INSERT Tenant`** (en dernier) + `registry.invalidate(slug)` | unicité du slug (`409` si existe) | — |
+| 5 | **`INSERT Tenant`** (en dernier) + `registry.invalidate(slug)` | unicité du slug (`409` si existe) | — |
 
 - **Échec en cours de route** : aucune ligne de registre n'est créée. La saga (dans le handler) compense en ordre inverse (drop DB, delete realm). Un simple retry rejoue les étapes — toutes idempotentes — sans doublon. Rien à persister en base : le registre ne connaît que les tenants prêts.
 - **Realm Keycloak** : créé depuis un template TS calqué sur `keycloak/dev/minuseek-demo-realm.json`. Attention au **délai** : le realm n'est pas accessible immédiatement après création — ré-authentifier avant de le configurer.
@@ -328,9 +327,9 @@ app/src/
     infrastructure/persistence/  { admin-prisma.service.ts, tenant-connection.service.ts, tenant-database-admin.service.ts }
     infrastructure/keycloak/     { keycloak-admin.service.ts }
     application/                 { tenant-registry.service.ts }
-  superadmin/                    # bounded context control-plane
-    application/commands/        { provision-tenant, delete-tenant, backup-tenant, restore-tenant }
-    infrastructure/http/         { superadmin.controller.ts, superadmin.guard.ts }
+  organization/                  # bounded context control-plane (ADR-0004 : nommé par le domaine, pas par l'acteur)
+    application/commands/        { create-organization, delete-organization, backup-organization, restore-organization }
+    infrastructure/http/         { organization-admin.controller.ts }   # routes @SystemRealmOnly()
   auth/                          # MultiRealmJwtStrategy (réécrite), guards existants
   investigation/ biometrics/     # inchangés sauf : injection TenantConnectionService dans les repos
 ```

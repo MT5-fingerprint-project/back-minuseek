@@ -7,10 +7,13 @@ export interface TenantRecord {
   displayName: string;
   databaseName: string;
   identityProviderRealm: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const REGISTRY_TTL_MS = 60_000;
 const NEGATIVE_TTL_MS = 10_000;
+const CACHE_MAX_ENTRIES = 1_000;
 
 interface CacheEntry {
   value: TenantRecord | null;
@@ -33,9 +36,43 @@ export class TenantRegistryService {
     const row = await this.adminPrisma.findTenantBySlug(slug);
 
     const ttl = row ? REGISTRY_TTL_MS : NEGATIVE_TTL_MS;
+    this.evictIfFull(now);
     this.cache.set(slug, { value: row, expiresAt: now + ttl });
 
     return row;
+  }
+
+  async list(): Promise<TenantRecord[]> {
+    return this.adminPrisma.listTenants();
+  }
+
+  private evictIfFull(now: number): void {
+    if (this.cache.size < CACHE_MAX_ENTRIES) {
+      return;
+    }
+    for (const [slug, entry] of this.cache) {
+      if (entry.expiresAt <= now) {
+        this.cache.delete(slug);
+      }
+    }
+    for (const oldestSlug of this.cache.keys()) {
+      if (this.cache.size < CACHE_MAX_ENTRIES) {
+        return;
+      }
+      this.cache.delete(oldestSlug);
+    }
+  }
+
+  async register(record: Omit<TenantRecord, 'id'>): Promise<TenantRecord> {
+    const created = await this.adminPrisma.createTenant(record);
+    this.invalidate(created.slug);
+    return created;
+  }
+
+  async delete(slug: string): Promise<TenantRecord | null> {
+    const deleted = await this.adminPrisma.deleteTenantBySlug(slug);
+    this.invalidate(slug);
+    return deleted;
   }
 
   invalidate(slug: string): void {

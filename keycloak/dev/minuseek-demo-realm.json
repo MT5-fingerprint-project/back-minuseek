@@ -1,5 +1,5 @@
 {
-  "realm": "tenant-demo",
+  "realm": "minuseek-tenant-demo",
   "enabled": true,
   "displayName": "Minuseek — Tenant Demo",
   "loginTheme": "keycloak",
@@ -30,6 +30,38 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:5173/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "minuseek-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "minuseek-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "minuseek-mobile",
+      "name": "Minuseek Mobile (Expo)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "mobileminuseek://*",
+        "exp://*"
+      ],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "mobileminuseek://*##exp://*"
       },
       "protocolMappers": [
         {
