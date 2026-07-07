@@ -11,7 +11,7 @@ async function bootstrap() {
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
   );
 
-  app.setGlobalPrefix('api', { exclude: ['/docs', 'data/api/*path'] });
+  app.setGlobalPrefix('api', { exclude: ['/docs'] });
 
   // L'image de prod pose SWAGGER_DOC=false : /docs n'existe jamais en déployé.
   if (process.env.SWAGGER_DOC !== 'false') {

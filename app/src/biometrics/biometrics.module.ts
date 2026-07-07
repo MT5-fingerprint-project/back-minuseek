@@ -10,8 +10,9 @@ import { CreateLayerHandler } from './application/commands/create-layer/create-l
 import { UpdateLayerHandler } from './application/commands/update-layer/update-layer.handler';
 import { DeleteLayerHandler } from './application/commands/delete-layer/delete-layer.handler';
 import { ListLayersHandler } from './application/queries/list-layers/list-layers.handler';
-import { UpsertMatchingsHandler } from './application/commands/upsert-matchings/upsert-matchings.handler';
+import { CompareTraceHandler } from './application/commands/compare-trace/compare-trace.handler';
 import { IMAGE_STORAGE } from './application/ports/image-storage.port';
+import { FINGERPRINT_MATCHER } from './application/ports/fingerprint-matcher.port';
 import { TRACE_READER } from './application/queries/list-traces/trace.reader';
 import { REFERENCE_PRINT_READER } from './application/queries/list-reference-prints/reference-print.reader';
 import { LAYER_READER } from './application/queries/list-layers/layer.reader';
@@ -30,6 +31,7 @@ import { PrismaLayerReader } from './infrastructure/persistence/prisma-layer.rea
 import { PrismaMatchingRepository } from './infrastructure/persistence/prisma-matching.repository';
 import { GcsImageStorageAdapter } from './infrastructure/storage/gcs-image-storage.adapter';
 import { InMemoryImageStorageAdapter } from './infrastructure/storage/in-memory-image-storage.adapter';
+import { DataFingerprintMatcherAdapter } from './infrastructure/matching/data-fingerprint-matcher.adapter';
 
 @Module({
   imports: [CqrsModule],
@@ -45,7 +47,7 @@ import { InMemoryImageStorageAdapter } from './infrastructure/storage/in-memory-
     UpdateLayerHandler,
     DeleteLayerHandler,
     ListLayersHandler,
-    UpsertMatchingsHandler,
+    CompareTraceHandler,
     { provide: TRACE_REPOSITORY, useClass: PrismaTraceRepository },
     {
       provide: REFERENCE_PRINT_REPOSITORY,
@@ -74,6 +76,16 @@ import { InMemoryImageStorageAdapter } from './infrastructure/storage/in-memory-
         }
         const ttl = Number(process.env.GCS_SIGNED_URL_TTL_SECONDS ?? 900);
         return new GcsImageStorageAdapter(bucket, ttl);
+      },
+    },
+    {
+      provide: FINGERPRINT_MATCHER,
+      useFactory: (): DataFingerprintMatcherAdapter => {
+        const baseUrl = process.env.DATA_API_URL;
+        if (!baseUrl) {
+          throw new Error('DATA_API_URL is required');
+        }
+        return new DataFingerprintMatcherAdapter(baseUrl);
       },
     },
   ],

@@ -43,9 +43,19 @@ export class Matching {
     };
   }
 
-  get id(): string { return this._id; }
-  get traceId(): string { return this._traceId; }
-  get referencePrintId(): string { return this._referencePrintId; }
-  get score(): number { return this._score; }
-  get match(): boolean { return this._match; }
+  get id(): string {
+    return this._id;
+  }
+  get traceId(): string {
+    return this._traceId;
+  }
+  get referencePrintId(): string {
+    return this._referencePrintId;
+  }
+  get score(): number {
+    return this._score;
+  }
+  get match(): boolean {
+    return this._match;
+  }
 }
