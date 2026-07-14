@@ -57,7 +57,10 @@ export function issuerForRealm(publicUrl: string, realm: string): string {
  * and the JWKS-signing realm all resolve to the same tenant.
  *
  * 1. X-Tenant-Slug → registry lookup (unknown/missing → 403, no network call).
- * 2. Decoded `iss` must match the expected issuer for that tenant.
+ * 2. Decoded `iss` must match the expected issuer for that tenant — exact
+ *    `${KEYCLOAK_PUBLIC_URL}/realms/<realm>` by default; with
+ *    KEYCLOAK_ISSUER_HOST_CHECK=lax (local dev only) the host is ignored and
+ *    only the `/realms/<realm>` path is checked.
  * 3. Signature verified against the realm's JWKS (cached, rate-limited).
  * 4. validate() re-checks issuer and attaches tenantSlug to request.user.
  *
@@ -69,6 +72,8 @@ export class MultiRealmJwtStrategy extends PassportStrategy(Strategy) {
   private readonly publicUrl = requireEnv('KEYCLOAK_PUBLIC_URL');
   private readonly internalUrl = requireEnv('KEYCLOAK_INTERNAL_URL');
   private readonly systemRealm = process.env.KEYCLOAK_SYSTEM_REALM;
+  private readonly laxIssuerHost =
+    process.env.KEYCLOAK_ISSUER_HOST_CHECK === 'lax';
   private readonly jwksProvidersByRealm = new Map<string, SecretProvider>();
 
   constructor(private readonly tenantRegistry: TenantRegistryService) {
@@ -111,7 +116,7 @@ export class MultiRealmJwtStrategy extends PassportStrategy(Strategy) {
     if (!slug) {
       if (
         this.systemRealm &&
-        tokenIssuer === issuerForRealm(this.publicUrl, this.systemRealm)
+        this.issuerMatchesRealm(tokenIssuer, this.systemRealm)
       ) {
         return this.systemRealm;
       }
@@ -125,13 +130,30 @@ export class MultiRealmJwtStrategy extends PassportStrategy(Strategy) {
     if (!record) {
       throw new UnknownTenantError(slug);
     }
-    if (
-      tokenIssuer !==
-      issuerForRealm(this.publicUrl, record.identityProviderRealm)
-    ) {
+    if (!this.issuerMatchesRealm(tokenIssuer, record.identityProviderRealm)) {
       throw new TenantIssuerMismatchError(slug);
     }
     return record.identityProviderRealm;
+  }
+
+  /**
+creation d'un mode lax pour pouvoir utiliser keycloack en local sans avoir à configurer un domaine public pour le dev
+   */
+  private issuerMatchesRealm(
+    issuer: string | null | undefined,
+    realm: string,
+  ): boolean {
+    if (!issuer) {
+      return false;
+    }
+    if (!this.laxIssuerHost) {
+      return issuer === issuerForRealm(this.publicUrl, realm);
+    }
+    try {
+      return new URL(issuer).pathname === `/realms/${realm}`;
+    } catch {
+      return false;
+    }
   }
 
   private readTenantSlugHeader(request: Request): string | undefined {
@@ -172,8 +194,7 @@ export class MultiRealmJwtStrategy extends PassportStrategy(Strategy) {
     const record = await this.tenantRegistry.findBySlug(slug);
     if (
       !record ||
-      payload.iss !==
-        issuerForRealm(this.publicUrl, record.identityProviderRealm)
+      !this.issuerMatchesRealm(payload.iss, record.identityProviderRealm)
     ) {
       throw new UnauthorizedException();
     }
