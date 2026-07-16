@@ -13,6 +13,7 @@ const makeCase = (
   pvNumber: 'PV-001',
   description: null,
   status: InvestigationCaseStatusEnum.OPEN,
+  operatorId: 'operator-1',
   createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-01-01'),
   ...overrides,

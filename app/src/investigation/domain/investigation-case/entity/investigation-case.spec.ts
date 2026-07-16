@@ -7,6 +7,7 @@ describe('InvestigationCase', () => {
       id: 'uuid-test',
       caseNumber: 'AFF-001',
       pvNumber: 'PV-2024-001',
+      operatorId: 'operator-1',
     });
     expect(c.status).toBe(InvestigationCaseStatusEnum.OPEN);
   });
@@ -16,6 +17,7 @@ describe('InvestigationCase', () => {
       id: 'uuid-test',
       caseNumber: 'AFF-001',
       pvNumber: 'PV-2024-001',
+      operatorId: 'operator-1',
     });
     expect(c.createdAt).toBeInstanceOf(Date);
     expect(c.updatedAt).toBeInstanceOf(Date);
@@ -26,10 +28,12 @@ describe('InvestigationCase', () => {
       id: 'uuid-test',
       caseNumber: 'AFF-001',
       pvNumber: 'PV-2024-001',
+      operatorId: 'operator-1',
       description: 'Un test',
     });
     expect(c.id).toBe('uuid-test');
     expect(c.caseNumber).toBe('AFF-001');
+    expect(c.operatorId).toBe('operator-1');
     expect(c.description).toBe('Un test');
   });
 });

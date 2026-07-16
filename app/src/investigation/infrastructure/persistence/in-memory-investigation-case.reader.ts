@@ -6,7 +6,7 @@ export class InMemoryInvestigationCaseReader implements InvestigationCaseReader 
   readonly store: InvestigationCaseReadModel[] = [];
 
   findAll(
-    filters: { status?: InvestigationCaseStatusEnum },
+    filters: { status?: InvestigationCaseStatusEnum; operatorId?: string },
     pagination: { skip: number; take: number },
   ): Promise<{ items: InvestigationCaseReadModel[]; total: number }> {
     let all = [...this.store];
@@ -16,7 +16,16 @@ export class InMemoryInvestigationCaseReader implements InvestigationCaseReader 
       all = all.filter((c) => c.status === status);
     }
 
-    all.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    if (filters.operatorId) {
+      all = all.filter((c) => c.operatorId === filters.operatorId);
+    }
+
+    // Même contrat de tri que PrismaInvestigationCaseReader.
+    all.sort(
+      (a, b) =>
+        b.createdAt.getTime() - a.createdAt.getTime() ||
+        b.id.localeCompare(a.id),
+    );
 
     return Promise.resolve({
       items: all.slice(pagination.skip, pagination.skip + pagination.take),

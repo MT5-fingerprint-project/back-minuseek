@@ -15,6 +15,7 @@ export class PrismaInvestigationCaseRepository implements InvestigationCaseRepos
         id: c.id,
         caseNumber: c.caseNumber,
         pvNumber: c.pvNumber,
+        operatorId: c.operatorId,
         description: c.description,
         status: c.status,
         createdAt: c.createdAt,

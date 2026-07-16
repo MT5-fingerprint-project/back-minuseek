@@ -9,18 +9,23 @@ export class PrismaInvestigationCaseReader implements InvestigationCaseReader {
   constructor(private readonly tenantConnection: TenantConnectionService) {}
 
   async findAll(
-    filters: { status?: InvestigationCaseStatusEnum },
+    filters: { status?: InvestigationCaseStatusEnum; operatorId?: string },
     pagination: { skip: number; take: number },
   ): Promise<{ items: InvestigationCaseReadModel[]; total: number }> {
     const prisma = await this.tenantConnection.getCurrentClient();
-    const where = filters.status ? { status: filters.status } : {};
+    const where = {
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.operatorId ? { operatorId: filters.operatorId } : {}),
+    };
 
     const [items, total] = await Promise.all([
       prisma.investigationCase.findMany({
         where,
         skip: pagination.skip,
         take: pagination.take,
-        orderBy: { createdAt: 'desc' },
+        // Tie-breaker sur id : createdAt n'est pas unique, sans lui la
+        // pagination peut dupliquer/sauter des lignes entre deux pages.
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       }),
       prisma.investigationCase.count({ where }),
     ]);

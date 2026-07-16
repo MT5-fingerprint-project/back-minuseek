@@ -3,7 +3,7 @@ import { InvestigationCaseReadModel } from './investigation-case-read-model';
 
 export interface InvestigationCaseReader {
   findAll(
-    filters: { status?: InvestigationCaseStatusEnum },
+    filters: { status?: InvestigationCaseStatusEnum; operatorId?: string },
     pagination: { skip: number; take: number },
   ): Promise<{ items: InvestigationCaseReadModel[]; total: number }>;
 

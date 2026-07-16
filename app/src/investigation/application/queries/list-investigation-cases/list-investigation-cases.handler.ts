@@ -23,7 +23,7 @@ export class ListInvestigationCasesHandler implements IQueryHandler<ListInvestig
     const skip = (page - 1) * limit;
 
     const { items, total } = await this.reader.findAll(
-      { status: query.status },
+      { status: query.status, operatorId: query.operatorId },
       { skip, take: limit },
     );
 

@@ -4,8 +4,13 @@ model InvestigationCase {
   pvNumber    String
   description String?
   status      InvestigationCaseStatus @default(OPEN)
+  // Sub Keycloak de l'opérateur assigné (INV-12). Nullable : les affaires
+  // antérieures à la migration n'ont pas d'assigné.
+  operatorId  String?                @db.Uuid
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
+
+  @@index([operatorId])
 }
 
 enum InvestigationCaseStatus {

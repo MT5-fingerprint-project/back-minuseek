@@ -4,6 +4,7 @@ interface OpenInvestigationCaseProps {
   id: string;
   caseNumber: string;
   pvNumber: string;
+  operatorId: string;
   description?: string;
 }
 
@@ -12,6 +13,7 @@ export class InvestigationCase {
     private readonly _id: string,
     private readonly _caseNumber: string,
     private readonly _pvNumber: string,
+    private readonly _operatorId: string,
     private readonly _description: string | undefined,
     private _status: InvestigationCaseStatus,
     private readonly _createdAt: Date,
@@ -24,6 +26,7 @@ export class InvestigationCase {
       props.id,
       props.caseNumber,
       props.pvNumber,
+      props.operatorId,
       props.description,
       InvestigationCaseStatus.open(),
       now,
@@ -41,6 +44,10 @@ export class InvestigationCase {
 
   get pvNumber() {
     return this._pvNumber;
+  }
+
+  get operatorId() {
+    return this._operatorId;
   }
 
   get description() {

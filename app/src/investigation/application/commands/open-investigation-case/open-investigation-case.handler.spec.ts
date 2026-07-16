@@ -18,23 +18,31 @@ describe('OpenInvestigationCaseHandler', () => {
 
   it("retourne l'id généré", async () => {
     const id = await handler.execute(
-      new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-001'),
+      new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-001', 'operator-1'),
     );
     expect(id).toBe('test-uuid');
   });
 
   it('persiste le case dans le repository', async () => {
     const id = await handler.execute(
-      new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-001'),
+      new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-001', 'operator-1'),
     );
     const saved = repo.store.get(id);
     expect(saved).not.toBeNull();
     expect(saved!.caseNumber).toBe('AFF-001');
   });
 
+  it("assigne l'opérateur courant au case créé", async () => {
+    const id = await handler.execute(
+      new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-001', 'operator-1'),
+    );
+    const saved = repo.store.get(id);
+    expect(saved!.operatorId).toBe('operator-1');
+  });
+
   it('le case créé a le status OPEN', async () => {
     const id = await handler.execute(
-      new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-001'),
+      new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-001', 'operator-1'),
     );
     const saved = repo.store.get(id);
     expect(saved!.status).toBe(InvestigationCaseStatusEnum.OPEN);
@@ -42,11 +50,15 @@ describe('OpenInvestigationCaseHandler', () => {
 
   it('lève CaseNumberAlreadyExistsError si caseNumber déjà utilisé', async () => {
     await handler.execute(
-      new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-001'),
+      new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-001', 'operator-1'),
     );
     await expect(
       handler.execute(
-        new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-002'),
+        new OpenInvestigationCaseCommand(
+          'AFF-001',
+          'PV-2024-002',
+          'operator-1',
+        ),
       ),
     ).rejects.toThrow(CaseNumberAlreadyExistsError);
   });

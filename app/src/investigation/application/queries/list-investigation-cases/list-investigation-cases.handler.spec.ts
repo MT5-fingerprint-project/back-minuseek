@@ -12,6 +12,7 @@ const makeCase = (
   pvNumber: 'PV-001',
   description: null,
   status: InvestigationCaseStatusEnum.OPEN,
+  operatorId: 'operator-1',
   createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-01-01'),
   ...overrides,
@@ -54,6 +55,66 @@ describe('ListInvestigationCasesHandler', () => {
     expect(result.data).toHaveLength(0);
   });
 
+  it("ne retourne que les affaires assignées à l'opérateur du scope", async () => {
+    reader.store.push(makeCase({ id: '1', operatorId: 'operator-1' }));
+    reader.store.push(makeCase({ id: '2', operatorId: 'operator-2' }));
+    reader.store.push(makeCase({ id: '3', operatorId: null }));
+
+    const result = await handler.execute(
+      new ListInvestigationCasesQuery(
+        undefined,
+        undefined,
+        undefined,
+        'operator-1',
+      ),
+    );
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].id).toBe('1');
+  });
+
+  it('sans operatorId dans la query, retourne toutes les affaires (scope ADMIN)', async () => {
+    reader.store.push(makeCase({ id: '1', operatorId: 'operator-1' }));
+    reader.store.push(makeCase({ id: '2', operatorId: 'operator-2' }));
+
+    const result = await handler.execute(new ListInvestigationCasesQuery());
+    expect(result.data).toHaveLength(2);
+  });
+
+  it('combine le filtre statut et le scope opérateur', async () => {
+    reader.store.push(
+      makeCase({
+        id: '1',
+        operatorId: 'operator-1',
+        status: InvestigationCaseStatusEnum.OPEN,
+      }),
+    );
+    reader.store.push(
+      makeCase({
+        id: '2',
+        operatorId: 'operator-1',
+        status: InvestigationCaseStatusEnum.CLOSED,
+      }),
+    );
+    reader.store.push(
+      makeCase({
+        id: '3',
+        operatorId: 'operator-2',
+        status: InvestigationCaseStatusEnum.CLOSED,
+      }),
+    );
+
+    const result = await handler.execute(
+      new ListInvestigationCasesQuery(
+        InvestigationCaseStatusEnum.CLOSED,
+        undefined,
+        undefined,
+        'operator-1',
+      ),
+    );
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].id).toBe('2');
+  });
+
   it('applique la pagination et calcule la meta', async () => {
     for (let i = 1; i <= 5; i++) {
       reader.store.push(makeCase({ id: `${i}`, caseNumber: `AFF-00${i}` }));
@@ -80,5 +141,14 @@ describe('ListInvestigationCasesHandler', () => {
     const result = await handler.execute(new ListInvestigationCasesQuery());
     expect(result.data[0].id).toBe('recent');
     expect(result.data[1].id).toBe('old');
+  });
+
+  it('départage par id décroissant à createdAt égal (ordre stable)', async () => {
+    const sameDate = new Date('2026-01-01');
+    reader.store.push(makeCase({ id: 'a', createdAt: sameDate }));
+    reader.store.push(makeCase({ id: 'b', createdAt: sameDate }));
+
+    const result = await handler.execute(new ListInvestigationCasesQuery());
+    expect(result.data.map((c) => c.id)).toEqual(['b', 'a']);
   });
 });
