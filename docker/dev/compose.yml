@@ -29,6 +29,7 @@ services:
             STORAGE_DRIVER: ${STORAGE_DRIVER}
             GCS_BUCKET: ${GCS_BUCKET}
             GCS_SIGNED_URL_TTL_SECONDS: ${GCS_SIGNED_URL_TTL_SECONDS}
+            DATA_API_URL: ${DATA_API_URL}
             GOOGLE_APPLICATION_CREDENTIALS: /gcloud/adc.json
         volumes:
             - ../../app/prisma:/app/prisma
