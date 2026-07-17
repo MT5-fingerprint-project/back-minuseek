@@ -29,6 +29,7 @@ services:
             STORAGE_DRIVER: ${STORAGE_DRIVER}
             GCS_BUCKET: ${GCS_BUCKET}
             GCS_SIGNED_URL_TTL_SECONDS: ${GCS_SIGNED_URL_TTL_SECONDS}
+            DATA_API_URL: ${DATA_API_URL}
             GOOGLE_APPLICATION_CREDENTIALS: /gcloud/adc.json
         volumes:
             - ../../app/prisma:/app/prisma
@@ -52,71 +53,71 @@ services:
                 - action: rebuild
                   path: ../../app/pnpm-lock.yaml
 
-    postgres:
-        image: postgres:17-alpine
-        environment:
-            POSTGRES_DB: ${DB_NAME}
-            POSTGRES_USER: ${DB_USER}
-            POSTGRES_PASSWORD: ${DB_PASSWORD}
-        ports:
-            - "${DB_PORT}:5432"
-        volumes:
-            - postgres_data:/var/lib/postgresql/data
-        healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-            interval: 5s
-            timeout: 5s
-            retries: 5
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-    adminer:
-        image: adminer:4
-        ports:
-            - "8081:8080"
-        depends_on:
-            postgres:
-                condition: service_healthy
+  adminer:
+    image: adminer:4
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-    keycloak:
-        image: quay.io/keycloak/keycloak:26.1
-        command: ["start-dev", "--import-realm"]
-        environment:
-            KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
-            KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
-            KC_DB: postgres
-            KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KC_DB_NAME}
-            KC_DB_USERNAME: ${KC_DB_USER}
-            KC_DB_PASSWORD: ${KC_DB_PASSWORD}
-            KC_HOSTNAME_STRICT: "false"
-            KC_HTTP_ENABLED: "true"
-        ports:
-            - "8080:8080"
-        volumes:
-            - ../../keycloak/dev:/opt/keycloak/data/import:ro
-        networks:
-            - default
-            - minuseek
-        depends_on:
-            keycloak-db:
-                condition: service_healthy
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KC_DB_NAME}
+      KC_DB_USERNAME: ${KC_DB_USER}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../../keycloak/dev:/opt/keycloak/data/import:ro
+    networks:
+      - default
+      - minuseek
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
 
-    keycloak-db:
-        image: postgres:17-alpine
-        environment:
-            POSTGRES_DB: ${KC_DB_NAME}
-            POSTGRES_USER: ${KC_DB_USER}
-            POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
-        volumes:
-            - keycloak_data:/var/lib/postgresql/data
-        healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U ${KC_DB_USER} -d ${KC_DB_NAME}"]
-            interval: 5s
-            timeout: 5s
-            retries: 5
+  keycloak-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${KC_DB_NAME}
+      POSTGRES_USER: ${KC_DB_USER}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
+    volumes:
+      - keycloak_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KC_DB_USER} -d ${KC_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
-    postgres_data:
-    keycloak_data:
+  postgres_data:
+  keycloak_data:
 
 networks:
-    minuseek:
-        external: true
+  minuseek:
+    external: true

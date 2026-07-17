@@ -6,6 +6,8 @@ model Trace {
   caseId    String      @db.Uuid
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
+
+  matchings Matching[]
 }
 
 enum TraceStatus {

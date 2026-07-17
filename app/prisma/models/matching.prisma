@@ -1,0 +1,14 @@
+model Matching {
+  id               String   @id @db.Uuid
+  traceId          String   @db.Uuid
+  referencePrintId String   @db.Uuid
+  score            Float
+  match            Boolean
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  trace          Trace          @relation(fields: [traceId], references: [id])
+  referencePrint ReferencePrint @relation(fields: [referencePrintId], references: [id])
+
+  @@unique([traceId, referencePrintId])
+}

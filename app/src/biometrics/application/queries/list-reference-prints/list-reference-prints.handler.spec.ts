@@ -24,6 +24,7 @@ describe('ListReferencePrintsHandler', () => {
         path: 'media/investigation-case/case-9/reference-prints/ref-1.png',
         caseId: 'case-9',
         createdAt: new Date('2026-07-01T00:00:00.000Z'),
+        matchings: [],
       },
     ]);
     const handler = new ListReferencePrintsHandler(

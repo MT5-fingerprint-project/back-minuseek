@@ -12,6 +12,11 @@ export class PrismaReferencePrintReader implements ReferencePrintReader {
     return prisma.referencePrint.findMany({
       where: { caseId },
       orderBy: { createdAt: 'desc' },
+      include: {
+        matchings: {
+          select: { traceId: true, score: true, match: true },
+        },
+      },
     });
   }
 }

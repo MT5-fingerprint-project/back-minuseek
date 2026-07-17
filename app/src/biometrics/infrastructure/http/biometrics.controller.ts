@@ -27,14 +27,17 @@ import { UploadTraceCommand } from '../../application/commands/upload-trace/uplo
 import { UploadReferencePrintCommand } from '../../application/commands/upload-reference-print/upload-reference-print.command';
 import { DeleteTraceCommand } from '../../application/commands/delete-trace/delete-trace.command';
 import { DeleteReferencePrintCommand } from '../../application/commands/delete-reference-print/delete-reference-print.command';
+import { CompareTraceCommand } from '../../application/commands/compare-trace/compare-trace.command';
 import { ListTracesQuery } from '../../application/queries/list-traces/list-traces.query';
 import { ListReferencePrintsQuery } from '../../application/queries/list-reference-prints/list-reference-prints.query';
 import { TraceNotFoundError } from '../../domain/trace/errors/trace-not-found.error';
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
+import { MatchingPrimitives } from '../../domain/matching/entity/matching';
 import { UploadTraceDto } from './dto/upload-trace.dto';
 import { UploadReferencePrintDto } from './dto/upload-reference-print.dto';
 import { ListTracesDto } from './dto/list-traces.dto';
 import { ListReferencePrintsDto } from './dto/list-reference-prints.dto';
+import { CompareTraceDto } from './dto/compare-trace.dto';
 
 const IMAGE_MIME = /^image\/(png|jpe?g|tiff)$/;
 
@@ -181,5 +184,36 @@ export class BiometricsController {
         dto.caseId,
       ),
     );
+  }
+
+  @Post('traces/:id/compare')
+  @ApiOperation({
+    summary:
+      'Comparer une trace avec des empreintes de référence et persister les scores',
+  })
+  @ApiResponse({ status: 201, description: 'Scores calculés et enregistrés' })
+  @ApiResponse({
+    status: 404,
+    description: 'Trace ou empreinte de référence introuvable pour ce dossier',
+  })
+  async compare(
+    @Param('id', ParseUUIDPipe) traceId: string,
+    @Body() dto: CompareTraceDto,
+  ): Promise<{ matchings: MatchingPrimitives[] }> {
+    try {
+      const matchings = await this.commandBus.execute<
+        CompareTraceCommand,
+        MatchingPrimitives[]
+      >(new CompareTraceCommand(dto.caseId, traceId, dto.referencePrintIds));
+      return { matchings };
+    } catch (e) {
+      if (
+        e instanceof TraceNotFoundError ||
+        e instanceof ReferencePrintNotFoundError
+      ) {
+        throw new NotFoundException(e.message);
+      }
+      throw e;
+    }
   }
 }
