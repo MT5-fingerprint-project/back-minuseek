@@ -93,7 +93,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["investigator"]
+      "realmRoles": ["investigator", "offline_access"]
     }
   ]
 }

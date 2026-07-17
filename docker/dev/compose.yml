@@ -1,58 +1,56 @@
 services:
-  app:
-    build:
-      context: ../..
-      dockerfile: docker/dev/Dockerfile
-    ports:
-      - "${PORT}:${PORT}"
-    environment:
-      PORT: ${PORT}
-      DB_HOST: postgres
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
-      ADMIN_DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/minuseek_admin
-      TENANT_DATABASE_URL_TEMPLATE: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/{db}
-      ORIGIN: ${ORIGIN}
-      DATA_API_URL: ${DATA_API_URL}
-      FRONT_ORIGIN: ${FRONT_ORIGIN}
-      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL}
-      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
-      KEYCLOAK_SYSTEM_REALM: ${KEYCLOAK_SYSTEM_REALM}
-      KEYCLOAK_AUDIENCE: ${KEYCLOAK_AUDIENCE}
-      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-minuseek-provisioner}
-      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-}
-      MOBILE_ALLOW_EXPO_GO: ${MOBILE_ALLOW_EXPO_GO:-true}
-      KEYCLOAK_REALM_SSL_REQUIRED: none
-      STORAGE_DRIVER: ${STORAGE_DRIVER}
-      GCS_BUCKET: ${GCS_BUCKET}
-      GCS_SIGNED_URL_TTL_SECONDS: ${GCS_SIGNED_URL_TTL_SECONDS}
-      GOOGLE_APPLICATION_CREDENTIALS: /gcloud/adc.json
-    volumes:
-      - ../../app/prisma:/app/prisma
-      - ../../app/prisma-admin:/app/prisma-admin
-      - ../../app/scripts:/app/scripts
-      - ../../app/generated:/app/generated
-      - ../../app/media:/app/media
-      - ${HOME}/.config/gcloud:/root/.config/gcloud:ro
-      - ${GCLOUD_ADC:-~/.config/gcloud-minuseek/application_default_credentials.json}:/gcloud/adc.json:ro
-    networks:
-      - default
-      - minuseek
-    depends_on:
-      postgres:
-        condition: service_healthy
-    develop:
-      watch:
-        - action: sync
-          path: ../../app/src
-          target: /app/src
-        - action: rebuild
-          path: ../../app/package.json
-        - action: rebuild
-          path: ../../app/pnpm-lock.yaml
+    app:
+        build:
+            context: ../..
+            dockerfile: docker/dev/Dockerfile
+        ports:
+            - "${PORT}:${PORT}"
+        environment:
+            PORT: ${PORT}
+            DB_HOST: postgres
+            DB_PORT: ${DB_PORT}
+            DB_NAME: ${DB_NAME}
+            DB_USER: ${DB_USER}
+            DB_PASSWORD: ${DB_PASSWORD}
+            DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+            ADMIN_DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/minuseek_admin
+            TENANT_DATABASE_URL_TEMPLATE: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/{db}
+            ORIGIN: ${ORIGIN}
+            FRONT_ORIGIN: ${FRONT_ORIGIN}
+            KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL}
+            KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+            KEYCLOAK_SYSTEM_REALM: ${KEYCLOAK_SYSTEM_REALM}
+            KEYCLOAK_AUDIENCE: ${KEYCLOAK_AUDIENCE}
+            KEYCLOAK_ISSUER_HOST_CHECK: ${KEYCLOAK_ISSUER_HOST_CHECK:-lax}
+            KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-minuseek-provisioner}
+            KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-}
+            MOBILE_ALLOW_EXPO_GO: ${MOBILE_ALLOW_EXPO_GO:-true}
+            KEYCLOAK_REALM_SSL_REQUIRED: none
+            STORAGE_DRIVER: ${STORAGE_DRIVER}
+            GCS_BUCKET: ${GCS_BUCKET}
+            GCS_SIGNED_URL_TTL_SECONDS: ${GCS_SIGNED_URL_TTL_SECONDS}
+            GOOGLE_APPLICATION_CREDENTIALS: /gcloud/adc.json
+        volumes:
+            - ../../app/prisma:/app/prisma
+            - ../../app/prisma-admin:/app/prisma-admin
+            - ../../app/scripts:/app/scripts
+            - ../../app/generated:/app/generated
+            - ${GCLOUD_ADC:-~/.config/gcloud-minuseek/application_default_credentials.json}:/gcloud/adc.json:ro
+        networks:
+            - default
+            - minuseek
+        depends_on:
+            postgres:
+                condition: service_healthy
+        develop:
+            watch:
+                - action: sync
+                  path: ../../app/src
+                  target: /app/src
+                - action: rebuild
+                  path: ../../app/package.json
+                - action: rebuild
+                  path: ../../app/pnpm-lock.yaml
 
   postgres:
     image: postgres:17-alpine

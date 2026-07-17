@@ -88,6 +88,7 @@ describe('MultiRealmJwtStrategy — résolution du realm attendu', () => {
     process.env.KEYCLOAK_INTERNAL_URL = 'http://keycloak:8080';
     process.env.KEYCLOAK_AUDIENCE = 'minuseek-api';
     delete process.env.KEYCLOAK_SYSTEM_REALM;
+    delete process.env.KEYCLOAK_ISSUER_HOST_CHECK;
   });
 
   const demoIssuer = issuerForRealm(
@@ -175,6 +176,82 @@ describe('MultiRealmJwtStrategy — résolution du realm attendu', () => {
       'minuseek-system',
     );
   });
+
+  it("rejette par défaut un iss d'un autre host, même sur le bon realm", async () => {
+    await expect(
+      resolveRealm(
+        buildStrategy(),
+        { 'x-tenant-slug': 'tenant-demo' },
+        'http://192.168.1.27:8080/realms/minuseek-tenant-demo',
+      ),
+    ).rejects.toThrow(TenantIssuerMismatchError);
+  });
+});
+
+describe('MultiRealmJwtStrategy — mode issuer host lax (dev local)', () => {
+  beforeEach(() => {
+    process.env.KEYCLOAK_PUBLIC_URL = PUBLIC_URL;
+    process.env.KEYCLOAK_INTERNAL_URL = 'http://keycloak:8080';
+    process.env.KEYCLOAK_AUDIENCE = 'minuseek-api';
+    process.env.KEYCLOAK_ISSUER_HOST_CHECK = 'lax';
+    delete process.env.KEYCLOAK_SYSTEM_REALM;
+  });
+
+  afterAll(() => {
+    delete process.env.KEYCLOAK_ISSUER_HOST_CHECK;
+  });
+
+  const lanIssuer = 'http://192.168.1.27:8080/realms/minuseek-tenant-demo';
+
+  it('accepte un iss dont seul le host diffère (device via IP LAN)', async () => {
+    await expect(
+      resolveRealm(
+        buildStrategy(),
+        { 'x-tenant-slug': 'tenant-demo' },
+        lanIssuer,
+      ),
+    ).resolves.toBe('minuseek-tenant-demo');
+  });
+
+  it("rejette toujours un iss désignant le realm d'un autre tenant", async () => {
+    await expect(
+      resolveRealm(
+        buildStrategy(),
+        { 'x-tenant-slug': 'tenant-demo' },
+        'http://192.168.1.27:8080/realms/minuseek-autre-tenant',
+      ),
+    ).rejects.toThrow(TenantIssuerMismatchError);
+  });
+
+  it("rejette un iss qui n'est pas une URL", async () => {
+    await expect(
+      resolveRealm(
+        buildStrategy(),
+        { 'x-tenant-slug': 'tenant-demo' },
+        'pas-une-url',
+      ),
+    ).rejects.toThrow(TenantIssuerMismatchError);
+  });
+
+  it('validate() accepte le même iss LAN après vérification de signature', async () => {
+    const user = await buildStrategy().validate(
+      requestWithHeaders({ 'x-tenant-slug': 'tenant-demo' }),
+      { sub: 'user-1', iss: lanIssuer },
+    );
+    expect(user.tenantSlug).toBe('tenant-demo');
+    expect(user.isSystemRealm).toBe(false);
+  });
+
+  it('reste strict pour toute valeur autre que "lax" (fail-closed)', async () => {
+    process.env.KEYCLOAK_ISSUER_HOST_CHECK = 'LAX';
+    await expect(
+      resolveRealm(
+        buildStrategy(),
+        { 'x-tenant-slug': 'tenant-demo' },
+        lanIssuer,
+      ),
+    ).rejects.toThrow(TenantIssuerMismatchError);
+  });
 });
 
 describe('MultiRealmJwtStrategy — validate (post-signature)', () => {
@@ -183,6 +260,7 @@ describe('MultiRealmJwtStrategy — validate (post-signature)', () => {
     process.env.KEYCLOAK_INTERNAL_URL = 'http://keycloak:8080';
     process.env.KEYCLOAK_AUDIENCE = 'minuseek-api';
     delete process.env.KEYCLOAK_SYSTEM_REALM;
+    delete process.env.KEYCLOAK_ISSUER_HOST_CHECK;
   });
 
   const demoIssuer = issuerForRealm(
