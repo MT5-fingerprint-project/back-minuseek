@@ -16,4 +16,4 @@ On consigne ici les **décisions structurantes** du repo : choix techno, trade-o
 - [ADR-0003](0003-gcs-only-image-storage.md) — GCS partout : suppression du stockage local, dev par impersonation
 - [ADR-0004](0004-organization-context-superadmin-authorization.md) — Organisation : bounded context métier ; superadmin : niveau d'autorisation
 - [ADR-0005](0005-keycloak-client-public-mobile.md) — Client OIDC public `minuseek-mobile` (realm Keycloak)
-- [ADR-0006](0006-compare-trace-owned-by-back.md) — Le back possède le use case de comparaison biométrique (fin du reverse-proxy transparent)
+- [ADR-0006](0006-compare-trace-owned-by-back.md) — Le back possède le use case de comparaison biométrique

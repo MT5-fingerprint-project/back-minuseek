@@ -49,7 +49,7 @@ describe('CompareTraceHandler', () => {
         caseId: 'case-1',
       }),
     );
-    matcher.setResults([{ referencePrintId: 'ref-1', score: 87, match: true }]);
+    matcher.setResults([{ referencePrintId: 'ref-1', score: 87 }]);
 
     const result = await handler.execute(
       new CompareTraceCommand('case-1', 'trace-1', ['ref-1']),
@@ -124,8 +124,8 @@ describe('CompareTraceHandler', () => {
       }),
     );
     matcher.setResults([
-      { referencePrintId: 'ref-1', score: 87, match: true },
-      { referencePrintId: 'unrequested-ref', score: 99, match: true },
+      { referencePrintId: 'ref-1', score: 87 },
+      { referencePrintId: 'unrequested-ref', score: 99 },
     ]);
 
     const result = await handler.execute(

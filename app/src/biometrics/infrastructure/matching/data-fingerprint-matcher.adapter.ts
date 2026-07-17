@@ -8,7 +8,6 @@ import {
 interface DataCompareResult {
   reference_print: string;
   score: number;
-  match: boolean;
 }
 
 interface DataCompareResponse {
@@ -31,6 +30,7 @@ export class DataFingerprintMatcherAdapter implements FingerprintMatcherPort {
         case_id: input.caseId,
         trace_id: input.traceId,
         reference_print_ids: input.referencePrintIds,
+        top: input.referencePrintIds.length,
       }),
     });
 
@@ -40,11 +40,24 @@ export class DataFingerprintMatcherAdapter implements FingerprintMatcherPort {
       );
     }
 
-    const data = (await response.json()) as DataCompareResponse;
+    let data: DataCompareResponse;
+    try {
+      data = (await response.json()) as DataCompareResponse;
+    } catch {
+      throw new BadGatewayException(
+        'Réponse invalide du service de comparaison',
+      );
+    }
+
+    if (!Array.isArray(data?.results)) {
+      throw new BadGatewayException(
+        'Réponse invalide du service de comparaison',
+      );
+    }
+
     return data.results.map((result) => ({
       referencePrintId: result.reference_print,
       score: result.score,
-      match: result.match,
     }));
   }
 }

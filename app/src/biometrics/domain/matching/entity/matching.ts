@@ -1,3 +1,5 @@
+import { MatchingScore } from '../value-objects/matching-score.vo';
+
 export interface MatchingPrimitives {
   id: string;
   traceId: string;
@@ -11,7 +13,6 @@ interface CreateMatchingProps {
   traceId: string;
   referencePrintId: string;
   score: number;
-  match: boolean;
 }
 
 export class Matching {
@@ -19,16 +20,29 @@ export class Matching {
     private readonly _id: string,
     private readonly _traceId: string,
     private readonly _referencePrintId: string,
-    private readonly _score: number,
+    private readonly _score: MatchingScore,
     private readonly _match: boolean,
   ) {}
 
   static create(props: CreateMatchingProps): Matching {
+    const score = MatchingScore.of(props.score);
     return new Matching(
       props.id,
       props.traceId,
       props.referencePrintId,
-      props.score,
+      score,
+      score.isMatch(),
+    );
+  }
+
+  // Réhydratation depuis la persistence : le verdict stocké fait foi,
+  // il n'est pas recalculé si le seuil évolue après coup.
+  static fromPrimitives(props: MatchingPrimitives): Matching {
+    return new Matching(
+      props.id,
+      props.traceId,
+      props.referencePrintId,
+      MatchingScore.of(props.score),
       props.match,
     );
   }
@@ -38,7 +52,7 @@ export class Matching {
       id: this._id,
       traceId: this._traceId,
       referencePrintId: this._referencePrintId,
-      score: this._score,
+      score: this._score.getValue(),
       match: this._match,
     };
   }
@@ -53,7 +67,7 @@ export class Matching {
     return this._referencePrintId;
   }
   get score(): number {
-    return this._score;
+    return this._score.getValue();
   }
   get match(): boolean {
     return this._match;

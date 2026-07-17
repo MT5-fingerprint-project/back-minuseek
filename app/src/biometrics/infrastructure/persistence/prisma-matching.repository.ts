@@ -29,6 +29,6 @@ export class PrismaMatchingRepository implements MatchingRepository {
   async findByTraceId(traceId: string): Promise<Matching[]> {
     const prisma = await this.tenantConnection.getCurrentClient();
     const rows = await prisma.matching.findMany({ where: { traceId } });
-    return rows.map((row) => Matching.create(row));
+    return rows.map((row) => Matching.fromPrimitives(row));
   }
 }

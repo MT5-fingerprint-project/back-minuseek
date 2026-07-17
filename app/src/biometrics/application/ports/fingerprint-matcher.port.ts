@@ -1,7 +1,6 @@
 export interface FingerprintMatchCandidate {
   referencePrintId: string;
   score: number;
-  match: boolean;
 }
 
 export interface CompareFingerprintsInput {

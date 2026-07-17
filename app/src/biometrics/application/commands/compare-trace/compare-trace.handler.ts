@@ -76,7 +76,6 @@ export class CompareTraceHandler implements ICommandHandler<
           traceId: cmd.traceId,
           referencePrintId: candidate.referencePrintId,
           score: candidate.score,
-          match: candidate.match,
         }),
       );
 
