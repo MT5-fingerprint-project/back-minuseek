@@ -1,6 +1,9 @@
+import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-trace.error';
 import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
 import { ExploitabilityScore } from '../value-objects/exploitability-score.vo';
 import { TraceStatus, TraceStatusEnum } from '../value-objects/trace-status.vo';
+
+const CASE_STATUSES_ACCEPTING_TRACES = ['OPEN', 'IN_PROGRESS'];
 
 export interface TracePrimitives {
   id: string;
@@ -24,6 +27,18 @@ export class Trace {
     private _score: ExploitabilityScore | null,
     private readonly _caseId: string,
   ) {}
+
+  static assertCaseCanReceiveTrace(
+    caseId: string,
+    caseStatus: string | null,
+  ): void {
+    if (
+      caseStatus === null ||
+      !CASE_STATUSES_ACCEPTING_TRACES.includes(caseStatus)
+    ) {
+      throw new CaseUnavailableForTraceError(caseId);
+    }
+  }
 
   static upload(props: UploadTraceProps): Trace {
     if (!props.id) {

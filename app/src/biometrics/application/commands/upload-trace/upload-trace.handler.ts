@@ -15,10 +15,7 @@ import {
   ImageStoragePort,
 } from '../../ports/image-storage.port';
 import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
-import { CaseUnavailableForTraceError } from '../../../domain/trace/errors/case-unavailable-for-trace.error';
 import { UploadTraceCommand } from './upload-trace.command';
-
-const ACCEPTED_CASE_STATUSES = ['OPEN', 'IN_PROGRESS'];
 
 @CommandHandler(UploadTraceCommand)
 export class UploadTraceHandler implements ICommandHandler<
@@ -40,9 +37,7 @@ export class UploadTraceHandler implements ICommandHandler<
     cmd: UploadTraceCommand,
   ): Promise<{ id: string; path: string; url: string }> {
     const caseStatus = await this.caseStatus.findStatus(cmd.caseId);
-    if (caseStatus === null || !ACCEPTED_CASE_STATUSES.includes(caseStatus)) {
-      throw new CaseUnavailableForTraceError(cmd.caseId);
-    }
+    Trace.assertCaseCanReceiveTrace(cmd.caseId, caseStatus);
 
     const id = this.idGenerator.generate();
     const relativePath = `investigation-case/${cmd.caseId}/traces/${id}${this.getExtension(cmd.originalName)}`;

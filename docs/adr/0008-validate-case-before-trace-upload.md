@@ -19,8 +19,8 @@ Le ticket P1 « Lier l'image prise en mobile à une affaire » demande que `POST
 
 Ajouter la validation **sans changer le contrat de sortie**.
 
-- Le handler `UploadTraceHandler` vérifie l'affaire **avant tout écrit** (storage/repo) : si l'affaire est absente **ou** hors des statuts acceptés (`OPEN`, `IN_PROGRESS`), il lève `CaseUnavailableForTraceError` et **ne crée ni fichier ni trace**. Le controller mappe cette erreur en **404** (même pattern que `TraceNotFoundError`). « Inexistant » et « inaccessible » sont traités de façon identique (404, pas de fuite d'information).
-- La vérification cross-context passe par un **port ACL local à `biometrics`** : `CaseStatusPort.findStatus(caseId): Promise<string | null>`, implémenté par `PrismaCaseStatusAdapter` (lit `investigationCase.status`, requête **tenant-scoped** via `TenantConnectionService`) et `InMemoryCaseStatusAdapter` (tests). Le port renvoie une `string` brute, pas l'enum du contexte `investigation`, pour garder la frontière propre. La liste des statuts acceptés vit dans le handler (`biometrics`).
+- La **règle métier** « quels statuts d'affaire peuvent recevoir une trace » (`OPEN`, `IN_PROGRESS`) vit dans le **domaine** : garde statique `Trace.assertCaseCanReceiveTrace(caseId, caseStatus)` sur l'agrégat, qui lève `CaseUnavailableForTraceError`. Le handler `UploadTraceHandler` ne fait qu'orchestrer : il lit le statut via le port puis délègue la décision au domaine, **avant tout écrit** (storage/repo) → **ni fichier ni trace orphelins**. Le controller mappe l'erreur en **404** (même pattern que `TraceNotFoundError`). « Inexistant » et « inaccessible » sont traités de façon identique (404, pas de fuite d'information).
+- La vérification cross-context passe par un **port ACL local à `biometrics`** : `CaseStatusPort.findStatus(caseId): Promise<string | null>`, implémenté par `PrismaCaseStatusAdapter` (lit `investigationCase.status`, requête **tenant-scoped** via `TenantConnectionService`) et `InMemoryCaseStatusAdapter` (tests). Le port renvoie une `string` brute, pas l'enum du contexte `investigation`, pour garder la frontière propre.
 - **On conserve le contrat `{ id, path, url }`** ; on ne suit pas la forme `{ traceId, caseId, status }` du ticket.
 
 ## Conséquences
@@ -29,7 +29,7 @@ Ajouter la validation **sans changer le contrat de sortie**.
 - ✅ Frontière de contexte respectée : aucun import de `investigation` depuis `biometrics`, pas de FK, communication par UUID via un port ACL swappable et testable en In-Memory (pas de mock).
 - ✅ Zéro breaking change : le front (et le futur mobile) continue de lire `id`/`path`/`url`.
 - ⚠️ Le contrôle est **par tenant, pas par appartenance fine** : tout utilisateur du tenant peut uploader sur n'importe quelle affaire OPEN/IN_PROGRESS de ce tenant. Suffisant pour ce ticket ; un contrôle d'appartenance plus fin relèverait d'un durcissement RBAC/IDOR séparé.
-- ⚠️ La liste `['OPEN','IN_PROGRESS']` est dupliquée par rapport à l'enum `investigation` (couplage par valeur, assumé au titre de la séparation des contextes).
+- ⚠️ La liste `['OPEN','IN_PROGRESS']` (dans le domaine `biometrics`) est dupliquée par rapport à l'enum `investigation` (couplage par valeur, assumé au titre de la séparation des contextes).
 
 ## Alternatives écartées
 
