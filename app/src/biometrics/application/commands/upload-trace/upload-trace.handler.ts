@@ -14,6 +14,7 @@ import {
   IMAGE_STORAGE,
   ImageStoragePort,
 } from '../../ports/image-storage.port';
+import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
 import { UploadTraceCommand } from './upload-trace.command';
 
 @CommandHandler(UploadTraceCommand)
@@ -28,11 +29,16 @@ export class UploadTraceHandler implements ICommandHandler<
     private readonly storage: ImageStoragePort,
     @Inject(ID_GENERATOR)
     private readonly idGenerator: IdGenerator,
+    @Inject(CASE_STATUS)
+    private readonly caseStatus: CaseStatusPort,
   ) {}
 
   async execute(
     cmd: UploadTraceCommand,
   ): Promise<{ id: string; path: string; url: string }> {
+    const caseStatus = await this.caseStatus.findStatus(cmd.caseId);
+    Trace.assertCaseCanReceiveTrace(cmd.caseId, caseStatus);
+
     const id = this.idGenerator.generate();
     const relativePath = `investigation-case/${cmd.caseId}/traces/${id}${this.getExtension(cmd.originalName)}`;
     const storedPath = await this.storage.save(cmd.fileBuffer, relativePath);

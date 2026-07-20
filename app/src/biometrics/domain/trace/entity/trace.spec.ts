@@ -1,3 +1,4 @@
+import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-trace.error';
 import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
 import { ExploitabilityScore } from '../value-objects/exploitability-score.vo';
 import { TraceStatusEnum } from '../value-objects/trace-status.vo';
@@ -31,6 +32,32 @@ describe('Trace', () => {
     it('rejects a missing caseId', () => {
       expect(() => Trace.upload({ ...baseProps, caseId: '' })).toThrow();
     });
+  });
+
+  describe('assertCaseCanReceiveTrace', () => {
+    it.each(['OPEN', 'IN_PROGRESS'])(
+      'accepts a case in %s status',
+      (status) => {
+        expect(() =>
+          Trace.assertCaseCanReceiveTrace('case-9', status),
+        ).not.toThrow();
+      },
+    );
+
+    it('rejects a case whose status is unknown (null)', () => {
+      expect(() => Trace.assertCaseCanReceiveTrace('case-9', null)).toThrow(
+        CaseUnavailableForTraceError,
+      );
+    });
+
+    it.each(['CLOSED', 'UNDER_REVIEW'])(
+      'rejects a case in %s status',
+      (status) => {
+        expect(() => Trace.assertCaseCanReceiveTrace('case-9', status)).toThrow(
+          CaseUnavailableForTraceError,
+        );
+      },
+    );
   });
 
   describe('evaluate', () => {
