@@ -31,6 +31,7 @@ import { CompareTraceCommand } from '../../application/commands/compare-trace/co
 import { ListTracesQuery } from '../../application/queries/list-traces/list-traces.query';
 import { ListReferencePrintsQuery } from '../../application/queries/list-reference-prints/list-reference-prints.query';
 import { TraceNotFoundError } from '../../domain/trace/errors/trace-not-found.error';
+import { CaseUnavailableForTraceError } from '../../domain/trace/errors/case-unavailable-for-trace.error';
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
 import { MatchingPrimitives } from '../../domain/matching/entity/matching';
 import { UploadTraceDto } from './dto/upload-trace.dto';
@@ -126,23 +127,34 @@ export class BiometricsController {
     description:
       'Fichier manquant, type non supporté (PNG/JPEG/TIFF) ou caseId invalide',
   })
+  @ApiResponse({
+    status: 404,
+    description:
+      'Affaire inexistante ou non accessible (statut ≠ OPEN/IN_PROGRESS)',
+  })
   @UseInterceptors(FileInterceptor('file'))
-  uploadTrace(
+  async uploadTrace(
     @UploadedFile(imageFileValidator())
     file: { buffer: Buffer; originalname: string; mimetype: string },
     @Body() dto: UploadTraceDto,
   ) {
-    return this.commandBus.execute<
-      UploadTraceCommand,
-      { id: string; path: string; url: string }
-    >(
-      new UploadTraceCommand(
-        file.buffer,
-        file.originalname,
-        file.mimetype,
-        dto.caseId,
-      ),
-    );
+    try {
+      return await this.commandBus.execute<
+        UploadTraceCommand,
+        { id: string; path: string; url: string }
+      >(
+        new UploadTraceCommand(
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          dto.caseId,
+        ),
+      );
+    } catch (e) {
+      if (e instanceof CaseUnavailableForTraceError)
+        throw new NotFoundException(e.message);
+      throw e;
+    }
   }
 
   @Post('reference-prints')
