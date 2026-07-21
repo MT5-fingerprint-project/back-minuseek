@@ -1,0 +1,26 @@
+model User {
+  id                 String       @id @default(uuid()) @db.Uuid
+  identityProviderId String       @unique
+  role               UserRole
+  grade              String
+  serviceNumber      String       @unique
+  personalDataId     String       @unique @db.Uuid
+  personalData       PersonalData @relation(fields: [personalDataId], references: [id])
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+}
+
+model PersonalData {
+  id        String   @id @default(uuid()) @db.Uuid
+  firstName String
+  lastName  String
+  user      User?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+  EXPERT
+}
