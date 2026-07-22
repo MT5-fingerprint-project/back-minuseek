@@ -4,9 +4,7 @@ import { InMemoryUserReader } from '../../../infrastructure/persistence/in-memor
 import { UserReadModel } from './user-read-model';
 import { UserNotFoundError } from '../../../domain/user/errors/user-not-found.error';
 
-const makeUser = (
-  overrides: Partial<UserReadModel> = {},
-): UserReadModel => ({
+const makeUser = (overrides: Partial<UserReadModel> = {}): UserReadModel => ({
   id: 'id-1',
   identityProviderId: 'kc-sub-1',
   role: 'OPERATOR',
@@ -42,7 +40,7 @@ describe('GetUserByProviderIdHandler', () => {
     expect(user.firstName).toBe('Marie');
   });
 
-  it("lève une UserNotFoundError si aucun utilisateur ne correspond", async () => {
+  it('lève une UserNotFoundError si aucun utilisateur ne correspond', async () => {
     await expect(
       handler.execute(new GetUserByProviderIdQuery('inconnu')),
     ).rejects.toThrow(UserNotFoundError);

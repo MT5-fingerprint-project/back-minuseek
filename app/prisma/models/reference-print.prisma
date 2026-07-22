@@ -1,9 +1,27 @@
 model ReferencePrint {
-  id        String   @id @db.Uuid
+  id        String          @id @db.Uuid
   path      String
-  caseId    String   @db.Uuid
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  caseId    String          @db.Uuid
+  subjectId String?         @db.Uuid
+  position  FingerPosition?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
   matchings Matching[]
+}
+
+enum FingerPosition {
+  RIGHT_THUMB
+  RIGHT_INDEX
+  RIGHT_MIDDLE
+  RIGHT_RING
+  RIGHT_LITTLE
+  LEFT_THUMB
+  LEFT_INDEX
+  LEFT_MIDDLE
+  LEFT_RING
+  LEFT_LITTLE
+  RIGHT_PALM
+  LEFT_PALM
+  OTHER
 }
