@@ -28,7 +28,7 @@ export class DeleteTraceHandler implements ICommandHandler<
     if (!trace) {
       throw new TraceNotFoundError(cmd.id);
     }
-    await this.storage.delete(trace.path);
     await this.repo.delete(cmd.id);
+    await this.storage.delete(trace.path);
   }
 }
