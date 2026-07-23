@@ -7,8 +7,8 @@ model Matching {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  trace          Trace          @relation(fields: [traceId], references: [id])
-  referencePrint ReferencePrint @relation(fields: [referencePrintId], references: [id])
+  trace          Trace          @relation(fields: [traceId], references: [id], onDelete: Cascade)
+  referencePrint ReferencePrint @relation(fields: [referencePrintId], references: [id], onDelete: Cascade)
 
   @@unique([traceId, referencePrintId])
 }

@@ -28,7 +28,7 @@ export class DeleteReferencePrintHandler implements ICommandHandler<
     if (!rp) {
       throw new ReferencePrintNotFoundError(cmd.id);
     }
-    await this.storage.delete(rp.path);
     await this.repo.delete(cmd.id);
+    await this.storage.delete(rp.path);
   }
 }
