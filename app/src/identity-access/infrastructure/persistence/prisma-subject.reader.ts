@@ -9,15 +9,7 @@ export class PrismaSubjectReader implements SubjectReader {
 
   async findById(id: string): Promise<SubjectReadModel | null> {
     const prisma = await this.tenantConnection.getCurrentClient();
-    const row = await prisma.subject.findUnique({
-      where: { id },
-      include: {
-        cases: {
-          select: { caseId: true, type: true },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-    });
+    const row = await prisma.subject.findUnique({ where: { id } });
     if (!row) return null;
 
     return {
@@ -30,8 +22,9 @@ export class PrismaSubjectReader implements SubjectReader {
       secondParentName: row.secondParentName,
       phoneNumber: row.phoneNumber,
       sex: row.sex,
+      type: row.type,
       color: row.color,
-      cases: row.cases.map((c) => ({ caseId: c.caseId, type: c.type })),
+      caseId: row.caseId,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };

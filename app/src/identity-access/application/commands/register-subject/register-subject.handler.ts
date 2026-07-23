@@ -2,16 +2,11 @@ import { Inject } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Subject } from '../../../domain/subject/entity/subject';
 import { Sex } from '../../../domain/subject/value-objects/sex.vo';
+import { SubjectType } from '../../../domain/subject/value-objects/subject-type.vo';
 import {
   SUBJECT_REPOSITORY,
   SubjectRepository,
 } from '../../../domain/subject/repository/subject.repository';
-import { SubjectCase } from '../../../domain/subject-case/entity/subject-case';
-import { SubjectType } from '../../../domain/subject-case/value-objects/subject-type.vo';
-import {
-  SUBJECT_CASE_REPOSITORY,
-  SubjectCaseRepository,
-} from '../../../domain/subject-case/repository/subject-case.repository';
 import {
   ID_GENERATOR,
   IdGenerator,
@@ -25,9 +20,7 @@ export class RegisterSubjectHandler implements ICommandHandler<
 > {
   constructor(
     @Inject(SUBJECT_REPOSITORY)
-    private readonly subjectRepo: SubjectRepository,
-    @Inject(SUBJECT_CASE_REPOSITORY)
-    private readonly subjectCaseRepo: SubjectCaseRepository,
+    private readonly repo: SubjectRepository,
     @Inject(ID_GENERATOR)
     private readonly idGenerator: IdGenerator,
   ) {}
@@ -44,18 +37,11 @@ export class RegisterSubjectHandler implements ICommandHandler<
       secondParentName: cmd.secondParentName,
       phoneNumber: cmd.phoneNumber,
       sex: Sex.from(cmd.sex),
-      color: cmd.color,
-    });
-    await this.subjectRepo.save(subject);
-
-    const subjectCase = SubjectCase.create({
-      id: this.idGenerator.generate(),
-      subjectId: id,
-      caseId: cmd.caseId,
       type: SubjectType.from(cmd.type),
+      color: cmd.color,
+      caseId: cmd.caseId,
     });
-    await this.subjectCaseRepo.save(subjectCase);
-
+    await this.repo.save(subject);
     return id;
   }
 }

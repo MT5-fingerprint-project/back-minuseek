@@ -6,81 +6,49 @@ import {
   IsString,
   IsUUID,
   Matches,
-  ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SexEnum } from '../../../domain/subject/value-objects/sex.vo';
-import { SubjectTypeEnum } from '../../../domain/subject-case/value-objects/subject-type.vo';
-
-const whenCreating = (o: RegisterSubjectDto) => !o.subjectId;
+import { SubjectTypeEnum } from '../../../domain/subject/value-objects/subject-type.vo';
 
 export class RegisterSubjectDto {
-  @ApiPropertyOptional({
-    description:
-      "UUID d'un sujet existant à associer à l'affaire. S'il est fourni, les champs d'identité sont ignorés ; sinon ils sont requis et un nouveau sujet est créé.",
-    format: 'uuid',
-  })
-  @IsOptional()
-  @IsUUID()
-  subjectId?: string;
+  @ApiProperty({ description: 'Prénom', example: 'Jean' })
+  @IsString()
+  @IsNotEmpty()
+  firstName: string;
+
+  @ApiProperty({ description: 'Nom', example: 'Dupont' })
+  @IsString()
+  @IsNotEmpty()
+  lastName: string;
 
   @ApiProperty({
-    description: "UUID de l'affaire sur laquelle rattacher le sujet",
+    description: 'Date de naissance (ISO 8601)',
+    example: '1990-05-14',
+  })
+  @IsDateString()
+  birthDate: string;
+
+  @ApiProperty({ description: 'Lieu de naissance', example: 'Lyon' })
+  @IsString()
+  @IsNotEmpty()
+  birthPlace: string;
+
+  @ApiProperty({ description: 'Sexe', enum: SexEnum })
+  @IsEnum(SexEnum)
+  sex: SexEnum;
+
+  @ApiProperty({ description: 'Type du sujet', enum: SubjectTypeEnum })
+  @IsEnum(SubjectTypeEnum)
+  type: SubjectTypeEnum;
+
+  @ApiProperty({
+    description: "UUID de l'affaire à laquelle appartient le sujet",
     format: 'uuid',
   })
   @IsUUID()
   @IsNotEmpty()
   caseId: string;
-
-  @ApiProperty({
-    description: 'Type du sujet sur cette affaire',
-    enum: SubjectTypeEnum,
-  })
-  @IsEnum(SubjectTypeEnum)
-  type: SubjectTypeEnum;
-
-  @ApiPropertyOptional({
-    description: 'Prénom (requis si subjectId absent)',
-    example: 'Jean',
-  })
-  @ValidateIf(whenCreating)
-  @IsString()
-  @IsNotEmpty()
-  firstName?: string;
-
-  @ApiPropertyOptional({
-    description: 'Nom (requis si subjectId absent)',
-    example: 'Dupont',
-  })
-  @ValidateIf(whenCreating)
-  @IsString()
-  @IsNotEmpty()
-  lastName?: string;
-
-  @ApiPropertyOptional({
-    description: 'Date de naissance ISO 8601 (requise si subjectId absent)',
-    example: '1990-05-14',
-  })
-  @ValidateIf(whenCreating)
-  @IsDateString()
-  birthDate?: string;
-
-  @ApiPropertyOptional({
-    description: 'Lieu de naissance (requis si subjectId absent)',
-    example: 'Lyon',
-  })
-  @ValidateIf(whenCreating)
-  @IsString()
-  @IsNotEmpty()
-  birthPlace?: string;
-
-  @ApiPropertyOptional({
-    description: 'Sexe (requis si subjectId absent)',
-    enum: SexEnum,
-  })
-  @ValidateIf(whenCreating)
-  @IsEnum(SexEnum)
-  sex?: SexEnum;
 
   @ApiPropertyOptional({ description: 'Nom/prénom du parent 1' })
   @IsOptional()

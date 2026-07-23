@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
-import { Sex as PrismaSex } from '../../../../generated/prisma/enums';
+import {
+  Sex as PrismaSex,
+  SubjectType as PrismaSubjectType,
+} from '../../../../generated/prisma/enums';
 import { Subject } from '../../domain/subject/entity/subject';
 import type { SubjectRepository } from '../../domain/subject/repository/subject.repository';
 
@@ -20,7 +23,9 @@ export class PrismaSubjectRepository implements SubjectRepository {
       secondParentName: p.secondParentName,
       phoneNumber: p.phoneNumber,
       sex: p.sex as PrismaSex,
+      type: p.type as PrismaSubjectType,
       color: p.color,
+      caseId: p.caseId,
     };
     await prisma.subject.upsert({
       where: { id: p.id },
@@ -35,11 +40,5 @@ export class PrismaSubjectRepository implements SubjectRepository {
         ...data,
       },
     });
-  }
-
-  async findById(id: string): Promise<Subject | null> {
-    const prisma = await this.tenantConnection.getCurrentClient();
-    const row = await prisma.subject.findUnique({ where: { id } });
-    return row ? Subject.reconstitute(row) : null;
   }
 }

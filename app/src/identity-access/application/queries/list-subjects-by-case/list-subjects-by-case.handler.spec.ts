@@ -29,7 +29,7 @@ const makeEntry = (
     phoneNumber: null,
     sex: 'MALE',
     color: null,
-    type: 'SUSPECT',
+    type: 'PERSON_OF_INTEREST',
     createdAt: new Date('2026-01-01'),
     ...overrides,
   },
@@ -47,7 +47,7 @@ describe('ListSubjectsByCaseHandler', () => {
   it("retourne les sujets rattachés à l'affaire", async () => {
     reader.store.push(makeEntry('case-1', { id: 'subject-1' }));
     reader.store.push(
-      makeEntry('case-1', { id: 'subject-2', type: 'KNOWN_ASSOCIATE' }),
+      makeEntry('case-1', { id: 'subject-2', type: 'CLOSE_ASSOCIATE' }),
     );
     reader.store.push(makeEntry('case-2', { id: 'subject-3' }));
 
@@ -57,7 +57,7 @@ describe('ListSubjectsByCaseHandler', () => {
 
     expect(data).toHaveLength(2);
     expect(data.map((s) => s.id)).toEqual(['subject-1', 'subject-2']);
-    expect(data[1].type).toBe('KNOWN_ASSOCIATE');
+    expect(data[1].type).toBe('CLOSE_ASSOCIATE');
   });
 
   it("retourne une liste vide si l'affaire n'a aucun sujet", async () => {

@@ -1,6 +1,6 @@
 export enum SubjectTypeEnum {
-  KNOWN_ASSOCIATE = 'KNOWN_ASSOCIATE',
-  SUSPECT = 'SUSPECT',
+  CLOSE_ASSOCIATE = 'CLOSE_ASSOCIATE',
+  PERSON_OF_INTEREST = 'PERSON_OF_INTEREST',
 }
 
 export class InvalidSubjectTypeError extends Error {
@@ -19,12 +19,12 @@ export class SubjectType {
     return new SubjectType(raw as SubjectTypeEnum);
   }
 
-  static knownAssociate(): SubjectType {
-    return new SubjectType(SubjectTypeEnum.KNOWN_ASSOCIATE);
+  static closeAssociate(): SubjectType {
+    return new SubjectType(SubjectTypeEnum.CLOSE_ASSOCIATE);
   }
 
-  static suspect(): SubjectType {
-    return new SubjectType(SubjectTypeEnum.SUSPECT);
+  static personOfInterest(): SubjectType {
+    return new SubjectType(SubjectTypeEnum.PERSON_OF_INTEREST);
   }
 
   getValue(): SubjectTypeEnum {

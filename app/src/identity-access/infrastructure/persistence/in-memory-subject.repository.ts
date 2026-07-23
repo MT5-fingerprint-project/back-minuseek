@@ -8,8 +8,4 @@ export class InMemorySubjectRepository implements SubjectRepository {
     this.store.set(subject.id, subject);
     return Promise.resolve();
   }
-
-  findById(id: string): Promise<Subject | null> {
-    return Promise.resolve(this.store.get(id) ?? null);
-  }
 }

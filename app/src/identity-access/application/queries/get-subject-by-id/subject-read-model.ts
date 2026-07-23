@@ -1,8 +1,3 @@
-export interface SubjectCaseReadModel {
-  caseId: string;
-  type: string;
-}
-
 export interface SubjectReadModel {
   id: string;
   firstName: string;
@@ -13,8 +8,9 @@ export interface SubjectReadModel {
   secondParentName: string | null;
   phoneNumber: string | null;
   sex: string;
+  type: string;
   color: string | null;
-  cases: SubjectCaseReadModel[];
+  caseId: string;
   createdAt: Date;
   updatedAt: Date;
 }

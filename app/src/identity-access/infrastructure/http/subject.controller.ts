@@ -1,6 +1,5 @@
 import {
   Body,
-  ConflictException,
   Controller,
   Get,
   NotFoundException,
@@ -15,9 +14,7 @@ import { GetSubjectByIdQuery } from '../../application/queries/get-subject-by-id
 import { SubjectReadModel } from '../../application/queries/get-subject-by-id/subject-read-model';
 import { ListSubjectsByCaseQuery } from '../../application/queries/list-subjects-by-case/list-subjects-by-case.query';
 import { RegisterSubjectCommand } from '../../application/commands/register-subject/register-subject.command';
-import { LinkSubjectToCaseCommand } from '../../application/commands/link-subject-to-case/link-subject-to-case.command';
 import { SubjectNotFoundError } from '../../domain/subject/errors/subject-not-found.error';
-import { SubjectAlreadyLinkedToCaseError } from '../../domain/subject-case/errors/subject-already-linked-to-case.error';
 import { RegisterSubjectDto } from './dto/register-subject.dto';
 import { ListSubjectsDto } from './dto/list-subjects.dto';
 
@@ -30,43 +27,19 @@ export class SubjectController {
   ) {}
 
   @Post()
-  @ApiOperation({
-    summary:
-      'Rattacher un sujet à une affaire — en le créant, ou en associant un sujet existant via subjectId',
-  })
+  @ApiOperation({ summary: 'Enregistrer un nouveau sujet sur une affaire' })
   @ApiResponse({
     status: 201,
-    description: 'Sujet créé ou associé, rattaché à l’affaire',
-  })
-  @ApiResponse({ status: 404, description: 'subjectId fourni mais inconnu' })
-  @ApiResponse({
-    status: 409,
-    description: 'Sujet déjà rattaché à cette affaire',
+    description: 'Sujet créé et rattaché à l’affaire',
   })
   async register(@Body() dto: RegisterSubjectDto) {
-    if (dto.subjectId) {
-      try {
-        const id = await this.commandBus.execute<
-          LinkSubjectToCaseCommand,
-          string
-        >(new LinkSubjectToCaseCommand(dto.subjectId, dto.caseId, dto.type));
-        return { id };
-      } catch (e) {
-        if (e instanceof SubjectNotFoundError)
-          throw new NotFoundException(e.message);
-        if (e instanceof SubjectAlreadyLinkedToCaseError)
-          throw new ConflictException(e.message);
-        throw e;
-      }
-    }
-
     const id = await this.commandBus.execute<RegisterSubjectCommand, string>(
       new RegisterSubjectCommand(
-        dto.firstName!,
-        dto.lastName!,
-        new Date(dto.birthDate!),
-        dto.birthPlace!,
-        dto.sex!,
+        dto.firstName,
+        dto.lastName,
+        new Date(dto.birthDate),
+        dto.birthPlace,
+        dto.sex,
         dto.caseId,
         dto.type,
         dto.firstParentName,

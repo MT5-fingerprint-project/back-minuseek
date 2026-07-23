@@ -1,4 +1,5 @@
 import { Sex } from '../value-objects/sex.vo';
+import { SubjectType } from '../value-objects/subject-type.vo';
 
 interface RegisterSubjectProps {
   id: string;
@@ -10,7 +11,9 @@ interface RegisterSubjectProps {
   secondParentName?: string | null;
   phoneNumber?: string | null;
   sex: Sex;
+  type: SubjectType;
   color?: string | null;
+  caseId: string;
 }
 
 export interface SubjectPrimitives {
@@ -23,7 +26,9 @@ export interface SubjectPrimitives {
   secondParentName: string | null;
   phoneNumber: string | null;
   sex: string;
+  type: string;
   color: string | null;
+  caseId: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,7 +44,9 @@ export class Subject {
     private readonly _secondParentName: string | null,
     private readonly _phoneNumber: string | null,
     private readonly _sex: Sex,
+    private readonly _type: SubjectType,
     private readonly _color: string | null,
+    private readonly _caseId: string,
     private readonly _createdAt: Date,
     private readonly _updatedAt: Date,
   ) {}
@@ -63,6 +70,9 @@ export class Subject {
     ) {
       throw new Error('Subject birthDate is invalid');
     }
+    if (!props.caseId) {
+      throw new Error('Subject caseId is required');
+    }
     const now = new Date();
     return new Subject(
       props.id,
@@ -74,7 +84,9 @@ export class Subject {
       Subject.normalizeOptional(props.secondParentName),
       Subject.normalizeOptional(props.phoneNumber),
       props.sex,
+      props.type,
       Subject.normalizeOptional(props.color),
+      props.caseId,
       now,
       now,
     );
@@ -91,7 +103,9 @@ export class Subject {
       primitives.secondParentName,
       primitives.phoneNumber,
       Sex.from(primitives.sex),
+      SubjectType.from(primitives.type),
       primitives.color,
+      primitives.caseId,
       primitives.createdAt,
       primitives.updatedAt,
     );
@@ -113,7 +127,9 @@ export class Subject {
       secondParentName: this._secondParentName,
       phoneNumber: this._phoneNumber,
       sex: this._sex.getValue(),
+      type: this._type.getValue(),
       color: this._color,
+      caseId: this._caseId,
       createdAt: this._createdAt,
       updatedAt: this._updatedAt,
     };
@@ -155,8 +171,16 @@ export class Subject {
     return this._sex;
   }
 
+  get type(): SubjectType {
+    return this._type;
+  }
+
   get color(): string | null {
     return this._color;
+  }
+
+  get caseId(): string {
+    return this._caseId;
   }
 
   get createdAt(): Date {

@@ -9,25 +9,24 @@ export class PrismaCaseSubjectsReader implements CaseSubjectsReader {
 
   async findByCaseId(caseId: string): Promise<CaseSubjectReadModel[]> {
     const prisma = await this.tenantConnection.getCurrentClient();
-    const links = await prisma.subjectCase.findMany({
+    const rows = await prisma.subject.findMany({
       where: { caseId },
       orderBy: { createdAt: 'asc' },
-      include: { subject: true },
     });
 
-    return links.map((link) => ({
-      id: link.subject.id,
-      firstName: link.subject.firstName,
-      lastName: link.subject.lastName,
-      birthDate: link.subject.birthDate,
-      birthPlace: link.subject.birthPlace,
-      firstParentName: link.subject.firstParentName,
-      secondParentName: link.subject.secondParentName,
-      phoneNumber: link.subject.phoneNumber,
-      sex: link.subject.sex,
-      color: link.subject.color,
-      type: link.type,
-      createdAt: link.subject.createdAt,
+    return rows.map((row) => ({
+      id: row.id,
+      firstName: row.firstName,
+      lastName: row.lastName,
+      birthDate: row.birthDate,
+      birthPlace: row.birthPlace,
+      firstParentName: row.firstParentName,
+      secondParentName: row.secondParentName,
+      phoneNumber: row.phoneNumber,
+      sex: row.sex,
+      color: row.color,
+      type: row.type,
+      createdAt: row.createdAt,
     }));
   }
 }
