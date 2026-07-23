@@ -19,4 +19,3 @@ On consigne ici les **décisions structurantes** du repo : choix techno, trade-o
 - [ADR-0006](0006-issuer-host-lax-dev.md) — Vérification lax du host de l'issuer en dev local
 - [ADR-0007](0007-compare-trace-owned-by-back.md) — Le back possède le use case de comparaison biométrique
 - [ADR-0008](0008-validate-case-before-trace-upload.md) — Validation de l'affaire avant upload de trace
-- [ADR-0009](0009-subject-aggregate-and-reference-print-soft-link.md) — Aggregate `Subject`, liaison `SubjectCase` et rattachement des empreintes par lien souple
