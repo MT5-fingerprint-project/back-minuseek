@@ -8,9 +8,8 @@ export class InMemoryUserReader implements UserReader {
     identityProviderId: string,
   ): Promise<UserReadModel | null> {
     return Promise.resolve(
-      this.store.find(
-        (u) => u.identityProviderId === identityProviderId,
-      ) ?? null,
+      this.store.find((u) => u.identityProviderId === identityProviderId) ??
+        null,
     );
   }
 }

@@ -166,6 +166,8 @@ export class BiometricsController {
       properties: {
         file: { type: 'string', format: 'binary' },
         caseId: { type: 'string', format: 'uuid' },
+        subjectId: { type: 'string', format: 'uuid' },
+        position: { type: 'string' },
       },
       required: ['file', 'caseId'],
     },
@@ -177,7 +179,7 @@ export class BiometricsController {
   @ApiResponse({
     status: 400,
     description:
-      'Fichier manquant, type non supporté (PNG/JPEG/TIFF) ou caseId invalide',
+      'Fichier manquant, type non supporté (PNG/JPEG/TIFF), caseId/subjectId ou position invalide',
   })
   @UseInterceptors(FileInterceptor('file'))
   uploadReferencePrint(
@@ -194,6 +196,8 @@ export class BiometricsController {
         file.originalname,
         file.mimetype,
         dto.caseId,
+        dto.subjectId,
+        dto.position,
       ),
     );
   }

@@ -24,3 +24,32 @@ enum UserRole {
   OPERATOR
   EXPERT
 }
+
+model Subject {
+  id               String      @id @default(uuid()) @db.Uuid
+  firstName        String
+  lastName         String
+  birthDate        DateTime    @db.Date
+  birthPlace       String
+  firstParentName  String?
+  secondParentName String?
+  phoneNumber      String?
+  sex              Sex
+  type             SubjectType
+  color            String?
+  caseId           String      @db.Uuid
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([caseId])
+}
+
+enum Sex {
+  MALE
+  FEMALE
+}
+
+enum SubjectType {
+  CLOSE_ASSOCIATE
+  PERSON_OF_INTEREST
+}
