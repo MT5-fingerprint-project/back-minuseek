@@ -1,0 +1,13 @@
+model Hit {
+  id               String   @id @db.Uuid
+  traceId          String   @db.Uuid
+  referencePrintId String   @db.Uuid
+  declaredByUserId String?  @db.Uuid
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  trace          Trace          @relation(fields: [traceId], references: [id], onDelete: Cascade)
+  referencePrint ReferencePrint @relation(fields: [referencePrintId], references: [id], onDelete: Cascade)
+
+  @@unique([traceId, referencePrintId])
+}

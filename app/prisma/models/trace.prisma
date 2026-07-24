@@ -8,6 +8,7 @@ model Trace {
   updatedAt DateTime    @updatedAt
 
   matchings Matching[]
+  hits      Hit[]
 }
 
 enum TraceStatus {
