@@ -6,4 +6,5 @@ model ReferencePrint {
   updatedAt DateTime @updatedAt
 
   matchings Matching[]
+  hits      Hit[]
 }

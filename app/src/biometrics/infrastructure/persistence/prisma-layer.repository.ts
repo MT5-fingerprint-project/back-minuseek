@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
 import { Layer } from '../../domain/layer/entity/layer';
 import type { LayerSettings } from '../../domain/layer/entity/layer';
+import { MINUTIA_SETTINGS_TYPES } from '../../domain/layer/minutia';
 import type { LayerRepository } from '../../domain/layer/repository/layer.repository';
 
 @Injectable()
@@ -41,5 +42,18 @@ export class PrismaLayerRepository implements LayerRepository {
   async delete(id: string): Promise<void> {
     const prisma = await this.tenantConnection.getCurrentClient();
     await prisma.layer.delete({ where: { id } });
+  }
+
+  async countMinutiae(fingerprintId: string): Promise<number> {
+    const prisma = await this.tenantConnection.getCurrentClient();
+    return prisma.layer.count({
+      where: {
+        fingerprintId,
+        type: 'ANNOTATION',
+        OR: MINUTIA_SETTINGS_TYPES.map((settingsType) => ({
+          settings: { path: ['type'], equals: settingsType },
+        })),
+      },
+    });
   }
 }
