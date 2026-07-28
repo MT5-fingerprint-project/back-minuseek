@@ -11,16 +11,21 @@ import { UpdateLayerHandler } from './application/commands/update-layer/update-l
 import { DeleteLayerHandler } from './application/commands/delete-layer/delete-layer.handler';
 import { ListLayersHandler } from './application/queries/list-layers/list-layers.handler';
 import { CompareTraceHandler } from './application/commands/compare-trace/compare-trace.handler';
+import { RecordHitHandler } from './application/commands/record-hit/record-hit.handler';
+import { RemoveHitHandler } from './application/commands/remove-hit/remove-hit.handler';
+import { ListHitsHandler } from './application/queries/list-hits/list-hits.handler';
 import { IMAGE_STORAGE } from './application/ports/image-storage.port';
 import { CASE_STATUS } from './application/ports/case-status.port';
 import { FINGERPRINT_MATCHER } from './application/ports/fingerprint-matcher.port';
 import { TRACE_READER } from './application/queries/list-traces/trace.reader';
 import { REFERENCE_PRINT_READER } from './application/queries/list-reference-prints/reference-print.reader';
 import { LAYER_READER } from './application/queries/list-layers/layer.reader';
+import { HIT_READER } from './application/queries/list-hits/hit.reader';
 import { REFERENCE_PRINT_REPOSITORY } from './domain/reference-print/repository/reference-print.repository';
 import { TRACE_REPOSITORY } from './domain/trace/repository/trace.repository';
 import { LAYER_REPOSITORY } from './domain/layer/repository/layer.repository';
 import { MATCHING_REPOSITORY } from './domain/matching/repository/matching.repository';
+import { HIT_REPOSITORY } from './domain/hit/repository/hit.repository';
 import { BiometricsController } from './infrastructure/http/biometrics.controller';
 import { LayersController } from './infrastructure/http/layers.controller';
 import { PrismaReferencePrintRepository } from './infrastructure/persistence/prisma-reference-print.repository';
@@ -31,6 +36,8 @@ import { PrismaReferencePrintReader } from './infrastructure/persistence/prisma-
 import { PrismaLayerRepository } from './infrastructure/persistence/prisma-layer.repository';
 import { PrismaLayerReader } from './infrastructure/persistence/prisma-layer.reader';
 import { PrismaMatchingRepository } from './infrastructure/persistence/prisma-matching.repository';
+import { PrismaHitRepository } from './infrastructure/persistence/prisma-hit.repository';
+import { PrismaHitReader } from './infrastructure/persistence/prisma-hit.reader';
 import { GcsImageStorageAdapter } from './infrastructure/storage/gcs-image-storage.adapter';
 import { InMemoryImageStorageAdapter } from './infrastructure/storage/in-memory-image-storage.adapter';
 import { DataFingerprintMatcherAdapter } from './infrastructure/matching/data-fingerprint-matcher.adapter';
@@ -50,6 +57,9 @@ import { DataFingerprintMatcherAdapter } from './infrastructure/matching/data-fi
     DeleteLayerHandler,
     ListLayersHandler,
     CompareTraceHandler,
+    RecordHitHandler,
+    RemoveHitHandler,
+    ListHitsHandler,
     { provide: TRACE_REPOSITORY, useClass: PrismaTraceRepository },
     { provide: CASE_STATUS, useClass: PrismaCaseStatusAdapter },
     {
@@ -58,9 +68,11 @@ import { DataFingerprintMatcherAdapter } from './infrastructure/matching/data-fi
     },
     { provide: LAYER_REPOSITORY, useClass: PrismaLayerRepository },
     { provide: MATCHING_REPOSITORY, useClass: PrismaMatchingRepository },
+    { provide: HIT_REPOSITORY, useClass: PrismaHitRepository },
     { provide: TRACE_READER, useClass: PrismaTraceReader },
     { provide: REFERENCE_PRINT_READER, useClass: PrismaReferencePrintReader },
     { provide: LAYER_READER, useClass: PrismaLayerReader },
+    { provide: HIT_READER, useClass: PrismaHitReader },
     {
       provide: IMAGE_STORAGE,
       useFactory: (): GcsImageStorageAdapter | InMemoryImageStorageAdapter => {
