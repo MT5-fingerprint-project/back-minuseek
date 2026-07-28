@@ -38,10 +38,11 @@ describe('RemoveHitHandler', () => {
   it('removes an existing hit', async () => {
     await seedTraceAndReference();
     await hitRepo.save(
-      Hit.create({
+      Hit.fromPrimitives({
         id: 'hit-1',
         traceId: 'trace-1',
         referencePrintId: 'ref-1',
+        declaredByUserId: null,
       }),
     );
 

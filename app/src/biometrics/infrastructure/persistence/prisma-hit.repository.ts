@@ -17,7 +17,12 @@ export class PrismaHitRepository implements HitRepository {
           referencePrintId: data.referencePrintId,
         },
       },
-      create: data,
+      create: {
+        id: data.id,
+        traceId: data.traceId,
+        referencePrintId: data.referencePrintId,
+        declaredByUserId: data.declaredByUserId,
+      },
       update: { declaredByUserId: data.declaredByUserId },
     });
   }

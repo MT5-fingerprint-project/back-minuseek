@@ -1,3 +1,5 @@
+import { assertEnoughMinutiae } from '../hit-rules';
+
 export interface HitPrimitives {
   id: string;
   traceId: string;
@@ -5,11 +7,13 @@ export interface HitPrimitives {
   declaredByUserId: string | null;
 }
 
-interface CreateHitProps {
+interface RecordHitProps {
   id: string;
   traceId: string;
   referencePrintId: string;
   declaredByUserId?: string | null;
+  traceMinutiae: number;
+  referenceMinutiae: number;
 }
 
 export class Hit {
@@ -20,7 +24,8 @@ export class Hit {
     private readonly _declaredByUserId: string | null,
   ) {}
 
-  static create(props: CreateHitProps): Hit {
+  static record(props: RecordHitProps): Hit {
+    assertEnoughMinutiae(props.traceMinutiae, props.referenceMinutiae);
     return new Hit(
       props.id,
       props.traceId,
@@ -55,5 +60,8 @@ export class Hit {
   }
   get referencePrintId(): string {
     return this._referencePrintId;
+  }
+  get declaredByUserId(): string | null {
+    return this._declaredByUserId;
   }
 }

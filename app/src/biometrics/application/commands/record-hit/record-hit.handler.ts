@@ -5,7 +5,6 @@ import {
   HIT_REPOSITORY,
   HitRepository,
 } from '../../../domain/hit/repository/hit.repository';
-import { assertEnoughMinutiae } from '../../../domain/hit/hit-rules';
 import {
   LAYER_REPOSITORY,
   LayerRepository,
@@ -60,13 +59,13 @@ export class RecordHitHandler
       this.layerRepo.countMinutiae(cmd.traceId),
       this.layerRepo.countMinutiae(cmd.referencePrintId),
     ]);
-    assertEnoughMinutiae(traceMinutiae, referenceMinutiae);
-
-    const hit = Hit.create({
+    const hit = Hit.record({
       id: this.idGenerator.generate(),
       traceId: cmd.traceId,
       referencePrintId: cmd.referencePrintId,
       declaredByUserId: cmd.declaredByUserId,
+      traceMinutiae,
+      referenceMinutiae,
     });
     await this.hitRepo.save(hit);
   }
