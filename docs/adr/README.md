@@ -18,4 +18,5 @@ On consigne ici les **décisions structurantes** du repo : choix techno, trade-o
 - [ADR-0005](0005-keycloak-client-public-mobile.md) — Client OIDC public `minuseek-mobile` (realm Keycloak)
 - [ADR-0006](0006-issuer-host-lax-dev.md) — Vérification lax du host de l'issuer en dev local
 - [ADR-0007](0007-compare-trace-owned-by-back.md) — Le back possède le use case de comparaison biométrique
-- [ADR-0008](0008-validate-case-before-trace-upload.md) — Validation de l'affaire avant upload de trace
+- [ADR-0008](0008-validate-case-before-trace-upload.md) — Validation de l'affaire avant l'upload d'une trace
+- [ADR-0009](0009-chained-audit-trail.md) — Audit trail chaîné par tenant, ancrage RFC 3161, scellés de fichiers
