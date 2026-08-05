@@ -23,6 +23,8 @@ describe('ListReferencePrintsHandler', () => {
         id: 'ref-1',
         path: 'media/investigation-case/case-9/reference-prints/ref-1.png',
         caseId: 'case-9',
+        subjectId: null,
+        position: null,
         createdAt: new Date('2026-07-01T00:00:00.000Z'),
         matchings: [],
       },

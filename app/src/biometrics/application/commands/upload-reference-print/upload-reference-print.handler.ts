@@ -2,6 +2,7 @@ import path from 'node:path';
 import { Inject } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ReferencePrint } from '../../../domain/reference-print/entity/reference-print';
+import { FingerPosition } from '../../../domain/reference-print/value-objects/finger-position.vo';
 import {
   REFERENCE_PRINT_REPOSITORY,
   ReferencePrintRepository,
@@ -40,6 +41,8 @@ export class UploadReferencePrintHandler implements ICommandHandler<
       id,
       path: storedPath,
       caseId: cmd.caseId,
+      subjectId: cmd.subjectId ?? null,
+      position: cmd.position ? FingerPosition.from(cmd.position) : null,
     });
     await this.repo.save(referencePrint);
     const url = await this.storage.getUrl(storedPath);

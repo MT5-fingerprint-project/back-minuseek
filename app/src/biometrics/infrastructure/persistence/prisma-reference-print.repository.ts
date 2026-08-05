@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
+import { FingerPosition as PrismaFingerPosition } from '../../../../generated/prisma/enums';
 import { ReferencePrint } from '../../domain/reference-print/entity/reference-print';
 import type { ReferencePrintRepository } from '../../domain/reference-print/repository/reference-print.repository';
 
@@ -9,7 +10,14 @@ export class PrismaReferencePrintRepository implements ReferencePrintRepository 
 
   async save(rp: ReferencePrint): Promise<void> {
     const prisma = await this.tenantConnection.getCurrentClient();
-    const data = rp.toPrimitives();
+    const p = rp.toPrimitives();
+    const data = {
+      id: p.id,
+      path: p.path,
+      caseId: p.caseId,
+      subjectId: p.subjectId,
+      position: p.position as PrismaFingerPosition | null,
+    };
     await prisma.referencePrint.upsert({
       where: { id: data.id },
       create: data,

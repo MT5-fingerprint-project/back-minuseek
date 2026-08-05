@@ -8,9 +8,9 @@ describe('PersonalData', () => {
   });
 
   it('lève une erreur si firstName est vide', () => {
-    expect(() => PersonalData.of({ firstName: '  ', lastName: 'Curie' })).toThrow(
-      'PersonalData firstName is required',
-    );
+    expect(() =>
+      PersonalData.of({ firstName: '  ', lastName: 'Curie' }),
+    ).toThrow('PersonalData firstName is required');
   });
 
   it('lève une erreur si lastName est vide', () => {

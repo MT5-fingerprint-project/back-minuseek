@@ -6,9 +6,7 @@ import { GetUserByProviderIdQuery } from './get-user-by-provider-id.query';
 import { UserNotFoundError } from '../../../domain/user/errors/user-not-found.error';
 
 @QueryHandler(GetUserByProviderIdQuery)
-export class GetUserByProviderIdHandler
-  implements IQueryHandler<GetUserByProviderIdQuery>
-{
+export class GetUserByProviderIdHandler implements IQueryHandler<GetUserByProviderIdQuery> {
   constructor(
     @Inject(USER_READER)
     private readonly reader: UserReader,
