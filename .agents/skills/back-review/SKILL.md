@@ -33,7 +33,8 @@ Ce skill est le **gate de review maison** du repo (il prime sur toute review gé
 - [ ] CI verte en local (lint + tests + build)
 - [ ] `domain/` sans import externe ; controller → handler (pas de logique métier dans le controller)
 - [ ] Fichiers dans le bon layer ; pas d'import cross-context (référence inter-contexte par UUID)
-- [ ] `InMemory*Repository` utilisé (pas de mock de port) ; cas d'erreur couverts
+- [ ] `InMemory*Repository` utilisé (pas de mock de port) ; cas d'erreur couverts **par type** (`toThrow(MonError)`, pas `toThrow()` nu) — cf. skill `tdd`
+- [ ] Tests dans le même commit que le code qu'ils contraignent ; pas d'unité livrée avec le seul happy path
 - [ ] Toute évolution de schéma = migration Prisma
 - [ ] Commits `type(scope): description` ; kebab-case fichiers ; pas de `console.log`/debug ; pas de secret
 - [ ] Diff < 400 lignes ; description claire + lien ticket ; branche rebasée sur `main`
