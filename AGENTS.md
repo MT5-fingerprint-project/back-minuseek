@@ -10,6 +10,7 @@ API du projet Minuseek— **NestJS 11 + Prisma 7 + PostgreSQL 17**, en **DDD / a
 > **Avant de coder, explore le code avec codegraph** (`codegraph_explore`) plutôt que grep/lire à l'aveugle. Préfère les wrappers **`rtk`** aux commandes brutes pour économiser le contexte : `rtk git`, `rtk grep`, `rtk read`, `rtk pnpm`, `rtk test`, `rtk tsc`, `rtk lint`, `rtk prisma`.
 
 ✅ **À faire**
+- **Écrire le test avant le code** — rouge observé → vert → refacto. Un test qui n'a jamais échoué ne protège de rien. Discipline complète : skill **`tdd`**.
 - Garder `domain/` **framework-free** (zéro `@nestjs/*`, `@prisma/*`, `class-validator`).
 - Faire passer le controller par un **handler**, jamais un repository directement.
 - Valider à la frontière (DTO + `ValidationPipe`) ; traduire les erreurs domaine → HTTP dans le controller.
@@ -19,6 +20,7 @@ API du projet Minuseek— **NestJS 11 + Prisma 7 + PostgreSQL 17**, en **DDD / a
 - **Écrire un ADR** (`docs/adr/`, cf. `docs/adr/README.md`) dès qu'une décision structurante est prise (choix techno, trade-off d'archi, contrat d'API, sécurité, modèle de données).
 
 ❌ **À ne pas faire**
+- Écrire les tests après le code (ou en commit de rattrapage), ou s'arrêter au happy path.
 - Importer `infrastructure` depuis `application`/`domain` (sens de dépendance interdit).
 - Mettre de la logique métier dans un controller, ou créer un God Service.
 - Mocker un port au lieu d'utiliser un `InMemory*Repository`.
@@ -101,18 +103,22 @@ infrastructure  →  application  →  domain
 
 ## Tests
 
+- **TDD, pas de test après coup** : on écrit un test, on le **voit rouge** (échec d'assertion, pas d'erreur de compilation), on écrit le minimum pour le rendre vert, on refactorise. Toute branche du code de prod (`if`, `throw`, `catch`) doit avoir été exigée par un test.
+- **Couvrir ce qui doit échouer autant que ce qui doit marcher** : limites, entrées invalides, transitions interdites, immuabilité, idempotence, round-trip, régressions. Les erreurs s'assertent **par type** (`toThrow(MonError)`, jamais `toThrow()` nu) et vérifient l'absence d'effet de bord. Un `it` unique sur le happy path = unité non testée.
+- Taxonomie de couverture, qualité des assertions, **mutation manuelle** (casser le code pour prouver qu'un test le rattrape) et Definition of Done : skill **`tdd`** — à lire avant de coder.
 - **Domaine & use cases** : tests unitaires purs. Les handlers se testent en injectant un `InMemory*Repository` (pas de DB, pas de mock lourd) — voir `open-investigation-case.handler.spec.ts`.
-- `make test` lance les `*.spec.ts` sous `src/`. Les tests e2e (`test/*.e2e-spec.ts`) tournent via `pnpm test:e2e`.
+- `make test [FILE=...]` lance les `*.spec.ts` sous `app/src/` ; `make test-watch FILE=...` est la boucle rouge/vert ; `pnpm test:cov` repère les branches jamais exécutées (aucun seuil configuré). **Aucun test e2e n'existe aujourd'hui** : pas de dossier `app/test/`, pas de script `test:e2e` (bien que `supertest` soit installé) — ne pas inventer la commande ; si on en ajoute, mettre cette section à jour.
 
-## Ajouter un use case (recette)
+## Ajouter un use case (recette, test-first)
 
-1. Modéliser dans `domain/` (entité/VO + invariants), garder la couche pure.
-2. Si besoin de persistance, ajouter la méthode au port `domain/ports/*.repository.ts`.
-3. Créer `application/commands/<use-case>/` avec `*.command.ts` (entrée) + `*.handler.ts` (orchestration).
-4. Implémenter le port dans `infrastructure/persistence/` (Prisma + In-Memory pour les tests).
+0. **Lister les cas de test** avant de coder (taxonomie du skill `tdd`) : nominal, limites, entrées invalides, transitions interdites, invariants.
+1. **Spec du domaine rouge** sur l'invariant visé, puis l'entité/VO dans `domain/` qui la rend verte — couche pure.
+2. Si besoin de persistance, ajouter la méthode au port `domain/ports/*.repository.ts` **et** au fake `in-memory-*.repository.ts` (le fake imite le contrat réel, ordre de tri et cas d'égalité compris).
+3. **Spec du handler rouge** (`*.handler.spec.ts` avec l'`InMemory*`), puis `application/commands/<use-case>/` — `*.command.ts` (entrée) + `*.handler.ts` (orchestration) — pour la faire passer.
+4. Implémenter l'adapter Prisma du port dans `infrastructure/persistence/`.
 5. Exposer via un controller dans `infrastructure/http/` (+ DTO validé).
 6. Câbler dans le module (provider du handler + binding token → adapter).
-7. Tester : domaine + handler (In-Memory).
+7. **Mutation manuelle** sur les gardes ajoutées (chaque mutation doit tuer au moins un test), puis `make test` + `rtk tsc` + `rtk lint`.
 
 ## Base de données / Prisma
 
@@ -132,7 +138,7 @@ L'équipe utilise plusieurs agents (Claude Code, Codex, Antigravity…). Le setu
 
 - **`AGENTS.md`** (ce fichier) — standard ouvert, lu nativement par Codex, Cursor, Copilot, Windsurf, Aider, Zed… (sous l'égide de la Linux Foundation).
 - **`CLAUDE.md`** — importe ce fichier via `@AGENTS.md`, car Claude Code ne lit pas `AGENTS.md` nativement (feature request `anthropics/claude-code#34235`).
-- **Skills du repo** : sous `.agents/skills/` (committé) — `back-review` (gate de review pré-PR), `architecture-review` (revue de fond archi & principes : hexagonal, SOLID/DRY/YAGNI, frontières de contexte, tests sans mock — inspiré Fowler / Uncle Bob / Udi Dahan), `api-security` (audit OWASP / IDOR / RBAC), les skills d'architecture de référence (`clean-ddd-hexagonal`, `domain-driven-design`, `hexagonal-architecture`), et `product-brainstorming`. Lus nativement par **Codex** (`$REPO_ROOT/.agents/skills`, et Codex **suit les symlinks**).
+- **Skills du repo** : sous `.agents/skills/` (committé) — `tdd` (discipline d'écriture : cycle rouge/vert/refacto, taxonomie de couverture, mutation manuelle — à lire **avant** de coder), `back-review` (gate de review pré-PR), `architecture-review` (revue de fond archi & principes : hexagonal, SOLID/DRY/YAGNI, frontières de contexte, tests sans mock — inspiré Fowler / Uncle Bob / Udi Dahan), `api-security` (audit OWASP / IDOR / RBAC), les skills d'architecture de référence (`clean-ddd-hexagonal`, `domain-driven-design`, `hexagonal-architecture`), et `product-brainstorming`. Lus nativement par **Codex** (`$REPO_ROOT/.agents/skills`, et Codex **suit les symlinks**).
 - **`.agents/rules/conventions.md` → `../../AGENTS.md`** — symlink committé pour **Google Antigravity**, qui lit `.agents/rules/` (règles toujours actives).
 
 **Claude Code** ne découvre les skills que dans `.claude/skills/`, or `.claude/` est **gitignoré** (il contient `settings.local.json`, propre à chaque dev). Pour éviter toute copie manuelle (source de dérive), `.claude/skills` est un **lien symbolique committé** vers `.agents/skills/`. Au clone, git restaure le lien : **rien à faire**.
