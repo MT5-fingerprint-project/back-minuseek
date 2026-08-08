@@ -20,3 +20,4 @@ On consigne ici les **décisions structurantes** du repo : choix techno, trade-o
 - [ADR-0007](0007-compare-trace-owned-by-back.md) — Le back possède le use case de comparaison biométrique
 - [ADR-0008](0008-validate-case-before-trace-upload.md) — Validation de l'affaire avant l'upload d'une trace
 - [ADR-0009](0009-chained-audit-trail.md) — Audit trail chaîné par tenant, ancrage RFC 3161, scellés de fichiers
+- [ADR-0010](0010-chiffrement-images-upload-direct-gcs.md) — Chiffrement des images côté client + upload direct GCS
