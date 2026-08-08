@@ -1,0 +1,37 @@
+//  Json type are used for `actor` and `payload` fields in the AuditEvent model. Prisma does not support complex JSON typing, so we document the expected structure.
+//- actor : AuditActorPrimitives { type: 'USER'|'SYSTEM', sub, username, displayName };
+//- payload : object specific to each eventType (see AuditEventTypeEnum in src/shared/domain/audit/audit-event-type.vo.ts).
+
+model AuditEvent {
+  id            String        @id @db.Uuid
+  seq           BigInt        @unique
+  eventType     String
+  evidenceClass EvidenceClass
+  actor         Json
+  payload       Json
+  caseId        String?       @db.Uuid
+  traceId       String?       @db.Uuid
+  occurredAt    DateTime
+  prevHash      String        @db.Char(64)
+  hash          String        @unique @db.Char(64)
+
+  @@index([caseId])
+  @@index([traceId])
+  @@index([eventType])
+}
+
+enum EvidenceClass {
+  OBSERVED
+  DECLARED
+}
+
+
+model AuditAnchor {
+  id          String   @id @db.Uuid
+  headSeq     BigInt
+  headHash    String   @db.Char(64)
+  tsaUrl      String
+  tsaResponse Bytes
+  anchoredAt  DateTime
+  status      String
+}
