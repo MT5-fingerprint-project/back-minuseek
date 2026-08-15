@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -39,6 +40,7 @@ import { TraceNotFoundError } from '../../domain/trace/errors/trace-not-found.er
 import { CaseUnavailableForTraceError } from '../../domain/trace/errors/case-unavailable-for-trace.error';
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
 import { InsufficientMinutiaeError } from '../../domain/hit/errors/insufficient-minutiae.error';
+import { InvalidImageError } from '../../application/ports/image-converter.port';
 import { MatchingPrimitives } from '../../domain/matching/entity/matching';
 import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
 import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
@@ -134,7 +136,7 @@ export class BiometricsController {
   @ApiResponse({
     status: 400,
     description:
-      'Fichier manquant, type non supporté (PNG/JPEG/TIFF) ou caseId invalide',
+      'Fichier manquant, type non supporté (PNG/JPEG/TIFF), image illisible ou caseId invalide',
   })
   @ApiResponse({
     status: 404,
@@ -162,6 +164,8 @@ export class BiometricsController {
     } catch (e) {
       if (e instanceof CaseUnavailableForTraceError)
         throw new NotFoundException(e.message);
+      if (e instanceof InvalidImageError)
+        throw new BadRequestException(e.message);
       throw e;
     }
   }
@@ -188,27 +192,33 @@ export class BiometricsController {
   @ApiResponse({
     status: 400,
     description:
-      'Fichier manquant, type non supporté (PNG/JPEG/TIFF), caseId/subjectId ou position invalide',
+      'Fichier manquant, type non supporté (PNG/JPEG/TIFF), image illisible, caseId/subjectId ou position invalide',
   })
   @UseInterceptors(FileInterceptor('file'))
-  uploadReferencePrint(
+  async uploadReferencePrint(
     @UploadedFile(imageFileValidator())
     file: { buffer: Buffer; originalname: string; mimetype: string },
     @Body() dto: UploadReferencePrintDto,
   ) {
-    return this.commandBus.execute<
-      UploadReferencePrintCommand,
-      { id: string; path: string; url: string }
-    >(
-      new UploadReferencePrintCommand(
-        file.buffer,
-        file.originalname,
-        file.mimetype,
-        dto.caseId,
-        dto.subjectId,
-        dto.position,
-      ),
-    );
+    try {
+      return await this.commandBus.execute<
+        UploadReferencePrintCommand,
+        { id: string; path: string; url: string }
+      >(
+        new UploadReferencePrintCommand(
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          dto.caseId,
+          dto.subjectId,
+          dto.position,
+        ),
+      );
+    } catch (e) {
+      if (e instanceof InvalidImageError)
+        throw new BadRequestException(e.message);
+      throw e;
+    }
   }
 
   @Post('traces/:id/compare')

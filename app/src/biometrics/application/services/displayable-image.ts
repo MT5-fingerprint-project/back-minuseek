@@ -20,8 +20,9 @@ export async function storeDisplayableImage(
   if (!TIFF_EXTENSIONS.has(extension)) {
     return storage.save(fileBuffer, `${pathWithoutExtension}${extension}`);
   }
-  await storage.save(fileBuffer, `${pathWithoutExtension}.tif`);
+  
   const png = await converter.tiffToPng(fileBuffer);
+  await storage.save(fileBuffer, `${pathWithoutExtension}.tif`);
   return storage.save(png, `${pathWithoutExtension}.png`);
 }
 

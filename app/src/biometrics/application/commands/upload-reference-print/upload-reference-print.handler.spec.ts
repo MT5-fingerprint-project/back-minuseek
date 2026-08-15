@@ -1,6 +1,7 @@
 import { InMemoryReferencePrintRepository } from '../../../infrastructure/persistence/in-memory-reference-print.repository';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
 import { InMemoryImageConverter } from '../../../infrastructure/conversion/in-memory-image-converter.adapter';
+import { InvalidImageError } from '../../ports/image-converter.port';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
 import { UploadReferencePrintCommand } from './upload-reference-print.command';
 import { UploadReferencePrintHandler } from './upload-reference-print.handler';
@@ -78,6 +79,31 @@ describe('UploadReferencePrintHandler', () => {
     expect(
       storage.getSaved(
         'investigation-case/case-9/reference-prints/ref-456.tif',
+      ),
+    ).toBeUndefined();
+  });
+
+  it('rejects an unreadable TIFF without storing or persisting anything', async () => {
+    await expect(
+      handler.execute(
+        new UploadReferencePrintCommand(
+          Buffer.from('invalid-image'),
+          'broken.tif',
+          'image/tiff',
+          'case-9',
+        ),
+      ),
+    ).rejects.toBeInstanceOf(InvalidImageError);
+
+    expect(await repo.findById('ref-456')).toBeNull();
+    expect(
+      storage.getSaved(
+        'investigation-case/case-9/reference-prints/ref-456.tif',
+      ),
+    ).toBeUndefined();
+    expect(
+      storage.getSaved(
+        'investigation-case/case-9/reference-prints/ref-456.png',
       ),
     ).toBeUndefined();
   });
