@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../../../../generated/prisma/client';
+import type { Prisma, PrismaClient } from '../../../../generated/prisma/client';
 import type { Pool } from 'pg';
 import {
   TenantRecord,
@@ -10,6 +10,7 @@ import {
   TenantUnavailableError,
 } from '../../application/tenancy.errors';
 import { TenantConnectionService } from './tenant-connection.service';
+import { TransactionContextService } from './transaction-context.service';
 
 const DEMO_TENANT: TenantRecord = {
   id: '5f1e7c1a-0000-4000-8000-000000000001',
@@ -31,7 +32,6 @@ class InMemoryTenantRegistry {
   invalidate(): void {}
 }
 
-/** Version testable : aucune vraie connexion, on compte les instanciations. */
 class TestableTenantConnectionService extends TenantConnectionService {
   instantiationsByDb: string[] = [];
   disconnections: string[] = [];
@@ -58,6 +58,7 @@ function buildService(records: TenantRecord[] = [DEMO_TENANT]) {
   return new TestableTenantConnectionService(
     new InMemoryTenantRegistry(records) as unknown as TenantRegistryService,
     new TenantContextService(),
+    new TransactionContextService(),
   );
 }
 
@@ -72,6 +73,19 @@ describe('TenantConnectionService', () => {
 
     expect(client).toBeDefined();
     expect(service.instantiationsByDb).toEqual(['minuseek']);
+  });
+
+  it("retourne la transaction ambiante plutôt qu'un client quand une transaction est ouverte", async () => {
+    const service = buildService();
+    const transactionContext = new TransactionContextService();
+    const transaction = { label: 'tx' } as unknown as Prisma.TransactionClient;
+
+    const resolved = await transactionContext.run(transaction, () =>
+      service.getCurrentClient(),
+    );
+
+    expect(resolved).toBe(transaction);
+    expect(service.instantiationsByDb).toEqual([]);
   });
 
   it('échoue fail-closed hors de tout contexte tenant', async () => {

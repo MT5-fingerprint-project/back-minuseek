@@ -4,16 +4,23 @@ import { InMemoryInvestigationCaseRepository } from '../../../infrastructure/per
 import { InvestigationCaseStatusEnum } from '../../../domain/investigation-case/value-objects/investigation-case-status.vo';
 import { CaseNumberAlreadyExistsError } from '../../../domain/investigation-case/errors/case-number-already-exists.error';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
+import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
 
 describe('OpenInvestigationCaseHandler', () => {
   let handler: OpenInvestigationCaseHandler;
   let repo: InMemoryInvestigationCaseRepository;
   let idGenerator: IdGenerator;
+  let transactionRunner: InMemoryTransactionRunner;
 
   beforeEach(() => {
     repo = new InMemoryInvestigationCaseRepository();
     idGenerator = { generate: jest.fn().mockReturnValue('test-uuid') };
-    handler = new OpenInvestigationCaseHandler(repo, idGenerator);
+    transactionRunner = new InMemoryTransactionRunner();
+    handler = new OpenInvestigationCaseHandler(
+      repo,
+      idGenerator,
+      transactionRunner,
+    );
   });
 
   it("retourne l'id généré", async () => {
@@ -30,6 +37,13 @@ describe('OpenInvestigationCaseHandler', () => {
     const saved = repo.store.get(id);
     expect(saved).not.toBeNull();
     expect(saved!.caseNumber).toBe('AFF-001');
+  });
+
+  it("persiste à l'intérieur d'une frontière transactionnelle", async () => {
+    await handler.execute(
+      new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-001'),
+    );
+    expect(transactionRunner.runCount).toBe(1);
   });
 
   it('le case créé a le status OPEN', async () => {
