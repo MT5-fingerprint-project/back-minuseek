@@ -10,6 +10,10 @@ import {
   ID_GENERATOR,
   IdGenerator,
 } from '../../../../shared/domain/ports/id-generator';
+import {
+  TRANSACTION_RUNNER,
+  TransactionRunner,
+} from '../../../../shared/domain/ports/transaction-runner';
 import { OpenInvestigationCaseCommand } from './open-investigation-case.command';
 
 @CommandHandler(OpenInvestigationCaseCommand)
@@ -22,6 +26,8 @@ export class OpenInvestigationCaseHandler implements ICommandHandler<
     private readonly repo: InvestigationCaseRepository,
     @Inject(ID_GENERATOR)
     private readonly idGenerator: IdGenerator,
+    @Inject(TRANSACTION_RUNNER)
+    private readonly transactionRunner: TransactionRunner,
   ) {}
 
   async execute(cmd: OpenInvestigationCaseCommand): Promise<string> {
@@ -35,7 +41,7 @@ export class OpenInvestigationCaseHandler implements ICommandHandler<
       pvNumber: cmd.pvNumber,
       description: cmd.description,
     });
-    await this.repo.save(newCase);
+    await this.transactionRunner.run(() => this.repo.save(newCase));
     return id;
   }
 }

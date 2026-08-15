@@ -7,6 +7,7 @@ import {
   TenantRegistryService,
 } from '../../application/tenant-registry.service';
 import { TenantContextService } from '../../application/tenant-context.service';
+import { TransactionContextService } from './transaction-context.service';
 import {
   NoTenantInContextError,
   TenantUnavailableError,
@@ -56,6 +57,7 @@ export class TenantConnectionService implements OnModuleDestroy {
   constructor(
     private readonly tenantRegistry: TenantRegistryService,
     private readonly tenantContext: TenantContextService,
+    private readonly transactionContext: TransactionContextService,
   ) {}
 
   async getClient(slug: string): Promise<PrismaClient> {
@@ -81,6 +83,10 @@ export class TenantConnectionService implements OnModuleDestroy {
   }
 
   async getCurrentClient(): Promise<PrismaClient> {
+    const ambientTransaction = this.transactionContext.getCurrentTransaction();
+    if (ambientTransaction) {
+      return ambientTransaction as PrismaClient;
+    }
     const slug = this.tenantContext.getCurrentTenant();
     if (!slug) {
       throw new NoTenantInContextError();
