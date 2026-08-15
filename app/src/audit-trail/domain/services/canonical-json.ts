@@ -13,7 +13,6 @@
  * 
  */
 
-
 export class CanonicalizationError extends Error {
   constructor(reason: string) {
     super(`Sérialisation canonique impossible : ${reason}`);

@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { Inject } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ReferencePrint } from '../../../domain/reference-print/entity/reference-print';
@@ -15,6 +14,11 @@ import {
   IMAGE_STORAGE,
   ImageStoragePort,
 } from '../../ports/image-storage.port';
+import {
+  IMAGE_CONVERTER,
+  ImageConverterPort,
+} from '../../ports/image-converter.port';
+import { storeDisplayableImage } from '../../services/displayable-image';
 import { UploadReferencePrintCommand } from './upload-reference-print.command';
 
 @CommandHandler(UploadReferencePrintCommand)
@@ -29,14 +33,21 @@ export class UploadReferencePrintHandler implements ICommandHandler<
     private readonly storage: ImageStoragePort,
     @Inject(ID_GENERATOR)
     private readonly idGenerator: IdGenerator,
+    @Inject(IMAGE_CONVERTER)
+    private readonly converter: ImageConverterPort,
   ) {}
 
   async execute(
     cmd: UploadReferencePrintCommand,
   ): Promise<{ id: string; path: string; url: string }> {
     const id = this.idGenerator.generate();
-    const relativePath = `investigation-case/${cmd.caseId}/reference-prints/${id}${this.getExtension(cmd.originalName)}`;
-    const storedPath = await this.storage.save(cmd.fileBuffer, relativePath);
+    const storedPath = await storeDisplayableImage(
+      this.storage,
+      this.converter,
+      cmd.fileBuffer,
+      cmd.originalName,
+      `investigation-case/${cmd.caseId}/reference-prints/${id}`,
+    );
     const referencePrint = ReferencePrint.create({
       id,
       path: storedPath,
@@ -47,10 +58,5 @@ export class UploadReferencePrintHandler implements ICommandHandler<
     await this.repo.save(referencePrint);
     const url = await this.storage.getUrl(storedPath);
     return { id, path: storedPath, url };
-  }
-
-  private getExtension(originalName: string): string {
-    const extension = path.extname(originalName);
-    return extension.length > 0 ? extension : '.bin';
   }
 }

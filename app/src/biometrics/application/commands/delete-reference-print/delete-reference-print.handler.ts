@@ -9,6 +9,7 @@ import {
   IMAGE_STORAGE,
   ImageStoragePort,
 } from '../../ports/image-storage.port';
+import { archivedOriginalPath } from '../../services/displayable-image';
 import { DeleteReferencePrintCommand } from './delete-reference-print.command';
 
 @CommandHandler(DeleteReferencePrintCommand)
@@ -30,5 +31,9 @@ export class DeleteReferencePrintHandler implements ICommandHandler<
     }
     await this.repo.delete(cmd.id);
     await this.storage.delete(rp.path);
+    const archived = archivedOriginalPath(rp.path);
+    if (archived) {
+      await this.storage.delete(archived);
+    }
   }
 }

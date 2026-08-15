@@ -11,7 +11,8 @@ export class RecordHitDto {
   caseId!: string;
 
   @ApiProperty({
-    description: "UUID de l'empreinte de référence en correspondance avec la trace",
+    description:
+      "UUID de l'empreinte de référence en correspondance avec la trace",
     format: 'uuid',
   })
   @IsUUID()

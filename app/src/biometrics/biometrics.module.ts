@@ -15,6 +15,7 @@ import { RecordHitHandler } from './application/commands/record-hit/record-hit.h
 import { RemoveHitHandler } from './application/commands/remove-hit/remove-hit.handler';
 import { ListHitsHandler } from './application/queries/list-hits/list-hits.handler';
 import { IMAGE_STORAGE } from './application/ports/image-storage.port';
+import { IMAGE_CONVERTER } from './application/ports/image-converter.port';
 import { CASE_STATUS } from './application/ports/case-status.port';
 import { FINGERPRINT_MATCHER } from './application/ports/fingerprint-matcher.port';
 import { TRACE_READER } from './application/queries/list-traces/trace.reader';
@@ -38,6 +39,7 @@ import { PrismaLayerReader } from './infrastructure/persistence/prisma-layer.rea
 import { PrismaMatchingRepository } from './infrastructure/persistence/prisma-matching.repository';
 import { PrismaHitRepository } from './infrastructure/persistence/prisma-hit.repository';
 import { PrismaHitReader } from './infrastructure/persistence/prisma-hit.reader';
+import { SharpImageConverterAdapter } from './infrastructure/conversion/sharp-image-converter.adapter';
 import { GcsImageStorageAdapter } from './infrastructure/storage/gcs-image-storage.adapter';
 import { InMemoryImageStorageAdapter } from './infrastructure/storage/in-memory-image-storage.adapter';
 import { DataFingerprintMatcherAdapter } from './infrastructure/matching/data-fingerprint-matcher.adapter';
@@ -73,6 +75,7 @@ import { DataFingerprintMatcherAdapter } from './infrastructure/matching/data-fi
     { provide: REFERENCE_PRINT_READER, useClass: PrismaReferencePrintReader },
     { provide: LAYER_READER, useClass: PrismaLayerReader },
     { provide: HIT_READER, useClass: PrismaHitReader },
+    { provide: IMAGE_CONVERTER, useClass: SharpImageConverterAdapter },
     {
       provide: IMAGE_STORAGE,
       useFactory: (): GcsImageStorageAdapter | InMemoryImageStorageAdapter => {

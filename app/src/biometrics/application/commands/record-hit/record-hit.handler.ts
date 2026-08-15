@@ -26,9 +26,10 @@ import {
 import { RecordHitCommand } from './record-hit.command';
 
 @CommandHandler(RecordHitCommand)
-export class RecordHitHandler
-  implements ICommandHandler<RecordHitCommand, void>
-{
+export class RecordHitHandler implements ICommandHandler<
+  RecordHitCommand,
+  void
+> {
   constructor(
     @Inject(TRACE_REPOSITORY)
     private readonly traceRepo: TraceRepository,

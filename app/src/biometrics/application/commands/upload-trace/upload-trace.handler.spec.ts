@@ -3,6 +3,7 @@ import { CaseUnavailableForTraceError } from '../../../domain/trace/errors/case-
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
 import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
+import { InMemoryImageConverter } from '../../../infrastructure/conversion/in-memory-image-converter.adapter';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
 import { UploadTraceCommand } from './upload-trace.command';
 import { UploadTraceHandler } from './upload-trace.handler';
@@ -19,7 +20,13 @@ describe('UploadTraceHandler', () => {
     storage = new InMemoryImageStorageAdapter();
     caseStatus = new InMemoryCaseStatusAdapter();
     idGenerator = { generate: jest.fn().mockReturnValue('trace-123') };
-    handler = new UploadTraceHandler(repo, storage, idGenerator, caseStatus);
+    handler = new UploadTraceHandler(
+      repo,
+      storage,
+      idGenerator,
+      caseStatus,
+      new InMemoryImageConverter(),
+    );
   });
 
   const command = (caseId = 'case-9') =>

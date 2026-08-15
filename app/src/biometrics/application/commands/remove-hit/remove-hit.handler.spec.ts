@@ -17,7 +17,11 @@ describe('RemoveHitHandler', () => {
 
   const seedTraceAndReference = async (): Promise<void> => {
     await traceRepo.save(
-      Trace.upload({ id: 'trace-1', path: 'media/trace-1.png', caseId: 'case-1' }),
+      Trace.upload({
+        id: 'trace-1',
+        path: 'media/trace-1.png',
+        caseId: 'case-1',
+      }),
     );
     await referencePrintRepo.save(
       ReferencePrint.create({
@@ -75,7 +79,11 @@ describe('RemoveHitHandler', () => {
 
   it('rejects when the reference print belongs to another case (IDOR)', async () => {
     await traceRepo.save(
-      Trace.upload({ id: 'trace-1', path: 'media/trace-1.png', caseId: 'case-1' }),
+      Trace.upload({
+        id: 'trace-1',
+        path: 'media/trace-1.png',
+        caseId: 'case-1',
+      }),
     );
     await referencePrintRepo.save(
       ReferencePrint.create({

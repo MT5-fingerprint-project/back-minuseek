@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { Inject } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Trace } from '../../../domain/trace/entity/trace';
@@ -14,7 +13,12 @@ import {
   IMAGE_STORAGE,
   ImageStoragePort,
 } from '../../ports/image-storage.port';
+import {
+  IMAGE_CONVERTER,
+  ImageConverterPort,
+} from '../../ports/image-converter.port';
 import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
+import { storeDisplayableImage } from '../../services/displayable-image';
 import { UploadTraceCommand } from './upload-trace.command';
 
 @CommandHandler(UploadTraceCommand)
@@ -31,6 +35,8 @@ export class UploadTraceHandler implements ICommandHandler<
     private readonly idGenerator: IdGenerator,
     @Inject(CASE_STATUS)
     private readonly caseStatus: CaseStatusPort,
+    @Inject(IMAGE_CONVERTER)
+    private readonly converter: ImageConverterPort,
   ) {}
 
   async execute(
@@ -40,8 +46,13 @@ export class UploadTraceHandler implements ICommandHandler<
     Trace.assertCaseCanReceiveTrace(cmd.caseId, caseStatus);
 
     const id = this.idGenerator.generate();
-    const relativePath = `investigation-case/${cmd.caseId}/traces/${id}${this.getExtension(cmd.originalName)}`;
-    const storedPath = await this.storage.save(cmd.fileBuffer, relativePath);
+    const storedPath = await storeDisplayableImage(
+      this.storage,
+      this.converter,
+      cmd.fileBuffer,
+      cmd.originalName,
+      `investigation-case/${cmd.caseId}/traces/${id}`,
+    );
     const trace = Trace.upload({
       id,
       path: storedPath,
@@ -50,10 +61,5 @@ export class UploadTraceHandler implements ICommandHandler<
     await this.repo.save(trace);
     const url = await this.storage.getUrl(storedPath);
     return { id, path: storedPath, url };
-  }
-
-  private getExtension(originalName: string): string {
-    const extension = path.extname(originalName);
-    return extension.length > 0 ? extension : '.bin';
   }
 }

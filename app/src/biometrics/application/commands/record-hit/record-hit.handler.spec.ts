@@ -34,7 +34,13 @@ describe('RecordHitHandler', () => {
           name: 'Minutie',
           type: 'ANNOTATION',
           zIndex: i,
-          settings: { type: settingsType, x: i, y: i, radius: 5, color: '#fff' },
+          settings: {
+            type: settingsType,
+            x: i,
+            y: i,
+            radius: 5,
+            color: '#fff',
+          },
         }),
       );
     }
@@ -57,7 +63,11 @@ describe('RecordHitHandler', () => {
 
   const seedTraceAndReference = async (): Promise<void> => {
     await traceRepo.save(
-      Trace.upload({ id: 'trace-1', path: 'media/trace-1.png', caseId: 'case-1' }),
+      Trace.upload({
+        id: 'trace-1',
+        path: 'media/trace-1.png',
+        caseId: 'case-1',
+      }),
     );
     await referencePrintRepo.save(
       ReferencePrint.create({
@@ -143,7 +153,11 @@ describe('RecordHitHandler', () => {
 
   it('rejects when the reference print belongs to another case (IDOR)', async () => {
     await traceRepo.save(
-      Trace.upload({ id: 'trace-1', path: 'media/trace-1.png', caseId: 'case-1' }),
+      Trace.upload({
+        id: 'trace-1',
+        path: 'media/trace-1.png',
+        caseId: 'case-1',
+      }),
     );
     await referencePrintRepo.save(
       ReferencePrint.create({
