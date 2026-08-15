@@ -21,6 +21,7 @@ export class CreateLayerHandler implements ICommandHandler<CreateLayerCommand> {
       type: command.type,
       zIndex: command.zIndex,
       settings: command.settings,
+      userId: command.userId,
     });
     await this.repository.save(layer);
   }

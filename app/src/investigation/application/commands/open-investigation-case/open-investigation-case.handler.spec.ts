@@ -40,6 +40,25 @@ describe('OpenInvestigationCaseHandler', () => {
     expect(saved!.status).toBe(InvestigationCaseStatusEnum.OPEN);
   });
 
+  it("rattache l'utilisateur créateur quand il est fourni", async () => {
+    const id = await handler.execute(
+      new OpenInvestigationCaseCommand(
+        'AFF-001',
+        'PV-2024-001',
+        undefined,
+        'user-1',
+      ),
+    );
+    expect(repo.store.get(id)!.userId).toBe('user-1');
+  });
+
+  it('laisse userId à null sans utilisateur résolu', async () => {
+    const id = await handler.execute(
+      new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-001'),
+    );
+    expect(repo.store.get(id)!.userId).toBeNull();
+  });
+
   it('lève CaseNumberAlreadyExistsError si caseNumber déjà utilisé', async () => {
     await handler.execute(
       new OpenInvestigationCaseCommand('AFF-001', 'PV-2024-001'),

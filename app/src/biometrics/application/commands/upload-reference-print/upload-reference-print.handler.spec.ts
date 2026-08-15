@@ -45,4 +45,21 @@ describe('UploadReferencePrintHandler', () => {
         ?.toString(),
     ).toBe('clean-print');
   });
+
+  it("rattache l'utilisateur qui uploade quand il est fourni", async () => {
+    await handler.execute(
+      new UploadReferencePrintCommand(
+        Buffer.from('clean-print'),
+        'thumb.png',
+        'image/png',
+        'case-9',
+        null,
+        null,
+        'user-1',
+      ),
+    );
+
+    const saved = await repo.findById('ref-456');
+    expect(saved?.userId).toBe('user-1');
+  });
 });

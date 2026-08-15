@@ -31,6 +31,7 @@ export class PrismaSubjectRepository implements SubjectRepository {
       where: { id: p.id },
       create: {
         id: p.id,
+        userId: p.userId,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
         ...data,

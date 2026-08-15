@@ -41,6 +41,24 @@ describe('CreateLayerHandler', () => {
       zIndex: 0,
       isVisible: true,
       settings,
+      userId: null,
     });
+  });
+
+  it("rattache l'utilisateur créateur quand il est fourni", async () => {
+    await handler.execute(
+      new CreateLayerCommand(
+        'layer-2',
+        'fp-1',
+        'Point',
+        'ANNOTATION',
+        0,
+        { type: 'circle' },
+        'user-1',
+      ),
+    );
+
+    const saved = await repo.findById('layer-2');
+    expect(saved?.userId).toBe('user-1');
   });
 });

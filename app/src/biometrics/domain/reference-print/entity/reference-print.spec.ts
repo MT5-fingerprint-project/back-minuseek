@@ -57,12 +57,14 @@ describe('ReferencePrint', () => {
         caseId: 'case-1',
         subjectId: 'subject-1',
         position: 'LEFT_PALM',
+        userId: 'user-1',
       });
 
       expect(rp.id).toBe('r-1');
       expect(rp.caseId).toBe('case-1');
       expect(rp.subjectId).toBe('subject-1');
       expect(rp.position?.getValue()).toBe('LEFT_PALM');
+      expect(rp.userId).toBe('user-1');
     });
   });
 
@@ -80,6 +82,7 @@ describe('ReferencePrint', () => {
         caseId: 'c-1',
         subjectId: null,
         position: null,
+        userId: null,
       });
     });
   });

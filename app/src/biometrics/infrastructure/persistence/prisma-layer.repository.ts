@@ -11,8 +11,16 @@ export class PrismaLayerRepository implements LayerRepository {
 
   async save(layer: Layer): Promise<void> {
     const prisma = await this.tenantConnection.getCurrentClient();
-    const { id, fingerprintId, name, type, zIndex, isVisible, settings } =
-      layer.toPrimitives();
+    const {
+      id,
+      fingerprintId,
+      name,
+      type,
+      zIndex,
+      isVisible,
+      settings,
+      userId,
+    } = layer.toPrimitives();
     const payload = {
       fingerprintId,
       name,
@@ -23,7 +31,7 @@ export class PrismaLayerRepository implements LayerRepository {
     };
     await prisma.layer.upsert({
       where: { id },
-      create: { id, ...payload },
+      create: { id, userId, ...payload },
       update: payload,
     });
   }

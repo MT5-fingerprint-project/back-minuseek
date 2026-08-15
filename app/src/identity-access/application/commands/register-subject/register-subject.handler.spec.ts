@@ -25,6 +25,7 @@ const buildCommand = (overrides: Partial<RegisterSubjectCommand> = {}) =>
     overrides.secondParentName ?? 'Anne Dupont',
     overrides.phoneNumber ?? '+33612345678',
     overrides.color ?? '#FF5733',
+    overrides.userId ?? null,
   );
 
 describe('RegisterSubjectHandler', () => {
@@ -49,6 +50,12 @@ describe('RegisterSubjectHandler', () => {
     expect(stored?.sex.getValue()).toBe(SexEnum.MALE);
     expect(stored?.type.getValue()).toBe(SubjectTypeEnum.PERSON_OF_INTEREST);
     expect(stored?.color).toBe('#FF5733');
+  });
+
+  it("rattache l'utilisateur créateur quand il est fourni", async () => {
+    const id = await handler.execute(buildCommand({ userId: 'user-1' }));
+
+    expect(repo.store.get(id)?.userId).toBe('user-1');
   });
 
   it('normalise les champs optionnels vides en null', async () => {

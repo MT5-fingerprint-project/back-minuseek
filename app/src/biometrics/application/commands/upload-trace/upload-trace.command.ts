@@ -4,5 +4,6 @@ export class UploadTraceCommand {
     public readonly originalName: string,
     public readonly mimeType: string,
     public readonly caseId: string,
+    public readonly userId: string | null = null,
   ) {}
 }

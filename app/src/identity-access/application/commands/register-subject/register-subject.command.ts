@@ -11,5 +11,6 @@ export class RegisterSubjectCommand {
     public readonly secondParentName?: string | null,
     public readonly phoneNumber?: string | null,
     public readonly color?: string | null,
+    public readonly userId: string | null = null,
   ) {}
 }

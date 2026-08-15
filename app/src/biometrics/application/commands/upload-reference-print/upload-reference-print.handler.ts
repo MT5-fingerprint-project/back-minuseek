@@ -43,6 +43,7 @@ export class UploadReferencePrintHandler implements ICommandHandler<
       caseId: cmd.caseId,
       subjectId: cmd.subjectId ?? null,
       position: cmd.position ? FingerPosition.from(cmd.position) : null,
+      userId: cmd.userId,
     });
     await this.repo.save(referencePrint);
     const url = await this.storage.getUrl(storedPath);

@@ -6,5 +6,6 @@ export class UploadReferencePrintCommand {
     public readonly caseId: string,
     public readonly subjectId?: string | null,
     public readonly position?: string | null,
+    public readonly userId: string | null = null,
   ) {}
 }

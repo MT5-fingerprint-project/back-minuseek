@@ -22,13 +22,23 @@ describe('UploadTraceHandler', () => {
     handler = new UploadTraceHandler(repo, storage, idGenerator, caseStatus);
   });
 
-  const command = (caseId = 'case-9') =>
+  const command = (caseId = 'case-9', userId: string | null = null) =>
     new UploadTraceCommand(
       Buffer.from('test-image'),
       'fingerprint.png',
       'image/png',
       caseId,
+      userId,
     );
+
+  it("rattache l'utilisateur qui uploade quand il est fourni", async () => {
+    caseStatus.set('case-9', 'OPEN');
+
+    await handler.execute(command('case-9', 'user-1'));
+
+    const saved = await repo.findById('trace-123');
+    expect(saved?.userId).toBe('user-1');
+  });
 
   it('stores the file under media/{caseId}/traces, persists the trace as RECEIVED and returns id, path and url', async () => {
     caseStatus.set('case-9', 'OPEN');

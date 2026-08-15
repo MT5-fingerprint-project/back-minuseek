@@ -18,6 +18,9 @@ import { UpdateLayerCommand } from '../../application/commands/update-layer/upda
 import { DeleteLayerCommand } from '../../application/commands/delete-layer/delete-layer.command';
 import { ListLayersQuery } from '../../application/queries/list-layers/list-layers.query';
 import { LayerNotFoundError } from '../../domain/layer/errors/layer-not-found.error';
+import { resolveUserId } from '../../../identity-access/application/queries/get-user-by-provider-id/resolve-user-id';
+import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
+import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
 import { CreateLayerDto } from './dto/create-layer.dto';
 import { UpdateLayerDto } from './dto/update-layer.dto';
 
@@ -43,8 +46,12 @@ export class LayersController {
   @ApiOperation({ summary: 'Créer un calque' })
   @ApiResponse({ status: 201, description: 'Calque créé' })
   @ApiResponse({ status: 400, description: 'Payload invalide' })
-  createLayer(@Body() dto: CreateLayerDto) {
-    return this.commandBus.execute(
+  async createLayer(
+    @Body() dto: CreateLayerDto,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    const userId = await resolveUserId(this.queryBus, user?.sub);
+    return this.commandBus.execute<CreateLayerCommand, void>(
       new CreateLayerCommand(
         dto.id ?? randomUUID(),
         dto.fingerprintId,
@@ -52,6 +59,7 @@ export class LayersController {
         dto.type,
         dto.zIndex,
         dto.settings,
+        userId,
       ),
     );
   }

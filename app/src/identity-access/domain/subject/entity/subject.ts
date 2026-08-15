@@ -14,6 +14,7 @@ interface RegisterSubjectProps {
   type: SubjectType;
   color?: string | null;
   caseId: string;
+  userId?: string | null;
 }
 
 export interface SubjectPrimitives {
@@ -29,6 +30,7 @@ export interface SubjectPrimitives {
   type: string;
   color: string | null;
   caseId: string;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,6 +49,7 @@ export class Subject {
     private readonly _type: SubjectType,
     private readonly _color: string | null,
     private readonly _caseId: string,
+    private readonly _userId: string | null,
     private readonly _createdAt: Date,
     private readonly _updatedAt: Date,
   ) {}
@@ -87,6 +90,7 @@ export class Subject {
       props.type,
       Subject.normalizeOptional(props.color),
       props.caseId,
+      props.userId ?? null,
       now,
       now,
     );
@@ -106,6 +110,7 @@ export class Subject {
       SubjectType.from(primitives.type),
       primitives.color,
       primitives.caseId,
+      primitives.userId,
       primitives.createdAt,
       primitives.updatedAt,
     );
@@ -130,6 +135,7 @@ export class Subject {
       type: this._type.getValue(),
       color: this._color,
       caseId: this._caseId,
+      userId: this._userId,
       createdAt: this._createdAt,
       updatedAt: this._updatedAt,
     };
@@ -181,6 +187,10 @@ export class Subject {
 
   get caseId(): string {
     return this._caseId;
+  }
+
+  get userId(): string | null {
+    return this._userId;
   }
 
   get createdAt(): Date {

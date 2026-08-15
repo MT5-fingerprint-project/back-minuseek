@@ -34,7 +34,7 @@ import { RemoveHitCommand } from '../../application/commands/remove-hit/remove-h
 import { ListTracesQuery } from '../../application/queries/list-traces/list-traces.query';
 import { ListReferencePrintsQuery } from '../../application/queries/list-reference-prints/list-reference-prints.query';
 import { ListHitsQuery } from '../../application/queries/list-hits/list-hits.query';
-import { GetUserByProviderIdQuery } from '../../../identity-access/application/queries/get-user-by-provider-id/get-user-by-provider-id.query';
+import { resolveUserId } from '../../../identity-access/application/queries/get-user-by-provider-id/resolve-user-id';
 import { TraceNotFoundError } from '../../domain/trace/errors/trace-not-found.error';
 import { CaseUnavailableForTraceError } from '../../domain/trace/errors/case-unavailable-for-trace.error';
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
@@ -146,7 +146,9 @@ export class BiometricsController {
     @UploadedFile(imageFileValidator())
     file: { buffer: Buffer; originalname: string; mimetype: string },
     @Body() dto: UploadTraceDto,
+    @CurrentUser() user?: AuthenticatedUser,
   ) {
+    const userId = await resolveUserId(this.queryBus, user?.sub);
     try {
       return await this.commandBus.execute<
         UploadTraceCommand,
@@ -157,6 +159,7 @@ export class BiometricsController {
           file.originalname,
           file.mimetype,
           dto.caseId,
+          userId,
         ),
       );
     } catch (e) {
@@ -191,11 +194,13 @@ export class BiometricsController {
       'Fichier manquant, type non supporté (PNG/JPEG/TIFF), caseId/subjectId ou position invalide',
   })
   @UseInterceptors(FileInterceptor('file'))
-  uploadReferencePrint(
+  async uploadReferencePrint(
     @UploadedFile(imageFileValidator())
     file: { buffer: Buffer; originalname: string; mimetype: string },
     @Body() dto: UploadReferencePrintDto,
+    @CurrentUser() user?: AuthenticatedUser,
   ) {
+    const userId = await resolveUserId(this.queryBus, user?.sub);
     return this.commandBus.execute<
       UploadReferencePrintCommand,
       { id: string; path: string; url: string }
@@ -207,6 +212,7 @@ export class BiometricsController {
         dto.caseId,
         dto.subjectId,
         dto.position,
+        userId,
       ),
     );
   }
@@ -262,7 +268,7 @@ export class BiometricsController {
     @Body() dto: RecordHitDto,
     @CurrentUser() user?: AuthenticatedUser,
   ): Promise<void> {
-    const declaredByUserId = await this.resolveUserId(user);
+    const declaredByUserId = await resolveUserId(this.queryBus, user?.sub);
     try {
       await this.commandBus.execute(
         new RecordHitCommand(
@@ -326,20 +332,5 @@ export class BiometricsController {
     @Param('id', ParseUUIDPipe) traceId: string,
   ): Promise<{ referencePrintIds: string[] }> {
     return this.queryBus.execute(new ListHitsQuery(traceId));
-  }
-
-  private async resolveUserId(
-    user?: AuthenticatedUser,
-  ): Promise<string | null> {
-    if (!user?.sub) return null;
-    try {
-      const found = await this.queryBus.execute<
-        GetUserByProviderIdQuery,
-        { id: string }
-      >(new GetUserByProviderIdQuery(user.sub));
-      return found.id;
-    } catch {
-      return null;
-    }
   }
 }

@@ -17,6 +17,7 @@ export class PrismaReferencePrintRepository implements ReferencePrintRepository 
       caseId: p.caseId,
       subjectId: p.subjectId,
       position: p.position as PrismaFingerPosition | null,
+      userId: p.userId,
     };
     await prisma.referencePrint.upsert({
       where: { id: data.id },

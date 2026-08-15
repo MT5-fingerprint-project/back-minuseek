@@ -6,6 +6,7 @@ export interface ReferencePrintPrimitives {
   caseId: string;
   subjectId: string | null;
   position: string | null;
+  userId: string | null;
 }
 
 interface CreateReferencePrintProps {
@@ -14,6 +15,7 @@ interface CreateReferencePrintProps {
   caseId: string;
   subjectId?: string | null;
   position?: FingerPosition | null;
+  userId?: string | null;
 }
 
 export class ReferencePrint {
@@ -23,6 +25,7 @@ export class ReferencePrint {
     private readonly _caseId: string,
     private readonly _subjectId: string | null,
     private readonly _position: FingerPosition | null,
+    private readonly _userId: string | null,
   ) {}
 
   static create(props: CreateReferencePrintProps): ReferencePrint {
@@ -41,6 +44,7 @@ export class ReferencePrint {
       props.caseId,
       props.subjectId ?? null,
       props.position ?? null,
+      props.userId ?? null,
     );
   }
 
@@ -51,6 +55,7 @@ export class ReferencePrint {
       primitives.caseId,
       primitives.subjectId,
       primitives.position ? FingerPosition.from(primitives.position) : null,
+      primitives.userId,
     );
   }
 
@@ -61,6 +66,7 @@ export class ReferencePrint {
       caseId: this._caseId,
       subjectId: this._subjectId,
       position: this._position ? this._position.getValue() : null,
+      userId: this._userId,
     };
   }
 
@@ -82,5 +88,9 @@ export class ReferencePrint {
 
   get position(): FingerPosition | null {
     return this._position;
+  }
+
+  get userId(): string | null {
+    return this._userId;
   }
 }

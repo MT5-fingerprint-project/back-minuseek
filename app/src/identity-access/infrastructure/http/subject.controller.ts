@@ -14,6 +14,9 @@ import { GetSubjectByIdQuery } from '../../application/queries/get-subject-by-id
 import { SubjectReadModel } from '../../application/queries/get-subject-by-id/subject-read-model';
 import { ListSubjectsByCaseQuery } from '../../application/queries/list-subjects-by-case/list-subjects-by-case.query';
 import { RegisterSubjectCommand } from '../../application/commands/register-subject/register-subject.command';
+import { resolveUserId } from '../../application/queries/get-user-by-provider-id/resolve-user-id';
+import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
+import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
 import { SubjectNotFoundError } from '../../domain/subject/errors/subject-not-found.error';
 import { RegisterSubjectDto } from './dto/register-subject.dto';
 import { ListSubjectsDto } from './dto/list-subjects.dto';
@@ -32,7 +35,11 @@ export class SubjectController {
     status: 201,
     description: 'Sujet créé et rattaché à l’affaire',
   })
-  async register(@Body() dto: RegisterSubjectDto) {
+  async register(
+    @Body() dto: RegisterSubjectDto,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    const userId = await resolveUserId(this.queryBus, user?.sub);
     const id = await this.commandBus.execute<RegisterSubjectCommand, string>(
       new RegisterSubjectCommand(
         dto.firstName,
@@ -46,6 +53,7 @@ export class SubjectController {
         dto.secondParentName,
         dto.phoneNumber,
         dto.color,
+        userId,
       ),
     );
     return { id };

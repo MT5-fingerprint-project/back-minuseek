@@ -4,6 +4,7 @@ model ReferencePrint {
   caseId    String          @db.Uuid
   subjectId String?         @db.Uuid
   position  FingerPosition?
+  userId    String?         @db.Uuid
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 

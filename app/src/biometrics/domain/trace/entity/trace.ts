@@ -11,12 +11,14 @@ export interface TracePrimitives {
   status: TraceStatusEnum;
   score: number | null;
   caseId: string;
+  userId: string | null;
 }
 
 interface UploadTraceProps {
   id: string;
   path: string;
   caseId: string;
+  userId?: string | null;
 }
 
 export class Trace {
@@ -26,6 +28,7 @@ export class Trace {
     private _status: TraceStatus,
     private _score: ExploitabilityScore | null,
     private readonly _caseId: string,
+    private readonly _userId: string | null,
   ) {}
 
   static assertCaseCanReceiveTrace(
@@ -56,6 +59,7 @@ export class Trace {
       TraceStatus.received(),
       null,
       props.caseId,
+      props.userId ?? null,
     );
   }
 
@@ -65,6 +69,7 @@ export class Trace {
     status: string;
     score: number | null;
     caseId: string;
+    userId: string | null;
   }): Trace {
     return new Trace(
       payload.id,
@@ -72,6 +77,7 @@ export class Trace {
       TraceStatus.from(payload.status),
       payload.score === null ? null : ExploitabilityScore.of(payload.score),
       payload.caseId,
+      payload.userId,
     );
   }
 
@@ -92,6 +98,7 @@ export class Trace {
       status: this._status.getValue(),
       score: this._score?.getValue() ?? null,
       caseId: this._caseId,
+      userId: this._userId,
     };
   }
 
@@ -113,5 +120,9 @@ export class Trace {
 
   get caseId(): string {
     return this._caseId;
+  }
+
+  get userId(): string | null {
+    return this._userId;
   }
 }

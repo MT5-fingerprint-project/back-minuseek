@@ -40,6 +40,7 @@ export class RegisterSubjectHandler implements ICommandHandler<
       type: SubjectType.from(cmd.type),
       color: cmd.color,
       caseId: cmd.caseId,
+      userId: cmd.userId,
     });
     await this.repo.save(subject);
     return id;

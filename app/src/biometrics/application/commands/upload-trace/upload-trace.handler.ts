@@ -46,6 +46,7 @@ export class UploadTraceHandler implements ICommandHandler<
       id,
       path: storedPath,
       caseId: cmd.caseId,
+      userId: cmd.userId,
     });
     await this.repo.save(trace);
     const url = await this.storage.getUrl(storedPath);

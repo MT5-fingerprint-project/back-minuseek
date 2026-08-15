@@ -34,6 +34,7 @@ export class OpenInvestigationCaseHandler implements ICommandHandler<
       caseNumber: cmd.caseNumber,
       pvNumber: cmd.pvNumber,
       description: cmd.description,
+      userId: cmd.userId,
     });
     await this.repo.save(newCase);
     return id;

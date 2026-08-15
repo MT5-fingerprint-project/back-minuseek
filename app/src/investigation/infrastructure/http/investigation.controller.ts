@@ -10,6 +10,9 @@ import {
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { resolveUserId } from '../../../identity-access/application/queries/get-user-by-provider-id/resolve-user-id';
+import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
+import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
 import { CaseNumberAlreadyExistsError } from '../../domain/investigation-case/errors/case-number-already-exists.error';
 import { CaseNotFoundError } from '../../domain/investigation-case/errors/case-not-found.error';
 import { OpenInvestigationCaseCommand } from '../../application/commands/open-investigation-case/open-investigation-case.command';
@@ -31,7 +34,11 @@ export class InvestigationController {
   @ApiOperation({ summary: 'Ouvrir une nouvelle affaire' })
   @ApiResponse({ status: 201, description: 'affaire créé' })
   @ApiResponse({ status: 409, description: "Numéro d'affaire déjà existant" })
-  async open(@Body() dto: OpenInvestigationCaseDto) {
+  async open(
+    @Body() dto: OpenInvestigationCaseDto,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    const userId = await resolveUserId(this.queryBus, user?.sub);
     try {
       const id = await this.commandBus.execute<
         OpenInvestigationCaseCommand,
@@ -41,6 +48,7 @@ export class InvestigationController {
           dto.caseNumber,
           dto.pvNumber,
           dto.description,
+          userId,
         ),
       );
       return { id };

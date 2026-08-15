@@ -97,11 +97,13 @@ describe('Trace', () => {
         status: TraceStatusEnum.EXPLOITABLE,
         score: 18,
         caseId: 'case-9',
+        userId: 'user-1',
       });
 
       expect(trace.status).toBe(TraceStatusEnum.EXPLOITABLE);
       expect(trace.score).toBe(18);
       expect(trace.caseId).toBe('case-9');
+      expect(trace.userId).toBe('user-1');
     });
   });
 });
