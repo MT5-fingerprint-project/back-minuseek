@@ -1,3 +1,4 @@
+import { FileDigest } from '../../file-digest.vo';
 import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-trace.error';
 import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
 import { CaptureMetadata } from '../value-objects/capture-metadata.vo';
@@ -12,6 +13,7 @@ export interface TracePrimitives {
   status: TraceStatusEnum;
   score: number | null;
   caseId: string;
+  sha256: string | null;
   captureWidth: number | null;
   captureHeight: number | null;
   capturedAt: Date | null;
@@ -24,6 +26,7 @@ interface UploadTraceProps {
   id: string;
   path: string;
   caseId: string;
+  sha256: FileDigest;
   captureMetadata?: CaptureMetadata;
 }
 
@@ -34,6 +37,7 @@ export class Trace {
     private _status: TraceStatus,
     private _score: ExploitabilityScore | null,
     private readonly _caseId: string,
+    private readonly _sha256: FileDigest | null,
     private readonly _captureMetadata: CaptureMetadata,
   ) {}
 
@@ -65,6 +69,7 @@ export class Trace {
       TraceStatus.received(),
       null,
       props.caseId,
+      props.sha256,
       props.captureMetadata ?? CaptureMetadata.empty(),
     );
   }
@@ -75,6 +80,7 @@ export class Trace {
     status: string;
     score: number | null;
     caseId: string;
+    sha256: string | null;
     captureWidth: number | null;
     captureHeight: number | null;
     capturedAt: Date | null;
@@ -88,6 +94,7 @@ export class Trace {
       TraceStatus.from(payload.status),
       payload.score === null ? null : ExploitabilityScore.of(payload.score),
       payload.caseId,
+      payload.sha256 === null ? null : FileDigest.from(payload.sha256),
       CaptureMetadata.of({
         width: payload.captureWidth ?? undefined,
         height: payload.captureHeight ?? undefined,
@@ -116,6 +123,7 @@ export class Trace {
       status: this._status.getValue(),
       score: this._score?.getValue() ?? null,
       caseId: this._caseId,
+      sha256: this._sha256?.getValue() ?? null,
       captureWidth: this._captureMetadata.width ?? null,
       captureHeight: this._captureMetadata.height ?? null,
       capturedAt: this._captureMetadata.capturedAt ?? null,
@@ -143,6 +151,10 @@ export class Trace {
 
   get caseId(): string {
     return this._caseId;
+  }
+
+  get sha256(): string | null {
+    return this._sha256?.getValue() ?? null;
   }
 
   get captureMetadata(): CaptureMetadata {
