@@ -4,6 +4,7 @@ import {
   Delete,
   FileTypeValidator,
   Get,
+  MaxFileSizeValidator,
   HttpCode,
   NotFoundException,
   Param,
@@ -44,6 +45,7 @@ import { MatchingPrimitives } from '../../domain/matching/entity/matching';
 import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
 import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
 import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapper';
+import { DeletePieceDto } from './dto/delete-piece.dto';
 import { UploadTraceDto } from './dto/upload-trace.dto';
 import { UploadReferencePrintDto } from './dto/upload-reference-print.dto';
 import { ListTracesDto } from './dto/list-traces.dto';
@@ -52,6 +54,10 @@ import { CompareTraceDto } from './dto/compare-trace.dto';
 import { RecordHitDto } from './dto/record-hit.dto';
 
 const IMAGE_MIME = /^image\/(png|jpe?g|tiff)$/;
+const MAX_IMAGE_SIZE_BYTES = 20 * 1024 * 1024;
+
+const statedReason = (dto: DeletePieceDto): string | null =>
+  dto.reason?.trim() || null;
 
 // Les champs d'un multipart arrivent tous en chaîne : ce pipe local active
 // `transform` pour que le contrôleur reçoive des nombres. Le pipe global de
@@ -65,7 +71,10 @@ const captureMetadataPipe = () =>
 
 const imageFileValidator = () =>
   new ParseFilePipe({
-    validators: [new FileTypeValidator({ fileType: IMAGE_MIME })],
+    validators: [
+      new FileTypeValidator({ fileType: IMAGE_MIME }),
+      new MaxFileSizeValidator({ maxSize: MAX_IMAGE_SIZE_BYTES }),
+    ],
     fileIsRequired: true,
   });
 
@@ -103,11 +112,12 @@ export class BiometricsController {
   @ApiResponse({ status: 404, description: 'Trace non trouvée' })
   async deleteTrace(
     @Param('id', ParseUUIDPipe) id: string,
+    @Query() dto: DeletePieceDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     try {
       await this.commandBus.execute(
-        new DeleteTraceCommand(toAuditActor(user), id),
+        new DeleteTraceCommand(toAuditActor(user), id, statedReason(dto)),
       );
     } catch (e) {
       if (e instanceof TraceNotFoundError)
@@ -126,11 +136,16 @@ export class BiometricsController {
   })
   async deleteReferencePrint(
     @Param('id', ParseUUIDPipe) id: string,
+    @Query() dto: DeletePieceDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     try {
       await this.commandBus.execute(
-        new DeleteReferencePrintCommand(toAuditActor(user), id),
+        new DeleteReferencePrintCommand(
+          toAuditActor(user),
+          id,
+          statedReason(dto),
+        ),
       );
     } catch (e) {
       if (e instanceof ReferencePrintNotFoundError)
@@ -170,7 +185,7 @@ export class BiometricsController {
   @ApiResponse({
     status: 400,
     description:
-      'Fichier manquant, type non supporté (PNG/JPEG/TIFF), caseId invalide, ' +
+      'Fichier manquant, type non supporté (PNG/JPEG/TIFF), au-delà de 20 Mo, caseId invalide, ' +
       'métadonnées de capture invalides (dimensions non appairées, orientation hors 1–8, ' +
       'focale négative, capturedAt non ISO 8601) ou champ inconnu',
   })
@@ -236,7 +251,7 @@ export class BiometricsController {
   @ApiResponse({
     status: 400,
     description:
-      'Fichier manquant, type non supporté (PNG/JPEG/TIFF), caseId/subjectId ou position invalide',
+      'Fichier manquant, type non supporté (PNG/JPEG/TIFF), au-delà de 20 Mo, caseId/subjectId ou position invalide',
   })
   @UseInterceptors(FileInterceptor('file'))
   uploadReferencePrint(

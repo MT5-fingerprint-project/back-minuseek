@@ -1,4 +1,6 @@
 import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
+import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
+import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { TraceStatusEnum } from '../../../domain/trace/value-objects/trace-status.vo';
 import { CaseUnavailableForTraceError } from '../../../domain/trace/errors/case-unavailable-for-trace.error';
 import { InvalidCaptureMetadataError } from '../../../domain/trace/errors/invalid-capture-metadata.error';
@@ -6,23 +8,52 @@ import { CaptureMetadataProps } from '../../../domain/trace/value-objects/captur
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
 import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
+import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
+import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
+import { TransactionRunner } from '../../../../shared/domain/ports/transaction-runner';
 import { UploadTraceCommand } from './upload-trace.command';
 import { UploadTraceHandler } from './upload-trace.handler';
+
+const TEST_IMAGE_SHA256 =
+  '9febe01bd41bfb69683e29d711d8adffc9ae38de17a6873464b416f3b67398b6';
+const STORED_PATH = 'media/investigation-case/case-9/traces/trace-123.png';
+
+class RollingBackTransactionRunner implements TransactionRunner {
+  constructor(private readonly failure: Error) {}
+
+  run<T>(): Promise<T> {
+    return Promise.reject(this.failure);
+  }
+}
 
 describe('UploadTraceHandler', () => {
   let handler: UploadTraceHandler;
   let repo: InMemoryTraceRepository;
   let storage: InMemoryImageStorageAdapter;
   let caseStatus: InMemoryCaseStatusAdapter;
+  let auditTrail: InMemoryAuditTrailAppender;
+  let transactionRunner: InMemoryTransactionRunner;
   let idGenerator: IdGenerator;
+
+  const buildHandler = (runner: TransactionRunner) =>
+    new UploadTraceHandler(
+      repo,
+      storage,
+      idGenerator,
+      caseStatus,
+      runner,
+      auditTrail,
+    );
 
   beforeEach(() => {
     repo = new InMemoryTraceRepository();
     storage = new InMemoryImageStorageAdapter();
     caseStatus = new InMemoryCaseStatusAdapter();
+    auditTrail = new InMemoryAuditTrailAppender();
+    transactionRunner = new InMemoryTransactionRunner();
     idGenerator = { generate: jest.fn().mockReturnValue('trace-123') };
-    handler = new UploadTraceHandler(repo, storage, idGenerator, caseStatus);
+    handler = buildHandler(transactionRunner);
   });
 
   const command = (caseId = 'case-9', capture?: CaptureMetadataProps) =>
@@ -42,14 +73,12 @@ describe('UploadTraceHandler', () => {
 
     expect(result).toEqual({
       id: 'trace-123',
-      path: 'media/investigation-case/case-9/traces/trace-123.png',
-      url: '/media/investigation-case/case-9/traces/trace-123.png',
+      path: STORED_PATH,
+      url: `/${STORED_PATH}`,
     });
 
     const saved = await repo.findById('trace-123');
-    expect(saved?.path).toBe(
-      'media/investigation-case/case-9/traces/trace-123.png',
-    );
+    expect(saved?.path).toBe(STORED_PATH);
     expect(saved?.status).toBe(TraceStatusEnum.RECEIVED);
     expect(saved?.caseId).toBe('case-9');
 
@@ -123,6 +152,71 @@ describe('UploadTraceHandler', () => {
     expect(await repo.findById('trace-123')).not.toBeNull();
   });
 
+  it('seals the deposited bytes on the trace', async () => {
+    caseStatus.set('case-9', 'OPEN');
+
+    await handler.execute(command());
+
+    expect((await repo.findById('trace-123'))?.sha256).toBe(TEST_IMAGE_SHA256);
+  });
+
+  it('chains a TRACE_UPLOADED event carrying the seal of the deposit', async () => {
+    caseStatus.set('case-9', 'OPEN');
+
+    await handler.execute(command());
+
+    expect(auditTrail.events).toHaveLength(1);
+    const [event] = auditTrail.events;
+    expect(event.eventType).toBe(AuditEventTypeEnum.TRACE_UPLOADED);
+    expect(event.evidenceClass).toBe(EvidenceClassEnum.OBSERVED);
+    expect(event.actor).toEqual(EXPERT_ACTOR.toPrimitives());
+    expect(event.caseId).toBe('case-9');
+    expect(event.traceId).toBe('trace-123');
+    expect(event.payload).toEqual({
+      fileSha256: TEST_IMAGE_SHA256,
+      storagePath: STORED_PATH,
+      sizeBytes: 10,
+      mimeType: 'image/png',
+    });
+  });
+
+  it('writes the trace and its link inside a single transaction', async () => {
+    caseStatus.set('case-9', 'OPEN');
+
+    await handler.execute(command());
+
+    expect(transactionRunner.runCount).toBe(1);
+  });
+
+  it('deletes the stored file and rethrows when the transaction fails', async () => {
+    caseStatus.set('case-9', 'OPEN');
+    const failure = new Error('rollback');
+
+    await expect(
+      buildHandler(new RollingBackTransactionRunner(failure)).execute(
+        command(),
+      ),
+    ).rejects.toBe(failure);
+
+    expect(
+      storage.getSaved('investigation-case/case-9/traces/trace-123.png'),
+    ).toBeUndefined();
+  });
+
+  it('keeps the upload when the compensating delete itself fails', async () => {
+    caseStatus.set('case-9', 'OPEN');
+    const failure = new Error('rollback');
+    jest
+      .spyOn(storage, 'delete')
+      .mockRejectedValue(new Error('storage unreachable'));
+
+    await expect(
+      buildHandler(new RollingBackTransactionRunner(failure)).execute(
+        command(),
+      ),
+    ).rejects.toBe(failure);
+  });
+
   it('rejects and persists nothing when the case does not exist', async () => {
     await expect(
       handler.execute(command('missing-case')),
@@ -132,6 +226,7 @@ describe('UploadTraceHandler', () => {
     expect(
       storage.getSaved('investigation-case/missing-case/traces/trace-123.png'),
     ).toBeUndefined();
+    expect(auditTrail.events).toHaveLength(0);
   });
 
   it.each(['CLOSED', 'UNDER_REVIEW'])(
@@ -147,6 +242,7 @@ describe('UploadTraceHandler', () => {
       expect(
         storage.getSaved('investigation-case/case-9/traces/trace-123.png'),
       ).toBeUndefined();
+      expect(auditTrail.events).toHaveLength(0);
     },
   );
 });

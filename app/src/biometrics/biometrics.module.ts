@@ -41,9 +41,10 @@ import { PrismaHitReader } from './infrastructure/persistence/prisma-hit.reader'
 import { GcsImageStorageAdapter } from './infrastructure/storage/gcs-image-storage.adapter';
 import { InMemoryImageStorageAdapter } from './infrastructure/storage/in-memory-image-storage.adapter';
 import { DataFingerprintMatcherAdapter } from './infrastructure/matching/data-fingerprint-matcher.adapter';
+import { AuditTrailModule } from '../audit-trail/audit-trail.module';
 
 @Module({
-  imports: [CqrsModule],
+  imports: [CqrsModule, AuditTrailModule],
   controllers: [BiometricsController, LayersController],
   providers: [
     UploadTraceHandler,

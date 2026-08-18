@@ -1,3 +1,4 @@
+import { ANY_SEAL } from '../../../domain/file-digest.fixture';
 import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { Trace } from '../../../domain/trace/entity/trace';
 import { ReferencePrint } from '../../../domain/reference-print/entity/reference-print';
@@ -22,6 +23,7 @@ describe('RemoveHitHandler', () => {
         id: 'trace-1',
         path: 'media/trace-1.png',
         caseId: 'case-1',
+        sha256: ANY_SEAL,
       }),
     );
     await referencePrintRepo.save(
@@ -29,6 +31,7 @@ describe('RemoveHitHandler', () => {
         id: 'ref-1',
         path: 'media/ref-1.png',
         caseId: 'case-1',
+        sha256: ANY_SEAL,
       }),
     );
   };
@@ -74,6 +77,7 @@ describe('RemoveHitHandler', () => {
         id: 'trace-1',
         path: 'media/trace-1.png',
         caseId: 'other-case',
+        sha256: ANY_SEAL,
       }),
     );
 
@@ -90,6 +94,7 @@ describe('RemoveHitHandler', () => {
         id: 'trace-1',
         path: 'media/trace-1.png',
         caseId: 'case-1',
+        sha256: ANY_SEAL,
       }),
     );
     await referencePrintRepo.save(
@@ -97,6 +102,7 @@ describe('RemoveHitHandler', () => {
         id: 'ref-1',
         path: 'media/ref-1.png',
         caseId: 'other-case',
+        sha256: ANY_SEAL,
       }),
     );
 

@@ -1,9 +1,11 @@
+import { FileDigest } from '../../file-digest.vo';
 import { FingerPosition } from '../value-objects/finger-position.vo';
 
 export interface ReferencePrintPrimitives {
   id: string;
   path: string;
   caseId: string;
+  sha256: string | null;
   subjectId: string | null;
   position: string | null;
 }
@@ -12,6 +14,7 @@ interface CreateReferencePrintProps {
   id: string;
   path: string;
   caseId: string;
+  sha256: FileDigest;
   subjectId?: string | null;
   position?: FingerPosition | null;
 }
@@ -21,6 +24,7 @@ export class ReferencePrint {
     private readonly _id: string,
     private readonly _path: string,
     private readonly _caseId: string,
+    private readonly _sha256: FileDigest | null,
     private readonly _subjectId: string | null,
     private readonly _position: FingerPosition | null,
   ) {}
@@ -39,6 +43,7 @@ export class ReferencePrint {
       props.id,
       props.path,
       props.caseId,
+      props.sha256,
       props.subjectId ?? null,
       props.position ?? null,
     );
@@ -49,6 +54,7 @@ export class ReferencePrint {
       primitives.id,
       primitives.path,
       primitives.caseId,
+      primitives.sha256 === null ? null : FileDigest.from(primitives.sha256),
       primitives.subjectId,
       primitives.position ? FingerPosition.from(primitives.position) : null,
     );
@@ -59,6 +65,7 @@ export class ReferencePrint {
       id: this._id,
       path: this._path,
       caseId: this._caseId,
+      sha256: this._sha256?.getValue() ?? null,
       subjectId: this._subjectId,
       position: this._position ? this._position.getValue() : null,
     };
@@ -74,6 +81,10 @@ export class ReferencePrint {
 
   get caseId(): string {
     return this._caseId;
+  }
+
+  get sha256(): string | null {
+    return this._sha256?.getValue() ?? null;
   }
 
   get subjectId(): string | null {

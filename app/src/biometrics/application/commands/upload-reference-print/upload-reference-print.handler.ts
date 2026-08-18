@@ -1,16 +1,27 @@
 import path from 'node:path';
-import { Inject } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { FileDigest } from '../../../domain/file-digest.vo';
 import { ReferencePrint } from '../../../domain/reference-print/entity/reference-print';
 import { FingerPosition } from '../../../domain/reference-print/value-objects/finger-position.vo';
 import {
   REFERENCE_PRINT_REPOSITORY,
   ReferencePrintRepository,
 } from '../../../domain/reference-print/repository/reference-print.repository';
+import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
+import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
+import {
+  AUDIT_TRAIL,
+  AuditTrailPort,
+} from '../../../../shared/domain/ports/audit-trail.port';
 import {
   ID_GENERATOR,
   IdGenerator,
 } from '../../../../shared/domain/ports/id-generator';
+import {
+  TRANSACTION_RUNNER,
+  TransactionRunner,
+} from '../../../../shared/domain/ports/transaction-runner';
 import {
   IMAGE_STORAGE,
   ImageStoragePort,
@@ -22,6 +33,8 @@ export class UploadReferencePrintHandler implements ICommandHandler<
   UploadReferencePrintCommand,
   { id: string; path: string; url: string }
 > {
+  private readonly logger = new Logger(UploadReferencePrintHandler.name);
+
   constructor(
     @Inject(REFERENCE_PRINT_REPOSITORY)
     private readonly repo: ReferencePrintRepository,
@@ -29,24 +42,62 @@ export class UploadReferencePrintHandler implements ICommandHandler<
     private readonly storage: ImageStoragePort,
     @Inject(ID_GENERATOR)
     private readonly idGenerator: IdGenerator,
+    @Inject(TRANSACTION_RUNNER)
+    private readonly transactionRunner: TransactionRunner,
+    @Inject(AUDIT_TRAIL)
+    private readonly auditTrail: AuditTrailPort,
   ) {}
 
   async execute(
     cmd: UploadReferencePrintCommand,
   ): Promise<{ id: string; path: string; url: string }> {
     const id = this.idGenerator.generate();
+    const sha256 = FileDigest.ofBuffer(cmd.fileBuffer);
     const relativePath = `investigation-case/${cmd.caseId}/reference-prints/${id}${this.getExtension(cmd.originalName)}`;
     const storedPath = await this.storage.save(cmd.fileBuffer, relativePath);
-    const referencePrint = ReferencePrint.create({
-      id,
-      path: storedPath,
-      caseId: cmd.caseId,
-      subjectId: cmd.subjectId ?? null,
-      position: cmd.position ? FingerPosition.from(cmd.position) : null,
-    });
-    await this.repo.save(referencePrint);
+
+    try {
+      await this.transactionRunner.run(async () => {
+        const referencePrint = ReferencePrint.create({
+          id,
+          path: storedPath,
+          caseId: cmd.caseId,
+          sha256,
+          subjectId: cmd.subjectId ?? null,
+          position: cmd.position ? FingerPosition.from(cmd.position) : null,
+        });
+        await this.repo.save(referencePrint);
+        await this.auditTrail.append({
+          eventType: AuditEventTypeEnum.REFERENCE_PRINT_UPLOADED,
+          evidenceClass: EvidenceClassEnum.OBSERVED,
+          actor: cmd.actor,
+          caseId: cmd.caseId,
+          payload: {
+            referencePrintId: id,
+            fileSha256: sha256.getValue(),
+            storagePath: storedPath,
+            sizeBytes: cmd.fileBuffer.length,
+            mimeType: cmd.mimeType,
+          },
+        });
+      });
+    } catch (error) {
+      await this.discardStoredFile(storedPath);
+      throw error;
+    }
+
     const url = await this.storage.getUrl(storedPath);
     return { id, path: storedPath, url };
+  }
+
+  private async discardStoredFile(storedPath: string): Promise<void> {
+    try {
+      await this.storage.delete(storedPath);
+    } catch (error) {
+      this.logger.warn(
+        `Fichier orphelin dans le stockage: ${storedPath} (${String(error)})`,
+      );
+    }
   }
 
   private getExtension(originalName: string): string {

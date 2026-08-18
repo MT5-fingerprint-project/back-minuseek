@@ -4,6 +4,7 @@ model Trace {
   status    TraceStatus @default(RECEIVED)
   score     Int?
   caseId    String      @db.Uuid
+  sha256    String?     @db.Char(64)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
