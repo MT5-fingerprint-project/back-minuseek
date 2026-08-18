@@ -10,7 +10,15 @@ export
 COMPOSE = docker compose -f docker/dev/compose.yml --env-file .env
 NETWORK = minuseek
 
-.PHONY: setup-dev bootstrap wait-postgres keycloak-relax-ssl network dev dev-build up-watch down reset db exec install keycloak-setup system-realm provision migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all test test-watch logs
+# Base de la suite d'intégration : jetable, hors du stack de dev, sur un port
+# qui lui est propre (le 5432 de la machine est régulièrement pris par un autre
+# projet). Surchargeables depuis .env si le 5433 est lui aussi occupé.
+INTEGRATION_DB_NAME ?= minuseek_integration
+INTEGRATION_DB_PORT ?= 5433
+INTEGRATION_DATABASE_URL ?= postgresql://$(DB_USER):$(DB_PASSWORD)@localhost:$(INTEGRATION_DB_PORT)/$(INTEGRATION_DB_NAME)
+COMPOSE_TEST = $(COMPOSE) --profile test
+
+.PHONY: setup-dev bootstrap wait-postgres keycloak-relax-ssl network dev dev-build up-watch down reset db exec install keycloak-setup system-realm provision migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all test test-watch test-integration test-integration-down logs
 
 ## Setup local complet : install + stack + bootstrap + hot-reload. Rejouable sans danger. Ou a faire apres un reset de la DB. (make setup-dev)
 setup-dev:
@@ -130,6 +138,20 @@ test:
 ## Lance les tests en mode watch (make test-watch FILE=src/foo/foo.spec.ts)
 test-watch:
 	cd app && pnpm jest --watch $(FILE)
+
+## Suite d'intégration contre un VRAI Postgres (advisory lock, ALS, rollback,
+## trigger append-only) : lève la base jetable, y rejoue les migrations, puis
+## joue app/test/integration. Séparée de `make test`, qui reste hors base.
+test-integration:
+	$(COMPOSE_TEST) up -d postgres-test
+	@echo "⏳ attente du PostgreSQL d'intégration…"
+	@until $(COMPOSE_TEST) exec -T postgres-test pg_isready -U $(DB_USER) -d $(INTEGRATION_DB_NAME) >/dev/null 2>&1; do sleep 1; done
+	cd app && DATABASE_URL="$(INTEGRATION_DATABASE_URL)" pnpm prisma migrate deploy
+	cd app && INTEGRATION_DATABASE_URL="$(INTEGRATION_DATABASE_URL)" pnpm jest --config jest.integration.config.js $(FILE)
+
+## Détruit la base d'intégration (le container EST la base : rien à nettoyer d'autre)
+test-integration-down:
+	$(COMPOSE_TEST) rm -sfv postgres-test
 
 ## Affiche les logs de l'app en temps réel
 logs:
