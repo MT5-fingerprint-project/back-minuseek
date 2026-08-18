@@ -14,6 +14,7 @@ import {
   UnprocessableEntityException,
   UploadedFile,
   UseInterceptors,
+  ValidationPipe,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -51,6 +52,16 @@ import { CompareTraceDto } from './dto/compare-trace.dto';
 import { RecordHitDto } from './dto/record-hit.dto';
 
 const IMAGE_MIME = /^image\/(png|jpe?g|tiff)$/;
+
+// Les champs d'un multipart arrivent tous en chaîne : ce pipe local active
+// `transform` pour que le contrôleur reçoive des nombres. Le pipe global de
+// `main.ts` ne le fait pas, et l'y activer changerait toutes les routes.
+const captureMetadataPipe = () =>
+  new ValidationPipe({
+    transform: true,
+    whitelist: true,
+    forbidNonWhitelisted: true,
+  });
 
 const imageFileValidator = () =>
   new ParseFilePipe({
@@ -137,6 +148,20 @@ export class BiometricsController {
       properties: {
         file: { type: 'string', format: 'binary' },
         caseId: { type: 'string', format: 'uuid' },
+        width: { type: 'integer', minimum: 1, example: 3024 },
+        height: { type: 'integer', minimum: 1, example: 4032 },
+        capturedAt: {
+          type: 'string',
+          format: 'date-time',
+          example: '2026-08-18T10:12:00.000Z',
+        },
+        orientation: { type: 'integer', minimum: 1, maximum: 8, example: 6 },
+        focalLength: { type: 'number', example: 6.86 },
+        deviceModel: {
+          type: 'string',
+          maxLength: 120,
+          example: 'iPhone 14 Pro',
+        },
       },
       required: ['file', 'caseId'],
     },
@@ -145,7 +170,9 @@ export class BiometricsController {
   @ApiResponse({
     status: 400,
     description:
-      'Fichier manquant, type non supporté (PNG/JPEG/TIFF) ou caseId invalide',
+      'Fichier manquant, type non supporté (PNG/JPEG/TIFF), caseId invalide, ' +
+      'métadonnées de capture invalides (dimensions non appairées, orientation hors 1–8, ' +
+      'focale négative, capturedAt non ISO 8601) ou champ inconnu',
   })
   @ApiResponse({
     status: 404,
@@ -156,7 +183,7 @@ export class BiometricsController {
   async uploadTrace(
     @UploadedFile(imageFileValidator())
     file: { buffer: Buffer; originalname: string; mimetype: string },
-    @Body() dto: UploadTraceDto,
+    @Body(captureMetadataPipe()) dto: UploadTraceDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     try {
@@ -170,6 +197,14 @@ export class BiometricsController {
           file.originalname,
           file.mimetype,
           dto.caseId,
+          {
+            width: dto.width,
+            height: dto.height,
+            capturedAt: dto.capturedAt,
+            orientation: dto.orientation,
+            focalLength: dto.focalLength,
+            deviceModel: dto.deviceModel,
+          },
         ),
       );
     } catch (e) {

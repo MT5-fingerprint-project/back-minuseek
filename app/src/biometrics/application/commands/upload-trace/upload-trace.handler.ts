@@ -2,6 +2,7 @@ import path from 'node:path';
 import { Inject } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Trace } from '../../../domain/trace/entity/trace';
+import { CaptureMetadata } from '../../../domain/trace/value-objects/capture-metadata.vo';
 import {
   TRACE_REPOSITORY,
   TraceRepository,
@@ -39,6 +40,8 @@ export class UploadTraceHandler implements ICommandHandler<
     const caseStatus = await this.caseStatus.findStatus(cmd.caseId);
     Trace.assertCaseCanReceiveTrace(cmd.caseId, caseStatus);
 
+    const captureMetadata = CaptureMetadata.of(cmd.capture ?? {});
+
     const id = this.idGenerator.generate();
     const relativePath = `investigation-case/${cmd.caseId}/traces/${id}${this.getExtension(cmd.originalName)}`;
     const storedPath = await this.storage.save(cmd.fileBuffer, relativePath);
@@ -46,6 +49,7 @@ export class UploadTraceHandler implements ICommandHandler<
       id,
       path: storedPath,
       caseId: cmd.caseId,
+      captureMetadata,
     });
     await this.repo.save(trace);
     const url = await this.storage.getUrl(storedPath);

@@ -1,5 +1,6 @@
 import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-trace.error';
 import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
+import { CaptureMetadata } from '../value-objects/capture-metadata.vo';
 import { ExploitabilityScore } from '../value-objects/exploitability-score.vo';
 import { TraceStatusEnum } from '../value-objects/trace-status.vo';
 import { Trace } from './trace';
@@ -19,6 +20,60 @@ describe('Trace', () => {
       expect(trace.status).toBe(TraceStatusEnum.RECEIVED);
       expect(trace.score).toBeNull();
       expect(trace.caseId).toBe('case-9');
+    });
+
+    it('carries no capture metadata when none is provided', () => {
+      const trace = Trace.upload(baseProps);
+
+      expect(trace.toPrimitives()).toEqual({
+        id: 't-1',
+        path: 'media/case-9/traces/t-1.png',
+        status: TraceStatusEnum.RECEIVED,
+        score: null,
+        caseId: 'case-9',
+        captureWidth: null,
+        captureHeight: null,
+        capturedAt: null,
+        captureOrientation: null,
+        captureFocalLength: null,
+        captureDeviceModel: null,
+      });
+    });
+
+    it('flattens the capture metadata onto the persisted primitives', () => {
+      const trace = Trace.upload({
+        ...baseProps,
+        captureMetadata: CaptureMetadata.of({
+          width: 3024,
+          height: 4032,
+          capturedAt: '2026-08-18T10:12:00.000Z',
+          orientation: 6,
+          focalLength: 6.86,
+          deviceModel: 'iPhone 14 Pro',
+        }),
+      });
+
+      expect(trace.toPrimitives()).toEqual({
+        id: 't-1',
+        path: 'media/case-9/traces/t-1.png',
+        status: TraceStatusEnum.RECEIVED,
+        score: null,
+        caseId: 'case-9',
+        captureWidth: 3024,
+        captureHeight: 4032,
+        capturedAt: new Date('2026-08-18T10:12:00.000Z'),
+        captureOrientation: 6,
+        captureFocalLength: 6.86,
+        captureDeviceModel: 'iPhone 14 Pro',
+      });
+    });
+
+    it('exposes the capture metadata it was uploaded with', () => {
+      const captureMetadata = CaptureMetadata.of({ orientation: 6 });
+
+      const trace = Trace.upload({ ...baseProps, captureMetadata });
+
+      expect(trace.captureMetadata.orientation).toBe(6);
     });
 
     it('rejects an empty id', () => {
@@ -97,11 +152,55 @@ describe('Trace', () => {
         status: TraceStatusEnum.EXPLOITABLE,
         score: 18,
         caseId: 'case-9',
+        captureWidth: null,
+        captureHeight: null,
+        capturedAt: null,
+        captureOrientation: null,
+        captureFocalLength: null,
+        captureDeviceModel: null,
       });
 
       expect(trace.status).toBe(TraceStatusEnum.EXPLOITABLE);
       expect(trace.score).toBe(18);
       expect(trace.caseId).toBe('case-9');
+    });
+
+    it('rebuilds a legacy row that predates the capture columns', () => {
+      const trace = Trace.reconstitute({
+        id: 't-1',
+        path: 'media/case-9/traces/t-1.png',
+        status: TraceStatusEnum.RECEIVED,
+        score: null,
+        caseId: 'case-9',
+        captureWidth: null,
+        captureHeight: null,
+        capturedAt: null,
+        captureOrientation: null,
+        captureFocalLength: null,
+        captureDeviceModel: null,
+      });
+
+      expect(trace.captureMetadata.width).toBeUndefined();
+      expect(trace.captureMetadata.capturedAt).toBeUndefined();
+      expect(trace.captureMetadata.deviceModel).toBeUndefined();
+    });
+
+    it('survives a round-trip through the persisted primitives', () => {
+      const trace = Trace.upload({
+        ...baseProps,
+        captureMetadata: CaptureMetadata.of({
+          width: 3024,
+          height: 4032,
+          capturedAt: '2026-08-18T10:12:00.000Z',
+          orientation: 6,
+          focalLength: 6.86,
+          deviceModel: 'iPhone 14 Pro',
+        }),
+      });
+
+      const rebuilt = Trace.reconstitute(trace.toPrimitives());
+
+      expect(rebuilt.toPrimitives()).toEqual(trace.toPrimitives());
     });
   });
 });
