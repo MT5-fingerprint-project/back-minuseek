@@ -16,6 +16,7 @@ interface ObservedOperation {
 
 class FakeTenantClient {
   openedTransactions = 0;
+  lastTransactionOptions?: { maxWait?: number; timeout?: number };
   private observe?: (operation: ObservedOperation) => Promise<unknown>;
 
   readonly transactionClient = {
@@ -33,8 +34,10 @@ class FakeTenantClient {
 
   $transaction<T>(
     work: (tx: Prisma.TransactionClient) => Promise<T>,
+    options?: { maxWait?: number; timeout?: number },
   ): Promise<T> {
     this.openedTransactions += 1;
+    this.lastTransactionOptions = options;
     return work(this.transactionClient);
   }
 
@@ -111,6 +114,17 @@ describe('PrismaTransactionRunner', () => {
     await runner.run(() => Promise.resolve());
 
     expect(transactionContext.getCurrentTransaction()).toBeUndefined();
+  });
+
+  it('borne la transaction par des budgets choisis, pas par les défauts Prisma', async () => {
+    const { runner, client } = buildRunner();
+
+    await runner.run(() => Promise.resolve());
+
+    expect(client.lastTransactionOptions).toEqual({
+      maxWait: 10_000,
+      timeout: 15_000,
+    });
   });
 });
 

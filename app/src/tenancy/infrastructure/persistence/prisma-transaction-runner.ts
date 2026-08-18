@@ -5,6 +5,10 @@ import { TenantConnectionService } from './tenant-connection.service';
 import { TransactionContextService } from './transaction-context.service';
 import { UnauditedMutationError } from './unaudited-mutation.error';
 
+const TRANSACTION_MAX_WAIT_MS = 10_000;
+
+const TRANSACTION_TIMEOUT_MS = 15_000;
+
 @Injectable()
 export class PrismaTransactionRunner implements TransactionRunner {
   private readonly observedClients = new WeakMap<PrismaClient, PrismaClient>();
@@ -19,15 +23,20 @@ export class PrismaTransactionRunner implements TransactionRunner {
       return work();
     }
     const client = await this.tenantConnection.getCurrentClient();
-    return this.observing(client).$transaction(async (transaction) =>
-      this.transactionContext.run(transaction, async (scope) => {
-        const result = await work();
-        const unchained = scope.journal.unchainedTables();
-        if (unchained.length > 0) {
-          throw new UnauditedMutationError(unchained);
-        }
-        return result;
-      }),
+    return this.observing(client).$transaction(
+      async (transaction) =>
+        this.transactionContext.run(transaction, async (scope) => {
+          const result = await work();
+          const unchained = scope.journal.unchainedTables();
+          if (unchained.length > 0) {
+            throw new UnauditedMutationError(unchained);
+          }
+          return result;
+        }),
+      {
+        maxWait: TRANSACTION_MAX_WAIT_MS,
+        timeout: TRANSACTION_TIMEOUT_MS,
+      },
     );
   }
 
