@@ -1,3 +1,4 @@
+import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-memory-layer.repository';
 import { CreateLayerCommand } from './create-layer.command';
 import { CreateLayerHandler } from './create-layer.handler';
@@ -22,6 +23,7 @@ describe('CreateLayerHandler', () => {
 
     await handler.execute(
       new CreateLayerCommand(
+        EXPERT_ACTOR,
         'layer-1',
         'fp-1',
         'Point',

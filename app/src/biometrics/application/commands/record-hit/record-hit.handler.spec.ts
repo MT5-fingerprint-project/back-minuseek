@@ -1,3 +1,4 @@
+import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { Trace } from '../../../domain/trace/entity/trace';
 import { ReferencePrint } from '../../../domain/reference-print/entity/reference-print';
 import { Layer } from '../../../domain/layer/entity/layer';
@@ -34,7 +35,13 @@ describe('RecordHitHandler', () => {
           name: 'Minutie',
           type: 'ANNOTATION',
           zIndex: i,
-          settings: { type: settingsType, x: i, y: i, radius: 5, color: '#fff' },
+          settings: {
+            type: settingsType,
+            x: i,
+            y: i,
+            radius: 5,
+            color: '#fff',
+          },
         }),
       );
     }
@@ -57,7 +64,11 @@ describe('RecordHitHandler', () => {
 
   const seedTraceAndReference = async (): Promise<void> => {
     await traceRepo.save(
-      Trace.upload({ id: 'trace-1', path: 'media/trace-1.png', caseId: 'case-1' }),
+      Trace.upload({
+        id: 'trace-1',
+        path: 'media/trace-1.png',
+        caseId: 'case-1',
+      }),
     );
     await referencePrintRepo.save(
       ReferencePrint.create({
@@ -74,7 +85,13 @@ describe('RecordHitHandler', () => {
     await seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
 
     await handler.execute(
-      new RecordHitCommand('case-1', 'trace-1', 'ref-1', 'user-1'),
+      new RecordHitCommand(
+        EXPERT_ACTOR,
+        'case-1',
+        'trace-1',
+        'ref-1',
+        'user-1',
+      ),
     );
 
     const persisted = await hitRepo.findByTraceId('trace-1');
@@ -89,7 +106,9 @@ describe('RecordHitHandler', () => {
     await seedMinutiae('ref-1', REQUIRED_MINUTIAE);
 
     await expect(
-      handler.execute(new RecordHitCommand('case-1', 'trace-1', 'ref-1')),
+      handler.execute(
+        new RecordHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+      ),
     ).rejects.toThrow(InsufficientMinutiaeError);
     expect(await hitRepo.findByTraceId('trace-1')).toHaveLength(0);
   });
@@ -100,7 +119,9 @@ describe('RecordHitHandler', () => {
     await seedMinutiae('ref-1', REQUIRED_MINUTIAE - 1);
 
     await expect(
-      handler.execute(new RecordHitCommand('case-1', 'trace-1', 'ref-1')),
+      handler.execute(
+        new RecordHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+      ),
     ).rejects.toMatchObject({ side: 'reference-print' });
     expect(await hitRepo.findByTraceId('trace-1')).toHaveLength(0);
   });
@@ -123,7 +144,9 @@ describe('RecordHitHandler', () => {
     }
 
     await expect(
-      handler.execute(new RecordHitCommand('case-1', 'trace-1', 'ref-1')),
+      handler.execute(
+        new RecordHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+      ),
     ).rejects.toBeInstanceOf(InsufficientMinutiaeError);
   });
 
@@ -137,13 +160,19 @@ describe('RecordHitHandler', () => {
     );
 
     await expect(
-      handler.execute(new RecordHitCommand('case-1', 'trace-1', 'ref-1')),
+      handler.execute(
+        new RecordHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+      ),
     ).rejects.toThrow(TraceNotFoundError);
   });
 
   it('rejects when the reference print belongs to another case (IDOR)', async () => {
     await traceRepo.save(
-      Trace.upload({ id: 'trace-1', path: 'media/trace-1.png', caseId: 'case-1' }),
+      Trace.upload({
+        id: 'trace-1',
+        path: 'media/trace-1.png',
+        caseId: 'case-1',
+      }),
     );
     await referencePrintRepo.save(
       ReferencePrint.create({
@@ -154,7 +183,9 @@ describe('RecordHitHandler', () => {
     );
 
     await expect(
-      handler.execute(new RecordHitCommand('case-1', 'trace-1', 'ref-1')),
+      handler.execute(
+        new RecordHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+      ),
     ).rejects.toThrow(ReferencePrintNotFoundError);
   });
 });

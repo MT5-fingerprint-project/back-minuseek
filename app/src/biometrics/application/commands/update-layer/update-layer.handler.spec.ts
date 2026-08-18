@@ -1,3 +1,4 @@
+import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { Layer } from '../../../domain/layer/entity/layer';
 import { LayerNotFoundError } from '../../../domain/layer/errors/layer-not-found.error';
 import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-memory-layer.repository';
@@ -27,7 +28,14 @@ describe('UpdateLayerHandler', () => {
 
     const moved = { type: 'circle', x: 99, y: 88, radius: 4, color: '#ef4444' };
     await handler.execute(
-      new UpdateLayerCommand('layer-1', undefined, undefined, undefined, moved),
+      new UpdateLayerCommand(
+        EXPERT_ACTOR,
+        'layer-1',
+        undefined,
+        undefined,
+        undefined,
+        moved,
+      ),
     );
 
     const saved = await repo.findById('layer-1');
@@ -36,7 +44,7 @@ describe('UpdateLayerHandler', () => {
 
   it('lève LayerNotFoundError si le calque est introuvable', async () => {
     await expect(
-      handler.execute(new UpdateLayerCommand('missing', 'x')),
+      handler.execute(new UpdateLayerCommand(EXPERT_ACTOR, 'missing', 'x')),
     ).rejects.toBeInstanceOf(LayerNotFoundError);
   });
 });

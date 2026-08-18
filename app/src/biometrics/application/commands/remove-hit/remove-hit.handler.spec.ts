@@ -1,3 +1,4 @@
+import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { Trace } from '../../../domain/trace/entity/trace';
 import { ReferencePrint } from '../../../domain/reference-print/entity/reference-print';
 import { Hit } from '../../../domain/hit/entity/hit';
@@ -17,7 +18,11 @@ describe('RemoveHitHandler', () => {
 
   const seedTraceAndReference = async (): Promise<void> => {
     await traceRepo.save(
-      Trace.upload({ id: 'trace-1', path: 'media/trace-1.png', caseId: 'case-1' }),
+      Trace.upload({
+        id: 'trace-1',
+        path: 'media/trace-1.png',
+        caseId: 'case-1',
+      }),
     );
     await referencePrintRepo.save(
       ReferencePrint.create({
@@ -46,7 +51,9 @@ describe('RemoveHitHandler', () => {
       }),
     );
 
-    await handler.execute(new RemoveHitCommand('case-1', 'trace-1', 'ref-1'));
+    await handler.execute(
+      new RemoveHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+    );
 
     expect(await hitRepo.findByTraceId('trace-1')).toHaveLength(0);
   });
@@ -55,7 +62,9 @@ describe('RemoveHitHandler', () => {
     await seedTraceAndReference();
 
     await expect(
-      handler.execute(new RemoveHitCommand('case-1', 'trace-1', 'ref-1')),
+      handler.execute(
+        new RemoveHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+      ),
     ).resolves.toBeUndefined();
   });
 
@@ -69,13 +78,19 @@ describe('RemoveHitHandler', () => {
     );
 
     await expect(
-      handler.execute(new RemoveHitCommand('case-1', 'trace-1', 'ref-1')),
+      handler.execute(
+        new RemoveHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+      ),
     ).rejects.toThrow(TraceNotFoundError);
   });
 
   it('rejects when the reference print belongs to another case (IDOR)', async () => {
     await traceRepo.save(
-      Trace.upload({ id: 'trace-1', path: 'media/trace-1.png', caseId: 'case-1' }),
+      Trace.upload({
+        id: 'trace-1',
+        path: 'media/trace-1.png',
+        caseId: 'case-1',
+      }),
     );
     await referencePrintRepo.save(
       ReferencePrint.create({
@@ -86,7 +101,9 @@ describe('RemoveHitHandler', () => {
     );
 
     await expect(
-      handler.execute(new RemoveHitCommand('case-1', 'trace-1', 'ref-1')),
+      handler.execute(
+        new RemoveHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+      ),
     ).rejects.toThrow(ReferencePrintNotFoundError);
   });
 });

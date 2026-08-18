@@ -1,3 +1,4 @@
+import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { Trace } from '../../../domain/trace/entity/trace';
 import { ReferencePrint } from '../../../domain/reference-print/entity/reference-print';
 import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found.error';
@@ -52,7 +53,7 @@ describe('CompareTraceHandler', () => {
     matcher.setResults([{ referencePrintId: 'ref-1', score: 87 }]);
 
     const result = await handler.execute(
-      new CompareTraceCommand('case-1', 'trace-1', ['ref-1']),
+      new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', ['ref-1']),
     );
 
     expect(result).toEqual([
@@ -83,7 +84,9 @@ describe('CompareTraceHandler', () => {
     );
 
     await expect(
-      handler.execute(new CompareTraceCommand('case-1', 'trace-1', [])),
+      handler.execute(
+        new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', []),
+      ),
     ).rejects.toThrow(TraceNotFoundError);
   });
 
@@ -104,7 +107,9 @@ describe('CompareTraceHandler', () => {
     );
 
     await expect(
-      handler.execute(new CompareTraceCommand('case-1', 'trace-1', ['ref-1'])),
+      handler.execute(
+        new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', ['ref-1']),
+      ),
     ).rejects.toThrow(ReferencePrintNotFoundError);
   });
 
@@ -129,7 +134,7 @@ describe('CompareTraceHandler', () => {
     ]);
 
     const result = await handler.execute(
-      new CompareTraceCommand('case-1', 'trace-1', ['ref-1']),
+      new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', ['ref-1']),
     );
 
     expect(result).toHaveLength(1);

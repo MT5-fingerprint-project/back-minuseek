@@ -18,6 +18,9 @@ import { ListInvestigationCasesDto } from './dto/list-investigation-cases.dto';
 import { ListInvestigationCasesQuery } from '../../application/queries/list-investigation-cases/list-investigation-cases.query';
 import { GetInvestigationCaseQuery } from '../../application/queries/get-investigation-case/get-investigation-case.query';
 import { InvestigationCaseReadModel } from '../../application/queries/list-investigation-cases/investigation-case-read-model';
+import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
+import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
+import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapper';
 
 @ApiTags('investigation-cases')
 @Controller('investigation-cases')
@@ -31,13 +34,17 @@ export class InvestigationController {
   @ApiOperation({ summary: 'Ouvrir une nouvelle affaire' })
   @ApiResponse({ status: 201, description: 'affaire créé' })
   @ApiResponse({ status: 409, description: "Numéro d'affaire déjà existant" })
-  async open(@Body() dto: OpenInvestigationCaseDto) {
+  async open(
+    @Body() dto: OpenInvestigationCaseDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     try {
       const id = await this.commandBus.execute<
         OpenInvestigationCaseCommand,
         string
       >(
         new OpenInvestigationCaseCommand(
+          toAuditActor(user),
           dto.caseNumber,
           dto.pvNumber,
           dto.description,

@@ -1,5 +1,8 @@
+import { AuditActor } from '../../../../shared/domain/audit/audit-actor.vo';
+
 export class RegisterSubjectCommand {
   constructor(
+    public readonly actor: AuditActor,
     public readonly firstName: string,
     public readonly lastName: string,
     public readonly birthDate: Date,
