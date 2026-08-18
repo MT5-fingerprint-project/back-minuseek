@@ -10,7 +10,9 @@ export class ListHitsHandler implements IQueryHandler<ListHitsQuery> {
     private readonly reader: HitReader,
   ) {}
 
-  async execute(query: ListHitsQuery): Promise<{ referencePrintIds: string[] }> {
+  async execute(
+    query: ListHitsQuery,
+  ): Promise<{ referencePrintIds: string[] }> {
     const hits = await this.reader.findByTraceId(query.traceId);
     return { referencePrintIds: hits.map((hit) => hit.referencePrintId) };
   }
