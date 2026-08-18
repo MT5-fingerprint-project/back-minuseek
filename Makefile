@@ -113,6 +113,11 @@ system-realm:
 provision:
 	$(COMPOSE) run --rm app pnpm ts-node src/organization/infrastructure/cli/create-organization.cli.ts $(SLUG) "$(NAME)"
 
+## Vérifie l'intégrité des chaînes d'audit (tous les tenants, ou make audit-verify TENANT=demo)
+## Sort en code 1 dès qu'une chaîne est rompue
+audit-verify:
+	$(COMPOSE) run --rm app pnpm ts-node src/audit-trail/infrastructure/cli/verify-chain.cli.ts $(TENANT)
+
 ## Migre le schéma admin puis fan-out du schéma métier sur chaque base tenant du registre
 ## (équivalent local du job de migration déployé)
 migrate-all:
