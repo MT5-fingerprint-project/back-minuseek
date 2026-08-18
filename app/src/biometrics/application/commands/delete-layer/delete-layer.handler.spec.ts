@@ -1,3 +1,4 @@
+import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { Layer } from '../../../domain/layer/entity/layer';
 import { LayerNotFoundError } from '../../../domain/layer/errors/layer-not-found.error';
 import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-memory-layer.repository';
@@ -25,14 +26,14 @@ describe('DeleteLayerHandler', () => {
       }),
     );
 
-    await handler.execute(new DeleteLayerCommand('layer-1'));
+    await handler.execute(new DeleteLayerCommand(EXPERT_ACTOR, 'layer-1'));
 
     expect(await repo.findById('layer-1')).toBeNull();
   });
 
   it('lève LayerNotFoundError si le calque est introuvable', async () => {
     await expect(
-      handler.execute(new DeleteLayerCommand('missing')),
+      handler.execute(new DeleteLayerCommand(EXPERT_ACTOR, 'missing')),
     ).rejects.toBeInstanceOf(LayerNotFoundError);
   });
 });

@@ -1,3 +1,4 @@
+import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { InMemoryReferencePrintRepository } from '../../../infrastructure/persistence/in-memory-reference-print.repository';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
@@ -20,6 +21,7 @@ describe('UploadReferencePrintHandler', () => {
   it('stores the file under media/{caseId}/reference-prints, persists the reference print and returns id, path and url', async () => {
     const result = await handler.execute(
       new UploadReferencePrintCommand(
+        EXPERT_ACTOR,
         Buffer.from('clean-print'),
         'thumb.tiff',
         'image/tiff',

@@ -1,3 +1,4 @@
+import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { InMemorySubjectRepository } from '../../../infrastructure/persistence/in-memory-subject.repository';
 import { SexEnum } from '../../../domain/subject/value-objects/sex.vo';
 import { SubjectTypeEnum } from '../../../domain/subject/value-objects/subject-type.vo';
@@ -14,6 +15,7 @@ class FixedIdGenerator implements IdGenerator {
 
 const buildCommand = (overrides: Partial<RegisterSubjectCommand> = {}) =>
   new RegisterSubjectCommand(
+    EXPERT_ACTOR,
     overrides.firstName ?? 'Jean',
     overrides.lastName ?? 'Dupont',
     overrides.birthDate ?? new Date('1990-05-14'),

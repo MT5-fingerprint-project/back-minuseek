@@ -42,6 +42,7 @@ import { InsufficientMinutiaeError } from '../../domain/hit/errors/insufficient-
 import { MatchingPrimitives } from '../../domain/matching/entity/matching';
 import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
 import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
+import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapper';
 import { UploadTraceDto } from './dto/upload-trace.dto';
 import { UploadReferencePrintDto } from './dto/upload-reference-print.dto';
 import { ListTracesDto } from './dto/list-traces.dto';
@@ -89,9 +90,14 @@ export class BiometricsController {
   @ApiOperation({ summary: 'Supprimer une trace' })
   @ApiResponse({ status: 204, description: 'Trace supprimée' })
   @ApiResponse({ status: 404, description: 'Trace non trouvée' })
-  async deleteTrace(@Param('id', ParseUUIDPipe) id: string) {
+  async deleteTrace(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     try {
-      await this.commandBus.execute(new DeleteTraceCommand(id));
+      await this.commandBus.execute(
+        new DeleteTraceCommand(toAuditActor(user), id),
+      );
     } catch (e) {
       if (e instanceof TraceNotFoundError)
         throw new NotFoundException(e.message);
@@ -107,9 +113,14 @@ export class BiometricsController {
     status: 404,
     description: 'Empreinte de référence non trouvée',
   })
-  async deleteReferencePrint(@Param('id', ParseUUIDPipe) id: string) {
+  async deleteReferencePrint(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     try {
-      await this.commandBus.execute(new DeleteReferencePrintCommand(id));
+      await this.commandBus.execute(
+        new DeleteReferencePrintCommand(toAuditActor(user), id),
+      );
     } catch (e) {
       if (e instanceof ReferencePrintNotFoundError)
         throw new NotFoundException(e.message);
@@ -146,6 +157,7 @@ export class BiometricsController {
     @UploadedFile(imageFileValidator())
     file: { buffer: Buffer; originalname: string; mimetype: string },
     @Body() dto: UploadTraceDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     try {
       return await this.commandBus.execute<
@@ -153,6 +165,7 @@ export class BiometricsController {
         { id: string; path: string; url: string }
       >(
         new UploadTraceCommand(
+          toAuditActor(user),
           file.buffer,
           file.originalname,
           file.mimetype,
@@ -195,12 +208,14 @@ export class BiometricsController {
     @UploadedFile(imageFileValidator())
     file: { buffer: Buffer; originalname: string; mimetype: string },
     @Body() dto: UploadReferencePrintDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.commandBus.execute<
       UploadReferencePrintCommand,
       { id: string; path: string; url: string }
     >(
       new UploadReferencePrintCommand(
+        toAuditActor(user),
         file.buffer,
         file.originalname,
         file.mimetype,
@@ -224,12 +239,20 @@ export class BiometricsController {
   async compare(
     @Param('id', ParseUUIDPipe) traceId: string,
     @Body() dto: CompareTraceDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ matchings: MatchingPrimitives[] }> {
     try {
       const matchings = await this.commandBus.execute<
         CompareTraceCommand,
         MatchingPrimitives[]
-      >(new CompareTraceCommand(dto.caseId, traceId, dto.referencePrintIds));
+      >(
+        new CompareTraceCommand(
+          toAuditActor(user),
+          dto.caseId,
+          traceId,
+          dto.referencePrintIds,
+        ),
+      );
       return { matchings };
     } catch (e) {
       if (
@@ -260,12 +283,13 @@ export class BiometricsController {
   async recordHit(
     @Param('id', ParseUUIDPipe) traceId: string,
     @Body() dto: RecordHitDto,
-    @CurrentUser() user?: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     const declaredByUserId = await this.resolveUserId(user);
     try {
       await this.commandBus.execute(
         new RecordHitCommand(
+          toAuditActor(user),
           dto.caseId,
           traceId,
           dto.referencePrintId,
@@ -298,10 +322,16 @@ export class BiometricsController {
     @Param('id', ParseUUIDPipe) traceId: string,
     @Param('referencePrintId', ParseUUIDPipe) referencePrintId: string,
     @Query('caseId', ParseUUIDPipe) caseId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     try {
       await this.commandBus.execute(
-        new RemoveHitCommand(caseId, traceId, referencePrintId),
+        new RemoveHitCommand(
+          toAuditActor(user),
+          caseId,
+          traceId,
+          referencePrintId,
+        ),
       );
     } catch (e) {
       if (

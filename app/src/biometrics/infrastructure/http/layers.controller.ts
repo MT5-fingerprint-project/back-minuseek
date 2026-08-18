@@ -20,6 +20,9 @@ import { ListLayersQuery } from '../../application/queries/list-layers/list-laye
 import { LayerNotFoundError } from '../../domain/layer/errors/layer-not-found.error';
 import { CreateLayerDto } from './dto/create-layer.dto';
 import { UpdateLayerDto } from './dto/update-layer.dto';
+import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
+import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
+import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapper';
 
 @ApiTags('layers')
 @Controller('layers')
@@ -43,9 +46,13 @@ export class LayersController {
   @ApiOperation({ summary: 'Créer un calque' })
   @ApiResponse({ status: 201, description: 'Calque créé' })
   @ApiResponse({ status: 400, description: 'Payload invalide' })
-  createLayer(@Body() dto: CreateLayerDto) {
+  createLayer(
+    @Body() dto: CreateLayerDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.commandBus.execute(
       new CreateLayerCommand(
+        toAuditActor(user),
         dto.id ?? randomUUID(),
         dto.fingerprintId,
         dto.name,
@@ -63,10 +70,12 @@ export class LayersController {
   async updateLayer(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateLayerDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     try {
       await this.commandBus.execute(
         new UpdateLayerCommand(
+          toAuditActor(user),
           id,
           dto.name,
           dto.zIndex,
@@ -86,9 +95,14 @@ export class LayersController {
   @ApiOperation({ summary: 'Supprimer un calque' })
   @ApiResponse({ status: 204, description: 'Calque supprimé' })
   @ApiResponse({ status: 404, description: 'Calque non trouvé' })
-  async deleteLayer(@Param('id', ParseUUIDPipe) id: string) {
+  async deleteLayer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     try {
-      await this.commandBus.execute(new DeleteLayerCommand(id));
+      await this.commandBus.execute(
+        new DeleteLayerCommand(toAuditActor(user), id),
+      );
     } catch (e) {
       if (e instanceof LayerNotFoundError)
         throw new NotFoundException(e.message);

@@ -1,3 +1,4 @@
+import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { TraceStatusEnum } from '../../../domain/trace/value-objects/trace-status.vo';
 import { CaseUnavailableForTraceError } from '../../../domain/trace/errors/case-unavailable-for-trace.error';
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
@@ -24,6 +25,7 @@ describe('UploadTraceHandler', () => {
 
   const command = (caseId = 'case-9') =>
     new UploadTraceCommand(
+      EXPERT_ACTOR,
       Buffer.from('test-image'),
       'fingerprint.png',
       'image/png',
