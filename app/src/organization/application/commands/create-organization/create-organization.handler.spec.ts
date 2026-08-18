@@ -7,7 +7,10 @@ import type {
   ListedUsers,
 } from '../../ports/identity-provider.port';
 import type { TenantDatabaseAdminPort } from '../../ports/tenant-database.port';
-import type { OrganizationInitializerPort } from '../../ports/organization-initializer.port';
+import type {
+  OrganizationInitializerPort,
+  OrganizationToInitialize,
+} from '../../ports/organization-initializer.port';
 import {
   InvalidOrganizationSlugError,
   OrganizationAlreadyExistsError,
@@ -104,9 +107,11 @@ class InMemoryDatabaseAdmin implements TenantDatabaseAdminPort {
 
 class InMemoryInitializer implements OrganizationInitializerPort {
   constructor(private readonly journal: SagaJournal) {}
+  readonly initialized: OrganizationToInitialize[] = [];
 
-  initialize(databaseName: string): Promise<void> {
-    this.journal.record(`initialize:${databaseName}`);
+  initialize(organization: OrganizationToInitialize): Promise<void> {
+    this.initialized.push(organization);
+    this.journal.record(`initialize:${organization.databaseName}`);
     return Promise.resolve();
   }
 }
@@ -134,13 +139,21 @@ function buildHandler() {
   const registry = new InMemoryRegistry(journal);
   const identityProvider = new InMemoryIdentityProvider(journal);
   const databaseAdmin = new InMemoryDatabaseAdmin(journal);
+  const initializer = new InMemoryInitializer(journal);
   const handler = new CreateOrganizationHandler(
     registry as unknown as TenantRegistryService,
     identityProvider,
     databaseAdmin,
-    new InMemoryInitializer(journal),
+    initializer,
   );
-  return { handler, journal, registry, identityProvider, databaseAdmin };
+  return {
+    handler,
+    journal,
+    registry,
+    identityProvider,
+    databaseAdmin,
+    initializer,
+  };
 }
 
 describe('CreateOrganizationHandler — chemin nominal', () => {
@@ -164,6 +177,21 @@ describe('CreateOrganizationHandler — chemin nominal', () => {
       databaseName: 'minuseek_labo_lyon',
       identityProviderRealm: 'minuseek-labo-lyon',
     });
+  });
+
+  it("passe le realm à l'initialisation de la base tenant", async () => {
+    const { handler, initializer } = buildHandler();
+
+    await handler.execute(COMMAND);
+
+    expect(initializer.initialized).toEqual([
+      {
+        databaseName: 'minuseek_labo_lyon',
+        slug: 'labo-lyon',
+        displayName: 'PTS Lyon',
+        realm: 'minuseek-labo-lyon',
+      },
+    ]);
   });
 
   it('rend l’organisation résoluble par le registre après coup', async () => {

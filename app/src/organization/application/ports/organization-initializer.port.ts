@@ -1,9 +1,12 @@
 export const ORGANIZATION_INITIALIZER = Symbol('ORGANIZATION_INITIALIZER');
 
+export interface OrganizationToInitialize {
+  databaseName: string;
+  slug: string;
+  displayName: string;
+  realm: string;
+}
+
 export interface OrganizationInitializerPort {
-  initialize(
-    databaseName: string,
-    slug: string,
-    displayName: string,
-  ): Promise<void>;
+  initialize(organization: OrganizationToInitialize): Promise<void>;
 }
