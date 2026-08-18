@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { UNAUDITED_HANDLERS } from '../shared/domain/audit/unaudited-handlers';
+import { UNAUDITED_TABLES } from '../shared/domain/audit/unaudited-tables';
 
 const SOURCE_ROOT = join(__dirname, '..');
 // Le marqueur est le nom du token tel qu'il est écrit dans le source, pas sa
@@ -57,5 +58,28 @@ describe("couverture d'instrumentation des command handlers", () => {
     expect(
       Object.keys(UNAUDITED_HANDLERS).filter((key) => !stillUnaudited.has(key)),
     ).toEqual([]);
+  });
+});
+
+describe("couverture d'instrumentation des tables du garde fail-closed", () => {
+  const exemptions = Object.entries(UNAUDITED_TABLES);
+
+  it.each(exemptions)(
+    "l'exemption de la table %s cite des handlers qui existent",
+    (_table, handlerKeys) => {
+      const known = new Set(handlers.map((handler) => handler.key));
+
+      expect(handlerKeys.filter((key) => !known.has(key))).toEqual([]);
+    },
+  );
+
+  it('ne garde aucune exemption périmée : table dont tous les handlers sont instrumentés', () => {
+    const stale = exemptions
+      .filter(([, handlerKeys]) =>
+        handlerKeys.every((key) => !(key in UNAUDITED_HANDLERS)),
+      )
+      .map(([table]) => table);
+
+    expect(stale).toEqual([]);
   });
 });
