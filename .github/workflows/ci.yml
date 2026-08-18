@@ -82,6 +82,51 @@ jobs:
       - name: Build
         run: pnpm build
 
+  integration:
+    name: Intégration
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: minuseek_integration
+          POSTGRES_USER: minuseek
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U minuseek -d minuseek_integration"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://minuseek:postgres@localhost:5432/minuseek_integration
+      INTEGRATION_DATABASE_URL: postgresql://minuseek:postgres@localhost:5432/minuseek_integration
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Appliquer les migrations sur la base d'intégration
+        run: npx prisma migrate deploy
+
+      - name: Suite d'intégration
+        run: pnpm jest --config jest.integration.config.js
+
   migrations:
     name: Migrations à jour
     runs-on: ubuntu-latest

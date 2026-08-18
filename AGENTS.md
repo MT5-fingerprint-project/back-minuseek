@@ -60,6 +60,8 @@ make dev                      # lancements suivants (hot-reload)
 | `make migrate-admin-setup` | 1er lancement : crée `minuseek_admin` + migration initiale |
 | `make migrate-admin NAME=<nom>` | Crée + applique une migration sur le schéma admin |
 | `make test [FILE=...]` | Lance les tests (un fichier si `FILE=`) |
+| `make test-integration [FILE=...]` | Suite d'intégration sur une vraie base jetable |
+| `make test-integration-down` | Détruit la base d'intégration |
 
 Scripts pnpm (depuis `app/`) : `pnpm build`, `pnpm start:dev`, `pnpm lint`, `pnpm test`.
 
@@ -107,7 +109,8 @@ infrastructure  →  application  →  domain
 - **Couvrir ce qui doit échouer autant que ce qui doit marcher** : limites, entrées invalides, transitions interdites, immuabilité, idempotence, round-trip, régressions. Les erreurs s'assertent **par type** (`toThrow(MonError)`, jamais `toThrow()` nu) et vérifient l'absence d'effet de bord. Un `it` unique sur le happy path = unité non testée.
 - Taxonomie de couverture, qualité des assertions, **mutation manuelle** (casser le code pour prouver qu'un test le rattrape) et Definition of Done : skill **`tdd`** — à lire avant de coder.
 - **Domaine & use cases** : tests unitaires purs. Les handlers se testent en injectant un `InMemory*Repository` (pas de DB, pas de mock lourd) — voir `open-investigation-case.handler.spec.ts`.
-- `make test [FILE=...]` lance les `*.spec.ts` sous `app/src/` ; `make test-watch FILE=...` est la boucle rouge/vert ; `pnpm test:cov` repère les branches jamais exécutées (aucun seuil configuré). **Aucun test e2e n'existe aujourd'hui** : pas de dossier `app/test/`, pas de script `test:e2e` (bien que `supertest` soit installé) — ne pas inventer la commande ; si on en ajoute, mettre cette section à jour.
+- `make test [FILE=...]` lance les `*.spec.ts` sous `app/src/` ; `make test-watch FILE=...` est la boucle rouge/vert ; `pnpm test:cov` repère les branches jamais exécutées (aucun seuil configuré). **Aucun test e2e HTTP n'existe aujourd'hui** : pas de script `test:e2e` (bien que `supertest` soit installé) — ne pas inventer la commande ; si on en ajoute, mettre cette section à jour.
+- **Tests d'intégration** (`app/test/integration/**/*.int-spec.ts`, `make test-integration`) : réservés à ce que les fakes ne reproduisent pas — advisory lock Postgres, propagation du client transactionnel par l'`AsyncLocalStorage`, extension `$extends` du garde anti-oubli, rollback réel, triggers SQL. Ils tournent contre le service compose `postgres-test` (profil `test`, port 5433, base jetable), config `app/jest.integration.config.js`, et sont **hors** du `pnpm test` unitaire (`rootDir: src`). Un comportement testable sans base reste un test unitaire.
 
 ## Ajouter un use case (recette, test-first)
 
