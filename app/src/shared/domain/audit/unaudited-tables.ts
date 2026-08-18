@@ -1,10 +1,5 @@
 // table that are exempted from audit are listed in `UNAUDITED_TABLES` and are not considered "unaudited" when mutated. This is a temporary measure to allow certain operations to proceed without audit events while the system is being developed.
 export const UNAUDITED_TABLES: Record<string, string[]> = {
-  Layer: [
-    'biometrics/application/commands/create-layer/create-layer.handler.ts',
-    'biometrics/application/commands/update-layer/update-layer.handler.ts',
-    'biometrics/application/commands/delete-layer/delete-layer.handler.ts',
-  ],
   Matching: [
     'biometrics/application/commands/compare-trace/compare-trace.handler.ts',
   ],

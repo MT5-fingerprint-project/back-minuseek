@@ -4,12 +4,6 @@
  * Un handler instrumenté doit sortir de cette liste, sinon le test de couverture échoue.
  */
 export const UNAUDITED_HANDLERS: Record<string, string> = {
-  'biometrics/application/commands/create-layer/create-layer.handler.ts':
-    'calques — ticket 5.2',
-  'biometrics/application/commands/update-layer/update-layer.handler.ts':
-    'calques — ticket 5.2',
-  'biometrics/application/commands/delete-layer/delete-layer.handler.ts':
-    'calques — ticket 5.2',
   'biometrics/application/commands/compare-trace/compare-trace.handler.ts':
     'comparaison — ticket 5.4, bloqué par la version du moteur (5.3)',
   'biometrics/application/commands/record-hit/record-hit.handler.ts':
