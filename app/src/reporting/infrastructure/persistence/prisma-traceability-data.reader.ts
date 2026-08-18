@@ -23,7 +23,9 @@ export class PrismaTraceabilityDataReader implements TraceabilityDataReader {
         orderBy: { seq: 'asc' },
         select: { seq: true, hash: true },
       }),
-      prisma.auditAnchor.findMany({ orderBy: { headSeq: 'asc' } }),
+      prisma.auditAnchor.findMany({
+        orderBy: [{ headSeq: 'asc' }, { id: 'asc' }],
+      }),
     ]);
 
     return {
