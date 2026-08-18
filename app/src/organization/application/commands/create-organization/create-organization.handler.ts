@@ -78,11 +78,12 @@ export class CreateOrganizationHandler {
       }
 
       await this.databaseAdmin.migrate(databaseName);
-      await this.organizationInitializer.initialize(
+      await this.organizationInitializer.initialize({
         databaseName,
         slug,
-        command.displayName,
-      );
+        displayName: command.displayName,
+        realm,
+      });
 
       const created = await this.tenantRegistry.register({
         slug,

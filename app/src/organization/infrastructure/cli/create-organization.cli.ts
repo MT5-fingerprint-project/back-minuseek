@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { SharedModule } from '../../../shared/shared.module';
 import { TenancyModule } from '../../../tenancy/tenancy.module';
 import { OrganizationModule } from '../../organization.module';
 import { CreateOrganizationCommand } from '../../application/commands/create-organization/create-organization.command';
@@ -17,7 +18,7 @@ import { OrganizationAlreadyExistsError } from '../../application/organization.e
  *   node dist/src/organization/infrastructure/cli/create-organization.cli.js <slug> "<displayName>"
  */
 @Module({
-  imports: [TenancyModule, OrganizationModule],
+  imports: [SharedModule, TenancyModule, OrganizationModule],
 })
 class ProvisioningCliModule {}
 
