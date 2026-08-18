@@ -27,10 +27,7 @@ export class PrismaHitRepository implements HitRepository {
     });
   }
 
-  async deleteByPair(
-    traceId: string,
-    referencePrintId: string,
-  ): Promise<void> {
+  async deleteByPair(traceId: string, referencePrintId: string): Promise<void> {
     const prisma = await this.tenantConnection.getCurrentClient();
     await prisma.hit.deleteMany({ where: { traceId, referencePrintId } });
   }

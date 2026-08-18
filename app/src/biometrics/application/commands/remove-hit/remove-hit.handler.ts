@@ -17,9 +17,10 @@ import { ReferencePrintNotFoundError } from '../../../domain/reference-print/err
 import { RemoveHitCommand } from './remove-hit.command';
 
 @CommandHandler(RemoveHitCommand)
-export class RemoveHitHandler
-  implements ICommandHandler<RemoveHitCommand, void>
-{
+export class RemoveHitHandler implements ICommandHandler<
+  RemoveHitCommand,
+  void
+> {
   constructor(
     @Inject(TRACE_REPOSITORY)
     private readonly traceRepo: TraceRepository,
