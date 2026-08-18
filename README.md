@@ -177,6 +177,8 @@ make migrate NAME=add-user-table
 |---------------------------------|--------------------------------------------------------------------------|
 | `make audit-verify`             | Vérifie l'intégrité des chaînes d'audit de tous les tenants du registre   |
 | `make audit-verify TENANT=demo` | Vérifie un seul tenant                                                   |
+| `make audit-anchor`             | Horodate la tête de chaîne de chaque tenant auprès de la TSA (RFC 3161)   |
+| `make audit-anchor TENANT=demo` | Ancre un seul tenant                                                     |
 
 La commande recalcule chaque maillon et **sort en code 1** dès qu'une chaîne est rompue : elle est
 utilisable telle quelle dans un script ou un job. Ce qu'elle contrôle, comment lire son rapport et

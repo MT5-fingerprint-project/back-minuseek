@@ -27,8 +27,13 @@ export function buildTimestampRequest(digest: Buffer, nonce: Buffer): Buffer {
   return Buffer.from(request.toSchema().toBER(false));
 }
 
-/** TSTInfo d'un TSR, une fois le token dépaqueté de son SignedData. */
-export function readTstInfo(tsrDer: Buffer): TSTInfo {
+export interface TimestampTokenContent {
+  signedData: SignedData;
+  tstInfo: TSTInfo;
+}
+
+/** TSTInfo et SignedData d'un TSR, une fois le token dépaqueté. */
+export function readTimestampToken(tsrDer: Buffer): TimestampTokenContent {
   const parsed = asn1js.fromBER(new Uint8Array(tsrDer));
   if (parsed.offset === -1) {
     throw new TimestampAuthorityError('réponse illisible (ASN.1 invalide)');
@@ -57,7 +62,31 @@ export function readTstInfo(tsrDer: Buffer): TSTInfo {
   if (tstInfoBer.offset === -1) {
     throw new TimestampAuthorityError('TSTInfo illisible');
   }
-  return new TSTInfo({ schema: tstInfoBer.result });
+  return { signedData, tstInfo: new TSTInfo({ schema: tstInfoBer.result }) };
+}
+
+export function readTstInfo(tsrDer: Buffer): TSTInfo {
+  return readTimestampToken(tsrDer).tstInfo;
+}
+
+/**
+ * Vérifie que le TSR signe bien `timestampedData` : signature du TSTInfo par le
+ * certificat embarqué, et messageImprint == sha256(timestampedData). La chaîne
+ * X.509 n'est pas remontée jusqu'à une racine de confiance (best-effort v1,
+ * ADR-0009) — ce contrôle prouve le lien TSR/donnée, pas la qualification de la
+ * TSA.
+ */
+export async function verifyTimestampOverData(
+  tsrDer: Buffer,
+  timestampedData: Buffer,
+): Promise<boolean> {
+  try {
+    const { signedData } = readTimestampToken(tsrDer);
+    const data = new Uint8Array(timestampedData).buffer;
+    return await signedData.verify({ signer: 0, data });
+  } catch {
+    return false;
+  }
 }
 
 export function verifyTimestampMatches(

@@ -118,6 +118,10 @@ provision:
 audit-verify:
 	$(COMPOSE) run --rm app pnpm ts-node src/audit-trail/infrastructure/cli/verify-chain.cli.ts $(TENANT)
 
+## Ancre la tête de chaîne d'audit auprès de la TSA (ou make audit-anchor TENANT=demo)
+audit-anchor:
+	$(COMPOSE) run --rm app pnpm ts-node src/audit-trail/infrastructure/cli/anchor-chain.cli.ts $(TENANT)
+
 ## Migre le schéma admin puis fan-out du schéma métier sur chaque base tenant du registre
 ## (équivalent local du job de migration déployé)
 migrate-all:

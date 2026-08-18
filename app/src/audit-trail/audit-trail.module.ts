@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { AUDIT_TRAIL } from '../shared/domain/ports/audit-trail.port';
+import { AnchorChainHandler } from './application/commands/anchor-chain/anchor-chain.handler';
+import { CHAIN_ANCHOR_STORE } from './application/ports/chain-anchor.store';
+import { TIMESTAMP_AUTHORITY } from './application/ports/timestamp-authority.port';
+import { TIMESTAMP_VERIFIER } from './application/ports/timestamp-verifier.port';
 import { CASE_AUDIT_EVENT_READER } from './application/queries/list-case-audit-events/case-audit-event.reader';
 import { ListCaseAuditEventsHandler } from './application/queries/list-case-audit-events/list-case-audit-events.handler';
 import { CHAIN_EVENT_READER } from './application/queries/verify-chain/chain-event.reader';
@@ -9,7 +13,11 @@ import { AuditTrailController } from './infrastructure/http/audit-trail.controll
 import { InternalAuditController } from './infrastructure/http/internal-audit.controller';
 import { PrismaAuditTrailAppender } from './infrastructure/persistence/prisma-audit-trail.appender';
 import { PrismaCaseAuditEventReader } from './infrastructure/persistence/prisma-case-audit-event.reader';
+import { PrismaChainAnchorStore } from './infrastructure/persistence/prisma-chain-anchor.store';
 import { PrismaChainEventReader } from './infrastructure/persistence/prisma-chain-event.reader';
+import { Rfc3161TimestampVerifier } from './infrastructure/tsa/rfc3161-timestamp.verifier';
+import { Rfc3161TsaAdapter } from './infrastructure/tsa/rfc3161-tsa.adapter';
+import { TenantChainAnchoringRunner } from './infrastructure/verification/tenant-chain-anchoring.runner';
 import { TenantChainVerificationRunner } from './infrastructure/verification/tenant-chain-verification.runner';
 
 @Module({
@@ -18,7 +26,9 @@ import { TenantChainVerificationRunner } from './infrastructure/verification/ten
   providers: [
     ListCaseAuditEventsHandler,
     VerifyChainHandler,
+    AnchorChainHandler,
     TenantChainVerificationRunner,
+    TenantChainAnchoringRunner,
     {
       provide: AUDIT_TRAIL,
       useClass: PrismaAuditTrailAppender,
@@ -30,6 +40,18 @@ import { TenantChainVerificationRunner } from './infrastructure/verification/ten
     {
       provide: CHAIN_EVENT_READER,
       useClass: PrismaChainEventReader,
+    },
+    {
+      provide: CHAIN_ANCHOR_STORE,
+      useClass: PrismaChainAnchorStore,
+    },
+    {
+      provide: TIMESTAMP_AUTHORITY,
+      useClass: Rfc3161TsaAdapter,
+    },
+    {
+      provide: TIMESTAMP_VERIFIER,
+      useClass: Rfc3161TimestampVerifier,
     },
   ],
   exports: [AUDIT_TRAIL],
