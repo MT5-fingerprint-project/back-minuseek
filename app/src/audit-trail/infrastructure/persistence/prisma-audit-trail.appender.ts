@@ -36,7 +36,7 @@ export class PrismaAuditTrailAppender implements AuditTrailPort {
     // Sérialise les appends de la base tenant : sans verrou, deux transactions
     // concurrentes liraient la même tête et fourcheraient la chaîne. Relâché
     // automatiquement au commit/rollback (variante _xact_).
-    await transaction.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('audit_chain'))`;
+    await transaction.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext('audit_chain'))`;
 
     const head = await transaction.auditEvent.findFirst({
       orderBy: { seq: 'desc' },
