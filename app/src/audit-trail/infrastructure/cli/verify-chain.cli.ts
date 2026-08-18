@@ -28,7 +28,7 @@ async function main(): Promise<void> {
 
   try {
     const runner = applicationContext.get(TenantChainVerificationRunner);
-    const verifications = await runner.verify(tenantSlug);
+    const { verifications, ok } = await runner.verify(tenantSlug);
 
     for (const verification of verifications) {
       const verdict = verification.ok ? 'intègre' : 'ROMPUE';
@@ -44,7 +44,7 @@ async function main(): Promise<void> {
       console.log(`${verification.tenant} : ${verdict} — ${details}`);
     }
 
-    if (verifications.some((verification) => !verification.ok)) {
+    if (!ok) {
       process.exitCode = 1;
     }
   } finally {
