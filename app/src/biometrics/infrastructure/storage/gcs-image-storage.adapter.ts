@@ -1,8 +1,18 @@
 import { Storage } from '@google-cloud/storage';
 import { Injectable } from '@nestjs/common';
 import { ImageStoragePort } from '../../application/ports/image-storage.port';
+import { ImageAlreadyStoredError } from '../../application/ports/image-already-stored.error';
 
 const MEDIA_PREFIX = 'media/';
+const PRECONDITION_FAILED = 412;
+
+function isPreconditionFailed(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: unknown }).code === PRECONDITION_FAILED
+  );
+}
 
 function contentTypeFor(key: string): string {
   const ext = key.slice(key.lastIndexOf('.') + 1).toLowerCase();
@@ -42,10 +52,21 @@ export class GcsImageStorageAdapter implements ImageStoragePort {
 
   async save(buffer: Buffer, relativePath: string): Promise<string> {
     const key = `${MEDIA_PREFIX}${relativePath.replace(/\\/g, '/')}`;
-    await this.storage
-      .bucket(this.bucketName)
-      .file(key)
-      .save(buffer, { contentType: contentTypeFor(key), resumable: false });
+    try {
+      await this.storage
+        .bucket(this.bucketName)
+        .file(key)
+        .save(buffer, {
+          contentType: contentTypeFor(key),
+          resumable: false,
+          preconditionOpts: { ifGenerationMatch: 0 },
+        });
+    } catch (error) {
+      if (isPreconditionFailed(error)) {
+        throw new ImageAlreadyStoredError(key);
+      }
+      throw error;
+    }
     return key;
   }
 

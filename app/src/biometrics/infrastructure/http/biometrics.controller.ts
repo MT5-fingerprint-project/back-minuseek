@@ -45,6 +45,7 @@ import { MatchingPrimitives } from '../../domain/matching/entity/matching';
 import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
 import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
 import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapper';
+import { DeletePieceDto } from './dto/delete-piece.dto';
 import { UploadTraceDto } from './dto/upload-trace.dto';
 import { UploadReferencePrintDto } from './dto/upload-reference-print.dto';
 import { ListTracesDto } from './dto/list-traces.dto';
@@ -54,6 +55,9 @@ import { RecordHitDto } from './dto/record-hit.dto';
 
 const IMAGE_MIME = /^image\/(png|jpe?g|tiff)$/;
 const MAX_IMAGE_SIZE_BYTES = 20 * 1024 * 1024;
+
+const statedReason = (dto: DeletePieceDto): string | null =>
+  dto.reason?.trim() || null;
 
 // Les champs d'un multipart arrivent tous en chaîne : ce pipe local active
 // `transform` pour que le contrôleur reçoive des nombres. Le pipe global de
@@ -108,11 +112,12 @@ export class BiometricsController {
   @ApiResponse({ status: 404, description: 'Trace non trouvée' })
   async deleteTrace(
     @Param('id', ParseUUIDPipe) id: string,
+    @Query() dto: DeletePieceDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     try {
       await this.commandBus.execute(
-        new DeleteTraceCommand(toAuditActor(user), id),
+        new DeleteTraceCommand(toAuditActor(user), id, statedReason(dto)),
       );
     } catch (e) {
       if (e instanceof TraceNotFoundError)
@@ -131,11 +136,16 @@ export class BiometricsController {
   })
   async deleteReferencePrint(
     @Param('id', ParseUUIDPipe) id: string,
+    @Query() dto: DeletePieceDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     try {
       await this.commandBus.execute(
-        new DeleteReferencePrintCommand(toAuditActor(user), id),
+        new DeleteReferencePrintCommand(
+          toAuditActor(user),
+          id,
+          statedReason(dto),
+        ),
       );
     } catch (e) {
       if (e instanceof ReferencePrintNotFoundError)

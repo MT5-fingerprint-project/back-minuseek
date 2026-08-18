@@ -15,6 +15,7 @@ jest.mock('@google-cloud/storage', () => ({
 }));
 
 import { GcsImageStorageAdapter } from './gcs-image-storage.adapter';
+import { ImageAlreadyStoredError } from '../../application/ports/image-already-stored.error';
 
 describe('GcsImageStorageAdapter', () => {
   beforeEach(() => jest.clearAllMocks());
@@ -31,6 +32,40 @@ describe('GcsImageStorageAdapter', () => {
       expect.objectContaining({ contentType: 'image/png', resumable: false }),
     );
     expect(key).toBe('media/traces/abc.png');
+  });
+
+  it('save() refuses to overwrite an existing key', async () => {
+    const adapter = new GcsImageStorageAdapter('minuseek-media-dev', 900);
+
+    await adapter.save(Buffer.from('x'), 'traces/abc.png');
+
+    expect(mockSave).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      expect.objectContaining({ preconditionOpts: { ifGenerationMatch: 0 } }),
+    );
+  });
+
+  it('save() translates the storage precondition failure into a domain error', async () => {
+    mockSave.mockRejectedValueOnce(
+      Object.assign(new Error('precondition'), { code: 412 }),
+    );
+    const adapter = new GcsImageStorageAdapter('minuseek-media-dev', 900);
+
+    await expect(
+      adapter.save(Buffer.from('x'), 'traces/abc.png'),
+    ).rejects.toBeInstanceOf(ImageAlreadyStoredError);
+  });
+
+  it('save() lets any other storage failure through untouched', async () => {
+    const outage = Object.assign(new Error('service unavailable'), {
+      code: 503,
+    });
+    mockSave.mockRejectedValueOnce(outage);
+    const adapter = new GcsImageStorageAdapter('minuseek-media-dev', 900);
+
+    await expect(adapter.save(Buffer.from('x'), 'traces/abc.png')).rejects.toBe(
+      outage,
+    );
   });
 
   it('getUrl() signs a V4 read URL without re-prefixing media/', async () => {

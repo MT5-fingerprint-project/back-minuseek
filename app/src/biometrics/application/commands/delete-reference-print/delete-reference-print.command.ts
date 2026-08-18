@@ -4,5 +4,6 @@ export class DeleteReferencePrintCommand {
   constructor(
     public readonly actor: AuditActor,
     public readonly id: string,
+    public readonly reason: string | null = null,
   ) {}
 }
