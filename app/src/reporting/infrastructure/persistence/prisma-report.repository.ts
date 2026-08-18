@@ -52,13 +52,4 @@ export class PrismaReportRepository implements ReportRepository {
     const row = await prisma.report.findUnique({ where: { id } });
     return row ? toReport(row) : null;
   }
-
-  async findByCase(caseId: string): Promise<Report[]> {
-    const prisma = await this.tenantConnection.getCurrentClient();
-    const rows = await prisma.report.findMany({
-      where: { caseId },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    });
-    return rows.map(toReport);
-  }
 }

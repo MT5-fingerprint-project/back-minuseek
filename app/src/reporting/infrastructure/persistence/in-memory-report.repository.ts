@@ -14,10 +14,4 @@ export class InMemoryReportRepository implements ReportRepository {
       this.store.find((report) => report.id === id) ?? null,
     );
   }
-
-  findByCase(caseId: string): Promise<Report[]> {
-    return Promise.resolve(
-      this.store.filter((report) => report.caseId === caseId),
-    );
-  }
 }
