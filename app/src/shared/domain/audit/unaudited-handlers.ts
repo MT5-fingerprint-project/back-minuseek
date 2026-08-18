@@ -20,8 +20,6 @@ export const UNAUDITED_HANDLERS: Record<string, string> = {
     'enregistrement de sujet — ticket 5.5',
   'identity-access/application/commands/register-user/register-user.handler.ts':
     'comptes du tenant : hors chaîne métier v1 (lot U)',
-  'investigation/application/commands/open-investigation-case/open-investigation-case.handler.ts':
-    'ouverture de dossier — ticket 5.1',
   'organization/application/commands/create-organization/create-organization.handler.ts':
     'control-plane : le genesis du tenant est écrit par OrganizationInitializer',
   'organization/application/commands/delete-organization/delete-organization.handler.ts':
