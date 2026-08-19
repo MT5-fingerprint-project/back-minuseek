@@ -19,9 +19,12 @@ import type {
   ChainHeadSummary,
 } from '../../ports/chain-head.reader';
 import type {
+  AuditEventData,
   TraceabilityData,
   TraceabilityDataReader,
 } from '../../ports/traceability-data.reader';
+import type { ReportImageEmbedderPort } from '../../ports/report-image-embedder.port';
+import type { ReportImageViewModel } from '../../report-view-model';
 import { GenerateReportCommand } from './generate-report.command';
 import { GenerateReportHandler } from './generate-report.handler';
 
@@ -52,7 +55,10 @@ const CASE_DATA: CaseReportData = {
       capturedAt: null,
       status: 'EXPLOITABLE',
       score: 70,
+      subjectId: null,
+      position: null,
       layers: [],
+      minutiae: [],
     },
   ],
   referencePrints: [
@@ -64,10 +70,15 @@ const CASE_DATA: CaseReportData = {
       capturedAt: null,
       status: null,
       score: null,
+      subjectId: null,
+      position: null,
       layers: [],
+      minutiae: [],
     },
   ],
   comparisons: [],
+  declaredHits: [],
+  subjects: [],
 };
 
 const TRACEABILITY_DATA: TraceabilityData = {
@@ -93,8 +104,24 @@ class FakeCaseDataReader implements CaseReportDataReader {
 }
 
 class FakeTraceabilityReader implements TraceabilityDataReader {
+  readonly caseEvents: AuditEventData[] = [];
+  caseEventsReadFor: string[] = [];
+
   read(): Promise<TraceabilityData> {
     return Promise.resolve(TRACEABILITY_DATA);
+  }
+
+  readCaseEvents(caseId: string): Promise<AuditEventData[]> {
+    this.caseEventsReadFor.push(caseId);
+    return Promise.resolve(this.caseEvents);
+  }
+}
+
+class FakeImageEmbedder implements ReportImageEmbedderPort {
+  readonly images = new Map<string, ReportImageViewModel>();
+
+  embed(storedPath: string): Promise<ReportImageViewModel | null> {
+    return Promise.resolve(this.images.get(storedPath) ?? null);
   }
 }
 
@@ -117,18 +144,23 @@ describe('GenerateReportHandler', () => {
   let storage: InMemoryReportStorageAdapter;
   let repository: InMemoryReportRepository;
   let appender: InMemoryAuditTrailAppender;
+  let traceability: FakeTraceabilityReader;
+  let imageEmbedder: FakeImageEmbedder;
 
   beforeEach(() => {
     caseData = new FakeCaseDataReader();
+    traceability = new FakeTraceabilityReader();
+    imageEmbedder = new FakeImageEmbedder();
     renderer = new InMemoryReportRenderer();
     storage = new InMemoryReportStorageAdapter();
     repository = new InMemoryReportRepository();
     appender = new InMemoryAuditTrailAppender();
     handler = new GenerateReportHandler(
       caseData,
-      new FakeTraceabilityReader(),
+      traceability,
       new FakeAttestation(),
       new FakeChainHeadReader(),
+      imageEmbedder,
       renderer,
       storage,
       repository,
@@ -181,9 +213,12 @@ describe('GenerateReportHandler', () => {
     });
   });
 
-  it('embarque les pièces lisibles et signale les autres', async () => {
-    await storage.save(Buffer.from('png'), 'lisible');
-    storage.files.set(TRACE_PATH, Buffer.from('png'));
+  it('embarque les pièces lisibles avec leurs dimensions, et signale les autres', async () => {
+    imageEmbedder.images.set(TRACE_PATH, {
+      dataUrl: 'data:image/png;base64,AAA',
+      width: 800,
+      height: 1200,
+    });
 
     await handler.execute(
       new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL'),
@@ -191,10 +226,23 @@ describe('GenerateReportHandler', () => {
 
     const model = renderer.rendered[0];
     if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
-    expect(model.traces[0].imageDataUrl).toBe(
-      `data:image/png;base64,${Buffer.from('png').toString('base64')}`,
+    expect(model.traces[0].image).toEqual({
+      dataUrl: 'data:image/png;base64,AAA',
+      width: 800,
+      height: 1200,
+    });
+    expect(model.referencePrints[0].image).toBeNull();
+  });
+
+  it('lit les maillons du dossier pour le journal du rapport technique', async () => {
+    await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL'),
     );
-    expect(model.referencePrints[0].imageDataUrl).toBeNull();
+
+    expect(traceability.caseEventsReadFor).toEqual([CASE_ID]);
+    const model = renderer.rendered[0];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.journal.notCovered.length).toBeGreaterThan(0);
   });
 
   it('rattache le document au maillon de chaîne du moment', async () => {

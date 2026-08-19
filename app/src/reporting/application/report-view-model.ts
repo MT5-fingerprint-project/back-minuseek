@@ -12,6 +12,21 @@ export interface ReportHeaderViewModel {
   generatedByDisplayName: string;
 }
 
+export interface ReportImageViewModel {
+  dataUrl: string;
+  width: number | null;
+  height: number | null;
+}
+
+export interface ReportMinutiaViewModel {
+  index: number;
+  x: number;
+  y: number;
+  radius: number;
+  angleDeg: number | null;
+  color: string;
+}
+
 export interface ReportPieceViewModel {
   label: string;
   sha256: string | null;
@@ -19,8 +34,56 @@ export interface ReportPieceViewModel {
   capturedAt: Date | null;
   status: string | null;
   exploitabilityScore: number | null;
-  imageDataUrl: string | null;
+  image: ReportImageViewModel | null;
+  minutiae: ReportMinutiaViewModel[];
   layers: ReportLayerViewModel[];
+}
+
+export interface ReportSubjectViewModel {
+  firstName: string;
+  lastName: string;
+  birthDate: Date;
+  birthPlace: string;
+  sex: string;
+  type: string;
+}
+
+export interface ReportExpertViewModel {
+  displayName: string;
+  grade: string;
+  serviceNumber: string;
+  role: string;
+}
+
+/** Planche de comparaison : les deux pièces, leurs minuties, et l'acte d'expert. */
+export interface ReportIdentityDemonstrationViewModel {
+  trace: ReportPieceViewModel;
+  referencePrint: ReportPieceViewModel;
+  subject: ReportSubjectViewModel | null;
+  position: string | null;
+  score: number | null;
+  machineMatch: boolean | null;
+  comparedAt: Date | null;
+  declaredAt: Date;
+  declaredBy: ReportExpertViewModel | null;
+  requiredMinutiae: number;
+}
+
+export interface ReportJournalEntryViewModel {
+  label: string;
+  detail: string | null;
+  occurredAt: Date;
+  actorDisplayName: string | null;
+  seq: number | null;
+  hash: string | null;
+}
+
+export interface ReportJournalViewModel {
+  chained: ReportJournalEntryViewModel[];
+  /** Actes lus dans l'état courant, sans maillon correspondant dans la chaîne. */
+  reconstructed: ReportJournalEntryViewModel[];
+  /** Familles d'actes qu'aucun producteur n'écrit encore dans la chaîne. */
+  notCovered: string[];
 }
 
 export interface ReportLayerViewModel {
@@ -47,6 +110,8 @@ export interface TechnicalReportViewModel {
   traces: ReportPieceViewModel[];
   referencePrints: ReportPieceViewModel[];
   comparisons: ReportComparisonViewModel[];
+  identityDemonstrations: ReportIdentityDemonstrationViewModel[];
+  journal: ReportJournalViewModel;
 }
 
 export interface TraceabilityEventViewModel {

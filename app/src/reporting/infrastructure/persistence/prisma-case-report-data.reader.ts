@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
+import { MINUTIA_SETTINGS_TYPES } from '../../../shared/domain/forensics/minutiae';
 import type {
   CaseReportData,
   CaseReportDataReader,
+  ExpertData,
   LayerData,
+  MinutiaData,
   PieceData,
 } from '../../application/ports/case-report-data.reader';
 
@@ -15,9 +18,50 @@ interface PieceRow {
   capturedAt?: Date | null;
   status?: string | null;
   score?: number | null;
+  subjectId?: string | null;
+  position?: string | null;
 }
 
-function toPiece(row: PieceRow, layers: LayerData[]): PieceData {
+interface LayerRow {
+  fingerprintId: string;
+  name: string;
+  type: string;
+  zIndex: number;
+  isVisible: boolean;
+  settings: unknown;
+}
+
+const MINUTIA_KINDS = new Set<string>(MINUTIA_SETTINGS_TYPES);
+
+function numberOrNull(value: unknown): number | null {
+  return typeof value === 'number' ? value : null;
+}
+
+function toMinutia(settings: Record<string, unknown>): MinutiaData | null {
+  const kind = settings.type;
+  const x = settings.x;
+  const y = settings.y;
+  if (typeof kind !== 'string' || !MINUTIA_KINDS.has(kind)) {
+    return null;
+  }
+  if (typeof x !== 'number' || typeof y !== 'number') {
+    return null;
+  }
+  return {
+    kind,
+    x,
+    y,
+    radius: numberOrNull(settings.radius),
+    angleDeg: numberOrNull(settings.angleDeg),
+    color: typeof settings.color === 'string' ? settings.color : null,
+  };
+}
+
+function toPiece(
+  row: PieceRow,
+  layers: LayerData[],
+  minutiae: MinutiaData[],
+): PieceData {
   return {
     id: row.id,
     path: row.path,
@@ -26,7 +70,10 @@ function toPiece(row: PieceRow, layers: LayerData[]): PieceData {
     capturedAt: row.capturedAt ?? null,
     status: row.status ?? null,
     score: row.score ?? null,
+    subjectId: row.subjectId ?? null,
+    position: row.position ?? null,
     layers,
+    minutiae,
   };
 }
 
@@ -44,12 +91,16 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
       return null;
     }
 
-    const [traces, referencePrints] = await Promise.all([
+    const [traces, referencePrints, subjects] = await Promise.all([
       prisma.trace.findMany({
         where: { caseId },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
       prisma.referencePrint.findMany({
+        where: { caseId },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
+      prisma.subject.findMany({
         where: { caseId },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
@@ -63,17 +114,27 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
       where: { fingerprintId: { in: pieceIds } },
       orderBy: [{ zIndex: 'asc' }, { id: 'asc' }],
     });
+
     const layersByPiece = new Map<string, LayerData[]>();
-    for (const layer of layers) {
+    const minutiaeByPiece = new Map<string, MinutiaData[]>();
+    for (const layer of layers as LayerRow[]) {
+      const settings = layer.settings as Record<string, unknown>;
       const pieceLayers = layersByPiece.get(layer.fingerprintId) ?? [];
       pieceLayers.push({
         name: layer.name,
         type: layer.type,
         zIndex: layer.zIndex,
         isVisible: layer.isVisible,
-        settings: layer.settings as Record<string, unknown>,
+        settings,
       });
       layersByPiece.set(layer.fingerprintId, pieceLayers);
+
+      const minutia = toMinutia(settings);
+      if (minutia) {
+        const pieceMinutiae = minutiaeByPiece.get(layer.fingerprintId) ?? [];
+        pieceMinutiae.push(minutia);
+        minutiaeByPiece.set(layer.fingerprintId, pieceMinutiae);
+      }
     }
 
     const traceIds = traces.map((trace) => trace.id);
@@ -82,9 +143,19 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
         where: { traceId: { in: traceIds } },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
-      prisma.hit.findMany({ where: { traceId: { in: traceIds } } }),
+      prisma.hit.findMany({
+        where: { traceId: { in: traceIds } },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
     ]);
-    const declaredHits = new Set(
+
+    const experts = await this.readExperts(
+      prisma,
+      hits
+        .map((hit) => hit.declaredByUserId)
+        .filter((userId): userId is string => userId !== null),
+    );
+    const declaredPairs = new Set(
       hits.map((hit) => `${hit.traceId}:${hit.referencePrintId}`),
     );
 
@@ -98,21 +169,71 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
         createdAt: investigationCase.createdAt,
       },
       traces: traces.map((trace) =>
-        toPiece(trace, layersByPiece.get(trace.id) ?? []),
+        toPiece(
+          trace,
+          layersByPiece.get(trace.id) ?? [],
+          minutiaeByPiece.get(trace.id) ?? [],
+        ),
       ),
       referencePrints: referencePrints.map((print) =>
-        toPiece(print, layersByPiece.get(print.id) ?? []),
+        toPiece(
+          print,
+          layersByPiece.get(print.id) ?? [],
+          minutiaeByPiece.get(print.id) ?? [],
+        ),
       ),
       comparisons: matchings.map((matching) => ({
         traceId: matching.traceId,
         referencePrintId: matching.referencePrintId,
         score: matching.score,
         machineMatch: matching.match,
-        declaredHit: declaredHits.has(
+        declaredHit: declaredPairs.has(
           `${matching.traceId}:${matching.referencePrintId}`,
         ),
         comparedAt: matching.createdAt,
       })),
+      declaredHits: hits.map((hit) => ({
+        traceId: hit.traceId,
+        referencePrintId: hit.referencePrintId,
+        declaredAt: hit.createdAt,
+        declaredBy: hit.declaredByUserId
+          ? (experts.get(hit.declaredByUserId) ?? null)
+          : null,
+      })),
+      subjects: subjects.map((subject) => ({
+        id: subject.id,
+        firstName: subject.firstName,
+        lastName: subject.lastName,
+        birthDate: subject.birthDate,
+        birthPlace: subject.birthPlace,
+        sex: subject.sex,
+        type: subject.type,
+      })),
     };
+  }
+
+  private async readExperts(
+    prisma: Awaited<ReturnType<TenantConnectionService['getCurrentClient']>>,
+    userIds: string[],
+  ): Promise<Map<string, ExpertData>> {
+    if (userIds.length === 0) {
+      return new Map();
+    }
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      include: { personalData: true },
+    });
+    return new Map(
+      users.map((user) => [
+        user.id,
+        {
+          firstName: user.personalData.firstName,
+          lastName: user.personalData.lastName,
+          grade: user.grade,
+          serviceNumber: user.serviceNumber,
+          role: user.role,
+        },
+      ]),
+    );
   }
 }

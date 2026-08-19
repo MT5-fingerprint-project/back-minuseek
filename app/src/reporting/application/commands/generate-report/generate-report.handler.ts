@@ -36,6 +36,10 @@ import {
   type ChainHeadReader,
 } from '../../ports/chain-head.reader';
 import {
+  REPORT_IMAGE_EMBEDDER,
+  type ReportImageEmbedderPort,
+} from '../../ports/report-image-embedder.port';
+import {
   REPORT_RENDERER,
   type ReportRendererPort,
 } from '../../ports/report-renderer.port';
@@ -47,27 +51,15 @@ import {
   TRACEABILITY_DATA_READER,
   type TraceabilityDataReader,
 } from '../../ports/traceability-data.reader';
+import { uncoveredActionFamilies } from '../../queries/build-report/action-labels';
 import { buildTechnicalReport } from '../../queries/build-report/technical-report.builder';
 import { buildTraceabilityReport } from '../../queries/build-report/traceability-report.builder';
-import { ReportViewModel } from '../../report-view-model';
+import { ReportImageViewModel, ReportViewModel } from '../../report-view-model';
 import { GenerateReportCommand } from './generate-report.command';
 
 export interface GeneratedReport {
   id: string;
   sha256: string;
-}
-
-const MIME_TYPES: Record<string, string> = {
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  tif: 'image/tiff',
-  tiff: 'image/tiff',
-};
-
-function mimeTypeOf(path: string): string {
-  const extension = path.slice(path.lastIndexOf('.') + 1).toLowerCase();
-  return MIME_TYPES[extension] ?? 'application/octet-stream';
 }
 
 @CommandHandler(GenerateReportCommand)
@@ -83,6 +75,8 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     private readonly chainAttestation: ChainAttestationPort,
     @Inject(CHAIN_HEAD_READER)
     private readonly chainHead: ChainHeadReader,
+    @Inject(REPORT_IMAGE_EMBEDDER)
+    private readonly imageEmbedder: ReportImageEmbedderPort,
     @Inject(REPORT_RENDERER)
     private readonly renderer: ReportRendererPort,
     @Inject(REPORT_STORAGE)
@@ -160,13 +154,19 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     },
   ): Promise<ReportViewModel> {
     if (command.type === 'TECHNICAL') {
+      const [images, chainEvents] = await Promise.all([
+        this.imagesOf([...data.traces, ...data.referencePrints]),
+        this.traceabilityData.readCaseEvents(command.caseId),
+      ]);
       return buildTechnicalReport({
         data,
+        chainEvents,
+        notCoveredActions: uncoveredActionFamilies(),
         reportId: seal.reportId,
         chainHead: seal.chainHead,
         generatedAt: seal.generatedAt,
         generatedByDisplayName: command.actor.toPrimitives().displayName,
-        images: await this.imagesOf([...data.traces, ...data.referencePrints]),
+        images,
       });
     }
 
@@ -191,27 +191,17 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
 
   /**
    * Les images sont embarquées en data-URL : le PDF scellé ne doit pas dépendre
-   * d'une URL signée qui expire. Une pièce illisible ne fait pas échouer le
-   * rapport, elle y est signalée comme non embarquée.
+   * d'une URL signée qui expire. Leurs dimensions natives sont nécessaires pour
+   * replacer les minuties, relevées dans le repère pixel de l'image.
    */
   private async imagesOf(
     pieces: PieceData[],
-  ): Promise<Map<string, string | null>> {
+  ): Promise<Map<string, ReportImageViewModel | null>> {
     const entries = await Promise.all(
-      pieces.map(async (piece) => {
-        try {
-          const bytes = await this.storage.read(piece.path);
-          return [
-            piece.path,
-            `data:${mimeTypeOf(piece.path)};base64,${bytes.toString('base64')}`,
-          ] as const;
-        } catch (error) {
-          this.logger.warn(
-            `Pièce illisible au rendu du rapport: ${piece.path} (${String(error)})`,
-          );
-          return [piece.path, null] as const;
-        }
-      }),
+      pieces.map(
+        async (piece) =>
+          [piece.path, await this.imageEmbedder.embed(piece.path)] as const,
+      ),
     );
     return new Map(entries);
   }
