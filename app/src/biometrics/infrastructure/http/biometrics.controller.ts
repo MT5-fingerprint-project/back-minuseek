@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -41,6 +42,8 @@ import { TraceNotFoundError } from '../../domain/trace/errors/trace-not-found.er
 import { CaseUnavailableForTraceError } from '../../domain/trace/errors/case-unavailable-for-trace.error';
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
 import { InsufficientMinutiaeError } from '../../domain/hit/errors/insufficient-minutiae.error';
+import { InvalidImageError } from '../../application/ports/image-converter.port';
+import { UnsupportedImageFormatError } from '../../application/services/displayable-image';
 import { MatchingPrimitives } from '../../domain/matching/entity/matching';
 import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
 import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
@@ -197,7 +200,7 @@ export class BiometricsController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadTrace(
     @UploadedFile(imageFileValidator())
-    file: { buffer: Buffer; originalname: string; mimetype: string },
+    file: { buffer: Buffer },
     @Body(captureMetadataPipe()) dto: UploadTraceDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
@@ -206,25 +209,23 @@ export class BiometricsController {
         UploadTraceCommand,
         { id: string; path: string; url: string }
       >(
-        new UploadTraceCommand(
-          toAuditActor(user),
-          file.buffer,
-          file.originalname,
-          file.mimetype,
-          dto.caseId,
-          {
-            width: dto.width,
-            height: dto.height,
-            capturedAt: dto.capturedAt,
-            orientation: dto.orientation,
-            focalLength: dto.focalLength,
-            deviceModel: dto.deviceModel,
-          },
-        ),
+        new UploadTraceCommand(toAuditActor(user), file.buffer, dto.caseId, {
+          width: dto.width,
+          height: dto.height,
+          capturedAt: dto.capturedAt,
+          orientation: dto.orientation,
+          focalLength: dto.focalLength,
+          deviceModel: dto.deviceModel,
+        }),
       );
     } catch (e) {
       if (e instanceof CaseUnavailableForTraceError)
         throw new NotFoundException(e.message);
+      if (
+        e instanceof InvalidImageError ||
+        e instanceof UnsupportedImageFormatError
+      )
+        throw new BadRequestException(e.message);
       throw e;
     }
   }
@@ -254,26 +255,33 @@ export class BiometricsController {
       'Fichier manquant, type non supporté (PNG/JPEG/TIFF), au-delà de 20 Mo, caseId/subjectId ou position invalide',
   })
   @UseInterceptors(FileInterceptor('file'))
-  uploadReferencePrint(
+  async uploadReferencePrint(
     @UploadedFile(imageFileValidator())
-    file: { buffer: Buffer; originalname: string; mimetype: string },
+    file: { buffer: Buffer },
     @Body() dto: UploadReferencePrintDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.commandBus.execute<
-      UploadReferencePrintCommand,
-      { id: string; path: string; url: string }
-    >(
-      new UploadReferencePrintCommand(
-        toAuditActor(user),
-        file.buffer,
-        file.originalname,
-        file.mimetype,
-        dto.caseId,
-        dto.subjectId,
-        dto.position,
-      ),
-    );
+    try {
+      return await this.commandBus.execute<
+        UploadReferencePrintCommand,
+        { id: string; path: string; url: string }
+      >(
+        new UploadReferencePrintCommand(
+          toAuditActor(user),
+          file.buffer,
+          dto.caseId,
+          dto.subjectId,
+          dto.position,
+        ),
+      );
+    } catch (e) {
+      if (
+        e instanceof InvalidImageError ||
+        e instanceof UnsupportedImageFormatError
+      )
+        throw new BadRequestException(e.message);
+      throw e;
+    }
   }
 
   @Post('traces/:id/compare')

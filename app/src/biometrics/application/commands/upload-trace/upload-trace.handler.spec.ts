@@ -8,6 +8,7 @@ import { CaptureMetadataProps } from '../../../domain/trace/value-objects/captur
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
 import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
+import { InMemoryImageConverter } from '../../../infrastructure/conversion/in-memory-image-converter.adapter';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
@@ -16,7 +17,7 @@ import { UploadTraceCommand } from './upload-trace.command';
 import { UploadTraceHandler } from './upload-trace.handler';
 
 const TEST_IMAGE_SHA256 =
-  '9febe01bd41bfb69683e29d711d8adffc9ae38de17a6873464b416f3b67398b6';
+  'cd9de65ea00593ca8023392a7b15e60b322c9a10fd57293ccb428cc7c4d1ce76';
 const STORED_PATH = 'media/investigation-case/case-9/traces/trace-123.png';
 
 class RollingBackTransactionRunner implements TransactionRunner {
@@ -42,6 +43,7 @@ describe('UploadTraceHandler', () => {
       storage,
       idGenerator,
       caseStatus,
+      new InMemoryImageConverter(),
       runner,
       auditTrail,
     );
@@ -56,15 +58,13 @@ describe('UploadTraceHandler', () => {
     handler = buildHandler(transactionRunner);
   });
 
+  const pngBuffer = Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+    Buffer.from('test-image'),
+  ]);
+
   const command = (caseId = 'case-9', capture?: CaptureMetadataProps) =>
-    new UploadTraceCommand(
-      EXPERT_ACTOR,
-      Buffer.from('test-image'),
-      'fingerprint.png',
-      'image/png',
-      caseId,
-      capture,
-    );
+    new UploadTraceCommand(EXPERT_ACTOR, pngBuffer, caseId, capture);
 
   it('stores the file under media/{caseId}/traces, persists the trace as RECEIVED and returns id, path and url', async () => {
     caseStatus.set('case-9', 'OPEN');
@@ -85,8 +85,8 @@ describe('UploadTraceHandler', () => {
     expect(
       storage
         .getSaved('investigation-case/case-9/traces/trace-123.png')
-        ?.toString(),
-    ).toBe('test-image');
+        ?.equals(pngBuffer),
+    ).toBe(true);
   });
 
   it('persists the capture metadata carried by the upload', async () => {
@@ -175,7 +175,7 @@ describe('UploadTraceHandler', () => {
     expect(event.payload).toEqual({
       fileSha256: TEST_IMAGE_SHA256,
       storagePath: STORED_PATH,
-      sizeBytes: 10,
+      sizeBytes: 14,
       mimeType: 'image/png',
     });
   });
