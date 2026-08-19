@@ -6,6 +6,12 @@ import {
   INVESTIGATION_CASE_REPOSITORY,
   InvestigationCaseRepository,
 } from '../../../domain/investigation-case/repository/investigation-case.repository';
+import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
+import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
+import {
+  AUDIT_TRAIL,
+  AuditTrailPort,
+} from '../../../../shared/domain/ports/audit-trail.port';
 import {
   ID_GENERATOR,
   IdGenerator,
@@ -28,6 +34,8 @@ export class OpenInvestigationCaseHandler implements ICommandHandler<
     private readonly idGenerator: IdGenerator,
     @Inject(TRANSACTION_RUNNER)
     private readonly transactionRunner: TransactionRunner,
+    @Inject(AUDIT_TRAIL)
+    private readonly auditTrail: AuditTrailPort,
   ) {}
 
   async execute(cmd: OpenInvestigationCaseCommand): Promise<string> {
@@ -41,7 +49,19 @@ export class OpenInvestigationCaseHandler implements ICommandHandler<
       pvNumber: cmd.pvNumber,
       description: cmd.description,
     });
-    await this.transactionRunner.run(() => this.repo.save(newCase));
+    await this.transactionRunner.run(async () => {
+      await this.repo.save(newCase);
+      await this.auditTrail.append({
+        eventType: AuditEventTypeEnum.CASE_OPENED,
+        evidenceClass: EvidenceClassEnum.OBSERVED,
+        actor: cmd.actor,
+        caseId: id,
+        payload: {
+          caseNumber: cmd.caseNumber,
+          pvNumber: cmd.pvNumber,
+        },
+      });
+    });
     return id;
   }
 }
