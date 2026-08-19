@@ -10,6 +10,7 @@ import { TenantGuard } from './tenancy/infrastructure/http/tenant.guard';
 import { TenantInterceptor } from './tenancy/infrastructure/http/tenant.interceptor';
 import { OrganizationModule } from './organization/organization.module';
 import { IdentityAccessModule } from './identity-access/identity-access.module';
+import { AuditTrailModule } from './audit-trail/audit-trail.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { IdentityAccessModule } from './identity-access/identity-access.module';
     BiometricsModule,
     OrganizationModule,
     IdentityAccessModule,
+    AuditTrailModule,
   ],
   providers: [
     //keep this order, first we find use the token, if it's ok we go to the tenant guard

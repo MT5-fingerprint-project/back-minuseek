@@ -36,7 +36,10 @@ function canonicalNumber(value: number): string {
 
 function isPlainObject(value: object): boolean {
   const proto: unknown = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
+  if (proto === null) {
+    return true;
+  }
+  return Object.getPrototypeOf(proto) === null;
 }
 
 export function canonicalJson(value: unknown): string {

@@ -17,6 +17,7 @@ import { ListHitsHandler } from './application/queries/list-hits/list-hits.handl
 import { IMAGE_STORAGE } from './application/ports/image-storage.port';
 import { IMAGE_CONVERTER } from './application/ports/image-converter.port';
 import { CASE_STATUS } from './application/ports/case-status.port';
+import { FINGERPRINT_LOCATOR } from './application/ports/fingerprint-locator.port';
 import { FINGERPRINT_MATCHER } from './application/ports/fingerprint-matcher.port';
 import { TRACE_READER } from './application/queries/list-traces/trace.reader';
 import { REFERENCE_PRINT_READER } from './application/queries/list-reference-prints/reference-print.reader';
@@ -32,6 +33,7 @@ import { LayersController } from './infrastructure/http/layers.controller';
 import { PrismaReferencePrintRepository } from './infrastructure/persistence/prisma-reference-print.repository';
 import { PrismaTraceRepository } from './infrastructure/persistence/prisma-trace.repository';
 import { PrismaCaseStatusAdapter } from './infrastructure/persistence/prisma-case-status.adapter';
+import { PrismaFingerprintLocatorAdapter } from './infrastructure/persistence/prisma-fingerprint-locator.adapter';
 import { PrismaTraceReader } from './infrastructure/persistence/prisma-trace.reader';
 import { PrismaReferencePrintReader } from './infrastructure/persistence/prisma-reference-print.reader';
 import { PrismaLayerRepository } from './infrastructure/persistence/prisma-layer.repository';
@@ -43,9 +45,10 @@ import { SharpImageConverterAdapter } from './infrastructure/conversion/sharp-im
 import { GcsImageStorageAdapter } from './infrastructure/storage/gcs-image-storage.adapter';
 import { InMemoryImageStorageAdapter } from './infrastructure/storage/in-memory-image-storage.adapter';
 import { DataFingerprintMatcherAdapter } from './infrastructure/matching/data-fingerprint-matcher.adapter';
+import { AuditTrailModule } from '../audit-trail/audit-trail.module';
 
 @Module({
-  imports: [CqrsModule],
+  imports: [CqrsModule, AuditTrailModule],
   controllers: [BiometricsController, LayersController],
   providers: [
     UploadTraceHandler,
@@ -64,6 +67,10 @@ import { DataFingerprintMatcherAdapter } from './infrastructure/matching/data-fi
     ListHitsHandler,
     { provide: TRACE_REPOSITORY, useClass: PrismaTraceRepository },
     { provide: CASE_STATUS, useClass: PrismaCaseStatusAdapter },
+    {
+      provide: FINGERPRINT_LOCATOR,
+      useClass: PrismaFingerprintLocatorAdapter,
+    },
     {
       provide: REFERENCE_PRINT_REPOSITORY,
       useClass: PrismaReferencePrintRepository,

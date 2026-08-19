@@ -1,14 +1,26 @@
-import { Inject } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { FileDigest } from '../../../domain/file-digest.vo';
 import { Trace } from '../../../domain/trace/entity/trace';
+import { CaptureMetadata } from '../../../domain/trace/value-objects/capture-metadata.vo';
 import {
   TRACE_REPOSITORY,
   TraceRepository,
 } from '../../../domain/trace/repository/trace.repository';
+import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
+import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
+import {
+  AUDIT_TRAIL,
+  AuditTrailPort,
+} from '../../../../shared/domain/ports/audit-trail.port';
 import {
   ID_GENERATOR,
   IdGenerator,
 } from '../../../../shared/domain/ports/id-generator';
+import {
+  TRANSACTION_RUNNER,
+  TransactionRunner,
+} from '../../../../shared/domain/ports/transaction-runner';
 import {
   IMAGE_STORAGE,
   ImageStoragePort,
@@ -18,7 +30,11 @@ import {
   ImageConverterPort,
 } from '../../ports/image-converter.port';
 import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
-import { storeDisplayableImage } from '../../services/displayable-image';
+import {
+  archivedOriginalPath,
+  detectImageMimeType,
+  storeDisplayableImage,
+} from '../../services/displayable-image';
 import { UploadTraceCommand } from './upload-trace.command';
 
 @CommandHandler(UploadTraceCommand)
@@ -26,6 +42,8 @@ export class UploadTraceHandler implements ICommandHandler<
   UploadTraceCommand,
   { id: string; path: string; url: string }
 > {
+  private readonly logger = new Logger(UploadTraceHandler.name);
+
   constructor(
     @Inject(TRACE_REPOSITORY)
     private readonly repo: TraceRepository,
@@ -37,6 +55,10 @@ export class UploadTraceHandler implements ICommandHandler<
     private readonly caseStatus: CaseStatusPort,
     @Inject(IMAGE_CONVERTER)
     private readonly converter: ImageConverterPort,
+    @Inject(TRANSACTION_RUNNER)
+    private readonly transactionRunner: TransactionRunner,
+    @Inject(AUDIT_TRAIL)
+    private readonly auditTrail: AuditTrailPort,
   ) {}
 
   async execute(
@@ -45,20 +67,62 @@ export class UploadTraceHandler implements ICommandHandler<
     const caseStatus = await this.caseStatus.findStatus(cmd.caseId);
     Trace.assertCaseCanReceiveTrace(cmd.caseId, caseStatus);
 
+    const captureMetadata = CaptureMetadata.of(cmd.capture ?? {});
+
     const id = this.idGenerator.generate();
+    const sha256 = FileDigest.ofBuffer(cmd.fileBuffer);
+    const mimeType = detectImageMimeType(cmd.fileBuffer);
     const storedPath = await storeDisplayableImage(
       this.storage,
       this.converter,
       cmd.fileBuffer,
       `investigation-case/${cmd.caseId}/traces/${id}`,
     );
-    const trace = Trace.upload({
-      id,
-      path: storedPath,
-      caseId: cmd.caseId,
-    });
-    await this.repo.save(trace);
+
+    try {
+      await this.transactionRunner.run(async () => {
+        const trace = Trace.upload({
+          id,
+          path: storedPath,
+          caseId: cmd.caseId,
+          sha256,
+          captureMetadata,
+        });
+        await this.repo.save(trace);
+        await this.auditTrail.append({
+          eventType: AuditEventTypeEnum.TRACE_UPLOADED,
+          evidenceClass: EvidenceClassEnum.OBSERVED,
+          actor: cmd.actor,
+          caseId: cmd.caseId,
+          traceId: id,
+          payload: {
+            fileSha256: sha256.getValue(),
+            storagePath: storedPath,
+            sizeBytes: cmd.fileBuffer.length,
+            mimeType,
+          },
+        });
+      });
+    } catch (error) {
+      await this.discardStoredFile(storedPath);
+      const archived = archivedOriginalPath(storedPath);
+      if (archived) {
+        await this.discardStoredFile(archived);
+      }
+      throw error;
+    }
+
     const url = await this.storage.getUrl(storedPath);
     return { id, path: storedPath, url };
+  }
+
+  private async discardStoredFile(storedPath: string): Promise<void> {
+    try {
+      await this.storage.delete(storedPath);
+    } catch (error) {
+      this.logger.warn(
+        `Fichier orphelin dans le stockage: ${storedPath} (${String(error)})`,
+      );
+    }
   }
 }

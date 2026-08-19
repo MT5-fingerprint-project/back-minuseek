@@ -131,5 +131,10 @@ describe('canonicalJson', () => {
       bare.a = 1;
       expect(canonicalJson(bare)).toBe('{"a":1}');
     });
+
+    it("accepte un objet plat venu d'un autre realm (structuredClone)", () => {
+      const cloned = structuredClone({ b: [{ a: 1 }], c: 'x' });
+      expect(canonicalJson(cloned)).toBe('{"b":[{"a":1}],"c":"x"}');
+    });
   });
 });

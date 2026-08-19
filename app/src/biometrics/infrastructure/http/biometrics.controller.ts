@@ -5,6 +5,7 @@ import {
   Delete,
   FileTypeValidator,
   Get,
+  MaxFileSizeValidator,
   HttpCode,
   NotFoundException,
   Param,
@@ -15,6 +16,7 @@ import {
   UnprocessableEntityException,
   UploadedFile,
   UseInterceptors,
+  ValidationPipe,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -45,6 +47,8 @@ import { UnsupportedImageFormatError } from '../../application/services/displaya
 import { MatchingPrimitives } from '../../domain/matching/entity/matching';
 import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
 import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
+import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapper';
+import { DeletePieceDto } from './dto/delete-piece.dto';
 import { UploadTraceDto } from './dto/upload-trace.dto';
 import { UploadReferencePrintDto } from './dto/upload-reference-print.dto';
 import { ListTracesDto } from './dto/list-traces.dto';
@@ -53,10 +57,27 @@ import { CompareTraceDto } from './dto/compare-trace.dto';
 import { RecordHitDto } from './dto/record-hit.dto';
 
 const IMAGE_MIME = /^image\/(png|jpe?g|tiff)$/;
+const MAX_IMAGE_SIZE_BYTES = 20 * 1024 * 1024;
+
+const statedReason = (dto: DeletePieceDto): string | null =>
+  dto.reason?.trim() || null;
+
+// Les champs d'un multipart arrivent tous en chaîne : ce pipe local active
+// `transform` pour que le contrôleur reçoive des nombres. Le pipe global de
+// `main.ts` ne le fait pas, et l'y activer changerait toutes les routes.
+const captureMetadataPipe = () =>
+  new ValidationPipe({
+    transform: true,
+    whitelist: true,
+    forbidNonWhitelisted: true,
+  });
 
 const imageFileValidator = () =>
   new ParseFilePipe({
-    validators: [new FileTypeValidator({ fileType: IMAGE_MIME })],
+    validators: [
+      new FileTypeValidator({ fileType: IMAGE_MIME }),
+      new MaxFileSizeValidator({ maxSize: MAX_IMAGE_SIZE_BYTES }),
+    ],
     fileIsRequired: true,
   });
 
@@ -92,9 +113,15 @@ export class BiometricsController {
   @ApiOperation({ summary: 'Supprimer une trace' })
   @ApiResponse({ status: 204, description: 'Trace supprimée' })
   @ApiResponse({ status: 404, description: 'Trace non trouvée' })
-  async deleteTrace(@Param('id', ParseUUIDPipe) id: string) {
+  async deleteTrace(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() dto: DeletePieceDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     try {
-      await this.commandBus.execute(new DeleteTraceCommand(id));
+      await this.commandBus.execute(
+        new DeleteTraceCommand(toAuditActor(user), id, statedReason(dto)),
+      );
     } catch (e) {
       if (e instanceof TraceNotFoundError)
         throw new NotFoundException(e.message);
@@ -110,9 +137,19 @@ export class BiometricsController {
     status: 404,
     description: 'Empreinte de référence non trouvée',
   })
-  async deleteReferencePrint(@Param('id', ParseUUIDPipe) id: string) {
+  async deleteReferencePrint(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() dto: DeletePieceDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     try {
-      await this.commandBus.execute(new DeleteReferencePrintCommand(id));
+      await this.commandBus.execute(
+        new DeleteReferencePrintCommand(
+          toAuditActor(user),
+          id,
+          statedReason(dto),
+        ),
+      );
     } catch (e) {
       if (e instanceof ReferencePrintNotFoundError)
         throw new NotFoundException(e.message);
@@ -129,6 +166,20 @@ export class BiometricsController {
       properties: {
         file: { type: 'string', format: 'binary' },
         caseId: { type: 'string', format: 'uuid' },
+        width: { type: 'integer', minimum: 1, example: 3024 },
+        height: { type: 'integer', minimum: 1, example: 4032 },
+        capturedAt: {
+          type: 'string',
+          format: 'date-time',
+          example: '2026-08-18T10:12:00.000Z',
+        },
+        orientation: { type: 'integer', minimum: 1, maximum: 8, example: 6 },
+        focalLength: { type: 'number', example: 6.86 },
+        deviceModel: {
+          type: 'string',
+          maxLength: 120,
+          example: 'iPhone 14 Pro',
+        },
       },
       required: ['file', 'caseId'],
     },
@@ -137,7 +188,9 @@ export class BiometricsController {
   @ApiResponse({
     status: 400,
     description:
-      'Fichier manquant, type non supporté (PNG/JPEG/TIFF), image illisible ou caseId invalide',
+      'Fichier manquant, type non supporté (PNG/JPEG/TIFF), au-delà de 20 Mo, caseId invalide, ' +
+      'métadonnées de capture invalides (dimensions non appairées, orientation hors 1–8, ' +
+      'focale négative, capturedAt non ISO 8601) ou champ inconnu',
   })
   @ApiResponse({
     status: 404,
@@ -148,14 +201,22 @@ export class BiometricsController {
   async uploadTrace(
     @UploadedFile(imageFileValidator())
     file: { buffer: Buffer },
-    @Body() dto: UploadTraceDto,
+    @Body(captureMetadataPipe()) dto: UploadTraceDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     try {
       return await this.commandBus.execute<
         UploadTraceCommand,
         { id: string; path: string; url: string }
       >(
-        new UploadTraceCommand(file.buffer, dto.caseId),
+        new UploadTraceCommand(toAuditActor(user), file.buffer, dto.caseId, {
+          width: dto.width,
+          height: dto.height,
+          capturedAt: dto.capturedAt,
+          orientation: dto.orientation,
+          focalLength: dto.focalLength,
+          deviceModel: dto.deviceModel,
+        }),
       );
     } catch (e) {
       if (e instanceof CaseUnavailableForTraceError)
@@ -191,13 +252,14 @@ export class BiometricsController {
   @ApiResponse({
     status: 400,
     description:
-      'Fichier manquant, type non supporté (PNG/JPEG/TIFF), image illisible, caseId/subjectId ou position invalide',
+      'Fichier manquant, type non supporté (PNG/JPEG/TIFF), au-delà de 20 Mo, caseId/subjectId ou position invalide',
   })
   @UseInterceptors(FileInterceptor('file'))
   async uploadReferencePrint(
     @UploadedFile(imageFileValidator())
     file: { buffer: Buffer },
     @Body() dto: UploadReferencePrintDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     try {
       return await this.commandBus.execute<
@@ -205,6 +267,7 @@ export class BiometricsController {
         { id: string; path: string; url: string }
       >(
         new UploadReferencePrintCommand(
+          toAuditActor(user),
           file.buffer,
           dto.caseId,
           dto.subjectId,
@@ -234,12 +297,20 @@ export class BiometricsController {
   async compare(
     @Param('id', ParseUUIDPipe) traceId: string,
     @Body() dto: CompareTraceDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ matchings: MatchingPrimitives[] }> {
     try {
       const matchings = await this.commandBus.execute<
         CompareTraceCommand,
         MatchingPrimitives[]
-      >(new CompareTraceCommand(dto.caseId, traceId, dto.referencePrintIds));
+      >(
+        new CompareTraceCommand(
+          toAuditActor(user),
+          dto.caseId,
+          traceId,
+          dto.referencePrintIds,
+        ),
+      );
       return { matchings };
     } catch (e) {
       if (
@@ -270,12 +341,13 @@ export class BiometricsController {
   async recordHit(
     @Param('id', ParseUUIDPipe) traceId: string,
     @Body() dto: RecordHitDto,
-    @CurrentUser() user?: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     const declaredByUserId = await this.resolveUserId(user);
     try {
       await this.commandBus.execute(
         new RecordHitCommand(
+          toAuditActor(user),
           dto.caseId,
           traceId,
           dto.referencePrintId,
@@ -308,10 +380,16 @@ export class BiometricsController {
     @Param('id', ParseUUIDPipe) traceId: string,
     @Param('referencePrintId', ParseUUIDPipe) referencePrintId: string,
     @Query('caseId', ParseUUIDPipe) caseId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     try {
       await this.commandBus.execute(
-        new RemoveHitCommand(caseId, traceId, referencePrintId),
+        new RemoveHitCommand(
+          toAuditActor(user),
+          caseId,
+          traceId,
+          referencePrintId,
+        ),
       );
     } catch (e) {
       if (

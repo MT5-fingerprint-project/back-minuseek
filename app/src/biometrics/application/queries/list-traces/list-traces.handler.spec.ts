@@ -14,18 +14,25 @@ class InMemoryTraceReader implements TraceReader {
   }
 }
 
+const traceRow = (overrides: Partial<TraceReadModel> = {}): TraceReadModel => ({
+  id: 'trace-1',
+  path: 'media/investigation-case/case-9/traces/trace-1.png',
+  status: 'RECEIVED',
+  score: null,
+  caseId: 'case-9',
+  createdAt: new Date('2026-07-01T00:00:00.000Z'),
+  captureWidth: null,
+  captureHeight: null,
+  capturedAt: null,
+  captureOrientation: null,
+  captureFocalLength: null,
+  captureDeviceModel: null,
+  ...overrides,
+});
+
 describe('ListTracesHandler', () => {
   it('adds a url derived from the path to each trace of the case', async () => {
-    const reader = new InMemoryTraceReader([
-      {
-        id: 'trace-1',
-        path: 'media/investigation-case/case-9/traces/trace-1.png',
-        status: 'RECEIVED',
-        score: null,
-        caseId: 'case-9',
-        createdAt: new Date('2026-07-01T00:00:00.000Z'),
-      },
-    ]);
+    const reader = new InMemoryTraceReader([traceRow()]);
     const handler = new ListTracesHandler(
       reader,
       new InMemoryImageStorageAdapter(),
@@ -40,5 +47,52 @@ describe('ListTracesHandler', () => {
     expect(data[0].url).toBe(
       '/media/investigation-case/case-9/traces/trace-1.png',
     );
+  });
+
+  it('exposes the capture metadata of each trace', async () => {
+    const reader = new InMemoryTraceReader([
+      traceRow({
+        captureWidth: 3024,
+        captureHeight: 4032,
+        capturedAt: new Date('2026-08-18T10:12:00.000Z'),
+        captureOrientation: 6,
+        captureFocalLength: 6.86,
+        captureDeviceModel: 'iPhone 14 Pro',
+      }),
+    ]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0]).toMatchObject({
+      captureWidth: 3024,
+      captureHeight: 4032,
+      capturedAt: new Date('2026-08-18T10:12:00.000Z'),
+      captureOrientation: 6,
+      captureFocalLength: 6.86,
+      captureDeviceModel: 'iPhone 14 Pro',
+    });
+  });
+
+  it('leaves the capture metadata null for a trace uploaded without any', async () => {
+    const reader = new InMemoryTraceReader([traceRow()]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0]).toMatchObject({
+      captureWidth: null,
+      captureHeight: null,
+      capturedAt: null,
+      captureOrientation: null,
+      captureFocalLength: null,
+      captureDeviceModel: null,
+    });
   });
 });

@@ -27,6 +27,20 @@ export function detectImageExtension(
   return match[1];
 }
 
+const MIME_BY_EXTENSION = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.tif': 'image/tiff',
+} as const;
+
+/**
+ * Type MIME du dépôt, lu dans le contenu (jamais depuis le mimetype client).
+ * @throws UnsupportedImageFormatError si le contenu n'est ni PNG, ni JPEG, ni TIFF
+ */
+export function detectImageMimeType(fileBuffer: Buffer): string {
+  return MIME_BY_EXTENSION[detectImageExtension(fileBuffer)];
+}
+
 /**
  * Stocke l'image affichable et retourne son chemin (celui persisté en base).
  * Un TIFF est converti en PNG (lossless) pour l'affichage navigateur ;

@@ -1,3 +1,5 @@
+import { ANY_SEAL } from '../../../domain/file-digest.fixture';
+import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { Trace } from '../../../domain/trace/entity/trace';
 import { ReferencePrint } from '../../../domain/reference-print/entity/reference-print';
 import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found.error';
@@ -40,6 +42,7 @@ describe('CompareTraceHandler', () => {
         id: 'trace-1',
         path: 'media/trace-1.png',
         caseId: 'case-1',
+        sha256: ANY_SEAL,
       }),
     );
     await referencePrintRepo.save(
@@ -47,12 +50,13 @@ describe('CompareTraceHandler', () => {
         id: 'ref-1',
         path: 'media/ref-1.png',
         caseId: 'case-1',
+        sha256: ANY_SEAL,
       }),
     );
     matcher.setResults([{ referencePrintId: 'ref-1', score: 87 }]);
 
     const result = await handler.execute(
-      new CompareTraceCommand('case-1', 'trace-1', ['ref-1']),
+      new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', ['ref-1']),
     );
 
     expect(result).toEqual([
@@ -79,11 +83,14 @@ describe('CompareTraceHandler', () => {
         id: 'trace-1',
         path: 'media/trace-1.png',
         caseId: 'other-case',
+        sha256: ANY_SEAL,
       }),
     );
 
     await expect(
-      handler.execute(new CompareTraceCommand('case-1', 'trace-1', [])),
+      handler.execute(
+        new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', []),
+      ),
     ).rejects.toThrow(TraceNotFoundError);
   });
 
@@ -93,6 +100,7 @@ describe('CompareTraceHandler', () => {
         id: 'trace-1',
         path: 'media/trace-1.png',
         caseId: 'case-1',
+        sha256: ANY_SEAL,
       }),
     );
     await referencePrintRepo.save(
@@ -100,11 +108,14 @@ describe('CompareTraceHandler', () => {
         id: 'ref-1',
         path: 'media/ref-1.png',
         caseId: 'other-case',
+        sha256: ANY_SEAL,
       }),
     );
 
     await expect(
-      handler.execute(new CompareTraceCommand('case-1', 'trace-1', ['ref-1'])),
+      handler.execute(
+        new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', ['ref-1']),
+      ),
     ).rejects.toThrow(ReferencePrintNotFoundError);
   });
 
@@ -114,6 +125,7 @@ describe('CompareTraceHandler', () => {
         id: 'trace-1',
         path: 'media/trace-1.png',
         caseId: 'case-1',
+        sha256: ANY_SEAL,
       }),
     );
     await referencePrintRepo.save(
@@ -121,6 +133,7 @@ describe('CompareTraceHandler', () => {
         id: 'ref-1',
         path: 'media/ref-1.png',
         caseId: 'case-1',
+        sha256: ANY_SEAL,
       }),
     );
     matcher.setResults([
@@ -129,7 +142,7 @@ describe('CompareTraceHandler', () => {
     ]);
 
     const result = await handler.execute(
-      new CompareTraceCommand('case-1', 'trace-1', ['ref-1']),
+      new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', ['ref-1']),
     );
 
     expect(result).toHaveLength(1);

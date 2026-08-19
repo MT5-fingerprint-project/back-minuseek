@@ -1,3 +1,4 @@
+import { AuditActor } from '../../../../shared/domain/audit/audit-actor.vo';
 import type {
   LayerSettings,
   LayerType,
@@ -5,6 +6,7 @@ import type {
 
 export class CreateLayerCommand {
   constructor(
+    public readonly actor: AuditActor,
     public readonly id: string,
     public readonly fingerprintId: string,
     public readonly name: string,

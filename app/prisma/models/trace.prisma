@@ -4,8 +4,24 @@ model Trace {
   status    TraceStatus @default(RECEIVED)
   score     Int?
   caseId    String      @db.Uuid
+  sha256    String?     @db.Char(64)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
+
+  // Métadonnées de capture (B1b). Toutes nullables : le chemin galerie et les
+  // traces antérieures n'en portent aucune. `capturedAt` est la date de PRISE DE
+  // VUE (EXIF), à ne pas confondre avec `createdAt`, date de réception serveur.
+  captureWidth       Int?
+  captureHeight      Int?
+  capturedAt         DateTime?
+  captureOrientation Int?
+  captureFocalLength Float?
+  captureDeviceModel String?
+
+  // Réservé à B2 (contrôles qualité temps réel), créé vide dès maintenant pour
+  // éviter une seconde migration en fan-out sur toutes les bases tenant.
+  // Forme attendue : { blurScore: number, perpendicularityDeviation: number, passed: boolean }
+  captureQuality Json?
 
   matchings Matching[]
   hits      Hit[]

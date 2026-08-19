@@ -14,6 +14,7 @@ import { KeycloakAdminService } from './infrastructure/keycloak/keycloak-admin.s
 import { OrganizationInitializer } from './infrastructure/persistence/organization.initializer';
 import { TenantDatabaseAdminService } from './infrastructure/persistence/tenant-database-admin.service';
 import { TenantConnectionService } from '../tenancy/infrastructure/persistence/tenant-connection.service';
+import { AuditTrailModule } from '../audit-trail/audit-trail.module';
 
 /**
  * Bounded context du control-plane (ADR-0004) : le cycle de vie des
@@ -21,6 +22,7 @@ import { TenantConnectionService } from '../tenancy/infrastructure/persistence/t
  * futur consommateur, le CLI de provisioning son consommateur d'amorçage.
  */
 @Module({
+  imports: [AuditTrailModule],
   controllers: [OrganizationController],
   providers: [
     CreateOrganizationHandler,

@@ -17,6 +17,9 @@ import { RegisterSubjectCommand } from '../../application/commands/register-subj
 import { SubjectNotFoundError } from '../../domain/subject/errors/subject-not-found.error';
 import { RegisterSubjectDto } from './dto/register-subject.dto';
 import { ListSubjectsDto } from './dto/list-subjects.dto';
+import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
+import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
+import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapper';
 
 @ApiTags('subjects')
 @Controller('subjects')
@@ -32,9 +35,13 @@ export class SubjectController {
     status: 201,
     description: 'Sujet créé et rattaché à l’affaire',
   })
-  async register(@Body() dto: RegisterSubjectDto) {
+  async register(
+    @Body() dto: RegisterSubjectDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     const id = await this.commandBus.execute<RegisterSubjectCommand, string>(
       new RegisterSubjectCommand(
+        toAuditActor(user),
         dto.firstName,
         dto.lastName,
         new Date(dto.birthDate),
