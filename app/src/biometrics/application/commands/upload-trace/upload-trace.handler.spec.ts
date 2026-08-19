@@ -29,13 +29,13 @@ describe('UploadTraceHandler', () => {
     );
   });
 
+  const pngBuffer = Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+    Buffer.from('test-image'),
+  ]);
+
   const command = (caseId = 'case-9') =>
-    new UploadTraceCommand(
-      Buffer.from('test-image'),
-      'fingerprint.png',
-      'image/png',
-      caseId,
-    );
+    new UploadTraceCommand(pngBuffer, caseId);
 
   it('stores the file under media/{caseId}/traces, persists the trace as RECEIVED and returns id, path and url', async () => {
     caseStatus.set('case-9', 'OPEN');
@@ -58,8 +58,8 @@ describe('UploadTraceHandler', () => {
     expect(
       storage
         .getSaved('investigation-case/case-9/traces/trace-123.png')
-        ?.toString(),
-    ).toBe('test-image');
+        ?.equals(pngBuffer),
+    ).toBe(true);
   });
 
   it('accepts an upload when the case is IN_PROGRESS', async () => {

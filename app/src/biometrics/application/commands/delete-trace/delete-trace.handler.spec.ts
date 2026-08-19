@@ -23,7 +23,7 @@ describe('DeleteTraceHandler', () => {
     );
     await storage.save(
       Buffer.from('tif'),
-      'investigation-case/case-1/traces/trace-1.tif',
+      'investigation-case/case-1/traces/trace-1_original.tif',
     );
     await repo.save(
       Trace.upload({
@@ -40,7 +40,7 @@ describe('DeleteTraceHandler', () => {
       storage.getSaved('investigation-case/case-1/traces/trace-1.png'),
     ).toBeUndefined();
     expect(
-      storage.getSaved('investigation-case/case-1/traces/trace-1.tif'),
+      storage.getSaved('investigation-case/case-1/traces/trace-1_original.tif'),
     ).toBeUndefined();
   });
 

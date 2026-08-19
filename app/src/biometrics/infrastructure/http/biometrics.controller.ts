@@ -41,6 +41,7 @@ import { CaseUnavailableForTraceError } from '../../domain/trace/errors/case-una
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
 import { InsufficientMinutiaeError } from '../../domain/hit/errors/insufficient-minutiae.error';
 import { InvalidImageError } from '../../application/ports/image-converter.port';
+import { UnsupportedImageFormatError } from '../../application/services/displayable-image';
 import { MatchingPrimitives } from '../../domain/matching/entity/matching';
 import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
 import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
@@ -146,7 +147,7 @@ export class BiometricsController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadTrace(
     @UploadedFile(imageFileValidator())
-    file: { buffer: Buffer; originalname: string; mimetype: string },
+    file: { buffer: Buffer },
     @Body() dto: UploadTraceDto,
   ) {
     try {
@@ -154,17 +155,15 @@ export class BiometricsController {
         UploadTraceCommand,
         { id: string; path: string; url: string }
       >(
-        new UploadTraceCommand(
-          file.buffer,
-          file.originalname,
-          file.mimetype,
-          dto.caseId,
-        ),
+        new UploadTraceCommand(file.buffer, dto.caseId),
       );
     } catch (e) {
       if (e instanceof CaseUnavailableForTraceError)
         throw new NotFoundException(e.message);
-      if (e instanceof InvalidImageError)
+      if (
+        e instanceof InvalidImageError ||
+        e instanceof UnsupportedImageFormatError
+      )
         throw new BadRequestException(e.message);
       throw e;
     }
@@ -197,7 +196,7 @@ export class BiometricsController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadReferencePrint(
     @UploadedFile(imageFileValidator())
-    file: { buffer: Buffer; originalname: string; mimetype: string },
+    file: { buffer: Buffer },
     @Body() dto: UploadReferencePrintDto,
   ) {
     try {
@@ -207,15 +206,16 @@ export class BiometricsController {
       >(
         new UploadReferencePrintCommand(
           file.buffer,
-          file.originalname,
-          file.mimetype,
           dto.caseId,
           dto.subjectId,
           dto.position,
         ),
       );
     } catch (e) {
-      if (e instanceof InvalidImageError)
+      if (
+        e instanceof InvalidImageError ||
+        e instanceof UnsupportedImageFormatError
+      )
         throw new BadRequestException(e.message);
       throw e;
     }

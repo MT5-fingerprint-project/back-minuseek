@@ -50,7 +50,6 @@ export class UploadTraceHandler implements ICommandHandler<
       this.storage,
       this.converter,
       cmd.fileBuffer,
-      cmd.originalName,
       `investigation-case/${cmd.caseId}/traces/${id}`,
     );
     const trace = Trace.upload({

@@ -2,9 +2,13 @@ import { InMemoryReferencePrintRepository } from '../../../infrastructure/persis
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
 import { InMemoryImageConverter } from '../../../infrastructure/conversion/in-memory-image-converter.adapter';
 import { InvalidImageError } from '../../ports/image-converter.port';
+import { UnsupportedImageFormatError } from '../../services/displayable-image';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
 import { UploadReferencePrintCommand } from './upload-reference-print.command';
 import { UploadReferencePrintHandler } from './upload-reference-print.handler';
+
+const TIFF_MAGIC = Buffer.from([0x49, 0x49, 0x2a, 0x00]);
+const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
 describe('UploadReferencePrintHandler', () => {
   let handler: UploadReferencePrintHandler;
@@ -24,14 +28,10 @@ describe('UploadReferencePrintHandler', () => {
     );
   });
 
-  it('converts a TIFF to PNG for display, archives the original under the same id and persists the PNG path', async () => {
+  it('converts a TIFF to PNG for display, archives the original under <id>_original.tif and persists the PNG path', async () => {
+    const tiffBuffer = Buffer.concat([TIFF_MAGIC, Buffer.from('clean-print')]);
     const result = await handler.execute(
-      new UploadReferencePrintCommand(
-        Buffer.from('clean-print'),
-        'thumb.tiff',
-        'image/tiff',
-        'case-9',
-      ),
+      new UploadReferencePrintCommand(tiffBuffer, 'case-9'),
     );
 
     expect(result).toEqual({
@@ -49,23 +49,21 @@ describe('UploadReferencePrintHandler', () => {
     expect(
       storage
         .getSaved('investigation-case/case-9/reference-prints/ref-456.png')
-        ?.toString(),
-    ).toBe('png:clean-print');
+        ?.equals(Buffer.concat([Buffer.from('png:'), tiffBuffer])),
+    ).toBe(true);
     expect(
       storage
-        .getSaved('investigation-case/case-9/reference-prints/ref-456.tif')
-        ?.toString(),
-    ).toBe('clean-print');
+        .getSaved(
+          'investigation-case/case-9/reference-prints/ref-456_original.tif',
+        )
+        ?.equals(tiffBuffer),
+    ).toBe(true);
   });
 
-  it('stores a non-TIFF upload as-is, without archive', async () => {
+  it('stores a non-TIFF upload as-is, without archive, even with a misleading name', async () => {
+    const pngBuffer = Buffer.concat([PNG_MAGIC, Buffer.from('clean-print')]);
     const result = await handler.execute(
-      new UploadReferencePrintCommand(
-        Buffer.from('clean-print'),
-        'thumb.png',
-        'image/png',
-        'case-9',
-      ),
+      new UploadReferencePrintCommand(pngBuffer, 'case-9'),
     );
 
     expect(result.path).toBe(
@@ -74,11 +72,11 @@ describe('UploadReferencePrintHandler', () => {
     expect(
       storage
         .getSaved('investigation-case/case-9/reference-prints/ref-456.png')
-        ?.toString(),
-    ).toBe('clean-print');
+        ?.equals(pngBuffer),
+    ).toBe(true);
     expect(
       storage.getSaved(
-        'investigation-case/case-9/reference-prints/ref-456.tif',
+        'investigation-case/case-9/reference-prints/ref-456_original.tif',
       ),
     ).toBeUndefined();
   });
@@ -87,9 +85,7 @@ describe('UploadReferencePrintHandler', () => {
     await expect(
       handler.execute(
         new UploadReferencePrintCommand(
-          Buffer.from('invalid-image'),
-          'broken.tif',
-          'image/tiff',
+          Buffer.concat([TIFF_MAGIC, Buffer.from('invalid-image')]),
           'case-9',
         ),
       ),
@@ -98,9 +94,24 @@ describe('UploadReferencePrintHandler', () => {
     expect(await repo.findById('ref-456')).toBeNull();
     expect(
       storage.getSaved(
-        'investigation-case/case-9/reference-prints/ref-456.tif',
+        'investigation-case/case-9/reference-prints/ref-456_original.tif',
       ),
     ).toBeUndefined();
+    expect(
+      storage.getSaved(
+        'investigation-case/case-9/reference-prints/ref-456.png',
+      ),
+    ).toBeUndefined();
+  });
+
+  it('rejects a payload that is neither PNG, JPEG nor TIFF without storing anything', async () => {
+    await expect(
+      handler.execute(
+        new UploadReferencePrintCommand(Buffer.from('not-an-image'), 'case-9'),
+      ),
+    ).rejects.toBeInstanceOf(UnsupportedImageFormatError);
+
+    expect(await repo.findById('ref-456')).toBeNull();
     expect(
       storage.getSaved(
         'investigation-case/case-9/reference-prints/ref-456.png',

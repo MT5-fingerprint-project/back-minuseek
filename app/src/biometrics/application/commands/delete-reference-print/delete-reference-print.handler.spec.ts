@@ -23,7 +23,7 @@ describe('DeleteReferencePrintHandler', () => {
     );
     await storage.save(
       Buffer.from('tif'),
-      'investigation-case/case-1/reference-prints/ref-1.tif',
+      'investigation-case/case-1/reference-prints/ref-1_original.tif',
     );
     await repo.save(
       ReferencePrint.create({
@@ -42,7 +42,9 @@ describe('DeleteReferencePrintHandler', () => {
       storage.getSaved('investigation-case/case-1/reference-prints/ref-1.png'),
     ).toBeUndefined();
     expect(
-      storage.getSaved('investigation-case/case-1/reference-prints/ref-1.tif'),
+      storage.getSaved(
+        'investigation-case/case-1/reference-prints/ref-1_original.tif',
+      ),
     ).toBeUndefined();
   });
 

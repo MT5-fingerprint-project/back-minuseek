@@ -1,4 +1,4 @@
-# ADR-0010 — Conversion TIFF → PNG à l'upload, original archivé
+# ADR-12 — Conversion TIFF → PNG à l'upload, original archivé
 
 - **Statut** : accepté
 - **Date** : 2026-08-15
@@ -13,17 +13,29 @@ conservé à des fins d'archive (intégrité de la pièce d'origine).
 
 ## Décision
 
-À l'upload (`POST /traces`, `POST /reference-prints`), un fichier `.tif`/`.tiff` est :
+Le format est détecté sur les **magic bytes du contenu** (`\x89PNG`, `\xFF\xD8\xFF`,
+`II*\0`/`MM\0*`), jamais sur le nom de fichier ni le mimetype, tous deux fournis par le
+client donc falsifiables : un TIFF renommé `.png` est converti quand même, et l'extension
+stockée est toujours celle du format réel (`.png`, `.jpg`, `.tif`). Un contenu qui n'est
+ni PNG, ni JPEG, ni TIFF lève `UnsupportedImageFormatError` → `400` (défense en profondeur
+derrière le `FileTypeValidator` de NestJS, qui vérifie déjà les magic bytes à la frontière
+HTTP via `file-type`).
+
+À l'upload (`POST /traces`, `POST /reference-prints`), un fichier TIFF est :
 
 1. **converti en PNG** (encodage lossless : seuls les octets du conteneur changent, pas
    les pixels) — la conversion a lieu **avant toute écriture** : un TIFF illisible est
    rejeté en `400` sans laisser de fichier orphelin (même règle qu'ADR-0008) ;
-2. **archivé tel quel** sous `<dossier>/<id>.tif` (jamais référencé en base, jamais servi) ;
+2. **archivé tel quel** sous `<dossier>/<id>_original.tif` (jamais référencé en base,
+   jamais servi) — le suffixe `_original` rend la convention explicite et évite toute
+   ambiguïté si un consommateur liste le bucket par préfixe `<id>` (l'affichable ne doit
+   jamais dépendre d'un ordre alphabétique accidentel) ;
 3. le PNG est stocké sous `<dossier>/<id>.png` — c'est **ce chemin qui est persisté** et
    exposé via `path`/`url`.
 
-Même id pour les deux fichiers, seule l'extension diffère. Les autres formats (png, jpeg)
-sont stockés inchangés, sans archive.
+Même id pour les deux fichiers. Les autres formats (png, jpeg) sont stockés inchangés,
+sans archive, avec une extension **normalisée par format réel** (`.png`, `.jpg`, `.tif`)
+— un upload `photo.jpeg` est stocké `<id>.jpg`.
 
 - La convention vit dans un seul helper applicatif : `storeDisplayableImage` /
   `archivedOriginalPath` (`biometrics/application/services/displayable-image.ts`),
@@ -41,7 +53,7 @@ sont stockés inchangés, sans archive.
 - ✅ Zéro changement de contrat : le front continue de lire `id`/`path`/`url`, qui pointent
   désormais toujours vers un format affichable.
 - ✅ L'original TIFF reste disponible dans le bucket pour l'archive/expertise, retrouvable
-  par convention (`même chemin, extension .tif`).
+  par convention (`même chemin, suffixe _original.tif`).
 - ⚠️ L'archive n'est pas référencée en base : sa seule trace est la convention de nommage.
   Si un besoin d'accès applicatif à l'original apparaît, il faudra l'exposer explicitement.
 - ⚠️ Le PNG peut être plus lourd que le TIFF source (selon la compression d'origine) ;
@@ -54,5 +66,5 @@ sont stockés inchangés, sans archive.
 - **Convertir à la volée au download** — coût CPU répété à chaque affichage, URL signées
   GCS incompatibles avec une transformation à la lecture.
 - **Stocker le chemin de l'archive en base** — colonne supplémentaire pour un fichier
-  jamais servi ; la convention « même id, extension `.tif` » suffit.
+  jamais servi ; la convention « même id, suffixe `_original.tif` » suffit.
 - **JPEG au lieu de PNG** — compression avec perte, inacceptable pour de la biométrie.
