@@ -1,0 +1,16 @@
+model Report {
+  id          String     @id @db.Uuid
+  caseId      String     @db.Uuid
+  type        ReportType
+  storagePath String
+  sha256      String     @db.Char(64)
+  generatedBy Json
+  createdAt   DateTime   @default(now())
+
+  @@index([caseId])
+}
+
+enum ReportType {
+  TECHNICAL
+  TRACEABILITY
+}
