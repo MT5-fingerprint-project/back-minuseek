@@ -19,6 +19,7 @@ import {
   IMAGE_STORAGE,
   ImageStoragePort,
 } from '../../ports/image-storage.port';
+import { archivedOriginalPath } from '../../services/displayable-image';
 import { DeleteTraceCommand } from './delete-trace.command';
 
 @CommandHandler(DeleteTraceCommand)
@@ -60,5 +61,9 @@ export class DeleteTraceHandler implements ICommandHandler<
     });
 
     await this.storage.delete(trace.path);
+    const archived = archivedOriginalPath(trace.path);
+    if (archived) {
+      await this.storage.delete(archived);
+    }
   }
 }

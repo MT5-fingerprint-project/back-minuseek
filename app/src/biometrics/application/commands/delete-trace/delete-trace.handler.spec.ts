@@ -62,6 +62,41 @@ describe('DeleteTraceHandler', () => {
     ).toBeUndefined();
   });
 
+  it('deletes the archived TIFF original next to the displayable PNG', async () => {
+    await storage.save(
+      Buffer.from('tif'),
+      'investigation-case/case-1/traces/trace-1_original.tif',
+    );
+
+    await handler.execute(new DeleteTraceCommand(EXPERT_ACTOR, 'trace-1'));
+
+    expect(
+      storage.getSaved('investigation-case/case-1/traces/trace-1_original.tif'),
+    ).toBeUndefined();
+  });
+
+  it('deletes a non-TIFF upload without failing on the missing archive', async () => {
+    await storage.save(
+      Buffer.from('jpg'),
+      'investigation-case/case-1/traces/trace-2.jpg',
+    );
+    await repo.save(
+      Trace.upload({
+        id: 'trace-2',
+        path: 'media/investigation-case/case-1/traces/trace-2.jpg',
+        caseId: 'case-1',
+        sha256: ANY_SEAL,
+      }),
+    );
+
+    await handler.execute(new DeleteTraceCommand(EXPERT_ACTOR, 'trace-2'));
+
+    expect(await repo.findById('trace-2')).toBeNull();
+    expect(
+      storage.getSaved('investigation-case/case-1/traces/trace-2.jpg'),
+    ).toBeUndefined();
+  });
+
   it('chains a TRACE_DELETED event naming the actor and the seal of what disappeared', async () => {
     await handler.execute(
       new DeleteTraceCommand(EXPERT_ACTOR, 'trace-1', 'doublon du scan'),

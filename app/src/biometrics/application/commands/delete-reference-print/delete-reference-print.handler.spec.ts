@@ -65,6 +65,23 @@ describe('DeleteReferencePrintHandler', () => {
     ).toBeUndefined();
   });
 
+  it('deletes the archived TIFF original next to the displayable PNG', async () => {
+    await storage.save(
+      Buffer.from('tif'),
+      'investigation-case/case-1/reference-prints/ref-1_original.tif',
+    );
+
+    await handler.execute(
+      new DeleteReferencePrintCommand(EXPERT_ACTOR, 'ref-1'),
+    );
+
+    expect(
+      storage.getSaved(
+        'investigation-case/case-1/reference-prints/ref-1_original.tif',
+      ),
+    ).toBeUndefined();
+  });
+
   it('chains a REFERENCE_PRINT_DELETED event naming the actor and the seal of what disappeared', async () => {
     await handler.execute(
       new DeleteReferencePrintCommand(EXPERT_ACTOR, 'ref-1', 'mauvais sujet'),
