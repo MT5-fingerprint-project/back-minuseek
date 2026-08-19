@@ -171,6 +171,18 @@ make migrate NAME=add-user-table
 | `make test-watch`                 | Lance les tests en mode watch                        |
 | `make test-watch FILE=src/foo/foo.spec.ts` | Mode watch sur un fichier spécifique         |
 
+### Chaîne d'audit
+
+| Commande                        | Description                                                              |
+|---------------------------------|--------------------------------------------------------------------------|
+| `make audit-verify`             | Vérifie l'intégrité des chaînes d'audit de tous les tenants du registre   |
+| `make audit-verify TENANT=demo` | Vérifie un seul tenant                                                   |
+
+La commande recalcule chaque maillon et **sort en code 1** dès qu'une chaîne est rompue : elle est
+utilisable telle quelle dans un script ou un job. Ce qu'elle contrôle, comment lire son rapport et
+surtout **ce qu'un verdict vert ne prouve pas** sont documentés dans
+[docs/verification-de-la-chaine.md](docs/verification-de-la-chaine.md).
+
 ---
 
 ## Migrations de base de données
