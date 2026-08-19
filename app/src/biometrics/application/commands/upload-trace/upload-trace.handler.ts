@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { FileDigest } from '../../../domain/file-digest.vo';
@@ -26,7 +25,16 @@ import {
   IMAGE_STORAGE,
   ImageStoragePort,
 } from '../../ports/image-storage.port';
+import {
+  IMAGE_CONVERTER,
+  ImageConverterPort,
+} from '../../ports/image-converter.port';
 import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
+import {
+  archivedOriginalPath,
+  detectImageMimeType,
+  storeDisplayableImage,
+} from '../../services/displayable-image';
 import { UploadTraceCommand } from './upload-trace.command';
 
 @CommandHandler(UploadTraceCommand)
@@ -45,6 +53,8 @@ export class UploadTraceHandler implements ICommandHandler<
     private readonly idGenerator: IdGenerator,
     @Inject(CASE_STATUS)
     private readonly caseStatus: CaseStatusPort,
+    @Inject(IMAGE_CONVERTER)
+    private readonly converter: ImageConverterPort,
     @Inject(TRANSACTION_RUNNER)
     private readonly transactionRunner: TransactionRunner,
     @Inject(AUDIT_TRAIL)
@@ -61,8 +71,13 @@ export class UploadTraceHandler implements ICommandHandler<
 
     const id = this.idGenerator.generate();
     const sha256 = FileDigest.ofBuffer(cmd.fileBuffer);
-    const relativePath = `investigation-case/${cmd.caseId}/traces/${id}${this.getExtension(cmd.originalName)}`;
-    const storedPath = await this.storage.save(cmd.fileBuffer, relativePath);
+    const mimeType = detectImageMimeType(cmd.fileBuffer);
+    const storedPath = await storeDisplayableImage(
+      this.storage,
+      this.converter,
+      cmd.fileBuffer,
+      `investigation-case/${cmd.caseId}/traces/${id}`,
+    );
 
     try {
       await this.transactionRunner.run(async () => {
@@ -84,12 +99,16 @@ export class UploadTraceHandler implements ICommandHandler<
             fileSha256: sha256.getValue(),
             storagePath: storedPath,
             sizeBytes: cmd.fileBuffer.length,
-            mimeType: cmd.mimeType,
+            mimeType,
           },
         });
       });
     } catch (error) {
       await this.discardStoredFile(storedPath);
+      const archived = archivedOriginalPath(storedPath);
+      if (archived) {
+        await this.discardStoredFile(archived);
+      }
       throw error;
     }
 
@@ -105,10 +124,5 @@ export class UploadTraceHandler implements ICommandHandler<
         `Fichier orphelin dans le stockage: ${storedPath} (${String(error)})`,
       );
     }
-  }
-
-  private getExtension(originalName: string): string {
-    const extension = path.extname(originalName);
-    return extension.length > 0 ? extension : '.bin';
   }
 }
