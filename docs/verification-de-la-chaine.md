@@ -30,45 +30,66 @@ représentation des nombres et des dates. Un maillon dont l'acteur ou la date ne
 en **rupture, pas en exception** — un vérificateur doit survivre à la corruption qu'il cherche, sinon
 une base abîmée le fait tomber au lieu de le faire parler.
 
-## 3. Lire le rapport
+## 3. Ce qu'il contrôle, ancre par ancre
+
+Une ancre est un horodatage RFC 3161 obtenu auprès d'une autorité externe sur l'empreinte de tête de la
+chaîne, à un instant donné. Le vérificateur pose trois questions par ancre, et les deux dernières sont
+celles qui comptent.
+
+| Contrôle | Ce qu'il attrape |
+|---|---|
+| le jeton horodaté est signé, et son empreinte est celle de la sérialisation canonique du maillon ancré | un jeton fabriqué, un jeton valide mais rattaché à autre chose |
+| le maillon désigné par l'ancre existe encore et porte bien l'empreinte ancrée | une chaîne intégralement réécrite : ses empreintes sont cohérentes entre elles, mais plus aucune ne correspond à ce qu'un tiers a horodaté |
+| la chaîne atteint au moins le maillon de la dernière ancre | une troncature : supprimer les *k* derniers maillons laisse une chaîne continue, seule cette comparaison le voit |
+
+La chaîne de certificats X.509 du jeton n'est pas remontée jusqu'à une racine de confiance (best-effort
+v1, cf. ADR-0009) : ce contrôle prouve le lien entre le jeton et la donnée, pas la qualification de
+l'autorité. En production, c'est le choix d'une TSA qualifiée eIDAS qui porte cette valeur, pas le code.
+
+## 4. Lire le rapport
 
 ```json
 {
   "ok": false,
   "eventsChecked": 41,
   "firstBrokenSeq": 42,
-  "anchors": { "verified": 0, "failed": 0 }
+  "anchors": { "verified": 3, "failed": 1 },
+  "truncatedBelowSeq": 58
 }
 ```
 
 - `eventsChecked` compte les maillons validés **avant** la rupture. Ici, les 41 premiers sont intacts.
 - `firstBrokenSeq` est le premier maillon fautif. Ce n'est pas forcément le seul, mais c'est celui par
   lequel commencer : la suite du parcours est sans valeur tant qu'il n'est pas expliqué.
+- `anchors` compte les ancres validées et celles en échec. **Une seule ancre en échec vaut
+  `ok: false`**, au même titre qu'une empreinte rompue : une ancre qui ne se rattache plus à la chaîne
+  est le signe d'une réécriture, pas un détail.
+- `truncatedBelowSeq` n'apparaît que si la chaîne s'arrête sous la dernière ancre — elle a été tronquée
+  après avoir été horodatée. C'est aussi un `ok: false`.
 - Une chaîne vide rend `ok: true` avec `eventsChecked: 0`. Cela veut dire « rien à contredire », pas
   « laboratoire irréprochable » : un tenant provisionné avant l'écriture du genesis démarre sa chaîne
   en l'air, et ça ressemble à une chaîne saine.
 
-## 4. Ce qu'un verdict vert ne prouve pas
+## 5. Ce qu'un verdict vert ne prouve pas
 
 C'est la partie du document à lire avant de citer un `ok: true` devant qui que ce soit.
 
-1. **Une réécriture intégrale passe au vert.** Qui réécrit tous les maillons *et* recalcule toutes les
-   empreintes obtient une chaîne parfaitement cohérente. Rien, à l'intérieur de la chaîne, ne la relie
-   à un témoin extérieur. Seul l'ancrage horodaté par une autorité externe crée ce lien, et il faut le
-   confronter à la chaîne — pas seulement vérifier que l'ancre est bien signée.
-2. **Une troncature passe au vert.** Supprimer les *k* derniers maillons laisse une chaîne continue et
-   cohérente. Rien dans le parcours ne dit combien de maillons devraient exister ; seule la comparaison
-   avec la dernière ancre le dit.
+1. **Rien n'est prouvé avant la première ancre.** La confrontation aux ancres ferme le trou de la
+   réécriture intégrale et celui de la troncature — mais seulement sur la portion de chaîne qu'une ancre
+   couvre. Tout ce qui précède la première ancre garde une preuve d'existence *sans datation* : la
+   réécriture y reste indétectable. Un tenant jamais ancré est dans ce cas pour la totalité de sa
+   chaîne, et le rapport le dit par `anchors: { verified: 0, failed: 0 }`.
+2. **Une ancre ne date pas chaque maillon.** Elle prouve que la chaîne existait dans cet état à
+   l'instant T. Elle ne dit pas quand chaque maillon a été écrit : les `occurredAt` restent des
+   horodatages serveur.
 3. **Il ne dit rien des actes qui n'ont jamais été chaînés.** Un verdict vert sur une chaîne à laquelle
    il manque des événements ne signifie pas « rien d'autre n'a été fait ». La liste des familles d'actes
    non encore instrumentées vit dans `UNAUDITED_HANDLERS`, et le rapport technique l'imprime pour cette
    raison exacte.
-4. **Il ne date rien.** Les `occurredAt` sont des horodatages serveur, produits par la machine qui
-   écrivait. Ils ne valent pas datation opposable : c'est le rôle de l'ancrage RFC 3161.
-5. **Il vérifie la base qu'on lui désigne.** Il prouve la cohérence interne de ce qu'il lit, pas que
+4. **Il vérifie la base qu'on lui désigne.** Il prouve la cohérence interne de ce qu'il lit, pas que
    cette base soit celle qui a servi au dossier.
 
-## 5. Comment le lancer
+## 6. Comment le lancer
 
 ```bash
 make audit-verify           # tous les tenants du registre
@@ -83,7 +104,17 @@ La même vérification est exposée en HTTP, `GET /api/internal/audit/verify` (p
 optionnel), réservée au realm système : cette protection fait l'objet d'un ADR dédié, livré dans une
 autre PR.
 
-## 6. Fabriquer une rupture en dev
+L'ancrage se déclenche de la même façon, et c'est lui qui alimente les contrôles de la section 3 :
+
+```bash
+make audit-anchor              # ancre la tête de chaîne de chaque tenant
+make audit-anchor TENANT=demo
+```
+
+Un second appel immédiat ne fait rien : on n'ancre pas une chaîne dont rien n'a bougé depuis la
+dernière ancre. En production, c'est un ordonnanceur qui appellera la route équivalente.
+
+## 7. Fabriquer une rupture en dev
 
 Un vérificateur qu'on n'a jamais vu échouer ne vaut rien. En développement :
 
@@ -99,18 +130,24 @@ ALTER TABLE "AuditEvent" ENABLE TRIGGER audit_event_append_only;
 
 Relancer `make audit-verify` : le rapport doit pointer `firstBrokenSeq: 2`. Le trigger append-only
 interdit normalement toute modification — c'est bien pour ça qu'il faut le désactiver explicitement
-pour simuler une attaque. Restaurer ensuite avec `make migrate-reset && make setup-dev`.
+pour simuler une attaque.
 
-## 7. Coût
+Pour voir la détection de troncature, il faut d'abord une ancre : `make audit-anchor`, puis supprimer
+les derniers maillons (même désactivation du trigger) et relancer la vérification — le rapport doit
+rendre `truncatedBelowSeq` avec le numéro du maillon ancré.
+
+Restaurer ensuite avec `make migrate-reset && make setup-dev`.
+
+## 8. Coût
 
 Le parcours est un `O(n)` en lecture avec un recalcul SHA-256 par maillon : le hachage est négligeable,
 la lecture ne l'est pas. Les lots de 500 maillons bornent la mémoire, pas la durée totale, qui croît
 avec la taille de la chaîne du tenant — et le fan-out multiplie cette durée par le nombre de tenants.
 À garder en tête avant de brancher la vérification sur un ordonnanceur avec un délai d'attente serré.
 
-## 8. Ce qui manque encore ici
+## 9. Ce qui manque encore
 
-Les deux angles morts des points 1 et 2 ci-dessus se ferment avec l'ancrage RFC 3161 (Lot 3), qui
-ajoute au rapport la confrontation ancre ↔ chaîne et la détection de troncature. Tant que ce lot n'est
-pas mergé, le champ `anchors` du rapport reste à zéro et **le vérificateur ne prouve que la cohérence
-interne de la chaîne**.
+Un tiers ne peut pas encore refaire ce calcul **hors de la plateforme** : il faudrait lui livrer les
+maillons en JSON canonique, les jetons horodatés et la spécification de canonicalisation, avec un
+vérificateur autonome. Tant que cet export n'existe pas, la vérification reste « le serveur qui atteste
+le serveur » — ce qui suffit en interne, pas devant un expert contradictoire.

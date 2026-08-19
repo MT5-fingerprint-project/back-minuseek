@@ -17,11 +17,12 @@ export interface AuditEventHashInput {
   prevHash: string;
 }
 
-export function computeEventHash(input: AuditEventHashInput): string {
+/** Pré-image du hash d'un maillon : c'est elle qu'une ancre TSA horodate. */
+export function canonicalEventJson(input: AuditEventHashInput): string {
   if (Number.isNaN(input.occurredAt.getTime())) {
     throw new CanonicalizationError('"occurredAt" n\'est pas une date valide');
   }
-  const canonical = canonicalJson({
+  return canonicalJson({
     seq: input.seq,
     eventType: input.eventType,
     evidenceClass: input.evidenceClass,
@@ -32,5 +33,10 @@ export function computeEventHash(input: AuditEventHashInput): string {
     occurredAt: input.occurredAt.toISOString(),
     prevHash: input.prevHash,
   });
-  return createHash('sha256').update(canonical, 'utf8').digest('hex');
+}
+
+export function computeEventHash(input: AuditEventHashInput): string {
+  return createHash('sha256')
+    .update(canonicalEventJson(input), 'utf8')
+    .digest('hex');
 }

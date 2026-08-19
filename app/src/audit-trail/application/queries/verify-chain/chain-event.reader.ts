@@ -15,8 +15,16 @@ export interface ChainEventRow {
   hash: string;
 }
 
+export interface ChainHead {
+  seq: bigint;
+  hash: string;
+  eventType: AuditEventTypeEnum;
+}
+
 export interface ChainEventReader {
   findBatchAfter(seq: bigint, take: number): Promise<ChainEventRow[]>;
+  findHead(): Promise<ChainHead | null>;
+  findBySeq(seq: bigint): Promise<ChainEventRow | null>;
 }
 
 export const CHAIN_EVENT_READER = 'ChainEventReader';

@@ -63,6 +63,7 @@ make dev                      # lancements suivants (hot-reload)
 | `make test-integration [FILE=...]` | Suite d'intégration sur une vraie base jetable |
 | `make test-integration-down` | Détruit la base d'intégration |
 | `make audit-verify [TENANT=…]` | Vérifie l'intégrité des chaînes d'audit (code 1 si rompue) — cf. [docs/verification-de-la-chaine.md](docs/verification-de-la-chaine.md) |
+| `make audit-anchor [TENANT=…]` | Horodate la tête de chaîne auprès de la TSA (RFC 3161) |
 
 Scripts pnpm (depuis `app/`) : `pnpm build`, `pnpm start:dev`, `pnpm lint`, `pnpm test`.
 

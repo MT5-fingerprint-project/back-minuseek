@@ -27,6 +27,7 @@ export class TenantChainVerificationRunner {
             tenant: tenantSlug,
             ok: false,
             eventsChecked: 0,
+            anchors: { verified: 0, failed: 0 },
             error: 'tenant inconnu du registre',
           },
         ];
@@ -57,6 +58,7 @@ export class TenantChainVerificationRunner {
         tenant: slug,
         ok: false,
         eventsChecked: 0,
+        anchors: { verified: 0, failed: 0 },
         error: error instanceof Error ? error.message : String(error),
       };
     }
