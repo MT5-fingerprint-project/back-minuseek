@@ -3,6 +3,7 @@ import { GENESIS_PREV_HASH } from '../../src/audit-trail/domain/audit-event/enti
 import { EXPERT_ACTOR } from '../../src/shared/domain/audit/audit-actor.fixture';
 import { AuditEventTypeEnum } from '../../src/shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../src/shared/domain/audit/evidence-class.vo';
+import { UNAUDITED_TABLES } from '../../src/shared/domain/audit/unaudited-tables';
 import { UnauditedMutationError } from '../../src/tenancy/infrastructure/persistence/unaudited-mutation.error';
 import {
   AuditChainHarness,
@@ -13,6 +14,8 @@ import {
 const CONCURRENT_UPLOADS = 8;
 
 const CASE_ID = '11111111-1111-4111-8111-111111111111';
+
+const TRACE_MODEL = 'Trace';
 
 class WorkFailedError extends Error {}
 
@@ -50,6 +53,21 @@ describe("chaîne d'audit contre un vrai Postgres", () => {
         if (then) {
           then();
         }
+      }),
+    );
+  }
+
+  function uploadTraceWithoutAppend(): Promise<void> {
+    return harness.asTenant(() =>
+      harness.runner.run(async () => {
+        const client = await harness.connection.getCurrentClient();
+        await client.trace.create({
+          data: {
+            id: randomUUID(),
+            path: 'traces/unchained.png',
+            caseId: CASE_ID,
+          },
+        });
       }),
     );
   }
@@ -117,37 +135,29 @@ describe("chaîne d'audit contre un vrai Postgres", () => {
   });
 
   it('refuse une mutation métier non chaînée et annule la transaction', async () => {
-    const unchainedUpload = harness.asTenant(() =>
-      harness.runner.run(async () => {
-        const client = await harness.connection.getCurrentClient();
-        await client.trace.create({
-          data: {
-            id: randomUUID(),
-            path: 'traces/unchained.png',
-            caseId: CASE_ID,
-          },
-        });
-      }),
-    );
+    const unchainedUpload = uploadTraceWithoutAppend();
 
     await expect(unchainedUpload).rejects.toThrow(UnauditedMutationError);
-    await expect(unchainedUpload).rejects.toThrow(/Trace/);
+    await expect(unchainedUpload).rejects.toThrow(new RegExp(TRACE_MODEL));
     await expect(harness.database.client.trace.count()).resolves.toBe(0);
   });
 
-  it('laisse passer une mutation sur une table encore exemptée', async () => {
-    await harness.asTenant(() =>
-      harness.runner.run(async () => {
-        const client = await harness.connection.getCurrentClient();
-        await client.investigationCase.create({
-          data: { id: CASE_ID, caseNumber: 'PJ-2026-001', pvNumber: 'PV-001' },
-        });
-      }),
-    );
+  describe('quand la table est déclarée exemptée', () => {
+    beforeEach(() => {
+      UNAUDITED_TABLES[TRACE_MODEL] = [
+        'test/integration/audit-chain.int-spec.ts',
+      ];
+    });
 
-    await expect(
-      harness.database.client.investigationCase.count(),
-    ).resolves.toBe(1);
-    await expect(harness.database.client.auditEvent.count()).resolves.toBe(0);
+    afterEach(() => {
+      delete UNAUDITED_TABLES[TRACE_MODEL];
+    });
+
+    it('laisse passer la même mutation, sans maillon', async () => {
+      await uploadTraceWithoutAppend();
+
+      await expect(harness.database.client.trace.count()).resolves.toBe(1);
+      await expect(harness.database.client.auditEvent.count()).resolves.toBe(0);
+    });
   });
 });
