@@ -21,12 +21,10 @@ export class Rfc3161TsaAdapter implements TimestampAuthorityPort {
     process.env.TSA_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS,
   );
 
-
   constructor(
     @Optional()
     private readonly newNonce: () => Buffer = () => randomBytes(NONCE_BYTES),
   ) {}
-
 
   private get tsaUrl(): string {
     return requireEnv('TSA_URL');

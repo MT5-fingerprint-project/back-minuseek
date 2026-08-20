@@ -1,6 +1,6 @@
 // Score SourceAFIS au-delà duquel deux empreintes sont considérées comme correspondantes.
 // Seule source de vérité du verdict de match : data renvoie un score brut, le front consomme le verdict.
-const MATCH_THRESHOLD = 40;
+export const MATCH_THRESHOLD = 40;
 
 export class MatchingScore {
   private constructor(private readonly value: number) {}

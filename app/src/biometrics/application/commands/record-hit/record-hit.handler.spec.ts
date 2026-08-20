@@ -13,6 +13,11 @@ import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-
 import { InMemoryHitRepository } from '../../../infrastructure/persistence/in-memory-hit.repository';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
 import { RecordHitCommand } from './record-hit.command';
+import { InMemoryMatchingRepository } from '../../../infrastructure/persistence/in-memory-matching.repository';
+import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
+import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
+import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
+import { Matching } from '../../../domain/matching/entity/matching';
 import { RecordHitHandler } from './record-hit.handler';
 
 describe('RecordHitHandler', () => {
@@ -21,6 +26,8 @@ describe('RecordHitHandler', () => {
   let layerRepo: InMemoryLayerRepository;
   let hitRepo: InMemoryHitRepository;
   let idGenerator: IdGenerator;
+  let matchingRepo: InMemoryMatchingRepository;
+  let auditTrail: InMemoryAuditTrailAppender;
   let handler: RecordHitHandler;
 
   const seedMinutiae = async (
@@ -54,12 +61,17 @@ describe('RecordHitHandler', () => {
     layerRepo = new InMemoryLayerRepository();
     hitRepo = new InMemoryHitRepository();
     idGenerator = { generate: jest.fn(() => 'hit-1') };
+    matchingRepo = new InMemoryMatchingRepository();
+    auditTrail = new InMemoryAuditTrailAppender();
     handler = new RecordHitHandler(
       traceRepo,
       referencePrintRepo,
       layerRepo,
       hitRepo,
+      matchingRepo,
       idGenerator,
+      new InMemoryTransactionRunner(),
+      auditTrail,
     );
   });
 
@@ -193,5 +205,67 @@ describe('RecordHitHandler', () => {
         new RecordHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
       ),
     ).rejects.toThrow(ReferencePrintNotFoundError);
+  });
+
+  it('chaîne la déclaration avec les minuties et le score du couple', async () => {
+    await seedTraceAndReference();
+    await seedMinutiae('trace-1', REQUIRED_MINUTIAE + 1, 'circle');
+    await seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
+    await matchingRepo.upsertMany([
+      Matching.create({
+        id: 'matching-1',
+        traceId: 'trace-1',
+        referencePrintId: 'ref-1',
+        score: 88.5,
+      }),
+    ]);
+
+    await handler.execute(
+      new RecordHitCommand(
+        EXPERT_ACTOR,
+        'case-1',
+        'trace-1',
+        'ref-1',
+        'user-1',
+      ),
+    );
+
+    expect(auditTrail.events).toHaveLength(1);
+    const [event] = auditTrail.events;
+    expect(event.eventType).toBe(AuditEventTypeEnum.HIT_RECORDED);
+    expect(event.caseId).toBe('case-1');
+    expect(event.payload).toEqual({
+      traceId: 'trace-1',
+      referencePrintId: 'ref-1',
+      score: 88.5,
+      traceMinutiae: REQUIRED_MINUTIAE + 1,
+      referenceMinutiae: REQUIRED_MINUTIAE,
+      requiredMinutiae: REQUIRED_MINUTIAE,
+    });
+  });
+
+  it("chaîne un score nul quand aucune comparaison n'a précédé la déclaration", async () => {
+    await seedTraceAndReference();
+    await seedMinutiae('trace-1', REQUIRED_MINUTIAE, 'circle');
+    await seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
+
+    await handler.execute(
+      new RecordHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+    );
+
+    expect(auditTrail.events[0].payload).toMatchObject({ score: null });
+  });
+
+  it("n'écrit aucun maillon quand la règle de concordance rejette la déclaration", async () => {
+    await seedTraceAndReference();
+    await seedMinutiae('trace-1', REQUIRED_MINUTIAE - 1, 'circle');
+    await seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
+
+    await expect(
+      handler.execute(
+        new RecordHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+      ),
+    ).rejects.toThrow(InsufficientMinutiaeError);
+    expect(auditTrail.events).toHaveLength(0);
   });
 });

@@ -4,12 +4,6 @@
  * Un handler instrumenté doit sortir de cette liste, sinon le test de couverture échoue.
  */
 export const UNAUDITED_HANDLERS: Record<string, string> = {
-  'biometrics/application/commands/compare-trace/compare-trace.handler.ts':
-    'comparaison — ticket 5.4, bloqué par la version du moteur (5.3)',
-  'biometrics/application/commands/record-hit/record-hit.handler.ts':
-    'déclaration de hit — ticket 5.4',
-  'biometrics/application/commands/remove-hit/remove-hit.handler.ts':
-    'retrait de hit — ticket 5.4',
   'identity-access/application/commands/register-subject/register-subject.handler.ts':
     'enregistrement de sujet — ticket 5.5',
   'identity-access/application/commands/register-user/register-user.handler.ts':
