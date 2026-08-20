@@ -29,7 +29,7 @@ function eventsTable(model: TraceabilityReportViewModel): string {
   return `
     <table>
       <thead>
-        <tr><th>Seq</th><th>Acte</th><th>Classe</th><th>Acteur</th><th>Horodatage serveur</th><th>Détail</th><th>Empreinte du maillon</th></tr>
+        <tr><th>Seq</th><th>Acte</th><th>Classe</th><th>Acteur</th><th>Horodatage serveur (UTC)</th><th>Détail</th><th>Empreinte du maillon</th></tr>
       </thead>
       <tbody>
         ${model.events
@@ -59,7 +59,7 @@ function anchorsTable(model: TraceabilityReportViewModel): string {
   return `
     <table>
       <thead>
-        <tr><th>Maillon ancré</th><th>Empreinte ancrée</th><th>Autorité</th><th>Horodatage TSA</th><th>Empreinte du jeton</th></tr>
+        <tr><th>Maillon ancré</th><th>Empreinte ancrée</th><th>Autorité</th><th>Horodatage TSA (UTC)</th><th>Empreinte du jeton</th></tr>
       </thead>
       <tbody>
         ${model.anchors

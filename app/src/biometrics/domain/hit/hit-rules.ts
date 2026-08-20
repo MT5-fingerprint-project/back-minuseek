@@ -1,6 +1,7 @@
+import { REQUIRED_MINUTIAE } from '../../../shared/domain/forensics/minutiae';
 import { InsufficientMinutiaeError } from './errors/insufficient-minutiae.error';
 
-export const REQUIRED_MINUTIAE = 12;
+export { REQUIRED_MINUTIAE };
 
 export function assertEnoughMinutiae(
   traceMinutiae: number,

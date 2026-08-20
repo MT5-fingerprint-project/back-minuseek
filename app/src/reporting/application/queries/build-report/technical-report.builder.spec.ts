@@ -1,27 +1,48 @@
+import { REQUIRED_MINUTIAE } from '../../../../shared/domain/forensics/minutiae';
 import type { CaseReportData } from '../../ports/case-report-data.reader';
+import type { AuditEventData } from '../../ports/traceability-data.reader';
+import type { ReportImageViewModel } from '../../report-view-model';
 import { buildTechnicalReport } from './technical-report.builder';
 
 const OPENED_AT = new Date('2026-08-01T09:00:00.000Z');
+const COMPARED_AT = new Date('2026-08-10T14:00:00.000Z');
+const DECLARED_AT = new Date('2026-08-11T09:30:00.000Z');
 const GENERATED_AT = new Date('2026-08-19T08:00:00.000Z');
+
+const TRACE_PATH = 'media/investigation-case/case-1/traces/trace-1.png';
+const REF_PATH = 'media/investigation-case/case-1/reference-prints/ref-1.png';
+
+function minutiae(count: number) {
+  return Array.from({ length: count }, (_unused, index) => ({
+    kind: 'minutiae',
+    x: 100 + index * 10,
+    y: 200 + index * 5,
+    radius: 6,
+    angleDeg: index * 15,
+    color: '#d92b2b',
+  }));
+}
 
 const DATA: CaseReportData = {
   investigationCase: {
     id: 'case-1',
     caseNumber: 'AFF-001',
     pvNumber: 'PV-2026-001',
-    description: 'Cambriolage rue des Lilas',
+    description: null,
     status: 'OPEN',
     createdAt: OPENED_AT,
   },
   traces: [
     {
       id: 'trace-1',
-      path: 'media/investigation-case/case-1/traces/trace-1.png',
+      path: TRACE_PATH,
       sha256: 'a'.repeat(64),
       createdAt: OPENED_AT,
       capturedAt: null,
       status: 'EXPLOITABLE',
       score: 72,
+      subjectId: null,
+      position: null,
       layers: [
         {
           name: 'Contraste',
@@ -31,18 +52,22 @@ const DATA: CaseReportData = {
           settings: { contrast: 1.4 },
         },
       ],
+      minutiae: minutiae(13),
     },
   ],
   referencePrints: [
     {
       id: 'ref-1',
-      path: 'media/investigation-case/case-1/reference-prints/ref-1.jpg',
-      sha256: null,
+      path: REF_PATH,
+      sha256: 'b'.repeat(64),
       createdAt: OPENED_AT,
       capturedAt: null,
       status: null,
       score: null,
+      subjectId: 'subject-1',
+      position: 'RIGHT_INDEX',
       layers: [],
+      minutiae: minutiae(12),
     },
   ],
   comparisons: [
@@ -52,79 +77,198 @@ const DATA: CaseReportData = {
       score: 88.5,
       machineMatch: true,
       declaredHit: true,
-      comparedAt: GENERATED_AT,
+      comparedAt: COMPARED_AT,
+    },
+  ],
+  declaredHits: [
+    {
+      traceId: 'trace-1',
+      referencePrintId: 'ref-1',
+      declaredAt: DECLARED_AT,
+      declaredBy: {
+        firstName: 'Alex',
+        lastName: 'Martin',
+        grade: 'Brigadier',
+        serviceNumber: 'PN-4412',
+        role: 'EXPERT',
+      },
+    },
+  ],
+  subjects: [
+    {
+      id: 'subject-1',
+      firstName: 'Camille',
+      lastName: 'Durand',
+      birthDate: new Date('1990-04-12T00:00:00.000Z'),
+      birthPlace: 'Lyon',
+      sex: 'FEMALE',
+      type: 'PERSON_OF_INTEREST',
     },
   ],
 };
 
-describe('buildTechnicalReport', () => {
-  function build(images = new Map<string, string | null>()) {
-    return buildTechnicalReport({
-      data: DATA,
-      reportId: 'report-1',
-      chainHead: { seq: 42, hash: 'b'.repeat(64) },
-      generatedAt: GENERATED_AT,
-      generatedByDisplayName: 'Alex Martin',
-      images,
-    });
-  }
+const CHAIN_EVENTS: AuditEventData[] = [
+  {
+    seq: 4,
+    eventType: 'CASE_OPENED',
+    evidenceClass: 'OBSERVED',
+    actorDisplayName: 'Alex Martin',
+    occurredAt: OPENED_AT,
+    payload: { caseNumber: 'AFF-001', pvNumber: 'PV-2026-001' },
+    hash: 'c'.repeat(64),
+    prevHash: 'd'.repeat(64),
+  },
+  {
+    seq: 2,
+    eventType: 'TRACE_UPLOADED',
+    evidenceClass: 'OBSERVED',
+    actorDisplayName: 'Alex Martin',
+    occurredAt: OPENED_AT,
+    payload: { traceId: 'trace-1', sha256: 'a'.repeat(64) },
+    hash: 'e'.repeat(64),
+    prevHash: 'f'.repeat(64),
+  },
+];
 
-  it('rattache le rapport au dossier et au maillon de chaîne du moment', () => {
+const IMAGES = new Map<string, ReportImageViewModel | null>([
+  [
+    TRACE_PATH,
+    { dataUrl: 'data:image/png;base64,AAA', width: 800, height: 1200 },
+  ],
+  [REF_PATH, { dataUrl: 'data:image/png;base64,BBB', width: 500, height: 700 }],
+]);
+
+function build(
+  overrides: Partial<Parameters<typeof buildTechnicalReport>[0]> = {},
+) {
+  return buildTechnicalReport({
+    data: DATA,
+    chainEvents: CHAIN_EVENTS,
+    notCoveredActions: ['Comparaison', 'Déclaration de hit'],
+    reportId: 'report-1',
+    chainHead: { seq: 42, hash: 'b'.repeat(64) },
+    generatedAt: GENERATED_AT,
+    generatedByDisplayName: 'Alex Martin',
+    images: IMAGES,
+    ...overrides,
+  });
+}
+
+describe("buildTechnicalReport — démonstration d'identité", () => {
+  it('compose une planche par correspondance déclarée', () => {
     const model = build();
 
-    expect(model.header).toEqual({
-      reportId: 'report-1',
-      chainHeadSeq: 42,
-      chainHeadHash: 'b'.repeat(64),
-      caseNumber: 'AFF-001',
-      pvNumber: 'PV-2026-001',
-      caseStatus: 'OPEN',
-      openedAt: OPENED_AT,
-      generatedAt: GENERATED_AT,
-      generatedByDisplayName: 'Alex Martin',
+    expect(model.identityDemonstrations).toHaveLength(1);
+    const [demonstration] = model.identityDemonstrations;
+    expect(demonstration.trace.label).toBe('trace-1.png');
+    expect(demonstration.referencePrint.label).toBe('ref-1.png');
+    expect(demonstration.score).toBe(88.5);
+    expect(demonstration.machineMatch).toBe(true);
+    expect(demonstration.comparedAt).toEqual(COMPARED_AT);
+    expect(demonstration.declaredAt).toEqual(DECLARED_AT);
+    expect(demonstration.requiredMinutiae).toBe(REQUIRED_MINUTIAE);
+  });
+
+  it('nomme le sujet et la zone attribuée', () => {
+    const [demonstration] = build().identityDemonstrations;
+
+    expect(demonstration.subject).toEqual({
+      firstName: 'Camille',
+      lastName: 'Durand',
+      birthDate: new Date('1990-04-12T00:00:00.000Z'),
+      birthPlace: 'Lyon',
+      sex: 'FEMALE',
+      type: 'PERSON_OF_INTEREST',
+    });
+    expect(demonstration.position).toBe('index droit');
+  });
+
+  it("identifie l'expert qui a déclaré la correspondance", () => {
+    const [demonstration] = build().identityDemonstrations;
+
+    expect(demonstration.declaredBy).toEqual({
+      displayName: 'Alex Martin',
+      grade: 'Brigadier',
+      serviceNumber: 'PN-4412',
+      role: 'EXPERT',
     });
   });
 
-  it('nomme les pièces par leur fichier et reporte leurs calques', () => {
-    const model = build();
+  it('numérote les minuties de chaque pièce et garde leurs coordonnées', () => {
+    const [demonstration] = build().identityDemonstrations;
 
-    expect(model.traces[0].label).toBe('trace-1.png');
-    expect(model.traces[0].sha256).toBe('a'.repeat(64));
-    expect(model.traces[0].layers).toEqual([
-      {
-        name: 'Contraste',
-        type: 'FILTER',
-        zIndex: 1,
-        isVisible: true,
-        settings: { contrast: 1.4 },
-      },
+    expect(demonstration.trace.minutiae).toHaveLength(13);
+    expect(demonstration.referencePrint.minutiae).toHaveLength(12);
+    expect(demonstration.trace.minutiae[0]).toEqual({
+      index: 1,
+      x: 100,
+      y: 200,
+      radius: 6,
+      angleDeg: 0,
+      color: '#d92b2b',
+    });
+    expect(demonstration.trace.minutiae[12].index).toBe(13);
+  });
+
+  it('ne compose aucune planche sans correspondance déclarée', () => {
+    const model = build({
+      data: { ...DATA, declaredHits: [], comparisons: [] },
+    });
+
+    expect(model.identityDemonstrations).toEqual([]);
+  });
+});
+
+describe('buildTechnicalReport — journal des actes', () => {
+  it("liste les actes chaînés dans l'ordre des maillons", () => {
+    const { journal } = build();
+
+    expect(journal.chained.map((entry) => entry.seq)).toEqual([2, 4]);
+    expect(journal.chained[0].label).toBe('Trace déposée et mise sous scellé');
+    expect(journal.chained[0].hash).toBe('e'.repeat(64));
+  });
+
+  it('reconstitue les actes absents de la chaîne et les distingue', () => {
+    const { journal } = build();
+
+    expect(journal.reconstructed.map((entry) => entry.label)).toEqual([
+      'Comparaison exécutée',
+      'Correspondance déclarée par un expert',
+    ]);
+    expect(journal.reconstructed[0].seq).toBeNull();
+    expect(journal.reconstructed[0].detail).toContain('score 88.5');
+    expect(journal.reconstructed[1].actorDisplayName).toBe('Alex Martin');
+  });
+
+  it('ne reconstitue pas un acte déjà chaîné', () => {
+    const { journal } = build({
+      chainEvents: [
+        ...CHAIN_EVENTS,
+        {
+          seq: 9,
+          eventType: 'COMPARISON_EXECUTED',
+          evidenceClass: 'OBSERVED',
+          actorDisplayName: 'Alex Martin',
+          occurredAt: COMPARED_AT,
+          payload: {
+            traceId: 'trace-1',
+            referencePrintId: 'ref-1',
+            score: 88.5,
+          },
+          hash: '1'.repeat(64),
+          prevHash: '2'.repeat(64),
+        },
+      ],
+    });
+
+    expect(journal.reconstructed.map((entry) => entry.label)).toEqual([
+      'Correspondance déclarée par un expert',
     ]);
   });
 
-  it('remplace les identifiants par les libellés dans les comparaisons', () => {
-    const model = build();
+  it("déclare les familles d'actes que la chaîne ne couvre pas", () => {
+    const { journal } = build();
 
-    expect(model.comparisons[0]).toEqual({
-      traceLabel: 'trace-1.png',
-      referencePrintLabel: 'ref-1.jpg',
-      score: 88.5,
-      machineMatch: true,
-      declaredHit: true,
-      comparedAt: GENERATED_AT,
-    });
-  });
-
-  it("embarque l'image quand elle a pu être lue, et rien sinon", () => {
-    const withImage = build(
-      new Map([
-        [
-          'media/investigation-case/case-1/traces/trace-1.png',
-          'data:image/png;base64,AAA',
-        ],
-      ]),
-    );
-
-    expect(withImage.traces[0].imageDataUrl).toBe('data:image/png;base64,AAA');
-    expect(withImage.referencePrints[0].imageDataUrl).toBeNull();
+    expect(journal.notCovered).toEqual(['Comparaison', 'Déclaration de hit']);
   });
 });

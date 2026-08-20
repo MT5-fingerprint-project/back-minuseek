@@ -23,6 +23,14 @@ export const REPORT_STYLES = `
   .piece { page-break-inside: avoid; margin-bottom: 6mm; }
   .piece img { max-width: 80mm; max-height: 80mm; border: 0.2mm solid #c3cad6; }
   .missing-image { color: #55606f; font-style: italic; }
+  .planche { width: 100%; height: auto; border: 0.2mm solid #c3cad6; background: #ffffff; }
+  .planche-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; align-items: start; }
+  .planche-pair h4 { margin: 0 0 1.5mm; font-size: 9.5pt; }
+  .demonstration { page-break-inside: avoid; margin-bottom: 8mm; }
+  .demonstration h3 { margin-top: 6mm; }
+  .caption { font-size: 8pt; color: #55606f; margin: 2mm 0 4mm; }
+  .piece-image { margin: 2mm 0 3mm; max-width: 110mm; }
+  ul { margin: 2mm 0 4mm; padding-left: 6mm; }
   .seal { margin-top: 8mm; border-top: 0.4mm solid #10151f; padding-top: 2mm; font-size: 8pt; color: #55606f; }
   .empty { color: #55606f; font-style: italic; }
 `;

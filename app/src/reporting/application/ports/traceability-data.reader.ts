@@ -26,6 +26,7 @@ export interface TraceabilityData {
 
 export interface TraceabilityDataReader {
   read(caseId: string): Promise<TraceabilityData>;
+  readCaseEvents(caseId: string): Promise<AuditEventData[]>;
 }
 
 export const TRACEABILITY_DATA_READER = 'TraceabilityDataReader';

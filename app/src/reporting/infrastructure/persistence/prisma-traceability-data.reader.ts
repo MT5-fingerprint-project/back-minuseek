@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
 import { AuditActorPrimitives } from '../../../shared/domain/audit/audit-actor.vo';
 import type {
+  AuditEventData,
   TraceabilityData,
   TraceabilityDataReader,
 } from '../../application/ports/traceability-data.reader';
@@ -11,14 +12,30 @@ import type {
 export class PrismaTraceabilityDataReader implements TraceabilityDataReader {
   constructor(private readonly tenantConnection: TenantConnectionService) {}
 
+  async readCaseEvents(caseId: string): Promise<AuditEventData[]> {
+    const prisma = await this.tenantConnection.getCurrentClient();
+    const events = await prisma.auditEvent.findMany({
+      where: { caseId },
+      orderBy: { seq: 'asc' },
+    });
+    return events.map((event) => ({
+      seq: Number(event.seq),
+      eventType: event.eventType,
+      evidenceClass: event.evidenceClass,
+      actorDisplayName: (event.actor as unknown as AuditActorPrimitives)
+        .displayName,
+      occurredAt: event.occurredAt,
+      payload: event.payload as Record<string, unknown>,
+      hash: event.hash,
+      prevHash: event.prevHash,
+    }));
+  }
+
   async read(caseId: string): Promise<TraceabilityData> {
     const prisma = await this.tenantConnection.getCurrentClient();
 
     const [caseEvents, spine, anchors] = await Promise.all([
-      prisma.auditEvent.findMany({
-        where: { caseId },
-        orderBy: { seq: 'asc' },
-      }),
+      this.readCaseEvents(caseId),
       prisma.auditEvent.findMany({
         orderBy: { seq: 'asc' },
         select: { seq: true, hash: true },
@@ -29,17 +46,7 @@ export class PrismaTraceabilityDataReader implements TraceabilityDataReader {
     ]);
 
     return {
-      caseEvents: caseEvents.map((event) => ({
-        seq: Number(event.seq),
-        eventType: event.eventType,
-        evidenceClass: event.evidenceClass,
-        actorDisplayName: (event.actor as unknown as AuditActorPrimitives)
-          .displayName,
-        occurredAt: event.occurredAt,
-        payload: event.payload as Record<string, unknown>,
-        hash: event.hash,
-        prevHash: event.prevHash,
-      })),
+      caseEvents,
       hashSpine: spine.map((link) => ({
         seq: Number(link.seq),
         hash: link.hash,

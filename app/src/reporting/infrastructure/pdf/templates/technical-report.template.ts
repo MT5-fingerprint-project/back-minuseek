@@ -1,9 +1,100 @@
 import {
+  ReportIdentityDemonstrationViewModel,
+  ReportJournalEntryViewModel,
   ReportPieceViewModel,
   TechnicalReportViewModel,
 } from '../../../application/report-view-model';
-import { escapeHtml, formatDate, formatJson } from '../html';
+import { escapeHtml, formatDate, formatDay, formatJson } from '../html';
 import { REPORT_STYLES } from './report-styles';
+
+const MARKER_RADIUS_RATIO = 110;
+const LABEL_OFFSET_RATIO = 1.9;
+
+/**
+ * Planche d'une pièce : l'image dans son repère pixel natif, les minuties
+ * replacées à leurs coordonnées et numérotées. Sans dimensions natives (format
+ * non lu, TIFF par exemple), les marqueurs ne peuvent pas être replacés — on
+ * l'écrit plutôt que de dessiner à côté.
+ */
+function markedImage(piece: ReportPieceViewModel): string {
+  if (!piece.image) {
+    return '<p class="missing-image">Image non embarquée : fichier illisible au moment du rendu.</p>';
+  }
+  const { dataUrl, width, height } = piece.image;
+  if (width === null || height === null) {
+    return `
+      <img src="${dataUrl}" alt="${escapeHtml(piece.label)}" />
+      ${
+        piece.minutiae.length > 0
+          ? '<p class="missing-image">Minuties non replacées : dimensions natives illisibles dans ce format.</p>'
+          : ''
+      }`;
+  }
+
+  const markerRadius = Math.max(width, height) / MARKER_RADIUS_RATIO;
+  const stroke = markerRadius / 4;
+  const markers = piece.minutiae
+    .map((minutia) => {
+      const radius = Math.max(minutia.radius, markerRadius);
+      const direction =
+        minutia.angleDeg === null
+          ? ''
+          : (() => {
+              const radians = (minutia.angleDeg * Math.PI) / 180;
+              return `<line x1="${minutia.x}" y1="${minutia.y}" x2="${
+                minutia.x + Math.cos(radians) * radius * 2.4
+              }" y2="${
+                minutia.y + Math.sin(radians) * radius * 2.4
+              }" stroke="${minutia.color}" stroke-width="${stroke}" />`;
+            })();
+      return `
+        <g>
+          <circle cx="${minutia.x}" cy="${minutia.y}" r="${radius}" fill="none" stroke="${minutia.color}" stroke-width="${stroke}" />
+          ${direction}
+          <text x="${minutia.x + radius * LABEL_OFFSET_RATIO}" y="${
+            minutia.y - radius * 0.8
+          }" font-size="${radius * 2.2}" fill="${minutia.color}" stroke="#ffffff" stroke-width="${
+            stroke / 2
+          }" paint-order="stroke">${minutia.index}</text>
+        </g>`;
+    })
+    .join('');
+
+  return `
+    <svg class="planche" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+      <image href="${dataUrl}" x="0" y="0" width="${width}" height="${height}" />
+      ${markers}
+    </svg>`;
+}
+
+function minutiaeTable(piece: ReportPieceViewModel): string {
+  if (piece.minutiae.length === 0) {
+    return '<p class="empty">Aucune minutie relevée.</p>';
+  }
+  return `
+    <table>
+      <thead>
+        <tr><th>N°</th><th>x</th><th>y</th><th>Direction</th></tr>
+      </thead>
+      <tbody>
+        ${piece.minutiae
+          .map(
+            (minutia) => `
+          <tr>
+            <td class="numeric">${minutia.index}</td>
+            <td class="numeric">${Math.round(minutia.x)}</td>
+            <td class="numeric">${Math.round(minutia.y)}</td>
+            <td class="numeric">${
+              minutia.angleDeg === null
+                ? '—'
+                : `${Math.round(minutia.angleDeg)}°`
+            }</td>
+          </tr>`,
+          )
+          .join('')}
+      </tbody>
+    </table>`;
+}
 
 function layersTable(piece: ReportPieceViewModel): string {
   if (piece.layers.length === 0) {
@@ -44,13 +135,166 @@ function pieceSection(piece: ReportPieceViewModel): string {
       <p><span class="fact-label">Empreinte du fichier original</span><br />
         <span class="hash">${escapeHtml(piece.sha256 ?? 'non scellée (pièce déposée avant la mise sous scellé)')}</span>
       </p>
-      ${
-        piece.imageDataUrl
-          ? `<img src="${piece.imageDataUrl}" alt="${escapeHtml(piece.label)}" />`
-          : '<p class="missing-image">Image non embarquée : fichier illisible au moment du rendu.</p>'
-      }
+      <div class="piece-image">${markedImage(piece)}</div>
       ${layersTable(piece)}
     </div>`;
+}
+
+function conclusion(
+  demonstration: ReportIdentityDemonstrationViewModel,
+): string {
+  const { subject, position, score, declaredBy } = demonstration;
+  const who = subject
+    ? `${escapeHtml(subject.lastName.toUpperCase())} ${escapeHtml(subject.firstName)}, né(e) le ${formatDay(
+        subject.birthDate,
+      )} à ${escapeHtml(subject.birthPlace)}`
+    : 'un sujet non renseigné dans le dossier';
+  const zone = position
+    ? `au ${escapeHtml(position)}`
+    : 'à une zone non précisée';
+  const expert = declaredBy
+    ? `${escapeHtml(declaredBy.grade)} ${escapeHtml(declaredBy.displayName)} (matricule ${escapeHtml(
+        declaredBy.serviceNumber,
+      )})`
+    : 'un utilisateur non identifié';
+
+  return `
+    <p>
+      La trace <strong>${escapeHtml(demonstration.trace.label)}</strong> est déclarée en
+      correspondance avec l'empreinte de référence
+      <strong>${escapeHtml(demonstration.referencePrint.label)}</strong>, attribuée ${zone}
+      de ${who}. Déclaration faite le ${formatDate(demonstration.declaredAt)} par ${expert}.
+      ${
+        score === null
+          ? "Aucun score de comparaison n'est enregistré pour ce couple."
+          : `Score de comparaison : <strong>${escapeHtml(score)}</strong>${
+              demonstration.machineMatch === null
+                ? ''
+                : ` (verdict du moteur : ${
+                    demonstration.machineMatch
+                      ? 'correspondance'
+                      : 'pas de correspondance'
+                  })`
+            }.`
+      }
+      Le score est un élément d'appui : la correspondance ci-dessous est un acte d'expert,
+      appuyé sur ${demonstration.trace.minutiae.length} minuties relevées sur la trace et
+      ${demonstration.referencePrint.minutiae.length} sur l'empreinte de référence, la
+      plateforme exigeant au minimum ${demonstration.requiredMinutiae} points de part et
+      d'autre pour accepter la déclaration.
+    </p>`;
+}
+
+function demonstrationSection(
+  demonstration: ReportIdentityDemonstrationViewModel,
+  order: number,
+): string {
+  return `
+    <div class="demonstration">
+      <h3>Planche n°${order} — ${escapeHtml(demonstration.trace.label)} / ${escapeHtml(
+        demonstration.referencePrint.label,
+      )}</h3>
+      ${conclusion(demonstration)}
+      <div class="planche-pair">
+        <div>
+          <h4>Trace ${escapeHtml(demonstration.trace.label)}</h4>
+          ${markedImage(demonstration.trace)}
+          <p class="hash">${escapeHtml(demonstration.trace.sha256 ?? 'pièce non scellée')}</p>
+        </div>
+        <div>
+          <h4>Référence ${escapeHtml(demonstration.referencePrint.label)}</h4>
+          ${markedImage(demonstration.referencePrint)}
+          <p class="hash">${escapeHtml(
+            demonstration.referencePrint.sha256 ?? 'pièce non scellée',
+          )}</p>
+        </div>
+      </div>
+      <p class="caption">
+        Les cercles marquent les minuties relevées par l'expert, à leurs coordonnées dans
+        l'image d'origine ; le trait indique la direction du flux quand elle a été saisie.
+        Le diamètre des marqueurs est une convention d'affichage, leur position ne l'est pas.
+        La numérotation suit l'ordre de saisie de chaque pièce et ne préjuge d'aucune mise en
+        correspondance point par point.
+      </p>
+      <div class="planche-pair">
+        <div>${minutiaeTable(demonstration.trace)}</div>
+        <div>${minutiaeTable(demonstration.referencePrint)}</div>
+      </div>
+      <h4>Traitements appliqués, pour rejouer la comparaison</h4>
+      <div class="planche-pair">
+        <div>${layersTable(demonstration.trace)}</div>
+        <div>${layersTable(demonstration.referencePrint)}</div>
+      </div>
+    </div>`;
+}
+
+function journalRows(entries: ReportJournalEntryViewModel[]): string {
+  return entries
+    .map(
+      (entry) => `
+      <tr>
+        <td class="numeric">${entry.seq === null ? '—' : entry.seq}</td>
+        <td>${escapeHtml(entry.label)}</td>
+        <td>${escapeHtml(entry.actorDisplayName ?? '—')}</td>
+        <td>${formatDate(entry.occurredAt)}</td>
+        <td>${escapeHtml(entry.detail ?? '—')}</td>
+        <td class="hash">${entry.hash === null ? '—' : escapeHtml(entry.hash.slice(0, 16))}</td>
+      </tr>`,
+    )
+    .join('');
+}
+
+function journalSection(model: TechnicalReportViewModel): string {
+  const { journal } = model;
+  return `
+    <h2>Journal des actes (${journal.chained.length + journal.reconstructed.length})</h2>
+    <p>
+      Cette section liste tous les actes connus de la plateforme sur ce dossier. Les actes
+      chaînés sont ceux dont la trace est scellée dans la chaîne d'audit : ils portent un
+      numéro de maillon et l'empreinte de ce maillon, et toute modification postérieure les
+      romprait. Les empreintes sont tronquées ici : l'annexe de traçabilité porte leur valeur
+      complète, ainsi que le payload intégral de chaque acte. Tous les horodatages sont
+      exprimés en temps universel (UTC).
+    </p>
+    ${
+      journal.chained.length === 0
+        ? '<p class="empty">Aucun acte chaîné pour ce dossier.</p>'
+        : `<table>
+            <thead>
+              <tr><th>Maillon</th><th>Acte</th><th>Auteur</th><th>Horodatage serveur (UTC)</th><th>Détail</th><th>Empreinte (début)</th></tr>
+            </thead>
+            <tbody>${journalRows(journal.chained)}</tbody>
+          </table>`
+    }
+    ${
+      journal.reconstructed.length === 0
+        ? ''
+        : `<h3>Actes lus dans l'état du dossier, sans maillon correspondant (${journal.reconstructed.length})</h3>
+          <p>
+            Ces actes existent en base mais n'ont pas de maillon dans la chaîne : ils ont été
+            réalisés avant l'instrumentation de leur commande. Ils sont reproduits ici pour que
+            le journal soit complet, mais <strong>ils n'ont pas la même valeur probante</strong>
+            que les précédents : rien ne garantit qu'ils n'ont pas été modifiés depuis.
+          </p>
+          <table>
+            <thead>
+              <tr><th>Maillon</th><th>Acte</th><th>Auteur</th><th>Horodatage (UTC)</th><th>Détail</th><th>Empreinte</th></tr>
+            </thead>
+            <tbody>${journalRows(journal.reconstructed)}</tbody>
+          </table>`
+    }
+    ${
+      journal.notCovered.length === 0
+        ? ''
+        : `<h3>Familles d'actes que la chaîne ne couvre pas encore</h3>
+          <p>
+            Par honnêteté du document : les actes suivants ne sont pas écrits dans la chaîne à
+            la date de ce rapport, ils ne peuvent donc pas y figurer.
+          </p>
+          <ul>${journal.notCovered
+            .map((family) => `<li>${escapeHtml(family)}</li>`)
+            .join('')}</ul>`
+    }`;
 }
 
 function comparisonsTable(model: TechnicalReportViewModel): string {
@@ -108,6 +352,18 @@ export function renderTechnicalReportHtml(
         : ''
     }
 
+    <h2>Démonstration d'identité (${model.identityDemonstrations.length})</h2>
+    ${
+      model.identityDemonstrations.length === 0
+        ? `<p class="empty">Aucune correspondance déclarée sur ce dossier : le rapport ne
+             conclut à aucune identité.</p>`
+        : model.identityDemonstrations
+            .map((demonstration, order) =>
+              demonstrationSection(demonstration, order + 1),
+            )
+            .join('')
+    }
+
     <h2>Traces (${model.traces.length})</h2>
     ${
       model.traces.length === 0
@@ -125,12 +381,14 @@ export function renderTechnicalReportHtml(
     <h2>Comparaisons</h2>
     ${comparisonsTable(model)}
 
+    ${journalSection(model)}
+
     <p class="seal">
-      Rapport ${escapeHtml(header.reportId)}. Les calques sont décrits par leurs
-      réglages : le rendu amélioré se rejoue dans le comparateur, à partir de ces
-      valeurs. L'empreinte SHA-256 de ce document est enregistrée dans la chaîne
-      d'audit du laboratoire (événement REPORT_GENERATED) au moment de son
-      scellement ; elle n'est pas imprimable dans le document qu'elle scelle.
+      Rapport ${escapeHtml(header.reportId)}. Les calques sont décrits par leurs réglages : le
+      rendu amélioré se rejoue dans le comparateur à partir de ces valeurs. L'empreinte
+      SHA-256 de ce document est enregistrée dans la chaîne d'audit du laboratoire (événement
+      REPORT_GENERATED) au moment de son scellement ; elle n'est pas imprimable dans le
+      document qu'elle scelle.
       ${
         header.chainHeadHash
           ? `Chaîne au maillon ${escapeHtml(header.chainHeadSeq)} : <span class="hash">${escapeHtml(header.chainHeadHash)}</span>.`
