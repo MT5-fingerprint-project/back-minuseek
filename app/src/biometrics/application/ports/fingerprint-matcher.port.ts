@@ -9,10 +9,14 @@ export interface CompareFingerprintsInput {
   referencePrintIds: string[];
 }
 
+export interface FingerprintComparison {
+  candidates: FingerprintMatchCandidate[];
+  /** Version du moteur qui a produit ces scores ; null si data ne la donne pas. */
+  engineVersion: string | null;
+}
+
 export interface FingerprintMatcherPort {
-  compare(
-    input: CompareFingerprintsInput,
-  ): Promise<FingerprintMatchCandidate[]>;
+  compare(input: CompareFingerprintsInput): Promise<FingerprintComparison>;
 }
 
 export const FINGERPRINT_MATCHER = 'FingerprintMatcher';

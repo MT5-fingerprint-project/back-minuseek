@@ -10,6 +10,10 @@ import { InMemoryMatchingRepository } from '../../../infrastructure/persistence/
 import { InMemoryFingerprintMatcherAdapter } from '../../../infrastructure/matching/in-memory-fingerprint-matcher.adapter';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
 import { CompareTraceCommand } from './compare-trace.command';
+import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
+import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
+import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
+import { MATCH_THRESHOLD } from '../../../domain/matching/value-objects/matching-score.vo';
 import { CompareTraceHandler } from './compare-trace.handler';
 
 describe('CompareTraceHandler', () => {
@@ -18,6 +22,7 @@ describe('CompareTraceHandler', () => {
   let matchingRepo: InMemoryMatchingRepository;
   let matcher: InMemoryFingerprintMatcherAdapter;
   let idGenerator: IdGenerator;
+  let auditTrail: InMemoryAuditTrailAppender;
   let handler: CompareTraceHandler;
 
   beforeEach(() => {
@@ -27,12 +32,15 @@ describe('CompareTraceHandler', () => {
     matcher = new InMemoryFingerprintMatcherAdapter();
     let counter = 0;
     idGenerator = { generate: jest.fn(() => `matching-${++counter}`) };
+    auditTrail = new InMemoryAuditTrailAppender();
     handler = new CompareTraceHandler(
       traceRepo,
       referencePrintRepo,
       matcher,
       matchingRepo,
       idGenerator,
+      new InMemoryTransactionRunner(),
+      auditTrail,
     );
   });
 
@@ -147,5 +155,74 @@ describe('CompareTraceHandler', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].referencePrintId).toBe('ref-1');
+  });
+
+  it('chaîne une comparaison par couple, avec le seuil et la version du moteur', async () => {
+    await traceRepo.save(
+      Trace.upload({
+        id: 'trace-1',
+        path: 'media/trace-1.png',
+        caseId: 'case-1',
+        sha256: ANY_SEAL,
+      }),
+    );
+    await referencePrintRepo.save(
+      ReferencePrint.create({
+        id: 'ref-1',
+        path: 'media/ref-1.png',
+        caseId: 'case-1',
+        sha256: ANY_SEAL,
+      }),
+    );
+    matcher.setResults([{ referencePrintId: 'ref-1', score: 88.5 }]);
+    matcher.setEngineVersion('sourceafis-3.17.1+minuseek.1');
+
+    await handler.execute(
+      new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', ['ref-1']),
+    );
+
+    expect(auditTrail.events).toHaveLength(1);
+    const [event] = auditTrail.events;
+    expect(event.eventType).toBe(AuditEventTypeEnum.COMPARISON_EXECUTED);
+    expect(event.caseId).toBe('case-1');
+    expect(event.traceId).toBe('trace-1');
+    expect(event.payload).toEqual({
+      traceId: 'trace-1',
+      referencePrintId: 'ref-1',
+      score: 88.5,
+      hit: true,
+      matchThreshold: MATCH_THRESHOLD,
+      engineVersion: 'sourceafis-3.17.1+minuseek.1',
+    });
+  });
+
+  it('chaîne quand même la comparaison si data ne donne pas sa version de moteur', async () => {
+    await traceRepo.save(
+      Trace.upload({
+        id: 'trace-1',
+        path: 'media/trace-1.png',
+        caseId: 'case-1',
+        sha256: ANY_SEAL,
+      }),
+    );
+    await referencePrintRepo.save(
+      ReferencePrint.create({
+        id: 'ref-1',
+        path: 'media/ref-1.png',
+        caseId: 'case-1',
+        sha256: ANY_SEAL,
+      }),
+    );
+    matcher.setResults([{ referencePrintId: 'ref-1', score: 12 }]);
+    matcher.setEngineVersion(null);
+
+    await handler.execute(
+      new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', ['ref-1']),
+    );
+
+    expect(auditTrail.events[0].payload).toMatchObject({
+      hit: false,
+      engineVersion: null,
+    });
   });
 });

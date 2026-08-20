@@ -9,12 +9,16 @@ import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-
 import { InMemoryReferencePrintRepository } from '../../../infrastructure/persistence/in-memory-reference-print.repository';
 import { InMemoryHitRepository } from '../../../infrastructure/persistence/in-memory-hit.repository';
 import { RemoveHitCommand } from './remove-hit.command';
+import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
+import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
+import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { RemoveHitHandler } from './remove-hit.handler';
 
 describe('RemoveHitHandler', () => {
   let traceRepo: InMemoryTraceRepository;
   let referencePrintRepo: InMemoryReferencePrintRepository;
   let hitRepo: InMemoryHitRepository;
+  let auditTrail: InMemoryAuditTrailAppender;
   let handler: RemoveHitHandler;
 
   const seedTraceAndReference = async (): Promise<void> => {
@@ -40,7 +44,14 @@ describe('RemoveHitHandler', () => {
     traceRepo = new InMemoryTraceRepository();
     referencePrintRepo = new InMemoryReferencePrintRepository();
     hitRepo = new InMemoryHitRepository();
-    handler = new RemoveHitHandler(traceRepo, referencePrintRepo, hitRepo);
+    auditTrail = new InMemoryAuditTrailAppender();
+    handler = new RemoveHitHandler(
+      traceRepo,
+      referencePrintRepo,
+      hitRepo,
+      new InMemoryTransactionRunner(),
+      auditTrail,
+    );
   });
 
   it('removes an existing hit', async () => {
@@ -111,5 +122,42 @@ describe('RemoveHitHandler', () => {
         new RemoveHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
       ),
     ).rejects.toThrow(ReferencePrintNotFoundError);
+  });
+
+  it('chaîne le retrait de la correspondance', async () => {
+    await seedTraceAndReference();
+    await hitRepo.save(
+      Hit.fromPrimitives({
+        id: 'hit-1',
+        traceId: 'trace-1',
+        referencePrintId: 'ref-1',
+        declaredByUserId: 'user-1',
+      }),
+    );
+
+    await handler.execute(
+      new RemoveHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+    );
+
+    expect(auditTrail.events).toHaveLength(1);
+    const [event] = auditTrail.events;
+    expect(event.eventType).toBe(AuditEventTypeEnum.HIT_REMOVED);
+    expect(event.caseId).toBe('case-1');
+    expect(event.actor).toEqual(EXPERT_ACTOR.toPrimitives());
+    expect(event.payload).toEqual({
+      traceId: 'trace-1',
+      referencePrintId: 'ref-1',
+    });
+  });
+
+  it("n'écrit aucun maillon quand la pièce n'appartient pas au dossier", async () => {
+    await seedTraceAndReference();
+
+    await expect(
+      handler.execute(
+        new RemoveHitCommand(EXPERT_ACTOR, 'autre-dossier', 'trace-1', 'ref-1'),
+      ),
+    ).rejects.toThrow(TraceNotFoundError);
+    expect(auditTrail.events).toHaveLength(0);
   });
 });
