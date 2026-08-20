@@ -2,6 +2,7 @@ FROM node:24-alpine AS base
 #fix pnpm version to avoid pnpm11 post install script error on ci
 RUN apk upgrade --no-cache
 RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 WORKDIR /app
 
 FROM base AS build
@@ -19,6 +20,9 @@ FROM node:24-alpine AS production
 ENV NODE_ENV=production
 ENV SWAGGER_DOC=false
 RUN apk upgrade --no-cache
+RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
