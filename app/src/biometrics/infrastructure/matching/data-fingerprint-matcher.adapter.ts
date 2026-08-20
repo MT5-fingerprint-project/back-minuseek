@@ -2,7 +2,7 @@ import { BadGatewayException } from '@nestjs/common';
 import { GoogleAuth } from 'google-auth-library';
 import {
   CompareFingerprintsInput,
-  FingerprintMatchCandidate,
+  FingerprintComparison,
   FingerprintMatcherPort,
 } from '../../application/ports/fingerprint-matcher.port';
 
@@ -13,11 +13,9 @@ interface DataCompareResult {
 
 interface DataCompareResponse {
   results: DataCompareResult[];
+  engine_version?: string;
 }
 
-// Adapter sortant vers le service data interne (jamais exposé au front) :
-// le back valide l'appartenance caseId/traceId/referencePrintIds avant d'appeler
-// ce endpoint, data lui fait confiance en retour (cf. ADR-0004).
 export class DataFingerprintMatcherAdapter implements FingerprintMatcherPort {
   private readonly auth = new GoogleAuth();
 
@@ -35,7 +33,7 @@ export class DataFingerprintMatcherAdapter implements FingerprintMatcherPort {
 
   async compare(
     input: CompareFingerprintsInput,
-  ): Promise<FingerprintMatchCandidate[]> {
+  ): Promise<FingerprintComparison> {
     const authorization = await this.authorizationHeader();
     const response = await fetch(`${this.baseUrl}/data/api/compare`, {
       method: 'POST',
@@ -69,9 +67,12 @@ export class DataFingerprintMatcherAdapter implements FingerprintMatcherPort {
       );
     }
 
-    return data.results.map((result) => ({
-      referencePrintId: result.reference_print,
-      score: result.score,
-    }));
+    return {
+      candidates: data.results.map((result) => ({
+        referencePrintId: result.reference_print,
+        score: result.score,
+      })),
+      engineVersion: data.engine_version ?? null,
+    };
   }
 }
