@@ -30,6 +30,8 @@ services:
       GCS_BUCKET: ${GCS_BUCKET}
       GCS_SIGNED_URL_TTL_SECONDS: ${GCS_SIGNED_URL_TTL_SECONDS}
       DATA_API_URL: ${DATA_API_URL}
+      TSA_URL: ${TSA_URL}
+      TSA_TIMEOUT_MS: ${TSA_TIMEOUT_MS:-10000}
       GOOGLE_APPLICATION_CREDENTIALS: /gcloud/adc.json
     volumes:
       - ../../app/prisma:/app/prisma
