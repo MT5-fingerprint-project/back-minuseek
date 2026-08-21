@@ -1,10 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type, plainToInstance } from 'class-transformer';
 import {
   IsISO8601,
   IsInt,
   IsNotEmpty,
   IsNumber,
+  IsObject,
   IsPositive,
   IsString,
   IsUUID,
@@ -12,7 +13,9 @@ import {
   MaxLength,
   Min,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
+import { CaptureQualityDto } from './capture-quality.dto';
 import { MAX_DEVICE_MODEL_LENGTH } from '../../../domain/trace/value-objects/capture-metadata.vo';
 
 // Les dimensions ne veulent rien dire l'une sans l'autre : chacune n'est
@@ -20,6 +23,24 @@ import { MAX_DEVICE_MODEL_LENGTH } from '../../../domain/trace/value-objects/cap
 // manque au lieu de laisser passer une paire incomplète jusqu'au domaine.
 const hasAnyDimension = (dto: UploadTraceDto) =>
   dto.width !== undefined || dto.height !== undefined;
+
+const CAPTURE_QUALITY_SHAPE =
+  'captureQuality doit être un objet JSON { blurScore: number, passed: boolean }';
+
+// Le multipart ne transporte que des chaînes : le contrôle qualité arrive en
+// JSON sérialisé. On le parse ici, et on en fait une instance de
+// `CaptureQualityDto` pour que `@ValidateNested` retrouve ses métadonnées — sur
+// un objet nu il n'en trouverait aucune et laisserait tout passer. Tout le
+// reste (JSON invalide, scalaire, `null`, tableau) ressort inchangé de
+// `plainToInstance` et se fait rejeter par `@IsObject`.
+const parseCaptureQuality = ({ value }: { value: unknown }): unknown => {
+  if (typeof value !== 'string') return value;
+  try {
+    return plainToInstance(CaptureQualityDto, JSON.parse(value));
+  } catch {
+    return value;
+  }
+};
 
 export class UploadTraceDto {
   @ApiProperty({
@@ -92,4 +113,15 @@ export class UploadTraceDto {
   @IsNotEmpty()
   @MaxLength(MAX_DEVICE_MODEL_LENGTH)
   deviceModel?: string;
+
+  @ApiPropertyOptional({
+    type: CaptureQualityDto,
+    description:
+      'Contrôle de netteté relevé au déclenchement, transmis en chaîne JSON dans le multipart',
+  })
+  @ValidateIf((dto: UploadTraceDto) => dto.captureQuality !== undefined)
+  @Transform(parseCaptureQuality)
+  @IsObject({ message: CAPTURE_QUALITY_SHAPE })
+  @ValidateNested()
+  captureQuality?: CaptureQualityDto;
 }

@@ -1,3 +1,5 @@
+import { CaptureQualityProps } from '../../../domain/trace/value-objects/capture-quality.vo';
+
 export interface TraceReadModel {
   id: string;
   path: string;
@@ -11,4 +13,5 @@ export interface TraceReadModel {
   captureOrientation: number | null;
   captureFocalLength: number | null;
   captureDeviceModel: string | null;
+  captureQuality: CaptureQualityProps | null;
 }

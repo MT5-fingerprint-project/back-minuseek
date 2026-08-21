@@ -2,6 +2,10 @@ import { FileDigest } from '../../file-digest.vo';
 import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-trace.error';
 import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
 import { CaptureMetadata } from '../value-objects/capture-metadata.vo';
+import {
+  CaptureQuality,
+  CaptureQualityProps,
+} from '../value-objects/capture-quality.vo';
 import { ExploitabilityScore } from '../value-objects/exploitability-score.vo';
 import { TraceStatus, TraceStatusEnum } from '../value-objects/trace-status.vo';
 
@@ -20,6 +24,7 @@ export interface TracePrimitives {
   captureOrientation: number | null;
   captureFocalLength: number | null;
   captureDeviceModel: string | null;
+  captureQuality: CaptureQualityProps | null;
 }
 
 interface UploadTraceProps {
@@ -28,6 +33,7 @@ interface UploadTraceProps {
   caseId: string;
   sha256: FileDigest;
   captureMetadata?: CaptureMetadata;
+  captureQuality?: CaptureQuality;
 }
 
 export class Trace {
@@ -39,6 +45,7 @@ export class Trace {
     private readonly _caseId: string,
     private readonly _sha256: FileDigest | null,
     private readonly _captureMetadata: CaptureMetadata,
+    private readonly _captureQuality: CaptureQuality | null,
   ) {}
 
   static assertCaseCanReceiveTrace(
@@ -71,6 +78,7 @@ export class Trace {
       props.caseId,
       props.sha256,
       props.captureMetadata ?? CaptureMetadata.empty(),
+      props.captureQuality ?? null,
     );
   }
 
@@ -87,6 +95,7 @@ export class Trace {
     captureOrientation: number | null;
     captureFocalLength: number | null;
     captureDeviceModel: string | null;
+    captureQuality: unknown;
   }): Trace {
     return new Trace(
       payload.id,
@@ -103,6 +112,7 @@ export class Trace {
         focalLength: payload.captureFocalLength ?? undefined,
         deviceModel: payload.captureDeviceModel ?? undefined,
       }),
+      CaptureQuality.fromPersistence(payload.captureQuality),
     );
   }
 
@@ -130,6 +140,7 @@ export class Trace {
       captureOrientation: this._captureMetadata.orientation ?? null,
       captureFocalLength: this._captureMetadata.focalLength ?? null,
       captureDeviceModel: this._captureMetadata.deviceModel ?? null,
+      captureQuality: this._captureQuality?.toPrimitives() ?? null,
     };
   }
 
@@ -159,5 +170,9 @@ export class Trace {
 
   get captureMetadata(): CaptureMetadata {
     return this._captureMetadata;
+  }
+
+  get captureQuality(): CaptureQuality | null {
+    return this._captureQuality;
   }
 }

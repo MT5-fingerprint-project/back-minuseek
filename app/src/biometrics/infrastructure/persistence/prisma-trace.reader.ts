@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
+import { CaptureQualityProps } from '../../domain/trace/value-objects/capture-quality.vo';
 import { TraceReadModel } from '../../application/queries/list-traces/trace-read-model';
 import type { TraceReader } from '../../application/queries/list-traces/trace.reader';
 
@@ -9,9 +10,15 @@ export class PrismaTraceReader implements TraceReader {
 
   async findByCaseId(caseId: string): Promise<TraceReadModel[]> {
     const prisma = await this.tenantConnection.getCurrentClient();
-    return prisma.trace.findMany({
+    const rows = await prisma.trace.findMany({
       where: { caseId },
       orderBy: { createdAt: 'desc' },
     });
+    // Prisma rend la colonne `Json?` non typée : seul le domaine y écrit, via
+    // `CaptureQuality.toPrimitives()`.
+    return rows.map((row) => ({
+      ...row,
+      captureQuality: row.captureQuality as CaptureQualityProps | null,
+    }));
   }
 }

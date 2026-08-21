@@ -5,6 +5,8 @@ import { TraceStatusEnum } from '../../../domain/trace/value-objects/trace-statu
 import { CaseUnavailableForTraceError } from '../../../domain/trace/errors/case-unavailable-for-trace.error';
 import { InvalidCaptureMetadataError } from '../../../domain/trace/errors/invalid-capture-metadata.error';
 import { CaptureMetadataProps } from '../../../domain/trace/value-objects/capture-metadata.vo';
+import { CaptureQualityProps } from '../../../domain/trace/value-objects/capture-quality.vo';
+import { InvalidCaptureQualityError } from '../../../domain/trace/errors/invalid-capture-quality.error';
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
 import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
@@ -63,8 +65,18 @@ describe('UploadTraceHandler', () => {
     Buffer.from('test-image'),
   ]);
 
-  const command = (caseId = 'case-9', capture?: CaptureMetadataProps) =>
-    new UploadTraceCommand(EXPERT_ACTOR, pngBuffer, caseId, capture);
+  const command = (
+    caseId = 'case-9',
+    capture?: CaptureMetadataProps,
+    captureQuality?: CaptureQualityProps,
+  ) =>
+    new UploadTraceCommand(
+      EXPERT_ACTOR,
+      pngBuffer,
+      caseId,
+      capture,
+      captureQuality,
+    );
 
   it('stores the file under media/{caseId}/traces, persists the trace as RECEIVED and returns id, path and url', async () => {
     caseStatus.set('case-9', 'OPEN');
@@ -136,6 +148,59 @@ describe('UploadTraceHandler', () => {
     await expect(
       handler.execute(command('case-9', { orientation: 42 })),
     ).rejects.toBeInstanceOf(InvalidCaptureMetadataError);
+
+    expect(await repo.findById('trace-123')).toBeNull();
+    expect(
+      storage.getSaved('investigation-case/case-9/traces/trace-123.png'),
+    ).toBeUndefined();
+  });
+
+  it('persists the capture quality check carried by the upload', async () => {
+    caseStatus.set('case-9', 'OPEN');
+
+    await handler.execute(
+      command('case-9', undefined, { blurScore: 128.4, passed: true }),
+    );
+
+    const saved = await repo.findById('trace-123');
+    expect(saved?.toPrimitives()).toMatchObject({
+      captureQuality: { blurScore: 128.4, passed: true },
+    });
+  });
+
+  it('persists the verdict of a check the phone failed', async () => {
+    caseStatus.set('case-9', 'OPEN');
+
+    await handler.execute(
+      command('case-9', undefined, { blurScore: 12.5, passed: false }),
+    );
+
+    const saved = await repo.findById('trace-123');
+    expect(saved?.toPrimitives()).toMatchObject({
+      captureQuality: { blurScore: 12.5, passed: false },
+    });
+  });
+
+  it('persists no capture quality check when the upload carries none', async () => {
+    caseStatus.set('case-9', 'OPEN');
+
+    await handler.execute(command());
+
+    const saved = await repo.findById('trace-123');
+    expect(saved?.toPrimitives()).toMatchObject({ captureQuality: null });
+  });
+
+  it('rejects an invalid capture quality check without storing the file nor persisting the trace', async () => {
+    caseStatus.set('case-9', 'OPEN');
+
+    await expect(
+      handler.execute(
+        command('case-9', undefined, {
+          blurScore: -1,
+          passed: true,
+        }),
+      ),
+    ).rejects.toBeInstanceOf(InvalidCaptureQualityError);
 
     expect(await repo.findById('trace-123')).toBeNull();
     expect(
