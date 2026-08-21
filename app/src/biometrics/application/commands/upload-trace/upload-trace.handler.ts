@@ -3,6 +3,7 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { FileDigest } from '../../../domain/file-digest.vo';
 import { Trace } from '../../../domain/trace/entity/trace';
 import { CaptureMetadata } from '../../../domain/trace/value-objects/capture-metadata.vo';
+import { CaptureQuality } from '../../../domain/trace/value-objects/capture-quality.vo';
 import {
   TRACE_REPOSITORY,
   TraceRepository,
@@ -68,6 +69,10 @@ export class UploadTraceHandler implements ICommandHandler<
     Trace.assertCaseCanReceiveTrace(cmd.caseId, caseStatus);
 
     const captureMetadata = CaptureMetadata.of(cmd.capture ?? {});
+    const captureQuality =
+      cmd.captureQuality === undefined
+        ? undefined
+        : CaptureQuality.of(cmd.captureQuality);
 
     const id = this.idGenerator.generate();
     const sha256 = FileDigest.ofBuffer(cmd.fileBuffer);
@@ -87,6 +92,7 @@ export class UploadTraceHandler implements ICommandHandler<
           caseId: cmd.caseId,
           sha256,
           captureMetadata,
+          captureQuality,
         });
         await this.repo.save(trace);
         await this.auditTrail.append({

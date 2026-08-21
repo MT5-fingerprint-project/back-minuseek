@@ -27,6 +27,7 @@ const traceRow = (overrides: Partial<TraceReadModel> = {}): TraceReadModel => ({
   captureOrientation: null,
   captureFocalLength: null,
   captureDeviceModel: null,
+  captureQuality: null,
   ...overrides,
 });
 
@@ -77,6 +78,20 @@ describe('ListTracesHandler', () => {
     });
   });
 
+  it('exposes the capture quality check, so the lab can sort on it', async () => {
+    const reader = new InMemoryTraceReader([
+      traceRow({ captureQuality: { blurScore: 128.4, passed: true } }),
+    ]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0].captureQuality).toEqual({ blurScore: 128.4, passed: true });
+  });
+
   it('leaves the capture metadata null for a trace uploaded without any', async () => {
     const reader = new InMemoryTraceReader([traceRow()]);
     const handler = new ListTracesHandler(
@@ -93,6 +108,7 @@ describe('ListTracesHandler', () => {
       captureOrientation: null,
       captureFocalLength: null,
       captureDeviceModel: null,
+      captureQuality: null,
     });
   });
 });

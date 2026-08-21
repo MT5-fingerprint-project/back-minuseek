@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '../../../../generated/prisma/client';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
 import { Trace } from '../../domain/trace/entity/trace';
 import type { TraceRepository } from '../../domain/trace/repository/trace.repository';
@@ -9,7 +10,17 @@ export class PrismaTraceRepository implements TraceRepository {
 
   async save(trace: Trace): Promise<void> {
     const prisma = await this.tenantConnection.getCurrentClient();
-    const data = trace.toPrimitives();
+    const { captureQuality, ...columns } = trace.toPrimitives();
+    // `captureQuality` est un `Json?` : Prisma distingue l'absence de valeur
+    // (`DbNull`, un NULL SQL) du littéral JSON `null`, et refuse un `null`
+    // TypeScript qui ne dit pas lequel des deux on veut.
+    const data = {
+      ...columns,
+      captureQuality:
+        captureQuality === null
+          ? Prisma.DbNull
+          : (captureQuality as unknown as Prisma.InputJsonValue),
+    };
     await prisma.trace.upsert({
       where: { id: data.id },
       create: data,

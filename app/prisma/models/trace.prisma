@@ -18,9 +18,10 @@ model Trace {
   captureFocalLength Float?
   captureDeviceModel String?
 
-  // Réservé à B2 (contrôles qualité temps réel), créé vide dès maintenant pour
-  // éviter une seconde migration en fan-out sur toutes les bases tenant.
-  // Forme attendue : { blurScore: number, perpendicularityDeviation: number, passed: boolean }
+  // Contrôle de netteté relevé on-device au déclenchement (B2/B3), écrit par
+  // POST /traces. Nullable : le chemin galerie et les traces antérieures n'en
+  // portent aucun. La perpendicularité (MOB-11) a été abandonnée en B2.
+  // Forme : { blurScore: number >= 0, passed: boolean }
   captureQuality Json?
 
   matchings Matching[]
