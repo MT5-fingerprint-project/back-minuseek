@@ -73,17 +73,13 @@ export interface ReportJournalEntryViewModel {
   label: string;
   detail: string | null;
   occurredAt: Date;
-  actorDisplayName: string | null;
-  seq: number | null;
-  hash: string | null;
+  actorDisplayName: string;
+  seq: number;
+  hash: string;
 }
 
 export interface ReportJournalViewModel {
   chained: ReportJournalEntryViewModel[];
-  /** Actes lus dans l'état courant, sans maillon correspondant dans la chaîne. */
-  reconstructed: ReportJournalEntryViewModel[];
-  /** Familles d'actes qu'aucun producteur n'écrit encore dans la chaîne. */
-  notCovered: string[];
 }
 
 export interface ReportLayerViewModel {

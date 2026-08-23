@@ -51,7 +51,6 @@ import {
   TRACEABILITY_DATA_READER,
   type TraceabilityDataReader,
 } from '../../ports/traceability-data.reader';
-import { uncoveredActionFamilies } from '../../queries/build-report/action-labels';
 import { buildTechnicalReport } from '../../queries/build-report/technical-report.builder';
 import { buildTraceabilityReport } from '../../queries/build-report/traceability-report.builder';
 import { ReportImageViewModel, ReportViewModel } from '../../report-view-model';
@@ -161,7 +160,6 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
       return buildTechnicalReport({
         data,
         chainEvents,
-        notCoveredActions: uncoveredActionFamilies(),
         reportId: seal.reportId,
         chainHead: seal.chainHead,
         generatedAt: seal.generatedAt,

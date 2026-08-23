@@ -1,5 +1,3 @@
-import { UNAUDITED_HANDLERS } from '../../../../shared/domain/audit/unaudited-handlers';
-
 const ACTION_LABELS: Record<string, string> = {
   TENANT_PROVISIONED: 'Laboratoire créé',
   CASE_OPENED: 'Dossier ouvert',
@@ -103,20 +101,4 @@ export function describeAction(
     .filter((key) => key in payload && isScalar(payload[key]))
     .map((key) => `${key} ${String(payload[key])}`);
   return parts.length > 0 ? parts.join(', ') : null;
-}
-
-/**
- * Familles d'actes qu'aucun handler n'écrit encore dans la chaîne, lues dans la
- * liste blanche du garde anti-oubli : la section « non couvert » du rapport
- * rétrécit donc d'elle-même à mesure que l'instrumentation avance.
- */
-export function uncoveredActionFamilies(): string[] {
-  const families = new Set<string>();
-  for (const motive of Object.values(UNAUDITED_HANDLERS)) {
-    const family = motive.split('—')[0].trim();
-    if (family.length > 0) {
-      families.add(family.charAt(0).toUpperCase() + family.slice(1));
-    }
-  }
-  return [...families].sort((left, right) => left.localeCompare(right, 'fr'));
 }
