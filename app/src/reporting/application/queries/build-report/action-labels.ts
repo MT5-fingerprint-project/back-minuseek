@@ -14,8 +14,6 @@ const ACTION_LABELS: Record<string, string> = {
   COMPARISON_EXECUTED: 'Comparaison exécutée',
   HIT_RECORDED: 'Correspondance déclarée par un expert',
   HIT_REMOVED: 'Correspondance retirée par un expert',
-  PIECE_VIEWED: 'Pièce consultée',
-  FILE_DOWNLOAD_URL_ISSUED: 'Lien de téléchargement émis',
   REPORT_GENERATED: 'Rapport généré et scellé',
   CHAIN_ANCHORED: "Chaîne d'audit horodatée par une autorité externe",
 };
