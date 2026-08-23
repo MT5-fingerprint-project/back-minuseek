@@ -233,12 +233,12 @@ function journalRows(entries: ReportJournalEntryViewModel[]): string {
     .map(
       (entry) => `
       <tr>
-        <td class="numeric">${entry.seq === null ? '—' : entry.seq}</td>
+        <td class="numeric">${entry.seq}</td>
         <td>${escapeHtml(entry.label)}</td>
-        <td>${escapeHtml(entry.actorDisplayName ?? '—')}</td>
+        <td>${escapeHtml(entry.actorDisplayName)}</td>
         <td>${formatDate(entry.occurredAt)}</td>
         <td>${escapeHtml(entry.detail ?? '—')}</td>
-        <td class="hash">${entry.hash === null ? '—' : escapeHtml(entry.hash.slice(0, 16))}</td>
+        <td class="hash">${escapeHtml(entry.hash.slice(0, 16))}</td>
       </tr>`,
     )
     .join('');
@@ -247,7 +247,7 @@ function journalRows(entries: ReportJournalEntryViewModel[]): string {
 function journalSection(model: TechnicalReportViewModel): string {
   const { journal } = model;
   return `
-    <h2>Journal des actes (${journal.chained.length + journal.reconstructed.length})</h2>
+    <h2>Journal des actes (${journal.chained.length})</h2>
     <p>
       Cette section liste tous les actes connus de la plateforme sur ce dossier. Les actes
       chaînés sont ceux dont la trace est scellée dans la chaîne d'audit : ils portent un
@@ -265,35 +265,6 @@ function journalSection(model: TechnicalReportViewModel): string {
             </thead>
             <tbody>${journalRows(journal.chained)}</tbody>
           </table>`
-    }
-    ${
-      journal.reconstructed.length === 0
-        ? ''
-        : `<h3>Actes lus dans l'état du dossier, sans maillon correspondant (${journal.reconstructed.length})</h3>
-          <p>
-            Ces actes existent en base mais n'ont pas de maillon dans la chaîne : ils ont été
-            réalisés avant l'instrumentation de leur commande. Ils sont reproduits ici pour que
-            le journal soit complet, mais <strong>ils n'ont pas la même valeur probante</strong>
-            que les précédents : rien ne garantit qu'ils n'ont pas été modifiés depuis.
-          </p>
-          <table>
-            <thead>
-              <tr><th>Maillon</th><th>Acte</th><th>Auteur</th><th>Horodatage (UTC)</th><th>Détail</th><th>Empreinte</th></tr>
-            </thead>
-            <tbody>${journalRows(journal.reconstructed)}</tbody>
-          </table>`
-    }
-    ${
-      journal.notCovered.length === 0
-        ? ''
-        : `<h3>Familles d'actes que la chaîne ne couvre pas encore</h3>
-          <p>
-            Par honnêteté du document : les actes suivants ne sont pas écrits dans la chaîne à
-            la date de ce rapport, ils ne peuvent donc pas y figurer.
-          </p>
-          <ul>${journal.notCovered
-            .map((family) => `<li>${escapeHtml(family)}</li>`)
-            .join('')}</ul>`
     }`;
 }
 

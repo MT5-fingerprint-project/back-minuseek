@@ -58,7 +58,7 @@ describe('computeEventHash', () => {
     it('vecteur 3 : événement DECLARED sans dossier ni trace (null explicites)', () => {
       const hash = computeEventHash({
         seq: 7n,
-        eventType: AuditEventTypeEnum.PIECE_VIEWED,
+        eventType: AuditEventTypeEnum.HIT_RECORDED,
         evidenceClass: EvidenceClassEnum.DECLARED,
         actor: AuditActor.user({
           sub: 'sub-1',
@@ -72,7 +72,7 @@ describe('computeEventHash', () => {
         prevHash: GENESIS_PREV_HASH,
       });
       expect(hash).toBe(
-        '601adaeffda01594009ebecd775c0bec1e6e1c5d70c5c5a47cf6cbc7aec8803f',
+        '0032a62c1d29868ed0b76f1a736ebabf6b6e7aaba8101c137750c601894432b5',
       );
     });
   });

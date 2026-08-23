@@ -1,20 +1,33 @@
+import { InMemoryAuditTrailAppender } from '../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
+import {
+  AuditEventDraft,
+  AuditTrailPort,
+} from '../../../shared/domain/ports/audit-trail.port';
 import { Trace } from '../../domain/trace/entity/trace';
 import { TraceRepository } from '../../domain/trace/repository/trace.repository';
 
 export class InMemoryTraceRepository implements TraceRepository {
   readonly store = new Map<string, Trace>();
 
-  save(trace: Trace): Promise<void> {
+  constructor(
+    readonly auditTrail: AuditTrailPort = new InMemoryAuditTrailAppender(),
+  ) {}
+
+  seed(trace: Trace): void {
     this.store.set(trace.id, trace);
-    return Promise.resolve();
+  }
+
+  async save(trace: Trace, act: AuditEventDraft): Promise<void> {
+    this.store.set(trace.id, trace);
+    await this.auditTrail.append(act);
   }
 
   findById(id: string): Promise<Trace | null> {
     return Promise.resolve(this.store.get(id) ?? null);
   }
 
-  delete(id: string): Promise<void> {
+  async delete(id: string, act: AuditEventDraft): Promise<void> {
     this.store.delete(id);
-    return Promise.resolve();
+    await this.auditTrail.append(act);
   }
 }

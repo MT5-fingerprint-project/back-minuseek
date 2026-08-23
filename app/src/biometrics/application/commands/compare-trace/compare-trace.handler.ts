@@ -22,14 +22,6 @@ import {
   ID_GENERATOR,
   IdGenerator,
 } from '../../../../shared/domain/ports/id-generator';
-import {
-  TRANSACTION_RUNNER,
-  type TransactionRunner,
-} from '../../../../shared/domain/ports/transaction-runner';
-import {
-  AUDIT_TRAIL,
-  type AuditTrailPort,
-} from '../../../../shared/domain/ports/audit-trail.port';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { MATCH_THRESHOLD } from '../../../domain/matching/value-objects/matching-score.vo';
@@ -55,10 +47,6 @@ export class CompareTraceHandler implements ICommandHandler<
     private readonly matchingRepo: MatchingRepository,
     @Inject(ID_GENERATOR)
     private readonly idGenerator: IdGenerator,
-    @Inject(TRANSACTION_RUNNER)
-    private readonly transactionRunner: TransactionRunner,
-    @Inject(AUDIT_TRAIL)
-    private readonly auditTrail: AuditTrailPort,
   ) {}
 
   async execute(cmd: CompareTraceCommand): Promise<MatchingPrimitives[]> {
@@ -94,27 +82,29 @@ export class CompareTraceHandler implements ICommandHandler<
         }),
       );
 
-    await this.transactionRunner.run(async () => {
-      await this.matchingRepo.upsertMany(matchings);
-      for (const matching of matchings) {
+    await this.matchingRepo.upsertMany(
+      matchings.map((matching) => {
         const primitives = matching.toPrimitives();
-        await this.auditTrail.append({
-          eventType: AuditEventTypeEnum.COMPARISON_EXECUTED,
-          evidenceClass: EvidenceClassEnum.OBSERVED,
-          actor: cmd.actor,
-          caseId: cmd.caseId,
-          traceId: primitives.traceId,
-          payload: {
+        return {
+          matching,
+          act: {
+            eventType: AuditEventTypeEnum.COMPARISON_EXECUTED,
+            evidenceClass: EvidenceClassEnum.OBSERVED,
+            actor: cmd.actor,
+            caseId: cmd.caseId,
             traceId: primitives.traceId,
-            referencePrintId: primitives.referencePrintId,
-            score: primitives.score,
-            hit: primitives.match,
-            matchThreshold: MATCH_THRESHOLD,
-            engineVersion,
+            payload: {
+              traceId: primitives.traceId,
+              referencePrintId: primitives.referencePrintId,
+              score: primitives.score,
+              hit: primitives.match,
+              matchThreshold: MATCH_THRESHOLD,
+              engineVersion,
+            },
           },
-        });
-      }
-    });
+        };
+      }),
+    );
 
     return matchings.map((matching) => matching.toPrimitives());
   }

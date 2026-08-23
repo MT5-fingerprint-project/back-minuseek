@@ -4,17 +4,9 @@ import { createHash } from 'node:crypto';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import {
-  AUDIT_TRAIL,
-  type AuditTrailPort,
-} from '../../../../shared/domain/ports/audit-trail.port';
-import {
   ID_GENERATOR,
   type IdGenerator,
 } from '../../../../shared/domain/ports/id-generator';
-import {
-  TRANSACTION_RUNNER,
-  type TransactionRunner,
-} from '../../../../shared/domain/ports/transaction-runner';
 import { Report } from '../../../domain/report/entity/report';
 import { CaseNotFoundForReportError } from '../../../domain/report/errors/case-not-found-for-report.error';
 import {
@@ -51,7 +43,6 @@ import {
   TRACEABILITY_DATA_READER,
   type TraceabilityDataReader,
 } from '../../ports/traceability-data.reader';
-import { uncoveredActionFamilies } from '../../queries/build-report/action-labels';
 import { buildTechnicalReport } from '../../queries/build-report/technical-report.builder';
 import { buildTraceabilityReport } from '../../queries/build-report/traceability-report.builder';
 import { ReportImageViewModel, ReportViewModel } from '../../report-view-model';
@@ -83,10 +74,6 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     private readonly storage: ReportStoragePort,
     @Inject(REPORT_REPOSITORY)
     private readonly repository: ReportRepository,
-    @Inject(TRANSACTION_RUNNER)
-    private readonly transactionRunner: TransactionRunner,
-    @Inject(AUDIT_TRAIL)
-    private readonly auditTrail: AuditTrailPort,
     @Inject(ID_GENERATOR)
     private readonly idGenerator: IdGenerator,
   ) {}
@@ -114,26 +101,24 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     );
 
     try {
-      await this.transactionRunner.run(async () => {
-        await this.repository.save(
-          Report.seal({
-            id: reportId,
-            caseId: command.caseId,
-            type: command.type,
-            storagePath,
-            sha256,
-            generatedBy: command.actor.toPrimitives(),
-            createdAt: generatedAt,
-          }),
-        );
-        await this.auditTrail.append({
+      await this.repository.save(
+        Report.seal({
+          id: reportId,
+          caseId: command.caseId,
+          type: command.type,
+          storagePath,
+          sha256,
+          generatedBy: command.actor.toPrimitives(),
+          createdAt: generatedAt,
+        }),
+        {
           eventType: AuditEventTypeEnum.REPORT_GENERATED,
           evidenceClass: EvidenceClassEnum.OBSERVED,
           actor: command.actor,
           caseId: command.caseId,
           payload: { reportId, type: command.type, sha256, storagePath },
-        });
-      });
+        },
+      );
     } catch (error) {
       this.logger.warn(
         `Rapport orphelin dans le stockage: ${storagePath} (${String(error)})`,
@@ -161,7 +146,6 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
       return buildTechnicalReport({
         data,
         chainEvents,
-        notCoveredActions: uncoveredActionFamilies(),
         reportId: seal.reportId,
         chainHead: seal.chainHead,
         generatedAt: seal.generatedAt,

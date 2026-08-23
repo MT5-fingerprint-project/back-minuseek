@@ -89,17 +89,6 @@ const MODEL: TechnicalReportViewModel = {
         hash: 'e'.repeat(64),
       },
     ],
-    reconstructed: [
-      {
-        label: 'Comparaison exécutée',
-        detail: 'trace-1.png contre ref-1.png, score 88.5',
-        occurredAt: new Date('2026-08-10T14:00:00.000Z'),
-        actorDisplayName: null,
-        seq: null,
-        hash: null,
-      },
-    ],
-    notCovered: ['Comparaison'],
   },
 };
 
@@ -179,22 +168,8 @@ describe('renderTechnicalReportHtml — journal des actes', () => {
   it('liste les actes chaînés avec leur maillon', () => {
     const html = renderTechnicalReportHtml(MODEL);
 
-    expect(html).toContain('Journal des actes (2)');
+    expect(html).toContain('Journal des actes (1)');
     expect(html).toContain('Trace déposée et mise sous scellé');
-  });
-
-  it("sépare les actes sans maillon et dit ce qu'ils valent", () => {
-    const html = renderTechnicalReportHtml(MODEL);
-
-    expect(html).toContain('sans maillon correspondant (1)');
-    expect(html).toContain("n'ont pas la même valeur probante");
-  });
-
-  it("déclare les familles d'actes non couvertes", () => {
-    const html = renderTechnicalReportHtml(MODEL);
-
-    expect(html).toContain('que la chaîne ne couvre pas encore');
-    expect(html).toContain('<li>Comparaison</li>');
   });
 
   it('échappe le texte libre venu de la base', () => {

@@ -2,7 +2,6 @@ import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixtur
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
-import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
 import { Layer } from '../../../domain/layer/entity/layer';
 import { LayerNotFoundError } from '../../../domain/layer/errors/layer-not-found.error';
 import { FingerprintNotFoundError } from '../../../domain/fingerprint-not-found.error';
@@ -30,11 +29,10 @@ describe('UpdateLayerHandler', () => {
   let handler: UpdateLayerHandler;
   let repo: InMemoryLayerRepository;
   let fingerprintLocator: InMemoryFingerprintLocatorAdapter;
-  let transactionRunner: InMemoryTransactionRunner;
   let auditTrail: InMemoryAuditTrailAppender;
 
   const existingLayer = () =>
-    repo.save(
+    repo.seed(
       Layer.create({
         id: 'layer-1',
         fingerprintId: 'fp-1',
@@ -46,21 +44,15 @@ describe('UpdateLayerHandler', () => {
     );
 
   beforeEach(() => {
-    repo = new InMemoryLayerRepository();
-    fingerprintLocator = new InMemoryFingerprintLocatorAdapter();
-    transactionRunner = new InMemoryTransactionRunner();
     auditTrail = new InMemoryAuditTrailAppender();
-    handler = new UpdateLayerHandler(
-      repo,
-      fingerprintLocator,
-      transactionRunner,
-      auditTrail,
-    );
+    repo = new InMemoryLayerRepository(auditTrail);
+    fingerprintLocator = new InMemoryFingerprintLocatorAdapter();
+    handler = new UpdateLayerHandler(repo, fingerprintLocator);
     fingerprintLocator.setTrace('fp-1', 'case-9');
   });
 
   it('met à jour les settings (déplacement du cercle) du calque existant', async () => {
-    await existingLayer();
+    existingLayer();
 
     await handler.execute(
       new UpdateLayerCommand(
@@ -78,7 +70,7 @@ describe('UpdateLayerHandler', () => {
   });
 
   it("chaîne un LAYER_UPDATED portant l'état résultant, pas le delta", async () => {
-    await existingLayer();
+    existingLayer();
 
     await handler.execute(
       new UpdateLayerCommand(
@@ -109,16 +101,6 @@ describe('UpdateLayerHandler', () => {
     });
   });
 
-  it('écrit le calque et son maillon dans une seule transaction', async () => {
-    await existingLayer();
-
-    await handler.execute(
-      new UpdateLayerCommand(EXPERT_ACTOR, 'layer-1', 'Minutie 1'),
-    );
-
-    expect(transactionRunner.runCount).toBe(1);
-  });
-
   it('lève LayerNotFoundError si le calque est introuvable', async () => {
     await expect(
       handler.execute(new UpdateLayerCommand(EXPERT_ACTOR, 'missing', 'x')),
@@ -127,7 +109,7 @@ describe('UpdateLayerHandler', () => {
   });
 
   it('refuse de modifier un calque dont la pièce a disparu', async () => {
-    await repo.save(
+    repo.seed(
       Layer.create({
         id: 'layer-orpheline',
         fingerprintId: 'fp-supprimee',

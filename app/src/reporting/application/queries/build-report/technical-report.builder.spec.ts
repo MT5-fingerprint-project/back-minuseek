@@ -144,7 +144,6 @@ function build(
   return buildTechnicalReport({
     data: DATA,
     chainEvents: CHAIN_EVENTS,
-    notCoveredActions: ['Comparaison', 'Déclaration de hit'],
     reportId: 'report-1',
     chainHead: { seq: 42, hash: 'b'.repeat(64) },
     generatedAt: GENERATED_AT,
@@ -226,49 +225,5 @@ describe('buildTechnicalReport — journal des actes', () => {
     expect(journal.chained.map((entry) => entry.seq)).toEqual([2, 4]);
     expect(journal.chained[0].label).toBe('Trace déposée et mise sous scellé');
     expect(journal.chained[0].hash).toBe('e'.repeat(64));
-  });
-
-  it('reconstitue les actes absents de la chaîne et les distingue', () => {
-    const { journal } = build();
-
-    expect(journal.reconstructed.map((entry) => entry.label)).toEqual([
-      'Comparaison exécutée',
-      'Correspondance déclarée par un expert',
-    ]);
-    expect(journal.reconstructed[0].seq).toBeNull();
-    expect(journal.reconstructed[0].detail).toContain('score 88.5');
-    expect(journal.reconstructed[1].actorDisplayName).toBe('Alex Martin');
-  });
-
-  it('ne reconstitue pas un acte déjà chaîné', () => {
-    const { journal } = build({
-      chainEvents: [
-        ...CHAIN_EVENTS,
-        {
-          seq: 9,
-          eventType: 'COMPARISON_EXECUTED',
-          evidenceClass: 'OBSERVED',
-          actorDisplayName: 'Alex Martin',
-          occurredAt: COMPARED_AT,
-          payload: {
-            traceId: 'trace-1',
-            referencePrintId: 'ref-1',
-            score: 88.5,
-          },
-          hash: '1'.repeat(64),
-          prevHash: '2'.repeat(64),
-        },
-      ],
-    });
-
-    expect(journal.reconstructed.map((entry) => entry.label)).toEqual([
-      'Correspondance déclarée par un expert',
-    ]);
-  });
-
-  it("déclare les familles d'actes que la chaîne ne couvre pas", () => {
-    const { journal } = build();
-
-    expect(journal.notCovered).toEqual(['Comparaison', 'Déclaration de hit']);
   });
 });

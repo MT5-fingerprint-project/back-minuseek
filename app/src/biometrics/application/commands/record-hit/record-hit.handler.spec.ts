@@ -14,7 +14,6 @@ import { InMemoryHitRepository } from '../../../infrastructure/persistence/in-me
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
 import { RecordHitCommand } from './record-hit.command';
 import { InMemoryMatchingRepository } from '../../../infrastructure/persistence/in-memory-matching.repository';
-import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { Matching } from '../../../domain/matching/entity/matching';
@@ -30,13 +29,13 @@ describe('RecordHitHandler', () => {
   let auditTrail: InMemoryAuditTrailAppender;
   let handler: RecordHitHandler;
 
-  const seedMinutiae = async (
+  const seedMinutiae = (
     fingerprintId: string,
     count: number,
     settingsType: 'circle' | 'circleArrow' = 'circle',
-  ): Promise<void> => {
+  ): void => {
     for (let i = 0; i < count; i++) {
-      await layerRepo.save(
+      layerRepo.seed(
         Layer.create({
           id: `${fingerprintId}-min-${i}`,
           fingerprintId,
@@ -56,13 +55,13 @@ describe('RecordHitHandler', () => {
   };
 
   beforeEach(() => {
+    auditTrail = new InMemoryAuditTrailAppender();
     traceRepo = new InMemoryTraceRepository();
     referencePrintRepo = new InMemoryReferencePrintRepository();
     layerRepo = new InMemoryLayerRepository();
-    hitRepo = new InMemoryHitRepository();
+    hitRepo = new InMemoryHitRepository(auditTrail);
     idGenerator = { generate: jest.fn(() => 'hit-1') };
     matchingRepo = new InMemoryMatchingRepository();
-    auditTrail = new InMemoryAuditTrailAppender();
     handler = new RecordHitHandler(
       traceRepo,
       referencePrintRepo,
@@ -70,13 +69,11 @@ describe('RecordHitHandler', () => {
       hitRepo,
       matchingRepo,
       idGenerator,
-      new InMemoryTransactionRunner(),
-      auditTrail,
     );
   });
 
-  const seedTraceAndReference = async (): Promise<void> => {
-    await traceRepo.save(
+  const seedTraceAndReference = (): void => {
+    traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
         path: 'media/trace-1.png',
@@ -84,7 +81,7 @@ describe('RecordHitHandler', () => {
         sha256: ANY_SEAL,
       }),
     );
-    await referencePrintRepo.save(
+    referencePrintRepo.seed(
       ReferencePrint.create({
         id: 'ref-1',
         path: 'media/ref-1.png',
@@ -95,9 +92,9 @@ describe('RecordHitHandler', () => {
   };
 
   it('records a hit when both sides have at least 12 minutiae', async () => {
-    await seedTraceAndReference();
-    await seedMinutiae('trace-1', REQUIRED_MINUTIAE, 'circle');
-    await seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
+    seedTraceAndReference();
+    seedMinutiae('trace-1', REQUIRED_MINUTIAE, 'circle');
+    seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
 
     await handler.execute(
       new RecordHitCommand(
@@ -116,9 +113,9 @@ describe('RecordHitHandler', () => {
   });
 
   it('rejects when the trace has fewer than 12 minutiae', async () => {
-    await seedTraceAndReference();
-    await seedMinutiae('trace-1', REQUIRED_MINUTIAE - 1);
-    await seedMinutiae('ref-1', REQUIRED_MINUTIAE);
+    seedTraceAndReference();
+    seedMinutiae('trace-1', REQUIRED_MINUTIAE - 1);
+    seedMinutiae('ref-1', REQUIRED_MINUTIAE);
 
     await expect(
       handler.execute(
@@ -129,9 +126,9 @@ describe('RecordHitHandler', () => {
   });
 
   it('rejects when the reference print has fewer than 12 minutiae', async () => {
-    await seedTraceAndReference();
-    await seedMinutiae('trace-1', REQUIRED_MINUTIAE);
-    await seedMinutiae('ref-1', REQUIRED_MINUTIAE - 1);
+    seedTraceAndReference();
+    seedMinutiae('trace-1', REQUIRED_MINUTIAE);
+    seedMinutiae('ref-1', REQUIRED_MINUTIAE - 1);
 
     await expect(
       handler.execute(
@@ -142,11 +139,11 @@ describe('RecordHitHandler', () => {
   });
 
   it('does not count pencil strokes or filters as minutiae', async () => {
-    await seedTraceAndReference();
-    await seedMinutiae('trace-1', REQUIRED_MINUTIAE);
+    seedTraceAndReference();
+    seedMinutiae('trace-1', REQUIRED_MINUTIAE);
     // 12 non-minutia annotations on the reference side → still insufficient
     for (let i = 0; i < REQUIRED_MINUTIAE; i++) {
-      await layerRepo.save(
+      layerRepo.seed(
         Layer.create({
           id: `ref-1-stroke-${i}`,
           fingerprintId: 'ref-1',
@@ -166,7 +163,7 @@ describe('RecordHitHandler', () => {
   });
 
   it('rejects when the trace belongs to another case (IDOR)', async () => {
-    await traceRepo.save(
+    traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
         path: 'media/trace-1.png',
@@ -183,7 +180,7 @@ describe('RecordHitHandler', () => {
   });
 
   it('rejects when the reference print belongs to another case (IDOR)', async () => {
-    await traceRepo.save(
+    traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
         path: 'media/trace-1.png',
@@ -191,7 +188,7 @@ describe('RecordHitHandler', () => {
         sha256: ANY_SEAL,
       }),
     );
-    await referencePrintRepo.save(
+    referencePrintRepo.seed(
       ReferencePrint.create({
         id: 'ref-1',
         path: 'media/ref-1.png',
@@ -208,17 +205,17 @@ describe('RecordHitHandler', () => {
   });
 
   it('chaîne la déclaration avec les minuties et le score du couple', async () => {
-    await seedTraceAndReference();
-    await seedMinutiae('trace-1', REQUIRED_MINUTIAE + 1, 'circle');
-    await seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
-    await matchingRepo.upsertMany([
+    seedTraceAndReference();
+    seedMinutiae('trace-1', REQUIRED_MINUTIAE + 1, 'circle');
+    seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
+    matchingRepo.seed(
       Matching.create({
         id: 'matching-1',
         traceId: 'trace-1',
         referencePrintId: 'ref-1',
         score: 88.5,
       }),
-    ]);
+    );
 
     await handler.execute(
       new RecordHitCommand(
@@ -245,9 +242,9 @@ describe('RecordHitHandler', () => {
   });
 
   it("chaîne un score nul quand aucune comparaison n'a précédé la déclaration", async () => {
-    await seedTraceAndReference();
-    await seedMinutiae('trace-1', REQUIRED_MINUTIAE, 'circle');
-    await seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
+    seedTraceAndReference();
+    seedMinutiae('trace-1', REQUIRED_MINUTIAE, 'circle');
+    seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
 
     await handler.execute(
       new RecordHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
@@ -257,9 +254,9 @@ describe('RecordHitHandler', () => {
   });
 
   it("n'écrit aucun maillon quand la règle de concordance rejette la déclaration", async () => {
-    await seedTraceAndReference();
-    await seedMinutiae('trace-1', REQUIRED_MINUTIAE - 1, 'circle');
-    await seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
+    seedTraceAndReference();
+    seedMinutiae('trace-1', REQUIRED_MINUTIAE - 1, 'circle');
+    seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
 
     await expect(
       handler.execute(

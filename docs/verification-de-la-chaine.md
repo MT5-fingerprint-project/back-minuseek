@@ -83,9 +83,7 @@ C'est la partie du document à lire avant de citer un `ok: true` devant qui que 
    l'instant T. Elle ne dit pas quand chaque maillon a été écrit : les `occurredAt` restent des
    horodatages serveur.
 3. **Il ne dit rien des actes qui n'ont jamais été chaînés.** Un verdict vert sur une chaîne à laquelle
-   il manque des événements ne signifie pas « rien d'autre n'a été fait ». La liste des familles d'actes
-   non encore instrumentées vit dans `UNAUDITED_HANDLERS`, et le rapport technique l'imprime pour cette
-   raison exacte.
+   il manque des événements ne signifie pas « rien d'autre n'a été fait ».
 4. **Il vérifie la base qu'on lui désigne.** Il prouve la cohérence interne de ce qu'il lit, pas que
    cette base soit celle qui a servi au dossier.
 

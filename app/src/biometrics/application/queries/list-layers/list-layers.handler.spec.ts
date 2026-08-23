@@ -23,9 +23,9 @@ describe('ListLayersHandler', () => {
   });
 
   it('retourne les calques de la trace, triés par zIndex, en excluant les autres', async () => {
-    await repo.save(layer('b', 'fp-1', 2));
-    await repo.save(layer('a', 'fp-1', 0));
-    await repo.save(layer('other', 'fp-2', 0));
+    repo.seed(layer('b', 'fp-1', 2));
+    repo.seed(layer('a', 'fp-1', 0));
+    repo.seed(layer('other', 'fp-2', 0));
 
     const result = await handler.execute(new ListLayersQuery('fp-1'));
 

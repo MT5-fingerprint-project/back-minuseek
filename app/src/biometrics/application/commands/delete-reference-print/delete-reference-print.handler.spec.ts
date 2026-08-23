@@ -7,18 +7,19 @@ import { ReferencePrintNotFoundError } from '../../../domain/reference-print/err
 import { InMemoryReferencePrintRepository } from '../../../infrastructure/persistence/in-memory-reference-print.repository';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
-import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
-import { TransactionRunner } from '../../../../shared/domain/ports/transaction-runner';
+import { ReferencePrintRepository } from '../../../domain/reference-print/repository/reference-print.repository';
 import { DeleteReferencePrintCommand } from './delete-reference-print.command';
 import { DeleteReferencePrintHandler } from './delete-reference-print.handler';
 
 const STORED_PATH =
   'media/investigation-case/case-1/reference-prints/ref-1.png';
 
-class RollingBackTransactionRunner implements TransactionRunner {
-  constructor(private readonly failure: Error) {}
+class FailingReferencePrintRepository extends InMemoryReferencePrintRepository {
+  constructor(private readonly failure: Error) {
+    super();
+  }
 
-  run<T>(): Promise<T> {
+  delete(): Promise<void> {
     return Promise.reject(this.failure);
   }
 }
@@ -28,19 +29,17 @@ describe('DeleteReferencePrintHandler', () => {
   let repo: InMemoryReferencePrintRepository;
   let storage: InMemoryImageStorageAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
-  let transactionRunner: InMemoryTransactionRunner;
 
-  const buildHandler = (runner: TransactionRunner) =>
-    new DeleteReferencePrintHandler(repo, storage, runner, auditTrail);
+  const buildHandler = (referencePrintRepo: ReferencePrintRepository) =>
+    new DeleteReferencePrintHandler(referencePrintRepo, storage);
 
   beforeEach(async () => {
-    repo = new InMemoryReferencePrintRepository();
-    storage = new InMemoryImageStorageAdapter();
     auditTrail = new InMemoryAuditTrailAppender();
-    transactionRunner = new InMemoryTransactionRunner();
-    handler = buildHandler(transactionRunner);
+    repo = new InMemoryReferencePrintRepository(auditTrail);
+    storage = new InMemoryImageStorageAdapter();
+    handler = buildHandler(repo);
 
-    await repo.save(
+    repo.seed(
       ReferencePrint.create({
         id: 'ref-1',
         path: STORED_PATH,
@@ -101,19 +100,20 @@ describe('DeleteReferencePrintHandler', () => {
     });
   });
 
-  it('removes the row and its link in a single transaction', async () => {
-    await handler.execute(
-      new DeleteReferencePrintCommand(EXPERT_ACTOR, 'ref-1'),
+  it('keeps the stored object when the delete fails', async () => {
+    const failure = new Error('rollback');
+    const failing = new FailingReferencePrintRepository(failure);
+    failing.seed(
+      ReferencePrint.create({
+        id: 'ref-1',
+        path: STORED_PATH,
+        caseId: 'case-1',
+        sha256: ANY_SEAL,
+      }),
     );
 
-    expect(transactionRunner.runCount).toBe(1);
-  });
-
-  it('keeps the stored object when the transaction fails', async () => {
-    const failure = new Error('rollback');
-
     await expect(
-      buildHandler(new RollingBackTransactionRunner(failure)).execute(
+      buildHandler(failing).execute(
         new DeleteReferencePrintCommand(EXPERT_ACTOR, 'ref-1'),
       ),
     ).rejects.toBe(failure);

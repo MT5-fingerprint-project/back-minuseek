@@ -21,8 +21,6 @@ export interface TechnicalReportInput {
   data: CaseReportData;
   /** Maillons du dossier, pour le journal des actes. */
   chainEvents: AuditEventData[];
-  /** Familles d'actes non instrumentées, à déclarer telles quelles. */
-  notCoveredActions: string[];
   reportId: string;
   chainHead: { seq: number; hash: string } | null;
   generatedAt: Date;
@@ -142,94 +140,11 @@ function toChainedEntry(event: AuditEventData): ReportJournalEntryViewModel {
   };
 }
 
-function payloadReferences(
-  payload: Record<string, unknown>,
-  traceId: string,
-  referencePrintId: string,
-): boolean {
-  return (
-    payload.traceId === traceId && payload.referencePrintId === referencePrintId
-  );
-}
-
-/**
- * Actes lisibles dans l'état courant mais absents de la chaîne : ils existent en
- * base sans maillon, faute d'instrumentation au moment où ils ont été faits. Les
- * taire rendrait le journal faux ; les mélanger aux maillons rendrait la chaîne
- * plus probante qu'elle ne l'est.
- */
-function buildReconstructed(
-  data: CaseReportData,
-  chainEvents: AuditEventData[],
-  pieceLabels: Map<string, string>,
-): ReportJournalEntryViewModel[] {
-  const chainedComparisons = chainEvents.filter(
-    (event) => event.eventType === 'COMPARISON_EXECUTED',
-  );
-  const chainedHits = chainEvents.filter(
-    (event) => event.eventType === 'HIT_RECORDED',
-  );
-
-  const comparisons = data.comparisons
-    .filter(
-      (comparison) =>
-        !chainedComparisons.some((event) =>
-          payloadReferences(
-            event.payload,
-            comparison.traceId,
-            comparison.referencePrintId,
-          ),
-        ),
-    )
-    .map((comparison) => ({
-      label: actionLabel('COMPARISON_EXECUTED'),
-      detail: `${pieceLabels.get(comparison.traceId) ?? comparison.traceId} contre ${
-        pieceLabels.get(comparison.referencePrintId) ??
-        comparison.referencePrintId
-      }, score ${comparison.score}`,
-      occurredAt: comparison.comparedAt,
-      actorDisplayName: null,
-      seq: null,
-      hash: null,
-    }));
-
-  const hits = data.declaredHits
-    .filter(
-      (hit) =>
-        !chainedHits.some((event) =>
-          payloadReferences(event.payload, hit.traceId, hit.referencePrintId),
-        ),
-    )
-    .map((hit) => ({
-      label: actionLabel('HIT_RECORDED'),
-      detail: `${pieceLabels.get(hit.traceId) ?? hit.traceId} et ${
-        pieceLabels.get(hit.referencePrintId) ?? hit.referencePrintId
-      }`,
-      occurredAt: hit.declaredAt,
-      actorDisplayName: hit.declaredBy
-        ? `${hit.declaredBy.firstName} ${hit.declaredBy.lastName}`
-        : null,
-      seq: null,
-      hash: null,
-    }));
-
-  return [...comparisons, ...hits].sort(
-    (left, right) => left.occurredAt.getTime() - right.occurredAt.getTime(),
-  );
-}
-
-function buildJournal(
-  data: CaseReportData,
-  chainEvents: AuditEventData[],
-  notCoveredActions: string[],
-  pieceLabels: Map<string, string>,
-): ReportJournalViewModel {
+function buildJournal(chainEvents: AuditEventData[]): ReportJournalViewModel {
   return {
     chained: [...chainEvents]
       .sort((left, right) => left.seq - right.seq)
       .map(toChainedEntry),
-    reconstructed: buildReconstructed(data, chainEvents, pieceLabels),
-    notCovered: notCoveredActions,
   };
 }
 
@@ -276,11 +191,6 @@ export function buildTechnicalReport(
       comparedAt: comparison.comparedAt,
     })),
     identityDemonstrations: buildDemonstrations(data, pieceViewModels),
-    journal: buildJournal(
-      data,
-      input.chainEvents,
-      input.notCoveredActions,
-      pieceLabels,
-    ),
+    journal: buildJournal(input.chainEvents),
   };
 }

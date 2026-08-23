@@ -7,17 +7,18 @@ import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
-import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
-import { TransactionRunner } from '../../../../shared/domain/ports/transaction-runner';
+import { TraceRepository } from '../../../domain/trace/repository/trace.repository';
 import { DeleteTraceCommand } from './delete-trace.command';
 import { DeleteTraceHandler } from './delete-trace.handler';
 
 const STORED_PATH = 'media/investigation-case/case-1/traces/trace-1.png';
 
-class RollingBackTransactionRunner implements TransactionRunner {
-  constructor(private readonly failure: Error) {}
+class FailingTraceRepository extends InMemoryTraceRepository {
+  constructor(private readonly failure: Error) {
+    super();
+  }
 
-  run<T>(): Promise<T> {
+  delete(): Promise<void> {
     return Promise.reject(this.failure);
   }
 }
@@ -27,19 +28,17 @@ describe('DeleteTraceHandler', () => {
   let repo: InMemoryTraceRepository;
   let storage: InMemoryImageStorageAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
-  let transactionRunner: InMemoryTransactionRunner;
 
-  const buildHandler = (runner: TransactionRunner) =>
-    new DeleteTraceHandler(repo, storage, runner, auditTrail);
+  const buildHandler = (traceRepo: TraceRepository) =>
+    new DeleteTraceHandler(traceRepo, storage);
 
   beforeEach(async () => {
-    repo = new InMemoryTraceRepository();
-    storage = new InMemoryImageStorageAdapter();
     auditTrail = new InMemoryAuditTrailAppender();
-    transactionRunner = new InMemoryTransactionRunner();
-    handler = buildHandler(transactionRunner);
+    repo = new InMemoryTraceRepository(auditTrail);
+    storage = new InMemoryImageStorageAdapter();
+    handler = buildHandler(repo);
 
-    await repo.save(
+    repo.seed(
       Trace.upload({
         id: 'trace-1',
         path: STORED_PATH,
@@ -80,7 +79,7 @@ describe('DeleteTraceHandler', () => {
       Buffer.from('jpg'),
       'investigation-case/case-1/traces/trace-2.jpg',
     );
-    await repo.save(
+    repo.seed(
       Trace.upload({
         id: 'trace-2',
         path: 'media/investigation-case/case-1/traces/trace-2.jpg',
@@ -122,17 +121,20 @@ describe('DeleteTraceHandler', () => {
     expect(auditTrail.events[0].payload).toMatchObject({ reason: null });
   });
 
-  it('removes the row and its link in a single transaction', async () => {
-    await handler.execute(new DeleteTraceCommand(EXPERT_ACTOR, 'trace-1'));
-
-    expect(transactionRunner.runCount).toBe(1);
-  });
-
-  it('keeps the stored object when the transaction fails', async () => {
+  it('keeps the stored object when the delete fails', async () => {
     const failure = new Error('rollback');
+    const failing = new FailingTraceRepository(failure);
+    failing.seed(
+      Trace.upload({
+        id: 'trace-1',
+        path: STORED_PATH,
+        caseId: 'case-1',
+        sha256: ANY_SEAL,
+      }),
+    );
 
     await expect(
-      buildHandler(new RollingBackTransactionRunner(failure)).execute(
+      buildHandler(failing).execute(
         new DeleteTraceCommand(EXPERT_ACTOR, 'trace-1'),
       ),
     ).rejects.toBe(failure);

@@ -11,17 +11,9 @@ import {
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import {
-  AUDIT_TRAIL,
-  AuditTrailPort,
-} from '../../../../shared/domain/ports/audit-trail.port';
-import {
   ID_GENERATOR,
   IdGenerator,
 } from '../../../../shared/domain/ports/id-generator';
-import {
-  TRANSACTION_RUNNER,
-  TransactionRunner,
-} from '../../../../shared/domain/ports/transaction-runner';
 import {
   IMAGE_STORAGE,
   ImageStoragePort,
@@ -56,10 +48,6 @@ export class UploadTraceHandler implements ICommandHandler<
     private readonly caseStatus: CaseStatusPort,
     @Inject(IMAGE_CONVERTER)
     private readonly converter: ImageConverterPort,
-    @Inject(TRANSACTION_RUNNER)
-    private readonly transactionRunner: TransactionRunner,
-    @Inject(AUDIT_TRAIL)
-    private readonly auditTrail: AuditTrailPort,
   ) {}
 
   async execute(
@@ -84,30 +72,28 @@ export class UploadTraceHandler implements ICommandHandler<
       `investigation-case/${cmd.caseId}/traces/${id}`,
     );
 
+    const trace = Trace.upload({
+      id,
+      path: storedPath,
+      caseId: cmd.caseId,
+      sha256,
+      captureMetadata,
+      captureQuality,
+    });
+
     try {
-      await this.transactionRunner.run(async () => {
-        const trace = Trace.upload({
-          id,
-          path: storedPath,
-          caseId: cmd.caseId,
-          sha256,
-          captureMetadata,
-          captureQuality,
-        });
-        await this.repo.save(trace);
-        await this.auditTrail.append({
-          eventType: AuditEventTypeEnum.TRACE_UPLOADED,
-          evidenceClass: EvidenceClassEnum.OBSERVED,
-          actor: cmd.actor,
-          caseId: cmd.caseId,
-          traceId: id,
-          payload: {
-            fileSha256: sha256.getValue(),
-            storagePath: storedPath,
-            sizeBytes: cmd.fileBuffer.length,
-            mimeType,
-          },
-        });
+      await this.repo.save(trace, {
+        eventType: AuditEventTypeEnum.TRACE_UPLOADED,
+        evidenceClass: EvidenceClassEnum.OBSERVED,
+        actor: cmd.actor,
+        caseId: cmd.caseId,
+        traceId: id,
+        payload: {
+          fileSha256: sha256.getValue(),
+          storagePath: storedPath,
+          sizeBytes: cmd.fileBuffer.length,
+          mimeType,
+        },
       });
     } catch (error) {
       await this.discardStoredFile(storedPath);
