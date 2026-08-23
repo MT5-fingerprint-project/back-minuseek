@@ -1,5 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
+import {
+  AUDIT_TRAIL,
+  AuditEventDraft,
+  AuditTrailPort,
+} from '../../../shared/domain/ports/audit-trail.port';
+import {
+  TRANSACTION_RUNNER,
+  TransactionRunner,
+} from '../../../shared/domain/ports/transaction-runner';
 import { Layer } from '../../domain/layer/entity/layer';
 import type { LayerSettings } from '../../domain/layer/entity/layer';
 import { MINUTIA_SETTINGS_TYPES } from '../../domain/layer/minutia';
@@ -7,24 +16,33 @@ import type { LayerRepository } from '../../domain/layer/repository/layer.reposi
 
 @Injectable()
 export class PrismaLayerRepository implements LayerRepository {
-  constructor(private readonly tenantConnection: TenantConnectionService) {}
+  constructor(
+    private readonly tenantConnection: TenantConnectionService,
+    @Inject(TRANSACTION_RUNNER)
+    private readonly transactionRunner: TransactionRunner,
+    @Inject(AUDIT_TRAIL)
+    private readonly auditTrail: AuditTrailPort,
+  ) {}
 
-  async save(layer: Layer): Promise<void> {
-    const prisma = await this.tenantConnection.getCurrentClient();
-    const { id, fingerprintId, name, type, zIndex, isVisible, settings } =
-      layer.toPrimitives();
-    const payload = {
-      fingerprintId,
-      name,
-      type,
-      zIndex,
-      isVisible,
-      settings,
-    };
-    await prisma.layer.upsert({
-      where: { id },
-      create: { id, ...payload },
-      update: payload,
+  async save(layer: Layer, act: AuditEventDraft): Promise<void> {
+    await this.transactionRunner.run(async () => {
+      const prisma = await this.tenantConnection.getCurrentClient();
+      const { id, fingerprintId, name, type, zIndex, isVisible, settings } =
+        layer.toPrimitives();
+      const payload = {
+        fingerprintId,
+        name,
+        type,
+        zIndex,
+        isVisible,
+        settings,
+      };
+      await prisma.layer.upsert({
+        where: { id },
+        create: { id, ...payload },
+        update: payload,
+      });
+      await this.auditTrail.append(act);
     });
   }
 
@@ -39,9 +57,12 @@ export class PrismaLayerRepository implements LayerRepository {
     });
   }
 
-  async delete(id: string): Promise<void> {
-    const prisma = await this.tenantConnection.getCurrentClient();
-    await prisma.layer.delete({ where: { id } });
+  async delete(id: string, act: AuditEventDraft): Promise<void> {
+    await this.transactionRunner.run(async () => {
+      const prisma = await this.tenantConnection.getCurrentClient();
+      await prisma.layer.delete({ where: { id } });
+      await this.auditTrail.append(act);
+    });
   }
 
   async countMinutiae(fingerprintId: string): Promise<number> {

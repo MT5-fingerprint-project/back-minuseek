@@ -2,7 +2,6 @@ import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixtur
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
-import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
 import { Layer } from '../../../domain/layer/entity/layer';
 import { LayerNotFoundError } from '../../../domain/layer/errors/layer-not-found.error';
 import { InMemoryFingerprintLocatorAdapter } from '../../../infrastructure/persistence/in-memory-fingerprint-locator.adapter';
@@ -22,11 +21,10 @@ describe('DeleteLayerHandler', () => {
   let handler: DeleteLayerHandler;
   let repo: InMemoryLayerRepository;
   let fingerprintLocator: InMemoryFingerprintLocatorAdapter;
-  let transactionRunner: InMemoryTransactionRunner;
   let auditTrail: InMemoryAuditTrailAppender;
 
   const existingLayer = () =>
-    repo.save(
+    repo.seed(
       Layer.create({
         id: 'layer-1',
         fingerprintId: 'fp-1',
@@ -38,21 +36,15 @@ describe('DeleteLayerHandler', () => {
     );
 
   beforeEach(() => {
-    repo = new InMemoryLayerRepository();
-    fingerprintLocator = new InMemoryFingerprintLocatorAdapter();
-    transactionRunner = new InMemoryTransactionRunner();
     auditTrail = new InMemoryAuditTrailAppender();
-    handler = new DeleteLayerHandler(
-      repo,
-      fingerprintLocator,
-      transactionRunner,
-      auditTrail,
-    );
+    repo = new InMemoryLayerRepository(auditTrail);
+    fingerprintLocator = new InMemoryFingerprintLocatorAdapter();
+    handler = new DeleteLayerHandler(repo, fingerprintLocator);
     fingerprintLocator.setTrace('fp-1', 'case-9');
   });
 
   it('supprime un calque existant', async () => {
-    await existingLayer();
+    existingLayer();
 
     await handler.execute(new DeleteLayerCommand(EXPERT_ACTOR, 'layer-1'));
 
@@ -60,7 +52,7 @@ describe('DeleteLayerHandler', () => {
   });
 
   it('chaîne un LAYER_DELETED qui conserve le calque disparu de la table', async () => {
-    await existingLayer();
+    existingLayer();
 
     await handler.execute(new DeleteLayerCommand(EXPERT_ACTOR, 'layer-1'));
 
@@ -80,14 +72,6 @@ describe('DeleteLayerHandler', () => {
       isVisible: true,
       settings,
     });
-  });
-
-  it('supprime le calque et écrit son maillon dans une seule transaction', async () => {
-    await existingLayer();
-
-    await handler.execute(new DeleteLayerCommand(EXPERT_ACTOR, 'layer-1'));
-
-    expect(transactionRunner.runCount).toBe(1);
   });
 
   it('lève LayerNotFoundError si le calque est introuvable', async () => {

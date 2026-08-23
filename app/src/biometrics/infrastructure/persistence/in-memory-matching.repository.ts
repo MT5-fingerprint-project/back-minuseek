@@ -1,21 +1,37 @@
+import { InMemoryAuditTrailAppender } from '../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
+import { AuditTrailPort } from '../../../shared/domain/ports/audit-trail.port';
 import { Matching } from '../../domain/matching/entity/matching';
-import { MatchingRepository } from '../../domain/matching/repository/matching.repository';
+import {
+  MatchingRepository,
+  MatchingWrite,
+} from '../../domain/matching/repository/matching.repository';
 
 export class InMemoryMatchingRepository implements MatchingRepository {
   readonly store = new Map<string, Matching>();
+
+  constructor(
+    readonly auditTrail: AuditTrailPort = new InMemoryAuditTrailAppender(),
+  ) {}
 
   private key(traceId: string, referencePrintId: string): string {
     return `${traceId}:${referencePrintId}`;
   }
 
-  upsertMany(matchings: Matching[]): Promise<void> {
-    for (const matching of matchings) {
+  seed(matching: Matching): void {
+    this.store.set(
+      this.key(matching.traceId, matching.referencePrintId),
+      matching,
+    );
+  }
+
+  async upsertMany(writes: MatchingWrite[]): Promise<void> {
+    for (const { matching, act } of writes) {
       this.store.set(
         this.key(matching.traceId, matching.referencePrintId),
         matching,
       );
+      await this.auditTrail.append(act);
     }
-    return Promise.resolve();
   }
 
   findByTraceId(traceId: string): Promise<Matching[]> {

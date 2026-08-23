@@ -10,17 +10,9 @@ import {
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import {
-  AUDIT_TRAIL,
-  AuditTrailPort,
-} from '../../../../shared/domain/ports/audit-trail.port';
-import {
   ID_GENERATOR,
   IdGenerator,
 } from '../../../../shared/domain/ports/id-generator';
-import {
-  TRANSACTION_RUNNER,
-  TransactionRunner,
-} from '../../../../shared/domain/ports/transaction-runner';
 import {
   IMAGE_STORAGE,
   ImageStoragePort,
@@ -52,10 +44,6 @@ export class UploadReferencePrintHandler implements ICommandHandler<
     private readonly idGenerator: IdGenerator,
     @Inject(IMAGE_CONVERTER)
     private readonly converter: ImageConverterPort,
-    @Inject(TRANSACTION_RUNNER)
-    private readonly transactionRunner: TransactionRunner,
-    @Inject(AUDIT_TRAIL)
-    private readonly auditTrail: AuditTrailPort,
   ) {}
 
   async execute(
@@ -71,30 +59,28 @@ export class UploadReferencePrintHandler implements ICommandHandler<
       `investigation-case/${cmd.caseId}/reference-prints/${id}`,
     );
 
+    const referencePrint = ReferencePrint.create({
+      id,
+      path: storedPath,
+      caseId: cmd.caseId,
+      sha256,
+      subjectId: cmd.subjectId ?? null,
+      position: cmd.position ? FingerPosition.from(cmd.position) : null,
+    });
+
     try {
-      await this.transactionRunner.run(async () => {
-        const referencePrint = ReferencePrint.create({
-          id,
-          path: storedPath,
-          caseId: cmd.caseId,
-          sha256,
-          subjectId: cmd.subjectId ?? null,
-          position: cmd.position ? FingerPosition.from(cmd.position) : null,
-        });
-        await this.repo.save(referencePrint);
-        await this.auditTrail.append({
-          eventType: AuditEventTypeEnum.REFERENCE_PRINT_UPLOADED,
-          evidenceClass: EvidenceClassEnum.OBSERVED,
-          actor: cmd.actor,
-          caseId: cmd.caseId,
-          payload: {
-            referencePrintId: id,
-            fileSha256: sha256.getValue(),
-            storagePath: storedPath,
-            sizeBytes: cmd.fileBuffer.length,
-            mimeType,
-          },
-        });
+      await this.repo.save(referencePrint, {
+        eventType: AuditEventTypeEnum.REFERENCE_PRINT_UPLOADED,
+        evidenceClass: EvidenceClassEnum.OBSERVED,
+        actor: cmd.actor,
+        caseId: cmd.caseId,
+        payload: {
+          referencePrintId: id,
+          fileSha256: sha256.getValue(),
+          storagePath: storedPath,
+          sizeBytes: cmd.fileBuffer.length,
+          mimeType,
+        },
       });
     } catch (error) {
       await this.discardStoredFile(storedPath);

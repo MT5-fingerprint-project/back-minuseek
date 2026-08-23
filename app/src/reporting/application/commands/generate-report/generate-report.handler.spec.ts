@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 import { AuditActor } from '../../../../shared/domain/audit/audit-actor.vo';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
-import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { InMemoryReportRenderer } from '../../../infrastructure/pdf/in-memory-report.renderer';
 import { InMemoryReportRepository } from '../../../infrastructure/persistence/in-memory-report.repository';
@@ -153,8 +152,8 @@ describe('GenerateReportHandler', () => {
     imageEmbedder = new FakeImageEmbedder();
     renderer = new InMemoryReportRenderer();
     storage = new InMemoryReportStorageAdapter();
-    repository = new InMemoryReportRepository();
     appender = new InMemoryAuditTrailAppender();
+    repository = new InMemoryReportRepository(appender);
     handler = new GenerateReportHandler(
       caseData,
       traceability,
@@ -164,8 +163,6 @@ describe('GenerateReportHandler', () => {
       renderer,
       storage,
       repository,
-      new InMemoryTransactionRunner(),
-      appender,
       { generate: () => 'report-1' },
     );
   });

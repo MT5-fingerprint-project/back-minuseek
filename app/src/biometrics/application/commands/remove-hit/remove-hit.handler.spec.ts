@@ -9,7 +9,6 @@ import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-
 import { InMemoryReferencePrintRepository } from '../../../infrastructure/persistence/in-memory-reference-print.repository';
 import { InMemoryHitRepository } from '../../../infrastructure/persistence/in-memory-hit.repository';
 import { RemoveHitCommand } from './remove-hit.command';
-import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { RemoveHitHandler } from './remove-hit.handler';
@@ -21,8 +20,8 @@ describe('RemoveHitHandler', () => {
   let auditTrail: InMemoryAuditTrailAppender;
   let handler: RemoveHitHandler;
 
-  const seedTraceAndReference = async (): Promise<void> => {
-    await traceRepo.save(
+  const seedTraceAndReference = (): void => {
+    traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
         path: 'media/trace-1.png',
@@ -30,7 +29,7 @@ describe('RemoveHitHandler', () => {
         sha256: ANY_SEAL,
       }),
     );
-    await referencePrintRepo.save(
+    referencePrintRepo.seed(
       ReferencePrint.create({
         id: 'ref-1',
         path: 'media/ref-1.png',
@@ -41,22 +40,16 @@ describe('RemoveHitHandler', () => {
   };
 
   beforeEach(() => {
+    auditTrail = new InMemoryAuditTrailAppender();
     traceRepo = new InMemoryTraceRepository();
     referencePrintRepo = new InMemoryReferencePrintRepository();
-    hitRepo = new InMemoryHitRepository();
-    auditTrail = new InMemoryAuditTrailAppender();
-    handler = new RemoveHitHandler(
-      traceRepo,
-      referencePrintRepo,
-      hitRepo,
-      new InMemoryTransactionRunner(),
-      auditTrail,
-    );
+    hitRepo = new InMemoryHitRepository(auditTrail);
+    handler = new RemoveHitHandler(traceRepo, referencePrintRepo, hitRepo);
   });
 
   it('removes an existing hit', async () => {
-    await seedTraceAndReference();
-    await hitRepo.save(
+    seedTraceAndReference();
+    hitRepo.seed(
       Hit.fromPrimitives({
         id: 'hit-1',
         traceId: 'trace-1',
@@ -73,7 +66,7 @@ describe('RemoveHitHandler', () => {
   });
 
   it('is a no-op when no hit exists for the pair', async () => {
-    await seedTraceAndReference();
+    seedTraceAndReference();
 
     await expect(
       handler.execute(
@@ -83,7 +76,7 @@ describe('RemoveHitHandler', () => {
   });
 
   it('rejects when the trace belongs to another case (IDOR)', async () => {
-    await traceRepo.save(
+    traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
         path: 'media/trace-1.png',
@@ -100,7 +93,7 @@ describe('RemoveHitHandler', () => {
   });
 
   it('rejects when the reference print belongs to another case (IDOR)', async () => {
-    await traceRepo.save(
+    traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
         path: 'media/trace-1.png',
@@ -108,7 +101,7 @@ describe('RemoveHitHandler', () => {
         sha256: ANY_SEAL,
       }),
     );
-    await referencePrintRepo.save(
+    referencePrintRepo.seed(
       ReferencePrint.create({
         id: 'ref-1',
         path: 'media/ref-1.png',
@@ -125,8 +118,8 @@ describe('RemoveHitHandler', () => {
   });
 
   it('chaîne le retrait de la correspondance', async () => {
-    await seedTraceAndReference();
-    await hitRepo.save(
+    seedTraceAndReference();
+    hitRepo.seed(
       Hit.fromPrimitives({
         id: 'hit-1',
         traceId: 'trace-1',
@@ -151,7 +144,7 @@ describe('RemoveHitHandler', () => {
   });
 
   it("n'écrit aucun maillon quand la pièce n'appartient pas au dossier", async () => {
-    await seedTraceAndReference();
+    seedTraceAndReference();
 
     await expect(
       handler.execute(

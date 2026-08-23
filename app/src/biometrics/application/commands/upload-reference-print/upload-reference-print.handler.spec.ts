@@ -7,9 +7,8 @@ import { InMemoryImageConverter } from '../../../infrastructure/conversion/in-me
 import { InvalidImageError } from '../../ports/image-converter.port';
 import { UnsupportedImageFormatError } from '../../services/displayable-image';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
-import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
-import { TransactionRunner } from '../../../../shared/domain/ports/transaction-runner';
+import { ReferencePrintRepository } from '../../../domain/reference-print/repository/reference-print.repository';
 import { UploadReferencePrintCommand } from './upload-reference-print.command';
 import { UploadReferencePrintHandler } from './upload-reference-print.handler';
 
@@ -20,10 +19,12 @@ const CLEAN_PRINT_SHA256 =
 const STORED_PATH =
   'media/investigation-case/case-9/reference-prints/ref-456.png';
 
-class RollingBackTransactionRunner implements TransactionRunner {
-  constructor(private readonly failure: Error) {}
+class FailingReferencePrintRepository extends InMemoryReferencePrintRepository {
+  constructor(private readonly failure: Error) {
+    super();
+  }
 
-  run<T>(): Promise<T> {
+  save(): Promise<void> {
     return Promise.reject(this.failure);
   }
 }
@@ -33,26 +34,22 @@ describe('UploadReferencePrintHandler', () => {
   let repo: InMemoryReferencePrintRepository;
   let storage: InMemoryImageStorageAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
-  let transactionRunner: InMemoryTransactionRunner;
   let idGenerator: IdGenerator;
 
-  const buildHandler = (runner: TransactionRunner) =>
+  const buildHandler = (referencePrintRepo: ReferencePrintRepository) =>
     new UploadReferencePrintHandler(
-      repo,
+      referencePrintRepo,
       storage,
       idGenerator,
       new InMemoryImageConverter(),
-      runner,
-      auditTrail,
     );
 
   beforeEach(() => {
-    repo = new InMemoryReferencePrintRepository();
-    storage = new InMemoryImageStorageAdapter();
     auditTrail = new InMemoryAuditTrailAppender();
-    transactionRunner = new InMemoryTransactionRunner();
+    repo = new InMemoryReferencePrintRepository(auditTrail);
+    storage = new InMemoryImageStorageAdapter();
     idGenerator = { generate: jest.fn().mockReturnValue('ref-456') };
-    handler = buildHandler(transactionRunner);
+    handler = buildHandler(repo);
   });
 
   const tiffBuffer = Buffer.concat([TIFF_MAGIC, Buffer.from('clean-print')]);
@@ -178,17 +175,11 @@ describe('UploadReferencePrintHandler', () => {
     });
   });
 
-  it('writes the reference print and its link inside a single transaction', async () => {
-    await handler.execute(command());
-
-    expect(transactionRunner.runCount).toBe(1);
-  });
-
-  it('deletes the stored PNG and the archived original, then rethrows when the transaction fails', async () => {
+  it('deletes the stored PNG and the archived original, then rethrows when the save fails', async () => {
     const failure = new Error('rollback');
 
     await expect(
-      buildHandler(new RollingBackTransactionRunner(failure)).execute(
+      buildHandler(new FailingReferencePrintRepository(failure)).execute(
         command(),
       ),
     ).rejects.toBe(failure);
@@ -212,7 +203,7 @@ describe('UploadReferencePrintHandler', () => {
       .mockRejectedValue(new Error('storage unreachable'));
 
     await expect(
-      buildHandler(new RollingBackTransactionRunner(failure)).execute(
+      buildHandler(new FailingReferencePrintRepository(failure)).execute(
         command(),
       ),
     ).rejects.toBe(failure);

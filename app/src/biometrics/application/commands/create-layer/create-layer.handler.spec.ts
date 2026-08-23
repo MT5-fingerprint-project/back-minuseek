@@ -2,7 +2,6 @@ import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixtur
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
-import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
 import { FingerprintNotFoundError } from '../../../domain/fingerprint-not-found.error';
 import { InMemoryFingerprintLocatorAdapter } from '../../../infrastructure/persistence/in-memory-fingerprint-locator.adapter';
 import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-memory-layer.repository';
@@ -21,7 +20,6 @@ describe('CreateLayerHandler', () => {
   let handler: CreateLayerHandler;
   let repo: InMemoryLayerRepository;
   let fingerprintLocator: InMemoryFingerprintLocatorAdapter;
-  let transactionRunner: InMemoryTransactionRunner;
   let auditTrail: InMemoryAuditTrailAppender;
 
   const command = (fingerprintId = 'fp-1') =>
@@ -36,16 +34,10 @@ describe('CreateLayerHandler', () => {
     );
 
   beforeEach(() => {
-    repo = new InMemoryLayerRepository();
-    fingerprintLocator = new InMemoryFingerprintLocatorAdapter();
-    transactionRunner = new InMemoryTransactionRunner();
     auditTrail = new InMemoryAuditTrailAppender();
-    handler = new CreateLayerHandler(
-      repo,
-      fingerprintLocator,
-      transactionRunner,
-      auditTrail,
-    );
+    repo = new InMemoryLayerRepository(auditTrail);
+    fingerprintLocator = new InMemoryFingerprintLocatorAdapter();
+    handler = new CreateLayerHandler(repo, fingerprintLocator);
   });
 
   it('persiste un calque ANNOTATION visible par défaut en conservant ses settings', async () => {
@@ -97,14 +89,6 @@ describe('CreateLayerHandler', () => {
     const [event] = auditTrail.events;
     expect(event.caseId).toBe('case-9');
     expect(event.traceId).toBeNull();
-  });
-
-  it('écrit le calque et son maillon dans une seule transaction', async () => {
-    fingerprintLocator.setTrace('fp-1', 'case-9');
-
-    await handler.execute(command());
-
-    expect(transactionRunner.runCount).toBe(1);
   });
 
   it('refuse un calque posé sur une pièce inexistante', async () => {

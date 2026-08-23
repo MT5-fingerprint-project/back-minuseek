@@ -11,14 +11,6 @@ import {
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import {
-  AUDIT_TRAIL,
-  type AuditTrailPort,
-} from '../../../../shared/domain/ports/audit-trail.port';
-import {
-  TRANSACTION_RUNNER,
-  type TransactionRunner,
-} from '../../../../shared/domain/ports/transaction-runner';
-import {
   FINGERPRINT_LOCATOR,
   type FingerprintLocatorPort,
 } from '../../ports/fingerprint-locator.port';
@@ -29,9 +21,6 @@ export class UpdateLayerHandler implements ICommandHandler<UpdateLayerCommand> {
     @Inject(LAYER_REPOSITORY) private readonly repository: LayerRepository,
     @Inject(FINGERPRINT_LOCATOR)
     private readonly fingerprintLocator: FingerprintLocatorPort,
-    @Inject(TRANSACTION_RUNNER)
-    private readonly transactionRunner: TransactionRunner,
-    @Inject(AUDIT_TRAIL) private readonly auditTrail: AuditTrailPort,
   ) {}
 
   async execute(command: UpdateLayerCommand): Promise<void> {
@@ -47,16 +36,13 @@ export class UpdateLayerHandler implements ICommandHandler<UpdateLayerCommand> {
       isVisible: command.isVisible,
       settings: command.settings,
     });
-    await this.transactionRunner.run(async () => {
-      await this.repository.save(layer);
-      await this.auditTrail.append({
-        eventType: AuditEventTypeEnum.LAYER_UPDATED,
-        evidenceClass: EvidenceClassEnum.OBSERVED,
-        actor: command.actor,
-        caseId: location.caseId,
-        traceId: location.traceId,
-        payload: layerAuditPayload(layer),
-      });
+    await this.repository.save(layer, {
+      eventType: AuditEventTypeEnum.LAYER_UPDATED,
+      evidenceClass: EvidenceClassEnum.OBSERVED,
+      actor: command.actor,
+      caseId: location.caseId,
+      traceId: location.traceId,
+      payload: layerAuditPayload(layer),
     });
   }
 }

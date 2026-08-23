@@ -23,14 +23,6 @@ import {
   ID_GENERATOR,
   IdGenerator,
 } from '../../../../shared/domain/ports/id-generator';
-import {
-  TRANSACTION_RUNNER,
-  type TransactionRunner,
-} from '../../../../shared/domain/ports/transaction-runner';
-import {
-  AUDIT_TRAIL,
-  type AuditTrailPort,
-} from '../../../../shared/domain/ports/audit-trail.port';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { REQUIRED_MINUTIAE } from '../../../domain/hit/hit-rules';
@@ -58,10 +50,6 @@ export class RecordHitHandler implements ICommandHandler<
     private readonly matchingRepo: MatchingRepository,
     @Inject(ID_GENERATOR)
     private readonly idGenerator: IdGenerator,
-    @Inject(TRANSACTION_RUNNER)
-    private readonly transactionRunner: TransactionRunner,
-    @Inject(AUDIT_TRAIL)
-    private readonly auditTrail: AuditTrailPort,
   ) {}
 
   async execute(cmd: RecordHitCommand): Promise<void> {
@@ -97,23 +85,20 @@ export class RecordHitHandler implements ICommandHandler<
         (matching) => matching.referencePrintId === cmd.referencePrintId,
       )?.score;
 
-    await this.transactionRunner.run(async () => {
-      await this.hitRepo.save(hit);
-      await this.auditTrail.append({
-        eventType: AuditEventTypeEnum.HIT_RECORDED,
-        evidenceClass: EvidenceClassEnum.OBSERVED,
-        actor: cmd.actor,
-        caseId: cmd.caseId,
+    await this.hitRepo.save(hit, {
+      eventType: AuditEventTypeEnum.HIT_RECORDED,
+      evidenceClass: EvidenceClassEnum.OBSERVED,
+      actor: cmd.actor,
+      caseId: cmd.caseId,
+      traceId: cmd.traceId,
+      payload: {
         traceId: cmd.traceId,
-        payload: {
-          traceId: cmd.traceId,
-          referencePrintId: cmd.referencePrintId,
-          score: score ?? null,
-          traceMinutiae,
-          referenceMinutiae,
-          requiredMinutiae: REQUIRED_MINUTIAE,
-        },
-      });
+        referencePrintId: cmd.referencePrintId,
+        score: score ?? null,
+        traceMinutiae,
+        referenceMinutiae,
+        requiredMinutiae: REQUIRED_MINUTIAE,
+      },
     });
   }
 }

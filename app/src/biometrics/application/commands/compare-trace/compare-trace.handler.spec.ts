@@ -10,7 +10,6 @@ import { InMemoryMatchingRepository } from '../../../infrastructure/persistence/
 import { InMemoryFingerprintMatcherAdapter } from '../../../infrastructure/matching/in-memory-fingerprint-matcher.adapter';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
 import { CompareTraceCommand } from './compare-trace.command';
-import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { MATCH_THRESHOLD } from '../../../domain/matching/value-objects/matching-score.vo';
@@ -26,26 +25,24 @@ describe('CompareTraceHandler', () => {
   let handler: CompareTraceHandler;
 
   beforeEach(() => {
+    auditTrail = new InMemoryAuditTrailAppender();
     traceRepo = new InMemoryTraceRepository();
     referencePrintRepo = new InMemoryReferencePrintRepository();
-    matchingRepo = new InMemoryMatchingRepository();
+    matchingRepo = new InMemoryMatchingRepository(auditTrail);
     matcher = new InMemoryFingerprintMatcherAdapter();
     let counter = 0;
     idGenerator = { generate: jest.fn(() => `matching-${++counter}`) };
-    auditTrail = new InMemoryAuditTrailAppender();
     handler = new CompareTraceHandler(
       traceRepo,
       referencePrintRepo,
       matcher,
       matchingRepo,
       idGenerator,
-      new InMemoryTransactionRunner(),
-      auditTrail,
     );
   });
 
   it('compares a trace against reference prints of the same case and persists the scores', async () => {
-    await traceRepo.save(
+    traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
         path: 'media/trace-1.png',
@@ -53,7 +50,7 @@ describe('CompareTraceHandler', () => {
         sha256: ANY_SEAL,
       }),
     );
-    await referencePrintRepo.save(
+    referencePrintRepo.seed(
       ReferencePrint.create({
         id: 'ref-1',
         path: 'media/ref-1.png',
@@ -86,7 +83,7 @@ describe('CompareTraceHandler', () => {
   });
 
   it('rejects when the trace belongs to another case (IDOR)', async () => {
-    await traceRepo.save(
+    traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
         path: 'media/trace-1.png',
@@ -103,7 +100,7 @@ describe('CompareTraceHandler', () => {
   });
 
   it('rejects when a reference print belongs to another case (IDOR)', async () => {
-    await traceRepo.save(
+    traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
         path: 'media/trace-1.png',
@@ -111,7 +108,7 @@ describe('CompareTraceHandler', () => {
         sha256: ANY_SEAL,
       }),
     );
-    await referencePrintRepo.save(
+    referencePrintRepo.seed(
       ReferencePrint.create({
         id: 'ref-1',
         path: 'media/ref-1.png',
@@ -128,7 +125,7 @@ describe('CompareTraceHandler', () => {
   });
 
   it('ignores matcher results for reference prints that were not requested', async () => {
-    await traceRepo.save(
+    traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
         path: 'media/trace-1.png',
@@ -136,7 +133,7 @@ describe('CompareTraceHandler', () => {
         sha256: ANY_SEAL,
       }),
     );
-    await referencePrintRepo.save(
+    referencePrintRepo.seed(
       ReferencePrint.create({
         id: 'ref-1',
         path: 'media/ref-1.png',
@@ -158,7 +155,7 @@ describe('CompareTraceHandler', () => {
   });
 
   it('chaîne une comparaison par couple, avec le seuil et la version du moteur', async () => {
-    await traceRepo.save(
+    traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
         path: 'media/trace-1.png',
@@ -166,7 +163,7 @@ describe('CompareTraceHandler', () => {
         sha256: ANY_SEAL,
       }),
     );
-    await referencePrintRepo.save(
+    referencePrintRepo.seed(
       ReferencePrint.create({
         id: 'ref-1',
         path: 'media/ref-1.png',
@@ -197,7 +194,7 @@ describe('CompareTraceHandler', () => {
   });
 
   it('chaîne quand même la comparaison si data ne donne pas sa version de moteur', async () => {
-    await traceRepo.save(
+    traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
         path: 'media/trace-1.png',
@@ -205,7 +202,7 @@ describe('CompareTraceHandler', () => {
         sha256: ANY_SEAL,
       }),
     );
-    await referencePrintRepo.save(
+    referencePrintRepo.seed(
       ReferencePrint.create({
         id: 'ref-1',
         path: 'media/ref-1.png',
