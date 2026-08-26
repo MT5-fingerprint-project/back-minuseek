@@ -1,7 +1,9 @@
 import { InvestigationCase } from './investigation-case';
 import { InvestigationCaseStatusEnum } from '../value-objects/investigation-case-status.vo';
+import { CaseClosedError } from '../errors/case-closed.error';
 
 const OPENED_BY = 'user-marie';
+const HANDED_TO = 'user-pierre';
 
 function anOpenCase() {
   return InvestigationCase.open({
@@ -9,6 +11,19 @@ function anOpenCase() {
     caseNumber: 'AFF-001',
     pvNumber: 'PV-2024-001',
     operatorUserId: OPENED_BY,
+  });
+}
+
+function aClosedCase() {
+  return InvestigationCase.reconstitute({
+    id: 'uuid-test',
+    caseNumber: 'AFF-001',
+    pvNumber: 'PV-2024-001',
+    description: null,
+    status: InvestigationCaseStatusEnum.CLOSED,
+    operatorUserId: OPENED_BY,
+    createdAt: new Date('2026-01-01T10:00:00Z'),
+    updatedAt: new Date('2026-01-01T10:00:00Z'),
   });
 }
 
@@ -41,18 +56,7 @@ describe('InvestigationCase', () => {
   });
 
   it("rend l'opérateur enregistré quand on relit une affaire", () => {
-    const c = InvestigationCase.reconstitute({
-      id: 'uuid-test',
-      caseNumber: 'AFF-001',
-      pvNumber: 'PV-2024-001',
-      description: null,
-      status: InvestigationCaseStatusEnum.CLOSED,
-      operatorUserId: OPENED_BY,
-      createdAt: new Date('2026-01-01T10:00:00Z'),
-      updatedAt: new Date('2026-01-01T10:00:00Z'),
-    });
-    expect(c.operatorUserId).toBe(OPENED_BY);
-    expect(c.status).toBe(InvestigationCaseStatusEnum.CLOSED);
+    expect(aClosedCase().operatorUserId).toBe(OPENED_BY);
   });
 
   it('relit une affaire sans opérateur sans lui en inventer un', () => {
@@ -67,5 +71,45 @@ describe('InvestigationCase', () => {
       updatedAt: new Date('2026-01-01T10:00:00Z'),
     });
     expect(c.operatorUserId).toBeNull();
+  });
+
+  it("remplace l'opérateur en place, qui n'est jamais deux", () => {
+    const c = anOpenCase();
+
+    c.changeOperator(HANDED_TO);
+
+    expect(c.operatorUserId).toBe(HANDED_TO);
+  });
+
+  it("date la modification quand l'opérateur change", () => {
+    const c = InvestigationCase.reconstitute({
+      id: 'uuid-test',
+      caseNumber: 'AFF-001',
+      pvNumber: 'PV-2024-001',
+      description: null,
+      status: InvestigationCaseStatusEnum.OPEN,
+      operatorUserId: OPENED_BY,
+      createdAt: new Date('2026-01-01T10:00:00Z'),
+      updatedAt: new Date('2026-01-01T10:00:00Z'),
+    });
+
+    c.changeOperator(HANDED_TO);
+
+    expect(c.updatedAt.getTime()).toBeGreaterThan(
+      new Date('2026-01-01T10:00:00Z').getTime(),
+    );
+  });
+
+  it("refuse de changer l'opérateur d'une affaire close", () => {
+    expect(() => aClosedCase().changeOperator(HANDED_TO)).toThrow(
+      CaseClosedError,
+    );
+  });
+
+  it("laisse l'opérateur en place quand l'affaire est close", () => {
+    const c = aClosedCase();
+
+    expect(() => c.changeOperator(HANDED_TO)).toThrow(CaseClosedError);
+    expect(c.operatorUserId).toBe(OPENED_BY);
   });
 });

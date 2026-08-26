@@ -2,6 +2,7 @@ const ACTION_LABELS: Record<string, string> = {
   TENANT_PROVISIONED: 'Laboratoire créé',
   CASE_OPENED: 'Dossier ouvert',
   CASE_STATUS_CHANGED: 'Statut du dossier modifié',
+  CASE_OPERATOR_CHANGED: 'Dossier confié à un autre opérateur',
   TRACE_UPLOADED: 'Trace déposée et mise sous scellé',
   TRACE_QUALIFIED: 'Trace qualifiée',
   TRACE_DELETED: 'Trace supprimée',

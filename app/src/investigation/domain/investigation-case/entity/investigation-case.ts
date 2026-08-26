@@ -1,4 +1,8 @@
-import { InvestigationCaseStatus } from '../value-objects/investigation-case-status.vo';
+import {
+  InvestigationCaseStatus,
+  InvestigationCaseStatusEnum,
+} from '../value-objects/investigation-case-status.vo';
+import { CaseClosedError } from '../errors/case-closed.error';
 
 interface OpenInvestigationCaseProps {
   id: string;
@@ -26,9 +30,9 @@ export class InvestigationCase {
     private readonly _pvNumber: string,
     private readonly _description: string | undefined,
     private _status: InvestigationCaseStatus,
-    private readonly _operatorUserId: string | null,
+    private _operatorUserId: string | null,
     private readonly _createdAt: Date,
-    private readonly _updatedAt: Date,
+    private _updatedAt: Date,
   ) {}
 
   static open(props: OpenInvestigationCaseProps): InvestigationCase {
@@ -58,6 +62,14 @@ export class InvestigationCase {
       primitives.createdAt,
       primitives.updatedAt,
     );
+  }
+
+  changeOperator(newOperatorUserId: string): void {
+    if (this.status === InvestigationCaseStatusEnum.CLOSED) {
+      throw new CaseClosedError(this._id);
+    }
+    this._operatorUserId = newOperatorUserId;
+    this._updatedAt = new Date();
   }
 
   get id() {
