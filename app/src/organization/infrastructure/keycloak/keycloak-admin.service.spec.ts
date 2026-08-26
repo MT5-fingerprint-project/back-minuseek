@@ -187,6 +187,7 @@ describe('KeycloakAdminService', () => {
     expect(created.id).toBe('user-chef');
     expect(created.username).toBe('chef');
     expect(created.email).toBe('chef@lyon.fr');
+    expect(created.created).toBe(true);
     expect(created.temporaryPassword).toEqual(expect.any(String));
     expect(stub.users.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -223,6 +224,7 @@ describe('KeycloakAdminService', () => {
       enabled: true,
       emailVerified: true,
       temporaryPassword: null,
+      created: false,
     });
     expect(stub.users.create).not.toHaveBeenCalled();
   });

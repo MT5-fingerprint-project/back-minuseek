@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CqrsModule } from '@nestjs/cqrs';
 import { CreateOrganizationUserHandler } from './application/commands/create-organization-user/create-organization-user.handler';
 import { CreateOrganizationHandler } from './application/commands/create-organization/create-organization.handler';
 import { DeleteOrganizationHandler } from './application/commands/delete-organization/delete-organization.handler';
@@ -7,12 +8,14 @@ import { IDENTITY_PROVIDER } from './application/ports/identity-provider.port';
 import { ORGANIZATION_INITIALIZER } from './application/ports/organization-initializer.port';
 import { TENANT_CONNECTION_CACHE } from './application/ports/tenant-connection-cache.port';
 import { TENANT_DATABASE_ADMIN } from './application/ports/tenant-database.port';
+import { SERVICE_USER_REGISTRAR } from './application/ports/service-user-registrar.port';
 import { ListOrganizationsHandler } from './application/queries/list-organizations/list-organizations.handler';
 import { ListOrganizationUsersHandler } from './application/queries/list-organization-users/list-organization-users.handler';
 import { OrganizationController } from './infrastructure/http/organization.controller';
 import { KeycloakAdminService } from './infrastructure/keycloak/keycloak-admin.service';
 import { OrganizationInitializer } from './infrastructure/persistence/organization.initializer';
 import { TenantDatabaseAdminService } from './infrastructure/persistence/tenant-database-admin.service';
+import { ServiceUserRegistrar } from './infrastructure/persistence/service-user.registrar';
 import { TenantConnectionService } from '../tenancy/infrastructure/persistence/tenant-connection.service';
 import { AuditTrailModule } from '../audit-trail/audit-trail.module';
 
@@ -22,7 +25,7 @@ import { AuditTrailModule } from '../audit-trail/audit-trail.module';
  * futur consommateur, le CLI de provisioning son consommateur d'amorçage.
  */
 @Module({
-  imports: [AuditTrailModule],
+  imports: [CqrsModule, AuditTrailModule],
   controllers: [OrganizationController],
   providers: [
     CreateOrganizationHandler,
@@ -35,6 +38,7 @@ import { AuditTrailModule } from '../audit-trail/audit-trail.module';
     { provide: TENANT_DATABASE_ADMIN, useClass: TenantDatabaseAdminService },
     { provide: TENANT_CONNECTION_CACHE, useExisting: TenantConnectionService },
     { provide: ORGANIZATION_INITIALIZER, useClass: OrganizationInitializer },
+    { provide: SERVICE_USER_REGISTRAR, useClass: ServiceUserRegistrar },
   ],
   exports: [CreateOrganizationHandler],
 })

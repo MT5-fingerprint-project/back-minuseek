@@ -88,6 +88,7 @@ export class KeycloakAdminService implements IdentityProviderPort {
       return {
         ...toTenantUser(existing),
         temporaryPassword: null,
+        created: false,
       };
     }
 
@@ -119,6 +120,7 @@ export class KeycloakAdminService implements IdentityProviderPort {
       enabled: true,
       emailVerified: true,
       temporaryPassword,
+      created: true,
     };
   }
 

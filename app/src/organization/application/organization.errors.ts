@@ -15,3 +15,9 @@ export class OrganizationNotFoundError extends Error {
     super(`Organization not found: ${slug}`);
   }
 }
+
+export class OrganizationUserConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
