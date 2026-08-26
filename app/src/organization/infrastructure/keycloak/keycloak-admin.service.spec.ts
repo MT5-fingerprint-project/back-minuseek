@@ -1,5 +1,8 @@
 import type KeycloakAdminClient from '@keycloak/keycloak-admin-client';
-import { KeycloakAdminService } from './keycloak-admin.service';
+import {
+  KeycloakAdminService,
+  MissingIdentityProviderUserIdError,
+} from './keycloak-admin.service';
 
 class StubAdminClient {
   auth = jest.fn<Promise<void>, [unknown]>().mockResolvedValue(undefined);
@@ -259,6 +262,27 @@ describe('KeycloakAdminService', () => {
     expect(stub.users.count).toHaveBeenCalledWith({
       realm: 'minuseek-labo-lyon',
     });
+  });
+
+  it('refuse un compte créé sans identifiant : cet identifiant devient une clé en base', async () => {
+    const { service, stub } = buildService();
+    stub.users.create.mockResolvedValue({});
+
+    await expect(
+      service.createUser('minuseek-labo-lyon', { email: 'chef@lyon.fr' }),
+    ).rejects.toThrow(MissingIdentityProviderUserIdError);
+  });
+
+  it('refuse un compte existant rendu sans identifiant', async () => {
+    const { service, stub } = buildService();
+    stub.users.find.mockResolvedValue([
+      { username: 'chef', email: 'chef@lyon.fr', enabled: true },
+    ]);
+
+    await expect(
+      service.createUser('minuseek-labo-lyon', { email: 'chef@lyon.fr' }),
+    ).rejects.toThrow(MissingIdentityProviderUserIdError);
+    expect(stub.users.create).not.toHaveBeenCalled();
   });
 
   it('absorbe la suppression d’un utilisateur déjà absent', async () => {

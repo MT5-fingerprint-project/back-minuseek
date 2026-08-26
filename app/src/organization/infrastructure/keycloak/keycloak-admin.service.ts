@@ -19,6 +19,16 @@ const ACCESS_TOKEN_LIFESPAN_SECONDS = 300;
 const MOBILE_APP_REDIRECT_URI = 'mobileminuseek://*';
 const EXPO_GO_REDIRECT_URI = 'exp://*';
 
+/** L'identifiant rendu ici est persisté comme clé de jointure entre le compte
+ * d'identité et la ligne du service : un repli sur le username la casserait. */
+export class MissingIdentityProviderUserIdError extends Error {
+  constructor(email: string) {
+    super(
+      `Le fournisseur d'identité n'a rendu aucun identifiant pour "${email}"`,
+    );
+  }
+}
+
 @Injectable()
 export class KeycloakAdminService implements IdentityProviderPort {
   private adminClient: KeycloakAdminClient | undefined;
@@ -71,7 +81,13 @@ export class KeycloakAdminService implements IdentityProviderPort {
       exact: true,
     });
     if (existing?.username) {
-      return { ...toTenantUser(existing), temporaryPassword: null };
+      if (!existing.id) {
+        throw new MissingIdentityProviderUserIdError(input.email);
+      }
+      return {
+        ...toTenantUser(existing),
+        temporaryPassword: null,
+      };
     }
 
     const username = input.email.split('@')[0];
@@ -89,8 +105,12 @@ export class KeycloakAdminService implements IdentityProviderPort {
       ],
       requiredActions: ['UPDATE_PASSWORD'],
     });
+    const createdId = readCreatedUserId(created);
+    if (!createdId) {
+      throw new MissingIdentityProviderUserIdError(input.email);
+    }
     return {
-      id: readCreatedUserId(created) ?? username,
+      id: createdId,
       username,
       email: input.email,
       firstName: input.firstName,
