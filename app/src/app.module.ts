@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { CqrsModule } from '@nestjs/cqrs';
 import { InvestigationModule } from './investigation/investigation.module';
 import { BiometricsModule } from './biometrics/biometrics.module';
 import { SharedModule } from './shared/shared.module';
@@ -10,11 +11,13 @@ import { TenantGuard } from './tenancy/infrastructure/http/tenant.guard';
 import { TenantInterceptor } from './tenancy/infrastructure/http/tenant.interceptor';
 import { OrganizationModule } from './organization/organization.module';
 import { IdentityAccessModule } from './identity-access/identity-access.module';
+import { CurrentUserGuard } from './identity-access/infrastructure/http/current-user.guard';
 import { AuditTrailModule } from './audit-trail/audit-trail.module';
 import { ReportingModule } from './reporting/reporting.module';
 
 @Module({
   imports: [
+    CqrsModule,
     SharedModule,
     TenancyModule,
     AuthModule,
@@ -29,6 +32,8 @@ import { ReportingModule } from './reporting/reporting.module';
     //keep this order, first we find use the token, if it's ok we go to the tenant guard
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
+    // en dernier : le tenant est prouvé, on peut lire le compte de l'appelant
+    { provide: APP_GUARD, useClass: CurrentUserGuard },
     { provide: APP_INTERCEPTOR, useClass: TenantInterceptor },
   ],
 })

@@ -37,7 +37,8 @@ import { RemoveHitCommand } from '../../application/commands/remove-hit/remove-h
 import { ListTracesQuery } from '../../application/queries/list-traces/list-traces.query';
 import { ListReferencePrintsQuery } from '../../application/queries/list-reference-prints/list-reference-prints.query';
 import { ListHitsQuery } from '../../application/queries/list-hits/list-hits.query';
-import { GetUserByProviderIdQuery } from '../../../identity-access/application/queries/get-user-by-provider-id/get-user-by-provider-id.query';
+import { CurrentServiceUser } from '../../../identity-access/infrastructure/http/current-service-user.decorator';
+import type { UserReadModel } from '../../../identity-access/application/queries/get-user-by-provider-id/user-read-model';
 import { TraceNotFoundError } from '../../domain/trace/errors/trace-not-found.error';
 import { CaseUnavailableForTraceError } from '../../domain/trace/errors/case-unavailable-for-trace.error';
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
@@ -356,8 +357,9 @@ export class BiometricsController {
     @Param('id', ParseUUIDPipe) traceId: string,
     @Body() dto: RecordHitDto,
     @CurrentUser() user: AuthenticatedUser,
+    @CurrentServiceUser() serviceUser?: UserReadModel,
   ): Promise<void> {
-    const declaredByUserId = await this.resolveUserId(user);
+    const declaredByUserId = serviceUser?.id ?? null;
     try {
       await this.commandBus.execute(
         new RecordHitCommand(
@@ -428,20 +430,5 @@ export class BiometricsController {
     @Param('id', ParseUUIDPipe) traceId: string,
   ): Promise<{ referencePrintIds: string[] }> {
     return this.queryBus.execute(new ListHitsQuery(traceId));
-  }
-
-  private async resolveUserId(
-    user?: AuthenticatedUser,
-  ): Promise<string | null> {
-    if (!user?.sub) return null;
-    try {
-      const found = await this.queryBus.execute<
-        GetUserByProviderIdQuery,
-        { id: string }
-      >(new GetUserByProviderIdQuery(user.sub));
-      return found.id;
-    } catch {
-      return null;
-    }
   }
 }

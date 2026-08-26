@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { UserController } from './infrastructure/http/user.controller';
 import { SubjectController } from './infrastructure/http/subject.controller';
+import { MeController } from './infrastructure/http/me.controller';
 import { GetUserByProviderIdHandler } from './application/queries/get-user-by-provider-id/get-user-by-provider-id.handler';
 import { RegisterUserHandler } from './application/commands/register-user/register-user.handler';
 import { ListUsersHandler } from './application/queries/list-users/list-users.handler';
@@ -23,7 +24,7 @@ import { CASE_SUBJECTS_READER } from './application/queries/list-subjects-by-cas
 
 @Module({
   imports: [CqrsModule],
-  controllers: [UserController, SubjectController],
+  controllers: [UserController, MeController, SubjectController],
   providers: [
     GetUserByProviderIdHandler,
     ListUsersHandler,
