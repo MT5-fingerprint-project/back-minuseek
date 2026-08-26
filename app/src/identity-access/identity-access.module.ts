@@ -4,15 +4,18 @@ import { UserController } from './infrastructure/http/user.controller';
 import { SubjectController } from './infrastructure/http/subject.controller';
 import { GetUserByProviderIdHandler } from './application/queries/get-user-by-provider-id/get-user-by-provider-id.handler';
 import { RegisterUserHandler } from './application/commands/register-user/register-user.handler';
+import { ListUsersHandler } from './application/queries/list-users/list-users.handler';
 import { GetSubjectByIdHandler } from './application/queries/get-subject-by-id/get-subject-by-id.handler';
 import { ListSubjectsByCaseHandler } from './application/queries/list-subjects-by-case/list-subjects-by-case.handler';
 import { RegisterSubjectHandler } from './application/commands/register-subject/register-subject.handler';
 import { PrismaUserReader } from './infrastructure/persistence/prisma-user.reader';
+import { PrismaServiceUsersReader } from './infrastructure/persistence/prisma-service-users.reader';
 import { PrismaUserRepository } from './infrastructure/persistence/prisma-user.repository';
 import { PrismaSubjectReader } from './infrastructure/persistence/prisma-subject.reader';
 import { PrismaSubjectRepository } from './infrastructure/persistence/prisma-subject.repository';
 import { PrismaCaseSubjectsReader } from './infrastructure/persistence/prisma-case-subjects.reader';
 import { USER_READER } from './application/queries/get-user-by-provider-id/user.reader';
+import { SERVICE_USERS_READER } from './application/queries/list-users/service-users.reader';
 import { USER_REPOSITORY } from './domain/user/repository/user.repository';
 import { SUBJECT_READER } from './application/queries/get-subject-by-id/subject.reader';
 import { SUBJECT_REPOSITORY } from './domain/subject/repository/subject.repository';
@@ -23,6 +26,7 @@ import { CASE_SUBJECTS_READER } from './application/queries/list-subjects-by-cas
   controllers: [UserController, SubjectController],
   providers: [
     GetUserByProviderIdHandler,
+    ListUsersHandler,
     RegisterUserHandler,
     GetSubjectByIdHandler,
     ListSubjectsByCaseHandler,
@@ -30,6 +34,10 @@ import { CASE_SUBJECTS_READER } from './application/queries/list-subjects-by-cas
     {
       provide: USER_READER,
       useClass: PrismaUserReader,
+    },
+    {
+      provide: SERVICE_USERS_READER,
+      useClass: PrismaServiceUsersReader,
     },
     {
       provide: USER_REPOSITORY,
