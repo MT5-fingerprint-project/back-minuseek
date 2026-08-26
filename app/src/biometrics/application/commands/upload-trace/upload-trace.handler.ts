@@ -24,6 +24,12 @@ import {
 } from '../../ports/image-converter.port';
 import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
 import {
+  RULER_DETECTION_MODE,
+  RULER_DETECTOR,
+  RulerDetectionMode,
+  RulerDetectorPort,
+} from '../../ports/ruler-detector.port';
+import {
   archivedOriginalPath,
   detectImageMimeType,
   storeDisplayableImage,
@@ -48,6 +54,10 @@ export class UploadTraceHandler implements ICommandHandler<
     private readonly caseStatus: CaseStatusPort,
     @Inject(IMAGE_CONVERTER)
     private readonly converter: ImageConverterPort,
+    @Inject(RULER_DETECTOR)
+    private readonly rulerDetector: RulerDetectorPort,
+    @Inject(RULER_DETECTION_MODE)
+    private readonly rulerDetectionMode: RulerDetectionMode,
   ) {}
 
   async execute(
@@ -65,6 +75,21 @@ export class UploadTraceHandler implements ICommandHandler<
     const id = this.idGenerator.generate();
     const sha256 = FileDigest.ofBuffer(cmd.fileBuffer);
     const mimeType = detectImageMimeType(cmd.fileBuffer);
+
+    // Test millimétré (BIO-38, ADR-0014) : sur les octets en clair, avant toute
+    // écriture — un refus ne laisse ni objet dans le bucket ni ligne en base.
+    const ruler = await this.rulerDetector.detect({
+      image: cmd.fileBuffer,
+      mimeType,
+    });
+    if (this.rulerDetectionMode === 'enforce') {
+      Trace.assertRulerDetected(ruler);
+    } else if (!ruler.present) {
+      this.logger.warn(
+        `Règle non détectée (mode ombre) sur une trace de l'affaire ${cmd.caseId}, confiance ${ruler.confidence}`,
+      );
+    }
+
     const storedPath = await storeDisplayableImage(
       this.storage,
       this.converter,
@@ -93,6 +118,11 @@ export class UploadTraceHandler implements ICommandHandler<
           storagePath: storedPath,
           sizeBytes: cmd.fileBuffer.length,
           mimeType,
+          rulerDetection: {
+            present: ruler.present,
+            confidence: ruler.confidence,
+            engineVersion: ruler.engineVersion,
+          },
         },
       });
     } catch (error) {

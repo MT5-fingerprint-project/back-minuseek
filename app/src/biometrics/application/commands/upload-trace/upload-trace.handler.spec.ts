@@ -11,6 +11,9 @@ import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-
 import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
 import { InMemoryImageConverter } from '../../../infrastructure/conversion/in-memory-image-converter.adapter';
+import { InMemoryRulerDetectorAdapter } from '../../../infrastructure/ruler-detection/in-memory-ruler-detector.adapter';
+import { RulerDetectionMode } from '../../ports/ruler-detector.port';
+import { RulerNotDetectedError } from '../../../domain/trace/errors/ruler-not-detected.error';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
 import { TraceRepository } from '../../../domain/trace/repository/trace.repository';
@@ -38,14 +41,20 @@ describe('UploadTraceHandler', () => {
   let caseStatus: InMemoryCaseStatusAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
   let idGenerator: IdGenerator;
+  let rulerDetector: InMemoryRulerDetectorAdapter;
 
-  const buildHandler = (traceRepo: TraceRepository) =>
+  const buildHandler = (
+    traceRepo: TraceRepository,
+    rulerDetectionMode: RulerDetectionMode = 'enforce',
+  ) =>
     new UploadTraceHandler(
       traceRepo,
       storage,
       idGenerator,
       caseStatus,
       new InMemoryImageConverter(),
+      rulerDetector,
+      rulerDetectionMode,
     );
 
   beforeEach(() => {
@@ -54,6 +63,7 @@ describe('UploadTraceHandler', () => {
     storage = new InMemoryImageStorageAdapter();
     caseStatus = new InMemoryCaseStatusAdapter();
     idGenerator = { generate: jest.fn().mockReturnValue('trace-123') };
+    rulerDetector = new InMemoryRulerDetectorAdapter();
     handler = buildHandler(repo);
   });
 
@@ -239,6 +249,71 @@ describe('UploadTraceHandler', () => {
       storagePath: STORED_PATH,
       sizeBytes: 14,
       mimeType: 'image/png',
+      rulerDetection: {
+        present: true,
+        confidence: 0.9,
+        engineVersion: 'ruler-periodicity-1.0+cal.0',
+      },
+    });
+  });
+
+  describe('ruler detection (BIO-38)', () => {
+    it('sends the raw bytes and their mime type to the detector', async () => {
+      caseStatus.set('case-9', 'OPEN');
+
+      await handler.execute(command());
+
+      expect(rulerDetector.lastInput).toEqual({
+        image: pngBuffer,
+        mimeType: 'image/png',
+      });
+    });
+
+    it('rejects a photo without ruler and persists nothing', async () => {
+      caseStatus.set('case-9', 'OPEN');
+      rulerDetector.setResult({
+        present: false,
+        confidence: 0.12,
+        engineVersion: 'ruler-periodicity-1.0+cal.0',
+      });
+
+      await expect(handler.execute(command())).rejects.toBeInstanceOf(
+        RulerNotDetectedError,
+      );
+
+      expect(await repo.findById('trace-123')).toBeNull();
+      expect(
+        storage.getSaved('investigation-case/case-9/traces/trace-123.png'),
+      ).toBeUndefined();
+      expect(auditTrail.events).toHaveLength(0);
+    });
+
+    it('in shadow mode, keeps a photo without ruler and audits the verdict', async () => {
+      caseStatus.set('case-9', 'OPEN');
+      rulerDetector.setResult({
+        present: false,
+        confidence: 0.12,
+        engineVersion: null,
+      });
+
+      await buildHandler(repo, 'shadow').execute(command());
+
+      expect(await repo.findById('trace-123')).not.toBeNull();
+      expect(auditTrail.events[0].payload).toMatchObject({
+        rulerDetection: {
+          present: false,
+          confidence: 0.12,
+          engineVersion: null,
+        },
+      });
+    });
+
+    it('does not call the detector when the case cannot receive a trace', async () => {
+      await expect(
+        handler.execute(command('missing-case')),
+      ).rejects.toBeInstanceOf(CaseUnavailableForTraceError);
+
+      expect(rulerDetector.lastInput).toBeUndefined();
     });
   });
 

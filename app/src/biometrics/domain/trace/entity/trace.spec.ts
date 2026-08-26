@@ -1,5 +1,6 @@
 import { FileDigest, InvalidFileDigestError } from '../../file-digest.vo';
 import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-trace.error';
+import { RulerNotDetectedError } from '../errors/ruler-not-detected.error';
 import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
 import { CaptureMetadata } from '../value-objects/capture-metadata.vo';
 import { CaptureQuality } from '../value-objects/capture-quality.vo';
@@ -156,6 +157,25 @@ describe('Trace', () => {
         );
       },
     );
+  });
+
+  describe('assertRulerDetected', () => {
+    it('accepts a photo on which data detected a ruler', () => {
+      expect(() =>
+        Trace.assertRulerDetected({ present: true, confidence: 0.7 }),
+      ).not.toThrow();
+    });
+
+    it('rejects a photo without ruler, carrying the confidence for the audit', () => {
+      expect(() =>
+        Trace.assertRulerDetected({ present: false, confidence: 0.12 }),
+      ).toThrow(RulerNotDetectedError);
+      try {
+        Trace.assertRulerDetected({ present: false, confidence: 0.12 });
+      } catch (e) {
+        expect((e as RulerNotDetectedError).confidence).toBe(0.12);
+      }
+    });
   });
 
   describe('evaluate', () => {

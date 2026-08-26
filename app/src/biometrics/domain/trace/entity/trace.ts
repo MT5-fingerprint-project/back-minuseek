@@ -1,5 +1,6 @@
 import { FileDigest } from '../../file-digest.vo';
 import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-trace.error';
+import { RulerNotDetectedError } from '../errors/ruler-not-detected.error';
 import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
 import { CaptureMetadata } from '../value-objects/capture-metadata.vo';
 import {
@@ -57,6 +58,19 @@ export class Trace {
       !CASE_STATUSES_ACCEPTING_TRACES.includes(caseStatus)
     ) {
       throw new CaseUnavailableForTraceError(caseId);
+    }
+  }
+
+  /**
+   * BIO-38 : sans règle millimétrée, aucune échelle — la photo n'est pas
+   * exploitable et ne doit pas devenir une trace.
+   */
+  static assertRulerDetected(detection: {
+    present: boolean;
+    confidence: number;
+  }): void {
+    if (!detection.present) {
+      throw new RulerNotDetectedError(detection.confidence);
     }
   }
 

@@ -19,6 +19,11 @@ import { IMAGE_CONVERTER } from './application/ports/image-converter.port';
 import { CASE_STATUS } from './application/ports/case-status.port';
 import { FINGERPRINT_LOCATOR } from './application/ports/fingerprint-locator.port';
 import { FINGERPRINT_MATCHER } from './application/ports/fingerprint-matcher.port';
+import {
+  RULER_DETECTION_MODE,
+  RULER_DETECTOR,
+  parseRulerDetectionMode,
+} from './application/ports/ruler-detector.port';
 import { TRACE_READER } from './application/queries/list-traces/trace.reader';
 import { REFERENCE_PRINT_READER } from './application/queries/list-reference-prints/reference-print.reader';
 import { LAYER_READER } from './application/queries/list-layers/layer.reader';
@@ -45,6 +50,7 @@ import { SharpImageConverterAdapter } from './infrastructure/conversion/sharp-im
 import { GcsImageStorageAdapter } from './infrastructure/storage/gcs-image-storage.adapter';
 import { InMemoryImageStorageAdapter } from './infrastructure/storage/in-memory-image-storage.adapter';
 import { DataFingerprintMatcherAdapter } from './infrastructure/matching/data-fingerprint-matcher.adapter';
+import { DataRulerDetectorAdapter } from './infrastructure/ruler-detection/data-ruler-detector.adapter';
 import { AuditTrailModule } from '../audit-trail/audit-trail.module';
 
 @Module({
@@ -112,6 +118,21 @@ import { AuditTrailModule } from '../audit-trail/audit-trail.module';
         }
         return new DataFingerprintMatcherAdapter(baseUrl);
       },
+    },
+    {
+      provide: RULER_DETECTOR,
+      useFactory: (): DataRulerDetectorAdapter => {
+        const baseUrl = process.env.DATA_API_URL;
+        if (!baseUrl) {
+          throw new Error('DATA_API_URL is required');
+        }
+        return new DataRulerDetectorAdapter(baseUrl);
+      },
+    },
+    {
+      provide: RULER_DETECTION_MODE,
+      useFactory: () =>
+        parseRulerDetectionMode(process.env.RULER_DETECTION_MODE),
     },
   ],
 })

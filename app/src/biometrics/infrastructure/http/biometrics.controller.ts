@@ -40,6 +40,7 @@ import { ListHitsQuery } from '../../application/queries/list-hits/list-hits.que
 import { GetUserByProviderIdQuery } from '../../../identity-access/application/queries/get-user-by-provider-id/get-user-by-provider-id.query';
 import { TraceNotFoundError } from '../../domain/trace/errors/trace-not-found.error';
 import { CaseUnavailableForTraceError } from '../../domain/trace/errors/case-unavailable-for-trace.error';
+import { RulerNotDetectedError } from '../../domain/trace/errors/ruler-not-detected.error';
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
 import { InsufficientMinutiaeError } from '../../domain/hit/errors/insufficient-minutiae.error';
 import { InvalidImageError } from '../../application/ports/image-converter.port';
@@ -205,6 +206,12 @@ export class BiometricsController {
     description:
       'Affaire inexistante ou non accessible (statut ≠ OPEN/IN_PROGRESS)',
   })
+  @ApiResponse({
+    status: 422,
+    description:
+      'Aucune règle millimétrée détectée sur la photo (code RULER_NOT_DETECTED, ' +
+      'uniquement en RULER_DETECTION_MODE=enforce)',
+  })
   @UseInterceptors(FileInterceptor('file'))
   async uploadTrace(
     @UploadedFile(imageFileValidator())
@@ -240,6 +247,15 @@ export class BiometricsController {
         e instanceof UnsupportedImageFormatError
       )
         throw new BadRequestException(e.message);
+      if (e instanceof RulerNotDetectedError)
+        // Code lisible par les clients (mobile/front) pour proposer la reprise
+        // de la photo, en plus du message (ADR-0014).
+        throw new UnprocessableEntityException({
+          statusCode: 422,
+          code: 'RULER_NOT_DETECTED',
+          message: e.message,
+          confidence: e.confidence,
+        });
       throw e;
     }
   }
