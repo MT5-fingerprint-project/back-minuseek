@@ -219,8 +219,9 @@ export class TenantContextService {
 ```
 
 1. **`TenantGuard`** (`APP_GUARD`, après `JwtAuthGuard`) : lit le slug validé par la strategy (§6) et le pose dans `request.tenantContext`. Token du realm système (sans header tenant) ⇒ **aucun** tenant posé (le SUPERADMIN ne peut atteindre aucune donnée métier — IA-12/IA-21).
-2. **`TenantInterceptor`** (`APP_INTERCEPTOR`) : enveloppe tout le pipeline dans `tenantContext.run(ctx, () => next.handle())`. Les Observables RxJS préservent le contexte `async_hooks` automatiquement.
-3. Les repositories lisent le client via `getCurrentClient()` — le slug est invisible dans les signatures.
+2. **`CurrentUserGuard`** (`APP_GUARD`, après `TenantGuard`) : résout le compte du service derrière le `sub` et le pose dans `request.currentUser`, pour les gardes d'accès et l'auteur des actes. Les gardes tournant **avant** les interceptors, le contexte tenant n'est pas encore ouvert : ce garde l'ouvre lui-même, le temps de sa lecture (ADR-0014).
+3. **`TenantInterceptor`** (`APP_INTERCEPTOR`) : enveloppe tout le pipeline dans `tenantContext.run(ctx, () => next.handle())`. Les Observables RxJS préservent le contexte `async_hooks` automatiquement.
+4. Les repositories lisent le client via `getCurrentClient()` — le slug est invisible dans les signatures.
 
 > **Header `X-Tenant-Slug` + accord obligatoire avec `iss`.**
 > Le client envoie le slug dans un header (plus direct que de le parser depuis l'URL de l'`iss`) — c'est une couche explicite. Mais le header seul ne prouve rien : la sécurité vient du fait que **header, `iss` et realm de signature doivent désigner le même tenant** (détail §6). C'est la règle « le tenant et l'issuer doivent être identiques ».

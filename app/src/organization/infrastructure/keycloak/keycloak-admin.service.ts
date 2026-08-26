@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type KeycloakAdminClient from '@keycloak/keycloak-admin-client';
 import { randomBytes } from 'node:crypto';
 import {
@@ -19,8 +19,19 @@ const ACCESS_TOKEN_LIFESPAN_SECONDS = 300;
 const MOBILE_APP_REDIRECT_URI = 'mobileminuseek://*';
 const EXPO_GO_REDIRECT_URI = 'exp://*';
 
+/** L'identifiant rendu ici est persisté comme clé de jointure entre le compte
+ * d'identité et la ligne du service : un repli sur le username la casserait. */
+export class MissingIdentityProviderUserIdError extends Error {
+  constructor(email: string) {
+    super(
+      `Le fournisseur d'identité n'a rendu aucun identifiant pour "${email}"`,
+    );
+  }
+}
+
 @Injectable()
 export class KeycloakAdminService implements IdentityProviderPort {
+  private readonly logger = new Logger(KeycloakAdminService.name);
   private adminClient: KeycloakAdminClient | undefined;
 
   async ensureRealm(realm: string, displayName: string): Promise<EnsureResult> {
@@ -71,7 +82,14 @@ export class KeycloakAdminService implements IdentityProviderPort {
       exact: true,
     });
     if (existing?.username) {
-      return { ...toTenantUser(existing), temporaryPassword: null };
+      if (!existing.id) {
+        throw new MissingIdentityProviderUserIdError(input.email);
+      }
+      return {
+        ...toTenantUser(existing),
+        temporaryPassword: null,
+        created: false,
+      };
     }
 
     const username = input.email.split('@')[0];
@@ -89,8 +107,12 @@ export class KeycloakAdminService implements IdentityProviderPort {
       ],
       requiredActions: ['UPDATE_PASSWORD'],
     });
+    const createdId = readCreatedUserId(created);
+    if (!createdId) {
+      throw new MissingIdentityProviderUserIdError(input.email);
+    }
     return {
-      id: readCreatedUserId(created) ?? username,
+      id: createdId,
       username,
       email: input.email,
       firstName: input.firstName,
@@ -98,12 +120,19 @@ export class KeycloakAdminService implements IdentityProviderPort {
       enabled: true,
       emailVerified: true,
       temporaryPassword,
+      created: true,
     };
   }
 
   async deleteUser(realm: string, userId: string): Promise<void> {
     const client = await this.authenticatedClient();
-    await client.users.del({ realm, id: userId }).catch(() => undefined);
+    // Absorbé pour rester idempotent (compte déjà absent), mais tracé : c'est
+    // aussi le chemin de compensation d'une création ratée.
+    await client.users.del({ realm, id: userId }).catch((error: unknown) => {
+      this.logger.warn(
+        `Suppression du compte ${userId} du realm ${realm} en échec: ${String(error)}`,
+      );
+    });
   }
 
   private async ensureFrontClient(realm: string): Promise<void> {

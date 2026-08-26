@@ -12,6 +12,9 @@ export interface TenantUser {
 
 export interface CreatedUser extends TenantUser {
   temporaryPassword: string | null;
+  /** Vrai seulement si cet appel a créé le compte : une compensation ne doit
+   * jamais supprimer un compte qui préexistait. */
+  created: boolean;
 }
 
 export interface EnsureResult {

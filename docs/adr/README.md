@@ -24,3 +24,4 @@ On consigne ici les **décisions structurantes** du repo : choix techno, trade-o
 - [ADR-0011](0011-metadonnees-capture-sur-upload-trace.md) — Métadonnées de capture sur l'upload d'une trace
 - [ADR-0012](0012-report-generation.md) — Génération et scellement des rapports PDF
 - [ADR-0013](0013-controle-qualite-de-capture-persiste.md) — Persistance du contrôle qualité de capture sur l'upload d'une trace
+- [ADR-0014](0014-compte-de-service-et-utilisateur-courant.md) — Le compte du service naît avec le compte d'identité, et chaque requête porte son auteur

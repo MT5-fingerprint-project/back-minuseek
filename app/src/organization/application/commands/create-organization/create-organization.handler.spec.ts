@@ -63,6 +63,7 @@ class InMemoryIdentityProvider implements IdentityProviderPort {
         enabled: true,
         emailVerified: true,
         temporaryPassword: null,
+        created: false,
       });
     }
     const username = input.email.split('@')[0];
@@ -74,6 +75,7 @@ class InMemoryIdentityProvider implements IdentityProviderPort {
       enabled: true,
       emailVerified: true,
       temporaryPassword: 'tmp-secret',
+      created: true,
     });
   }
 

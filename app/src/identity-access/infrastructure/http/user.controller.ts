@@ -6,6 +6,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -17,6 +18,10 @@ import {
   ServiceNumberAlreadyExistsError,
   UserAlreadyRegisteredError,
 } from '../../domain/user/errors/user-already-registered.error';
+import { PageDto } from '../../../shared/application/pagination/page.dto';
+import { PaginationQueryDto } from '../../../shared/infrastructure/http/dto/pagination-query.dto';
+import { ListUsersQuery } from '../../application/queries/list-users/list-users.query';
+import { ServiceUserReadModel } from '../../application/queries/list-users/service-user-read-model';
 import { RegisterUserDto } from './dto/register-user.dto';
 
 @ApiTags('users')
@@ -56,6 +61,17 @@ export class UserController {
       }
       throw e;
     }
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Lister les comptes du service courant' })
+  @ApiResponse({ status: 200, description: 'Page de comptes du service' })
+  list(
+    @Query() pagination: PaginationQueryDto,
+  ): Promise<PageDto<ServiceUserReadModel>> {
+    return this.queryBus.execute<ListUsersQuery, PageDto<ServiceUserReadModel>>(
+      new ListUsersQuery(pagination.page, pagination.limit),
+    );
   }
 
   @Get('by-provider-id/:identityProviderId')

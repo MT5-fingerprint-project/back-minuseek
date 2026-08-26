@@ -27,6 +27,7 @@ import {
   InvalidOrganizationSlugError,
   OrganizationAlreadyExistsError,
   OrganizationNotFoundError,
+  OrganizationUserConflictError,
 } from '../../application/organization.errors';
 import { ListOrganizationsHandler } from '../../application/queries/list-organizations/list-organizations.handler';
 import { ListOrganizationUsersQuery } from '../../application/queries/list-organization-users/list-organization-users.query';
@@ -122,6 +123,9 @@ export class OrganizationController {
           dto.email,
           dto.firstName,
           dto.lastName,
+          dto.role,
+          dto.grade,
+          dto.serviceNumber,
         ),
       );
     } catch (error) {
@@ -148,7 +152,10 @@ export class OrganizationController {
     if (error instanceof InvalidOrganizationSlugError) {
       throw new BadRequestException(error.message);
     }
-    if (error instanceof OrganizationAlreadyExistsError) {
+    if (
+      error instanceof OrganizationAlreadyExistsError ||
+      error instanceof OrganizationUserConflictError
+    ) {
       throw new ConflictException(error.message);
     }
     if (error instanceof OrganizationNotFoundError) {
