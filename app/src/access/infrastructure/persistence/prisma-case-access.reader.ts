@@ -11,12 +11,24 @@ import type {
 export class PrismaCaseAccessReader implements CaseAccessReader {
   constructor(private readonly tenantConnection: TenantConnectionService) {}
 
-  findTitle(): Promise<CaseTitle | null> {
-    return Promise.resolve(null);
+  /** Seul le titre d'opérateur se lit aujourd'hui : la mission de vérification,
+   * et donc `CASE_VERIFIER`, arrive avec L8-1. */
+  async findTitle(userId: string, caseId: string): Promise<CaseTitle | null> {
+    const prisma = await this.tenantConnection.getCurrentClient();
+    const ownCase = await prisma.investigationCase.findFirst({
+      where: { id: caseId, operatorUserId: userId },
+      select: { id: true },
+    });
+    return ownCase ? 'CASE_OPERATOR' : null;
   }
 
-  findCaseIdsOf(): Promise<string[]> {
-    return Promise.resolve([]);
+  async findCaseIdsOf(userId: string): Promise<string[]> {
+    const prisma = await this.tenantConnection.getCurrentClient();
+    const ownCases = await prisma.investigationCase.findMany({
+      where: { operatorUserId: userId },
+      select: { id: true },
+    });
+    return ownCases.map((ownCase) => ownCase.id);
   }
 
   async findCaseIdOfResource(
