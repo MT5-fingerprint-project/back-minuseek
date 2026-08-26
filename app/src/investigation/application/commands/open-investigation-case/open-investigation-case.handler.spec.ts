@@ -9,6 +9,8 @@ import { InvestigationCaseStatusEnum } from '../../../domain/investigation-case/
 import { CaseNumberAlreadyExistsError } from '../../../domain/investigation-case/errors/case-number-already-exists.error';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
 
+const MARIE = 'user-marie';
+
 describe('OpenInvestigationCaseHandler', () => {
   let handler: OpenInvestigationCaseHandler;
   let repo: InMemoryInvestigationCaseRepository;
@@ -24,14 +26,24 @@ describe('OpenInvestigationCaseHandler', () => {
 
   it("retourne l'id généré", async () => {
     const id = await handler.execute(
-      new OpenInvestigationCaseCommand(EXPERT_ACTOR, 'AFF-001', 'PV-2024-001'),
+      new OpenInvestigationCaseCommand(
+        EXPERT_ACTOR,
+        MARIE,
+        'AFF-001',
+        'PV-2024-001',
+      ),
     );
     expect(id).toBe('test-uuid');
   });
 
   it('persiste le case dans le repository', async () => {
     const id = await handler.execute(
-      new OpenInvestigationCaseCommand(EXPERT_ACTOR, 'AFF-001', 'PV-2024-001'),
+      new OpenInvestigationCaseCommand(
+        EXPERT_ACTOR,
+        MARIE,
+        'AFF-001',
+        'PV-2024-001',
+      ),
     );
     const saved = repo.store.get(id);
     expect(saved).not.toBeNull();
@@ -40,7 +52,12 @@ describe('OpenInvestigationCaseHandler', () => {
 
   it('le case créé a le status OPEN', async () => {
     const id = await handler.execute(
-      new OpenInvestigationCaseCommand(EXPERT_ACTOR, 'AFF-001', 'PV-2024-001'),
+      new OpenInvestigationCaseCommand(
+        EXPERT_ACTOR,
+        MARIE,
+        'AFF-001',
+        'PV-2024-001',
+      ),
     );
     const saved = repo.store.get(id);
     expect(saved!.status).toBe(InvestigationCaseStatusEnum.OPEN);
@@ -50,6 +67,7 @@ describe('OpenInvestigationCaseHandler', () => {
     const id = await handler.execute(
       new OpenInvestigationCaseCommand(
         EXPERT_ACTOR,
+        MARIE,
         'AFF-001',
         'PV-2024-001',
         'Cambriolage rue des Lilas',
@@ -65,18 +83,25 @@ describe('OpenInvestigationCaseHandler', () => {
     expect(event.payload).toEqual({
       caseNumber: 'AFF-001',
       pvNumber: 'PV-2024-001',
+      operatorUserId: MARIE,
     });
   });
 
   it("n'écrit aucun événement quand le numéro de dossier est déjà pris", async () => {
     await handler.execute(
-      new OpenInvestigationCaseCommand(EXPERT_ACTOR, 'AFF-001', 'PV-2024-001'),
+      new OpenInvestigationCaseCommand(
+        EXPERT_ACTOR,
+        MARIE,
+        'AFF-001',
+        'PV-2024-001',
+      ),
     );
 
     await expect(
       handler.execute(
         new OpenInvestigationCaseCommand(
           EXPERT_ACTOR,
+          MARIE,
           'AFF-001',
           'PV-2024-002',
         ),
@@ -87,16 +112,35 @@ describe('OpenInvestigationCaseHandler', () => {
 
   it('lève CaseNumberAlreadyExistsError si caseNumber déjà utilisé', async () => {
     await handler.execute(
-      new OpenInvestigationCaseCommand(EXPERT_ACTOR, 'AFF-001', 'PV-2024-001'),
+      new OpenInvestigationCaseCommand(
+        EXPERT_ACTOR,
+        MARIE,
+        'AFF-001',
+        'PV-2024-001',
+      ),
     );
     await expect(
       handler.execute(
         new OpenInvestigationCaseCommand(
           EXPERT_ACTOR,
+          MARIE,
           'AFF-001',
           'PV-2024-002',
         ),
       ),
     ).rejects.toThrow(CaseNumberAlreadyExistsError);
+  });
+
+  it("fait de l'auteur de l'ouverture l'opérateur du dossier", async () => {
+    const id = await handler.execute(
+      new OpenInvestigationCaseCommand(
+        EXPERT_ACTOR,
+        MARIE,
+        'AFF-001',
+        'PV-2024-001',
+      ),
+    );
+
+    expect(repo.store.get(id)!.operatorUserId).toBe(MARIE);
   });
 });

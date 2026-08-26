@@ -21,6 +21,11 @@ import { InvestigationCaseReadModel } from '../../application/queries/list-inves
 import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
 import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
 import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapper';
+import { CurrentServiceUser } from '../../../identity-access/infrastructure/http/current-service-user.decorator';
+import { UserReadModel } from '../../../identity-access/application/queries/get-user-by-provider-id/user-read-model';
+
+const NO_SERVICE_ACCOUNT_MESSAGE =
+  "Aucun compte de service n'est rattaché à ce jeton";
 
 @ApiTags('investigation-cases')
 @Controller('investigation-cases')
@@ -33,11 +38,19 @@ export class InvestigationController {
   @Post()
   @ApiOperation({ summary: 'Ouvrir une nouvelle affaire' })
   @ApiResponse({ status: 201, description: 'affaire créé' })
+  @ApiResponse({
+    status: 404,
+    description: "Le jeton n'a pas de compte dans ce service",
+  })
   @ApiResponse({ status: 409, description: "Numéro d'affaire déjà existant" })
   async open(
     @Body() dto: OpenInvestigationCaseDto,
     @CurrentUser() user: AuthenticatedUser,
+    @CurrentServiceUser() author?: UserReadModel,
   ) {
+    // todo renommer service en unit  pour eviter confusion avec un service technique (NestJS) et un service métier (unité de police)
+    if (!author) throw new NotFoundException(NO_SERVICE_ACCOUNT_MESSAGE);
+
     try {
       const id = await this.commandBus.execute<
         OpenInvestigationCaseCommand,
@@ -45,6 +58,7 @@ export class InvestigationController {
       >(
         new OpenInvestigationCaseCommand(
           toAuditActor(user),
+          author.id,
           dto.caseNumber,
           dto.pvNumber,
           dto.description,

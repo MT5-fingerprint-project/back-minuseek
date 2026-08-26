@@ -36,6 +36,7 @@ export class OpenInvestigationCaseHandler implements ICommandHandler<
       caseNumber: cmd.caseNumber,
       pvNumber: cmd.pvNumber,
       description: cmd.description,
+      operatorUserId: cmd.operatorUserId,
     });
     await this.repo.save(newCase, {
       eventType: AuditEventTypeEnum.CASE_OPENED,
@@ -45,6 +46,7 @@ export class OpenInvestigationCaseHandler implements ICommandHandler<
       payload: {
         caseNumber: cmd.caseNumber,
         pvNumber: cmd.pvNumber,
+        operatorUserId: cmd.operatorUserId,
       },
     });
     return id;
