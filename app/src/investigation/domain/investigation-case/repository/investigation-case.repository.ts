@@ -3,6 +3,7 @@ import { InvestigationCase } from '../entity/investigation-case';
 
 export interface InvestigationCaseRepository {
   save(c: InvestigationCase, act: AuditEventDraft): Promise<void>;
+  findById(id: string): Promise<InvestigationCase | null>;
   existsByCaseNumber(caseNumber: string): Promise<boolean>;
 }
 

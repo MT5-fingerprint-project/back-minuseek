@@ -33,16 +33,24 @@ export class PrismaInvestigationCaseRepository implements InvestigationCaseRepos
           pvNumber: c.pvNumber,
           description: c.description,
           status: c.status,
+          operatorUserId: c.operatorUserId,
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
         },
         update: {
           status: c.status,
+          operatorUserId: c.operatorUserId,
           updatedAt: c.updatedAt,
         },
       });
       await this.auditTrail.append(act);
     });
+  }
+
+  async findById(id: string): Promise<InvestigationCase | null> {
+    const prisma = await this.tenantConnection.getCurrentClient();
+    const row = await prisma.investigationCase.findUnique({ where: { id } });
+    return row ? InvestigationCase.reconstitute(row) : null;
   }
 
   async existsByCaseNumber(caseNumber: string): Promise<boolean> {

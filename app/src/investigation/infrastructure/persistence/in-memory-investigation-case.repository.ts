@@ -22,6 +22,10 @@ export class InMemoryInvestigationCaseRepository implements InvestigationCaseRep
     await this.auditTrail.append(act);
   }
 
+  findById(id: string): Promise<InvestigationCase | null> {
+    return Promise.resolve(this.store.get(id) ?? null);
+  }
+
   existsByCaseNumber(caseNumber: string): Promise<boolean> {
     for (const c of this.store.values()) {
       if (c.caseNumber === caseNumber) return Promise.resolve(true);

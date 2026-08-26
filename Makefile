@@ -18,7 +18,7 @@ INTEGRATION_DB_PORT ?= 5433
 INTEGRATION_DATABASE_URL ?= postgresql://$(DB_USER):$(DB_PASSWORD)@localhost:$(INTEGRATION_DB_PORT)/$(INTEGRATION_DB_NAME)
 COMPOSE_TEST = $(COMPOSE) --profile test
 
-.PHONY: setup-dev bootstrap wait-postgres keycloak-relax-ssl network dev dev-build up-watch down reset db exec install keycloak-setup system-realm provision migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all test test-watch test-integration test-integration-down logs
+.PHONY: setup-dev bootstrap wait-postgres keycloak-relax-ssl network dev dev-build up-watch down reset db exec install keycloak-setup system-realm provision seed-demo-users migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all test test-watch test-integration test-integration-down logs
 
 ## Setup local complet : install + stack + bootstrap + hot-reload. Rejouable sans danger. Ou a faire apres un reset de la DB. (make setup-dev)
 setup-dev:
@@ -44,6 +44,7 @@ bootstrap:
 	$(MAKE) keycloak-setup
 	$(MAKE) system-realm
 	$(MAKE) provision SLUG=tenant-demo NAME="Tenant démo"
+	$(MAKE) seed-demo-users SLUG=tenant-demo
 
 wait-postgres:
 	@echo "⏳ attente de PostgreSQL local…"
@@ -112,6 +113,10 @@ system-realm:
 ## Provisionne une organisation via la vraie saga SUP-03 (make provision SLUG=demo2 NAME="Labo 2")
 provision:
 	$(COMPOSE) run --rm app pnpm ts-node src/organization/infrastructure/cli/create-organization.cli.ts $(SLUG) "$(NAME)"
+
+##ajoute un responsable et trois utilisateurs de démo à l'organisation (make seed-demo-users SLUG=demo2) mdp=identifiant
+seed-demo-users:
+	$(COMPOSE) run --rm app pnpm ts-node src/organization/infrastructure/cli/seed-demo-users.cli.ts $(SLUG)
 
 ## Vérifie l'intégrité des chaînes d'audit (tous les tenants, ou make audit-verify TENANT=demo)
 ## Sort en code 1 dès qu'une chaîne est rompue
