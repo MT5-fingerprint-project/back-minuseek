@@ -12,9 +12,10 @@ import { INVESTIGATION_CASE_REPOSITORY } from './domain/investigation-case/repos
 import { INVESTIGATION_CASE_READER } from './application/queries/list-investigation-cases/investigation-case.reader';
 import { SERVICE_USER_DIRECTORY } from './application/ports/service-user.directory';
 import { AuditTrailModule } from '../audit-trail/audit-trail.module';
+import { AccessModule } from '../access/access.module';
 
 @Module({
-  imports: [CqrsModule, AuditTrailModule],
+  imports: [CqrsModule, AuditTrailModule, AccessModule],
   controllers: [InvestigationController],
   providers: [
     OpenInvestigationCaseHandler,

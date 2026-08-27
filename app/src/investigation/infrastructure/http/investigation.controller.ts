@@ -35,9 +35,20 @@ import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapp
 import { CurrentServiceUser } from '../../../identity-access/infrastructure/http/current-service-user.decorator';
 import { UserReadModel } from '../../../identity-access/application/queries/get-user-by-provider-id/user-read-model';
 import { UserRoleEnum } from '../../../identity-access/domain/user/value-objects/user-role.vo';
+import type { CaseRequester } from '../../../access/application/case-access.service';
+import {
+  CaseScoped,
+  CaseScopedList,
+  NoCaseScope,
+} from '../../../access/infrastructure/http/case-scope.decorator';
 
 const NO_SERVICE_ACCOUNT_MESSAGE =
   "Aucun compte de service n'est rattaché à ce jeton";
+
+/** Un jeton sans compte dans le service ne voit aucune affaire — il n'en voit
+ * surtout pas la totalité. */
+const caseRequesterOf = (user?: UserReadModel): CaseRequester | null =>
+  user ? { id: user.id, role: user.role as UserRoleEnum } : null;
 
 @ApiTags('investigation-cases')
 @Controller('investigation-cases')
@@ -48,6 +59,7 @@ export class InvestigationController {
   ) {}
 
   @Post()
+  @NoCaseScope("création : l'affaire n'existe pas encore")
   @ApiOperation({ summary: 'Ouvrir une nouvelle affaire' })
   @ApiResponse({ status: 201, description: 'affaire créé' })
   @ApiResponse({
@@ -85,6 +97,7 @@ export class InvestigationController {
   }
 
   @Get()
+  @CaseScopedList()
   @ApiOperation({ summary: 'lister les affaires' })
   @ApiResponse({ status: 200, description: 'Liste paginée des affaires' })
   @ApiResponse({
@@ -92,13 +105,22 @@ export class InvestigationController {
     description:
       'Paramètres invalides (statut inconnu, page ou limit hors bornes)',
   })
-  list(@Query() dto: ListInvestigationCasesDto) {
+  list(
+    @Query() dto: ListInvestigationCasesDto,
+    @CurrentServiceUser() requester?: UserReadModel,
+  ) {
     return this.queryBus.execute(
-      new ListInvestigationCasesQuery(dto.status, dto.page, dto.limit),
+      new ListInvestigationCasesQuery(
+        dto.status,
+        dto.page,
+        dto.limit,
+        caseRequesterOf(requester),
+      ),
     );
   }
 
   @Get(':id')
+  @CaseScoped()
   @ApiOperation({ summary: "Récupérer le détail d'une affaire" })
   @ApiResponse({ status: 200, description: "Détail de l'affaire" })
   @ApiResponse({ status: 404, description: 'Affaire non trouvée' })
@@ -116,6 +138,7 @@ export class InvestigationController {
   }
 
   @Patch(':id/operator')
+  @CaseScoped()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: "Confier l'affaire à un autre opérateur" })
   @ApiResponse({ status: 204, description: 'Affaire confiée' })
