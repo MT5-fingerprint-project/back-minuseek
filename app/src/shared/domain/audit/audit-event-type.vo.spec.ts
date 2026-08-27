@@ -27,6 +27,7 @@ const FROZEN_CATALOGUE = [
   'HIT_REMOVED',
   'REPORT_GENERATED',
   'CHAIN_ANCHORED',
+  'SERVICE_HEADER_SAVED',
 ];
 
 describe('AuditEventType', () => {
