@@ -12,6 +12,7 @@ const MARIE: UserReadModel = {
   role: 'OPERATOR',
   grade: 'Technicien',
   serviceNumber: 'PTS-0007',
+  status: 'ACTIVE',
   firstName: 'Marie',
   lastName: 'Curie',
   createdAt: new Date('2026-01-01'),

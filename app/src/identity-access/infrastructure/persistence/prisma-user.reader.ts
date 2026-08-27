@@ -23,6 +23,7 @@ export class PrismaUserReader implements UserReader {
       role: row.role,
       grade: row.grade,
       serviceNumber: row.serviceNumber,
+      status: row.status,
       firstName: row.personalData.firstName,
       lastName: row.personalData.lastName,
       createdAt: row.createdAt,

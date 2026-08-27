@@ -3,6 +3,7 @@ import { ListUsersQuery } from './list-users.query';
 import { ServiceUserReadModel } from './service-user-read-model';
 import { InMemoryServiceUsersReader } from '../../../infrastructure/persistence/in-memory-service-users.reader';
 import { UserRoleEnum } from '../../../domain/user/value-objects/user-role.vo';
+import { UserStatusEnum } from '../../../domain/user/value-objects/user-status.vo';
 
 const makeUser = (
   overrides: Partial<ServiceUserReadModel> = {},
@@ -13,6 +14,7 @@ const makeUser = (
   role: UserRoleEnum.OPERATOR,
   grade: 'Technicien',
   serviceNumber: 'PTS-0007',
+  status: UserStatusEnum.ACTIVE,
   ...overrides,
 });
 
@@ -61,9 +63,48 @@ describe('ListUsersHandler', () => {
         role: UserRoleEnum.ADMIN,
         grade: 'Commandant',
         serviceNumber: 'PTS-0001',
+        status: UserStatusEnum.ACTIVE,
       },
     ]);
     expect(page.meta.itemCount).toBe(1);
+  });
+
+  it('garde les comptes désactivés dans la liste, avec leur état', async () => {
+    reader.store.push(
+      makeUser({
+        id: 'user-1',
+        lastName: 'Curie',
+        status: UserStatusEnum.ACTIVE,
+      }),
+    );
+    reader.store.push(
+      makeUser({
+        id: 'user-2',
+        lastName: 'Durand',
+        status: UserStatusEnum.DISABLED,
+      }),
+    );
+
+    const page = await handler.execute(new ListUsersQuery());
+
+    expect(page.data.map((user) => user.status)).toEqual([
+      UserStatusEnum.ACTIVE,
+      UserStatusEnum.DISABLED,
+    ]);
+    expect(page.meta.itemCount).toBe(2);
+  });
+
+  it('rend une page entièrement désactivée sans la vider', async () => {
+    reader.store.push(
+      makeUser({ id: 'user-1', status: UserStatusEnum.DISABLED }),
+    );
+    reader.store.push(
+      makeUser({ id: 'user-2', status: UserStatusEnum.DISABLED }),
+    );
+
+    const page = await handler.execute(new ListUsersQuery());
+
+    expect(page.data).toHaveLength(2);
   });
 
   it('trie par nom puis prénom', async () => {
@@ -84,7 +125,12 @@ describe('ListUsersHandler', () => {
 
   it('départage deux homonymes par identifiant pour que la pagination soit stable', async () => {
     reader.store.push(
-      makeUser({ id: 'user-2', lastName: 'Durand', firstName: 'Jean' }),
+      makeUser({
+        id: 'user-2',
+        lastName: 'Durand',
+        firstName: 'Jean',
+        status: UserStatusEnum.DISABLED,
+      }),
     );
     reader.store.push(
       makeUser({ id: 'user-1', lastName: 'Durand', firstName: 'Jean' }),

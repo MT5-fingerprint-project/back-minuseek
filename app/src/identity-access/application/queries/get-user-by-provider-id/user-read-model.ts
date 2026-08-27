@@ -4,6 +4,7 @@ export interface UserReadModel {
   role: string;
   grade: string;
   serviceNumber: string;
+  status: string;
   firstName: string;
   lastName: string;
   createdAt: Date;
