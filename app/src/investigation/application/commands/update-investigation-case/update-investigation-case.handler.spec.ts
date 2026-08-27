@@ -1,0 +1,373 @@
+import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
+import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
+import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
+import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
+import { UserRoleEnum } from '../../../../identity-access/domain/user/value-objects/user-role.vo';
+import { InvestigationCase } from '../../../domain/investigation-case/entity/investigation-case';
+import { CaseClosedError } from '../../../domain/investigation-case/errors/case-closed.error';
+import { CaseNotFoundError } from '../../../domain/investigation-case/errors/case-not-found.error';
+import { DisabledOperatorError } from '../../../domain/investigation-case/errors/disabled-operator.error';
+import { OperatorChangeNotAllowedError } from '../../../domain/investigation-case/errors/operator-change-not-allowed.error';
+import { UnknownOperatorError } from '../../../domain/investigation-case/errors/unknown-operator.error';
+import { InvestigationCaseStatusEnum } from '../../../domain/investigation-case/value-objects/investigation-case-status.vo';
+import { InMemoryInvestigationCaseRepository } from '../../../infrastructure/persistence/in-memory-investigation-case.repository';
+import { InMemoryServiceUserDirectory } from '../../../infrastructure/persistence/in-memory-service-user.directory';
+import {
+  CaseUpdate,
+  CaseUpdateRequester,
+  UpdateInvestigationCaseCommand,
+} from './update-investigation-case.command';
+import { UpdateInvestigationCaseHandler } from './update-investigation-case.handler';
+
+const CASE_ID = 'case-1';
+const MARIE = 'user-marie';
+const PIERRE = 'user-pierre';
+const CHEF = 'user-chef';
+const PARTI = 'user-parti';
+const PV = 'PV-2024-001';
+
+const COMPTES_DU_SERVICE = [
+  { id: MARIE, disabled: false, firstName: 'Marie', lastName: 'Curie' },
+  { id: PIERRE, disabled: false, firstName: 'Pierre', lastName: 'Martin' },
+  { id: CHEF, disabled: false, firstName: 'Solène', lastName: 'Roy' },
+  { id: PARTI, disabled: true, firstName: 'Luc', lastName: 'Bonnet' },
+];
+
+const operator = (id: string) => ({ id, role: UserRoleEnum.OPERATOR });
+const serviceManager = (id: string) => ({ id, role: UserRoleEnum.ADMIN });
+
+describe('UpdateInvestigationCaseHandler', () => {
+  let handler: UpdateInvestigationCaseHandler;
+  let repo: InMemoryInvestigationCaseRepository;
+  let directory: InMemoryServiceUserDirectory;
+  let auditTrail: InMemoryAuditTrailAppender;
+
+  function seedCase(status = InvestigationCaseStatusEnum.OPEN) {
+    repo.store.clear();
+    repo.seed(
+      InvestigationCase.reconstitute({
+        id: CASE_ID,
+        caseNumber: 'AFF-001',
+        pvNumber: PV,
+        description: 'Vol à main armée',
+        status,
+        operatorUserId: MARIE,
+        createdAt: new Date('2026-01-01T10:00:00Z'),
+        updatedAt: new Date('2026-01-01T10:00:00Z'),
+      }),
+    );
+  }
+
+  const update = (
+    changes: CaseUpdate,
+    requester: CaseUpdateRequester = operator(MARIE),
+    caseId = CASE_ID,
+  ) =>
+    new UpdateInvestigationCaseCommand(
+      EXPERT_ACTOR,
+      requester,
+      caseId,
+      changes,
+    );
+
+  const stored = () => repo.store.get(CASE_ID)!;
+
+  beforeEach(() => {
+    auditTrail = new InMemoryAuditTrailAppender();
+    repo = new InMemoryInvestigationCaseRepository(auditTrail);
+    directory = new InMemoryServiceUserDirectory(COMPTES_DU_SERVICE);
+    handler = new UpdateInvestigationCaseHandler(repo, directory);
+    seedCase();
+  });
+
+  describe('les informations du dossier', () => {
+    it('corrige le numéro de procès-verbal sans toucher au reste', async () => {
+      await handler.execute(update({ pvNumber: 'PV-2026-118' }));
+
+      expect(stored().pvNumber).toBe('PV-2026-118');
+      expect(stored().description).toBe('Vol à main armée');
+      expect(stored().operatorUserId).toBe(MARIE);
+    });
+
+    it('corrige la description sans toucher au numéro de procès-verbal', async () => {
+      await handler.execute(update({ description: 'Vol avec effraction' }));
+
+      expect(stored().description).toBe('Vol avec effraction');
+      expect(stored().pvNumber).toBe(PV);
+    });
+
+    it('vide une description envoyée à null', async () => {
+      await handler.execute(update({ description: null }));
+
+      expect(stored().description).toBeUndefined();
+    });
+
+    it("distingue le champ vidé du champ non envoyé : l'acte ne porte que ce qui a été envoyé", async () => {
+      await handler.execute(update({ description: null, pvNumber: undefined }));
+
+      expect(auditTrail.events[0].payload).toStrictEqual({
+        changes: { description: null },
+      });
+    });
+
+    it('chaîne un CASE_UPDATED qui porte les champs envoyés et leurs valeurs', async () => {
+      await handler.execute(
+        update({ pvNumber: 'PV-2026-118', description: 'Vol avec effraction' }),
+      );
+
+      expect(auditTrail.events).toHaveLength(1);
+      const [event] = auditTrail.events;
+      expect(event.eventType).toBe(AuditEventTypeEnum.CASE_UPDATED);
+      expect(event.evidenceClass).toBe(EvidenceClassEnum.OBSERVED);
+      expect(event.actor).toEqual(EXPERT_ACTOR.toPrimitives());
+      expect(event.caseId).toBe(CASE_ID);
+      expect(event.payload).toStrictEqual({
+        changes: {
+          pvNumber: 'PV-2026-118',
+          description: 'Vol avec effraction',
+        },
+      });
+    });
+
+    it("ne touche pas au dépôt quand l'appel ne porte aucun champ", async () => {
+      const save = jest.spyOn(repo, 'save');
+
+      await handler.execute(update({}));
+
+      expect(save).not.toHaveBeenCalled();
+      expect(auditTrail.events).toHaveLength(0);
+      expect(stored().pvNumber).toBe(PV);
+    });
+
+    it('garde les corrections successives, sans en perdre une au passage', async () => {
+      await handler.execute(update({ pvNumber: 'PV-2026-118' }));
+      await handler.execute(update({ description: 'Vol avec effraction' }));
+
+      expect(stored().pvNumber).toBe('PV-2026-118');
+      expect(stored().description).toBe('Vol avec effraction');
+      expect(auditTrail.events).toHaveLength(2);
+    });
+
+    it("laisse un vérificateur corriger le numéro de procès-verbal du dossier qu'il contrôle", async () => {
+      await handler.execute(
+        update({ pvNumber: 'PV-2026-118' }, operator(PIERRE)),
+      );
+
+      expect(stored().pvNumber).toBe('PV-2026-118');
+      expect(auditTrail.events).toHaveLength(1);
+    });
+  });
+
+  describe("l'opérateur du dossier", () => {
+    it("confie le dossier au collègue désigné par l'opérateur en place", async () => {
+      await handler.execute(update({ operatorUserId: PIERRE }));
+
+      expect(stored().operatorUserId).toBe(PIERRE);
+    });
+
+    it('laisse le responsable de service confier un dossier dont il n’est pas l’opérateur', async () => {
+      await handler.execute(
+        update({ operatorUserId: PIERRE }, serviceManager(CHEF)),
+      );
+
+      expect(stored().operatorUserId).toBe(PIERRE);
+    });
+
+    it('accepte de confier le dossier à un responsable de service', async () => {
+      await handler.execute(update({ operatorUserId: CHEF }));
+
+      expect(stored().operatorUserId).toBe(CHEF);
+    });
+
+    it('chaîne un CASE_OPERATOR_CHANGED qui nomme les deux comptes', async () => {
+      await handler.execute(update({ operatorUserId: PIERRE }));
+
+      expect(auditTrail.events).toHaveLength(1);
+      const [event] = auditTrail.events;
+      expect(event.eventType).toBe(AuditEventTypeEnum.CASE_OPERATOR_CHANGED);
+      expect(event.evidenceClass).toBe(EvidenceClassEnum.OBSERVED);
+      expect(event.actor).toEqual(EXPERT_ACTOR.toPrimitives());
+      expect(event.caseId).toBe(CASE_ID);
+      expect(event.payload).toStrictEqual({
+        previousOperatorUserId: MARIE,
+        previousOperatorName: 'Marie Curie',
+        newOperatorUserId: PIERRE,
+        newOperatorName: 'Pierre Martin',
+      });
+    });
+
+    it("n'invente pas de précédent quand le dossier n'avait pas d'opérateur", async () => {
+      repo.store.clear();
+      repo.seed(
+        InvestigationCase.reconstitute({
+          id: CASE_ID,
+          caseNumber: 'AFF-001',
+          pvNumber: PV,
+          description: null,
+          status: InvestigationCaseStatusEnum.OPEN,
+          operatorUserId: null,
+          createdAt: new Date('2026-01-01T10:00:00Z'),
+          updatedAt: new Date('2026-01-01T10:00:00Z'),
+        }),
+      );
+
+      await handler.execute(
+        update({ operatorUserId: PIERRE }, serviceManager(CHEF)),
+      );
+
+      expect(auditTrail.events[0].payload).toStrictEqual({
+        previousOperatorUserId: null,
+        previousOperatorName: null,
+        newOperatorUserId: PIERRE,
+        newOperatorName: 'Pierre Martin',
+      });
+    });
+
+    it("garde l'identifiant du précédent quand l'annuaire ne le connaît plus", async () => {
+      repo.store.clear();
+      repo.seed(
+        InvestigationCase.reconstitute({
+          id: CASE_ID,
+          caseNumber: 'AFF-001',
+          pvNumber: PV,
+          description: null,
+          status: InvestigationCaseStatusEnum.OPEN,
+          operatorUserId: 'user-efface',
+          createdAt: new Date('2026-01-01T10:00:00Z'),
+          updatedAt: new Date('2026-01-01T10:00:00Z'),
+        }),
+      );
+
+      await handler.execute(
+        update({ operatorUserId: PIERRE }, serviceManager(CHEF)),
+      );
+
+      expect(auditTrail.events[0].payload).toStrictEqual({
+        previousOperatorUserId: 'user-efface',
+        previousOperatorName: null,
+        newOperatorUserId: PIERRE,
+        newOperatorName: 'Pierre Martin',
+      });
+    });
+
+    it('oppose à un vérificateur le refus d’autorisation avant même de lire l’annuaire', async () => {
+      const findById = jest.spyOn(directory, 'findById');
+
+      await expect(
+        handler.execute(update({ operatorUserId: PARTI }, operator(PIERRE))),
+      ).rejects.toThrow(OperatorChangeNotAllowedError);
+      expect(findById).not.toHaveBeenCalled();
+    });
+
+    it('distingue un compte désactivé d’un compte inconnu', async () => {
+      await expect(
+        handler.execute(update({ operatorUserId: PARTI })),
+      ).rejects.toThrow(/désactivé/);
+    });
+
+    it('ne chaîne aucun acte sur deux refus d’affilée', async () => {
+      const refusé = () => handler.execute(update({ operatorUserId: PARTI }));
+
+      await expect(refusé()).rejects.toThrow(DisabledOperatorError);
+      await expect(refusé()).rejects.toThrow(DisabledOperatorError);
+
+      expect(auditTrail.events).toHaveLength(0);
+    });
+  });
+
+  describe("l'appel vaut pour un tout", () => {
+    it('inscrit les deux actes du même appel, la correction avant la passation', async () => {
+      const save = jest.spyOn(repo, 'save');
+
+      await handler.execute(
+        update({ pvNumber: 'PV-2026-118', operatorUserId: PIERRE }),
+      );
+
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(auditTrail.events.map((event) => event.eventType)).toEqual([
+        AuditEventTypeEnum.CASE_UPDATED,
+        AuditEventTypeEnum.CASE_OPERATOR_CHANGED,
+      ]);
+      expect(auditTrail.events[0].payload).toStrictEqual({
+        changes: { pvNumber: 'PV-2026-118' },
+      });
+      expect(stored().pvNumber).toBe('PV-2026-118');
+      expect(stored().operatorUserId).toBe(PIERRE);
+    });
+
+    it.each([
+      [
+        'un opérateur qui n’existe pas',
+        operator(MARIE),
+        'user-fantome',
+        UnknownOperatorError,
+      ],
+      ['un opérateur désactivé', operator(MARIE), PARTI, DisabledOperatorError],
+      [
+        'un demandeur qui n’a pas le droit de confier',
+        operator(PIERRE),
+        CHEF,
+        OperatorChangeNotAllowedError,
+      ],
+    ])(
+      'refuse en entier l’appel que %s emporte, sans écrire la correction jointe',
+      async (_refus, requester, operatorUserId, expectedError) => {
+        await expect(
+          handler.execute(
+            update({ pvNumber: 'PV-2026-118', operatorUserId }, requester),
+          ),
+        ).rejects.toThrow(expectedError);
+
+        expect(auditTrail.events).toHaveLength(0);
+        expect(stored().pvNumber).toBe(PV);
+        expect(stored().operatorUserId).toBe(MARIE);
+      },
+    );
+
+    it.each([
+      [
+        "une affaire qui n'existe pas",
+        InvestigationCaseStatusEnum.OPEN,
+        () =>
+          update({ pvNumber: 'PV-2026-118' }, operator(MARIE), 'case-fantome'),
+        CaseNotFoundError,
+      ],
+      [
+        'une affaire close',
+        InvestigationCaseStatusEnum.CLOSED,
+        () => update({ pvNumber: 'PV-2026-118' }),
+        CaseClosedError,
+      ],
+      [
+        'une affaire close qu’on tente aussi de confier',
+        InvestigationCaseStatusEnum.CLOSED,
+        () => update({ pvNumber: 'PV-2026-118', operatorUserId: PIERRE }),
+        CaseClosedError,
+      ],
+      [
+        'une affaire close qu’on tente seulement de confier',
+        InvestigationCaseStatusEnum.CLOSED,
+        () => update({ operatorUserId: PIERRE }),
+        CaseClosedError,
+      ],
+      [
+        'une affaire close que confie un compte non autorisé — la clôture prime sur l’autorisation',
+        InvestigationCaseStatusEnum.CLOSED,
+        () => update({ operatorUserId: PIERRE }, operator(PIERRE)),
+        CaseClosedError,
+      ],
+    ])(
+      'refuse %s sans chaîner d’acte ni corriger quoi que ce soit',
+      async (_refus, status, command, expectedError) => {
+        seedCase(status);
+
+        await expect(handler.execute(command())).rejects.toThrow(expectedError);
+
+        expect(auditTrail.events).toHaveLength(0);
+        expect(stored().pvNumber).toBe(PV);
+        expect(stored().description).toBe('Vol à main armée');
+        expect(stored().operatorUserId).toBe(MARIE);
+      },
+    );
+  });
+});

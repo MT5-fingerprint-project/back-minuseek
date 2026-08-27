@@ -8,7 +8,7 @@ import type { CommandBus, QueryBus } from '@nestjs/cqrs';
 import type { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
 import type { UserReadModel } from '../../../identity-access/application/queries/get-user-by-provider-id/user-read-model';
 import { UserRoleEnum } from '../../../identity-access/domain/user/value-objects/user-role.vo';
-import { ChangeCaseOperatorCommand } from '../../application/commands/change-case-operator/change-case-operator.command';
+import { UpdateInvestigationCaseCommand } from '../../application/commands/update-investigation-case/update-investigation-case.command';
 import { OpenInvestigationCaseCommand } from '../../application/commands/open-investigation-case/open-investigation-case.command';
 import { CaseClosedError } from '../../domain/investigation-case/errors/case-closed.error';
 import { CaseNotFoundError } from '../../domain/investigation-case/errors/case-not-found.error';
@@ -89,23 +89,45 @@ describe("InvestigationController — ouverture d'une affaire", () => {
   });
 });
 
-describe("InvestigationController — changement d'opérateur", () => {
-  it("passe le compte de l'appelant et son rôle à la commande", async () => {
+describe("InvestigationController — modification d'une affaire", () => {
+  it("passe le compte de l'appelant, son rôle et les seuls champs envoyés", async () => {
     const { controller, dispatched } = build();
 
-    await controller.changeOperator(
+    await controller.update(
       CASE_ID,
-      { operatorUserId: PIERRE_ID },
+      { pvNumber: 'PV-2026-118', operatorUserId: PIERRE_ID },
       JETON,
       MARIE,
     );
 
-    expect(dispatched).toEqual([
-      new ChangeCaseOperatorCommand(
+    expect(dispatched).toStrictEqual([
+      new UpdateInvestigationCaseCommand(
         expect.anything() as never,
         { id: MARIE.id, role: UserRoleEnum.OPERATOR },
         CASE_ID,
-        PIERRE_ID,
+        {
+          pvNumber: 'PV-2026-118',
+          description: undefined,
+          operatorUserId: PIERRE_ID,
+        },
+      ),
+    ]);
+  });
+
+  it.each([
+    ['une description corrigée', 'Vol avec effraction'],
+    ['une description vidée', null],
+  ])('transmet %s telle quelle à la commande', async (_cas, description) => {
+    const { controller, dispatched } = build();
+
+    await controller.update(CASE_ID, { description }, JETON, MARIE);
+
+    expect(dispatched).toStrictEqual([
+      new UpdateInvestigationCaseCommand(
+        expect.anything() as never,
+        { id: MARIE.id, role: UserRoleEnum.OPERATOR },
+        CASE_ID,
+        { pvNumber: undefined, description, operatorUserId: undefined },
       ),
     ]);
   });
@@ -114,12 +136,7 @@ describe("InvestigationController — changement d'opérateur", () => {
     const { controller, dispatched } = build();
 
     await expect(
-      controller.changeOperator(
-        CASE_ID,
-        { operatorUserId: PIERRE_ID },
-        JETON,
-        undefined,
-      ),
+      controller.update(CASE_ID, { pvNumber: 'PV-2026-118' }, JETON, undefined),
     ).rejects.toThrow(NotFoundException);
     expect(dispatched).toEqual([]);
   });
@@ -134,12 +151,7 @@ describe("InvestigationController — changement d'opérateur", () => {
     const { controller } = build(domainError);
 
     await expect(
-      controller.changeOperator(
-        CASE_ID,
-        { operatorUserId: PIERRE_ID },
-        JETON,
-        MARIE,
-      ),
+      controller.update(CASE_ID, { operatorUserId: PIERRE_ID }, JETON, MARIE),
     ).rejects.toThrow(httpError);
   });
 
@@ -147,12 +159,7 @@ describe("InvestigationController — changement d'opérateur", () => {
     const { controller } = build(new Error('base injoignable'));
 
     await expect(
-      controller.changeOperator(
-        CASE_ID,
-        { operatorUserId: PIERRE_ID },
-        JETON,
-        MARIE,
-      ),
+      controller.update(CASE_ID, { pvNumber: 'PV-2026-118' }, JETON, MARIE),
     ).rejects.toThrow('base injoignable');
   });
 });

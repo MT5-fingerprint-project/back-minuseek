@@ -22,10 +22,10 @@ import { CaseNotFoundError } from '../../domain/investigation-case/errors/case-n
 import { OperatorChangeNotAllowedError } from '../../domain/investigation-case/errors/operator-change-not-allowed.error';
 import { DisabledOperatorError } from '../../domain/investigation-case/errors/disabled-operator.error';
 import { UnknownOperatorError } from '../../domain/investigation-case/errors/unknown-operator.error';
-import { ChangeCaseOperatorCommand } from '../../application/commands/change-case-operator/change-case-operator.command';
 import { OpenInvestigationCaseCommand } from '../../application/commands/open-investigation-case/open-investigation-case.command';
-import { ChangeCaseOperatorDto } from './dto/change-case-operator.dto';
+import { UpdateInvestigationCaseCommand } from '../../application/commands/update-investigation-case/update-investigation-case.command';
 import { OpenInvestigationCaseDto } from './dto/open-investigation-case.dto';
+import { UpdateInvestigationCaseDto } from './dto/update-investigation-case.dto';
 import { ListInvestigationCasesDto } from './dto/list-investigation-cases.dto';
 import { ListInvestigationCasesQuery } from '../../application/queries/list-investigation-cases/list-investigation-cases.query';
 import { GetInvestigationCaseQuery } from '../../application/queries/get-investigation-case/get-investigation-case.query';
@@ -138,37 +138,42 @@ export class InvestigationController {
     }
   }
 
-  @Patch(':id/operator')
+  @Patch(':id')
   @CaseScoped()
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: "Confier l'affaire à un autre opérateur" })
-  @ApiResponse({ status: 204, description: 'Affaire confiée' })
+  @ApiOperation({ summary: "Corriger les informations d'une affaire" })
+  @ApiResponse({ status: 204, description: 'Affaire modifiée' })
   @ApiResponse({
     status: 400,
     description:
-      "Le compte désigné n'existe pas dans ce service, ou y est désactivé",
+      "Le compte désigné comme opérateur n'existe pas dans ce service, ou y est désactivé",
   })
   @ApiResponse({
     status: 403,
-    description: "L'appelant n'est ni l'opérateur en place ni responsable",
+    description:
+      "L'appelant n'est ni l'opérateur en place ni responsable, et désigne un autre opérateur",
   })
   @ApiResponse({ status: 404, description: 'Affaire non trouvée' })
   @ApiResponse({ status: 409, description: 'Affaire close' })
-  async changeOperator(
+  async update(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: ChangeCaseOperatorDto,
+    @Body() dto: UpdateInvestigationCaseDto,
     @CurrentUser() user: AuthenticatedUser,
     @CurrentServiceUser() requester?: UserReadModel,
   ): Promise<void> {
     if (!requester) throw new NotFoundException(NO_SERVICE_ACCOUNT_MESSAGE);
 
     try {
-      await this.commandBus.execute<ChangeCaseOperatorCommand, void>(
-        new ChangeCaseOperatorCommand(
+      await this.commandBus.execute<UpdateInvestigationCaseCommand, void>(
+        new UpdateInvestigationCaseCommand(
           toAuditActor(user),
           { id: requester.id, role: requester.role as UserRoleEnum },
           id,
-          dto.operatorUserId,
+          {
+            pvNumber: dto.pvNumber,
+            description: dto.description,
+            operatorUserId: dto.operatorUserId,
+          },
         ),
       );
     } catch (e) {

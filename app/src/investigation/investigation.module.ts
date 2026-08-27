@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { InvestigationController } from './infrastructure/http/investigation.controller';
-import { ChangeCaseOperatorHandler } from './application/commands/change-case-operator/change-case-operator.handler';
 import { OpenInvestigationCaseHandler } from './application/commands/open-investigation-case/open-investigation-case.handler';
+import { UpdateInvestigationCaseHandler } from './application/commands/update-investigation-case/update-investigation-case.handler';
 import { ListInvestigationCasesHandler } from './application/queries/list-investigation-cases/list-investigation-cases.handler';
 import { GetInvestigationCaseHandler } from './application/queries/get-investigation-case/get-investigation-case.handler';
 import { PrismaInvestigationCaseRepository } from './infrastructure/persistence/prisma-investigation-case.repository';
@@ -19,7 +19,7 @@ import { AccessModule } from '../access/access.module';
   controllers: [InvestigationController],
   providers: [
     OpenInvestigationCaseHandler,
-    ChangeCaseOperatorHandler,
+    UpdateInvestigationCaseHandler,
     ListInvestigationCasesHandler,
     GetInvestigationCaseHandler,
     {
