@@ -11,6 +11,7 @@ const MARIE: ServiceUserReadModel = {
   role: 'OPERATOR',
   grade: 'Technicien',
   serviceNumber: 'PTS-0007',
+  status: 'ACTIVE',
 };
 
 function build() {

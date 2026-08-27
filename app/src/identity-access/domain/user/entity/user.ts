@@ -1,5 +1,7 @@
 import { UserRole } from '../value-objects/user-role.vo';
+import { UserStatus } from '../value-objects/user-status.vo';
 import { PersonalData } from '../value-objects/personal-data.vo';
+import { InvalidUserProfileError } from '../errors/invalid-user-profile.error';
 
 interface RegisterUserProps {
   id: string;
@@ -16,10 +18,19 @@ export interface UserPrimitives {
   role: string;
   grade: string;
   serviceNumber: string;
+  status: string;
   firstName: string;
   lastName: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export function requireFilled(value: string, field: string): string {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    throw new InvalidUserProfileError(field);
+  }
+  return trimmed;
 }
 
 export class User {
@@ -27,11 +38,12 @@ export class User {
     private readonly _id: string,
     private readonly _identityProviderId: string,
     private readonly _role: UserRole,
-    private readonly _grade: string,
-    private readonly _serviceNumber: string,
-    private readonly _personalData: PersonalData,
+    private _grade: string,
+    private _serviceNumber: string,
+    private _personalData: PersonalData,
+    private _status: UserStatus,
     private readonly _createdAt: Date,
-    private readonly _updatedAt: Date,
+    private _updatedAt: Date,
   ) {}
 
   static register(props: RegisterUserProps): User {
@@ -41,20 +53,15 @@ export class User {
     if (!props.identityProviderId) {
       throw new Error('User identityProviderId is required');
     }
-    if (!props.grade?.trim()) {
-      throw new Error('User grade is required');
-    }
-    if (!props.serviceNumber?.trim()) {
-      throw new Error('User serviceNumber is required');
-    }
     const now = new Date();
     return new User(
       props.id,
       props.identityProviderId,
       props.role,
-      props.grade.trim(),
-      props.serviceNumber.trim(),
+      requireFilled(props.grade, 'grade'),
+      requireFilled(props.serviceNumber, 'serviceNumber'),
       props.personalData,
+      UserStatus.active(),
       now,
       now,
     );
@@ -71,9 +78,22 @@ export class User {
         firstName: primitives.firstName,
         lastName: primitives.lastName,
       }),
+      UserStatus.from(primitives.status),
       primitives.createdAt,
       primitives.updatedAt,
     );
+  }
+
+  /** Projection de l'état du compte chez le fournisseur d'identité, qui reste
+   * seul à décider si le compte se connecte. */
+  disable(): void {
+    this._status = UserStatus.disabled();
+    this._updatedAt = new Date();
+  }
+
+  reactivate(): void {
+    this._status = UserStatus.active();
+    this._updatedAt = new Date();
   }
 
   toPrimitives(): UserPrimitives {
@@ -83,6 +103,7 @@ export class User {
       role: this._role.getValue(),
       grade: this._grade,
       serviceNumber: this._serviceNumber,
+      status: this._status.getValue(),
       firstName: this._personalData.firstName,
       lastName: this._personalData.lastName,
       createdAt: this._createdAt,
@@ -112,6 +133,10 @@ export class User {
 
   get personalData(): PersonalData {
     return this._personalData;
+  }
+
+  get status(): UserStatus {
+    return this._status;
   }
 
   get createdAt(): Date {

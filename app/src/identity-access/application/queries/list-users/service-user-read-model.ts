@@ -5,4 +5,5 @@ export interface ServiceUserReadModel {
   role: string;
   grade: string;
   serviceNumber: string;
+  status: string;
 }

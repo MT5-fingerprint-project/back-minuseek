@@ -29,6 +29,7 @@ export class MeController {
       role: user.role,
       grade: user.grade,
       serviceNumber: user.serviceNumber,
+      status: user.status,
     };
   }
 }
