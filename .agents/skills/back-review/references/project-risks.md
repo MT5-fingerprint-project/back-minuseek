@@ -13,10 +13,11 @@ Bugs déjà survenus (refs PR). À traiter en priorité dans toute review toucha
 ## Ordre Prisma sans tie-breaker — `fix: layer index saved (#21)`
 Quoi : `PrismaLayerReader` triait `orderBy: { zIndex: 'asc' }` sans départage → pour des `zIndex` égaux, Postgres renvoie un ordre non déterministe → empilement des calques perdu au rechargement. Fix : `orderBy: [{ zIndex: 'asc' }, { createdAt: 'asc' }]`.
 
-**Sites encore non conformes (à corriger) :** la règle dépasse le seul `zIndex`. `createdAt` n'est pas unique non plus, donc ces deux readers ont le même risque résiduel :
-- `app/src/biometrics/infrastructure/persistence/prisma-trace.reader.ts` → `orderBy: { createdAt: 'desc' }` sans `id`.
-- `app/src/biometrics/infrastructure/persistence/prisma-reference-print.reader.ts` → `orderBy: { createdAt: 'desc' }` sans `id`.
-Fix attendu : `orderBy: [{ createdAt: 'desc' }, { id: 'asc' }]`. (Idem `prisma-investigation-case.reader.ts` si l'ordre est exposé.) Ne pas les considérer OK sous prétexte qu'ils trient déjà par `createdAt`.
+**Sites corrigés le 27/08/2026.** La règle dépasse le seul `zIndex` — `createdAt` n'est pas unique non plus — et les cinq lecteurs concernés portent désormais leur clé unique finale : `prisma-trace.reader.ts` et `prisma-reference-print.reader.ts` (`[{ createdAt: 'desc' }, { id: 'asc' }]`), `prisma-case-subjects.reader.ts` (`[{ createdAt: 'asc' }, { id: 'asc' }]`), `prisma-investigation-case.reader.ts` (paginé, `[{ createdAt: 'desc' }, { id: 'asc' }]`) et `prisma-layer.reader.ts` (`[{ zIndex: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }]`). Chacun a une spec qui asserte son `orderBy`, et le fake correspondant reproduit l'ordre avec un test sur des valeurs de tri ÉGALES. Ne pas les re-signaler.
+
+**Site restant, connu :** `app/src/tenancy/infrastructure/persistence/admin-prisma.service.ts` → `listTenants()` trie `{ createdAt: 'asc' }` sans `id`. Non corrigé faute de couture de test : la classe construit son `PrismaClient` dans son constructeur, sur un champ privé, donc l'`orderBy` n'est pas observable sans injecter le client. Portée réelle faible (registre du control-plane, quelques lignes, non paginé). À traiter avec l'injection du client, pas avant.
+
+Les tris sur `seq` (`audit-trail`, `reporting`) sont déjà déterministes : `seq` est `@unique` dans `prisma/models/audit.prisma`. Ne pas les compter comme non conformes.
 
 Check reviewer : tout `orderBy` sur colonne non unique (`zIndex`, `status`, `name`, `score`, `createdAt`…) DOIT finir par une clé unique (`id`). 🔴 si l'ordre est métier-significatif.
 ```bash
