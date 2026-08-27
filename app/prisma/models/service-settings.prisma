@@ -1,0 +1,11 @@
+model ServiceSettings {
+  id             String   @id
+  administration String
+  serviceName    String
+  postalAddress  String
+  phoneNumber    String
+  email          String
+  signatureCity  String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
