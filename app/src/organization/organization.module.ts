@@ -13,6 +13,13 @@ import { SERVICE_USER_ROLES } from './application/ports/service-user-roles.port'
 import { ListOrganizationsHandler } from './application/queries/list-organizations/list-organizations.handler';
 import { ListOrganizationUsersHandler } from './application/queries/list-organization-users/list-organization-users.handler';
 import { OrganizationController } from './infrastructure/http/organization.controller';
+import { ServiceSettingsController } from './infrastructure/http/service-settings.controller';
+import { SaveServiceSettingsHandler } from './application/commands/save-service-settings/save-service-settings.handler';
+import { GetServiceSettingsHandler } from './application/queries/get-service-settings/get-service-settings.handler';
+import { SERVICE_SETTINGS_REPOSITORY } from './domain/service-settings/repository/service-settings.repository';
+import { SERVICE_SETTINGS_READER } from './application/queries/get-service-settings/service-settings.reader';
+import { PrismaServiceSettingsRepository } from './infrastructure/persistence/prisma-service-settings.repository';
+import { PrismaServiceSettingsReader } from './infrastructure/persistence/prisma-service-settings.reader';
 import { KeycloakAdminService } from './infrastructure/keycloak/keycloak-admin.service';
 import { OrganizationInitializer } from './infrastructure/persistence/organization.initializer';
 import { TenantDatabaseAdminService } from './infrastructure/persistence/tenant-database-admin.service';
@@ -23,12 +30,13 @@ import { AuditTrailModule } from '../audit-trail/audit-trail.module';
 
 /**
  * Bounded context du control-plane (ADR-0004) : le cycle de vie des
- * organisations. Ses routes sont @SystemRealmOnly() — l'app admin est son
- * futur consommateur, le CLI de provisioning son consommateur d'amorçage.
+ * organisations. Ses routes d'organisation sont @SystemRealmOnly() — l'app
+ * admin est son futur consommateur, le CLI de provisioning son consommateur
+ * d'amorçage. Les réglages du service, eux, s'adressent au realm du tenant.
  */
 @Module({
   imports: [CqrsModule, AuditTrailModule],
-  controllers: [OrganizationController],
+  controllers: [OrganizationController, ServiceSettingsController],
   providers: [
     CreateOrganizationHandler,
     DeleteOrganizationHandler,
@@ -36,12 +44,19 @@ import { AuditTrailModule } from '../audit-trail/audit-trail.module';
     ListOrganizationUsersHandler,
     CreateOrganizationUserHandler,
     DeleteOrganizationUserHandler,
+    SaveServiceSettingsHandler,
+    GetServiceSettingsHandler,
     { provide: IDENTITY_PROVIDER, useClass: KeycloakAdminService },
     { provide: TENANT_DATABASE_ADMIN, useClass: TenantDatabaseAdminService },
     { provide: TENANT_CONNECTION_CACHE, useExisting: TenantConnectionService },
     { provide: ORGANIZATION_INITIALIZER, useClass: OrganizationInitializer },
     { provide: SERVICE_USER_REGISTRAR, useClass: ServiceUserRegistrar },
     { provide: SERVICE_USER_ROLES, useClass: ServiceUserRolesReader },
+    {
+      provide: SERVICE_SETTINGS_REPOSITORY,
+      useClass: PrismaServiceSettingsRepository,
+    },
+    { provide: SERVICE_SETTINGS_READER, useClass: PrismaServiceSettingsReader },
   ],
   exports: [CreateOrganizationHandler, IDENTITY_PROVIDER],
 })
