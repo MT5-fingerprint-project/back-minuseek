@@ -8,6 +8,9 @@ model ReferencePrint {
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
+  withdrawnAt      DateTime?
+  withdrawalMotive WithdrawalMotive?
+
   matchings Matching[]
   hits      Hit[]
 }

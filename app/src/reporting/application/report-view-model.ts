@@ -27,6 +27,12 @@ export interface ReportMinutiaViewModel {
   color: string;
 }
 
+/** Une pièce sortie du dossier de travail : elle reste au rapport, sans image. */
+export interface ReportWithdrawalViewModel {
+  at: Date;
+  motiveLabel: string;
+}
+
 export interface ReportPieceViewModel {
   label: string;
   sha256: string | null;
@@ -37,6 +43,7 @@ export interface ReportPieceViewModel {
   image: ReportImageViewModel | null;
   minutiae: ReportMinutiaViewModel[];
   layers: ReportLayerViewModel[];
+  withdrawal: ReportWithdrawalViewModel | null;
 }
 
 export interface ReportSubjectViewModel {

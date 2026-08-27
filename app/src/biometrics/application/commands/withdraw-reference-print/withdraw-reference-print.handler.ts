@@ -7,32 +7,27 @@ import {
 } from '../../../domain/reference-print/repository/reference-print.repository';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
-import {
-  IMAGE_STORAGE,
-  ImageStoragePort,
-} from '../../ports/image-storage.port';
-import { archivedOriginalPath } from '../../services/displayable-image';
-import { DeleteReferencePrintCommand } from './delete-reference-print.command';
+import { WithdrawReferencePrintCommand } from './withdraw-reference-print.command';
 
-@CommandHandler(DeleteReferencePrintCommand)
-export class DeleteReferencePrintHandler implements ICommandHandler<
-  DeleteReferencePrintCommand,
+@CommandHandler(WithdrawReferencePrintCommand)
+export class WithdrawReferencePrintHandler implements ICommandHandler<
+  WithdrawReferencePrintCommand,
   void
 > {
   constructor(
     @Inject(REFERENCE_PRINT_REPOSITORY)
     private readonly repo: ReferencePrintRepository,
-    @Inject(IMAGE_STORAGE)
-    private readonly storage: ImageStoragePort,
   ) {}
 
-  async execute(cmd: DeleteReferencePrintCommand): Promise<void> {
+  async execute(cmd: WithdrawReferencePrintCommand): Promise<void> {
     const referencePrint = await this.repo.findById(cmd.id);
     if (!referencePrint) {
       throw new ReferencePrintNotFoundError(cmd.id);
     }
 
-    await this.repo.delete(cmd.id, {
+    referencePrint.withdraw(cmd.motive, new Date());
+
+    await this.repo.save(referencePrint, {
       eventType: AuditEventTypeEnum.REFERENCE_PRINT_DELETED,
       evidenceClass: EvidenceClassEnum.OBSERVED,
       actor: cmd.actor,
@@ -41,14 +36,8 @@ export class DeleteReferencePrintHandler implements ICommandHandler<
         referencePrintId: referencePrint.id,
         storagePath: referencePrint.path,
         fileSha256: referencePrint.sha256,
-        reason: cmd.reason,
+        motive: cmd.motive,
       },
     });
-
-    await this.storage.delete(referencePrint.path);
-    const archived = archivedOriginalPath(referencePrint.path);
-    if (archived) {
-      await this.storage.delete(archived);
-    }
   }
 }

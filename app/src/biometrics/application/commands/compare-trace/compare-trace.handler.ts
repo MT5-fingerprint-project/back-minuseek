@@ -51,7 +51,7 @@ export class CompareTraceHandler implements ICommandHandler<
 
   async execute(cmd: CompareTraceCommand): Promise<MatchingPrimitives[]> {
     const trace = await this.traceRepo.findById(cmd.traceId);
-    if (!trace || trace.caseId !== cmd.caseId) {
+    if (!trace || trace.caseId !== cmd.caseId || trace.isWithdrawn) {
       throw new TraceNotFoundError(cmd.traceId);
     }
 
@@ -59,7 +59,11 @@ export class CompareTraceHandler implements ICommandHandler<
       cmd.referencePrintIds.map((id) => this.referencePrintRepo.findById(id)),
     );
     referencePrints.forEach((referencePrint, index) => {
-      if (!referencePrint || referencePrint.caseId !== cmd.caseId) {
+      if (
+        !referencePrint ||
+        referencePrint.caseId !== cmd.caseId ||
+        referencePrint.isWithdrawn
+      ) {
         throw new ReferencePrintNotFoundError(cmd.referencePrintIds[index]);
       }
     });

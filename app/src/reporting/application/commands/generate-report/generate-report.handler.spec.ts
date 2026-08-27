@@ -58,6 +58,8 @@ const CASE_DATA: CaseReportData = {
       position: null,
       layers: [],
       minutiae: [],
+      withdrawnAt: null,
+      withdrawalMotive: null,
     },
   ],
   referencePrints: [
@@ -73,6 +75,8 @@ const CASE_DATA: CaseReportData = {
       position: null,
       layers: [],
       minutiae: [],
+      withdrawnAt: null,
+      withdrawalMotive: null,
     },
   ],
   comparisons: [],

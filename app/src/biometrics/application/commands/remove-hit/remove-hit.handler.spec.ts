@@ -47,7 +47,7 @@ describe('RemoveHitHandler', () => {
     handler = new RemoveHitHandler(traceRepo, referencePrintRepo, hitRepo);
   });
 
-  it('removes an existing hit', async () => {
+  it('marks an existing hit instead of erasing it', async () => {
     seedTraceAndReference();
     hitRepo.seed(
       Hit.fromPrimitives({
@@ -63,6 +63,8 @@ describe('RemoveHitHandler', () => {
     );
 
     expect(await hitRepo.findByTraceId('trace-1')).toHaveLength(0);
+    expect(hitRepo.store.get('trace-1:ref-1')).toBeDefined();
+    expect(hitRepo.withdrawnAt.get('trace-1:ref-1')).toBeInstanceOf(Date);
   });
 
   it('is a no-op when no hit exists for the pair', async () => {
@@ -151,6 +153,42 @@ describe('RemoveHitHandler', () => {
         new RemoveHitCommand(EXPERT_ACTOR, 'autre-dossier', 'trace-1', 'ref-1'),
       ),
     ).rejects.toThrow(TraceNotFoundError);
+    expect(auditTrail.events).toHaveLength(0);
+  });
+  it('refuses a withdrawn trace as if it did not exist', async () => {
+    const trace = Trace.upload({
+      id: 'trace-1',
+      path: 'media/trace-1.png',
+      caseId: 'case-1',
+      sha256: ANY_SEAL,
+    });
+    trace.withdraw('DUPLICATE', new Date());
+    traceRepo.seed(trace);
+
+    await expect(
+      handler.execute(
+        new RemoveHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+      ),
+    ).rejects.toThrow(TraceNotFoundError);
+    expect(auditTrail.events).toHaveLength(0);
+  });
+
+  it('refuses a withdrawn reference print as if it did not exist', async () => {
+    seedTraceAndReference();
+    const referencePrint = ReferencePrint.create({
+      id: 'ref-1',
+      path: 'media/ref-1.png',
+      caseId: 'case-1',
+      sha256: ANY_SEAL,
+    });
+    referencePrint.withdraw('MISFILED', new Date());
+    referencePrintRepo.seed(referencePrint);
+
+    await expect(
+      handler.execute(
+        new RemoveHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+      ),
+    ).rejects.toThrow(ReferencePrintNotFoundError);
     expect(auditTrail.events).toHaveLength(0);
   });
 });

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ConflictException,
   Delete,
   FileTypeValidator,
   Get,
@@ -29,8 +30,8 @@ import {
 } from '@nestjs/swagger';
 import { UploadTraceCommand } from '../../application/commands/upload-trace/upload-trace.command';
 import { UploadReferencePrintCommand } from '../../application/commands/upload-reference-print/upload-reference-print.command';
-import { DeleteTraceCommand } from '../../application/commands/delete-trace/delete-trace.command';
-import { DeleteReferencePrintCommand } from '../../application/commands/delete-reference-print/delete-reference-print.command';
+import { WithdrawTraceCommand } from '../../application/commands/withdraw-trace/withdraw-trace.command';
+import { WithdrawReferencePrintCommand } from '../../application/commands/withdraw-reference-print/withdraw-reference-print.command';
 import { CompareTraceCommand } from '../../application/commands/compare-trace/compare-trace.command';
 import { RecordHitCommand } from '../../application/commands/record-hit/record-hit.command';
 import { RemoveHitCommand } from '../../application/commands/remove-hit/remove-hit.command';
@@ -43,13 +44,14 @@ import { TraceNotFoundError } from '../../domain/trace/errors/trace-not-found.er
 import { CaseUnavailableForTraceError } from '../../domain/trace/errors/case-unavailable-for-trace.error';
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
 import { InsufficientMinutiaeError } from '../../domain/hit/errors/insufficient-minutiae.error';
+import { AlreadyWithdrawnError } from '../../domain/withdrawal/errors/already-withdrawn.error';
 import { InvalidImageError } from '../../application/ports/image-converter.port';
 import { UnsupportedImageFormatError } from '../../application/services/displayable-image';
 import { MatchingPrimitives } from '../../domain/matching/entity/matching';
 import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
 import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
 import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapper';
-import { DeletePieceDto } from './dto/delete-piece.dto';
+import { WithdrawPieceDto } from './dto/withdraw-piece.dto';
 import { UploadTraceDto } from './dto/upload-trace.dto';
 import { UploadReferencePrintDto } from './dto/upload-reference-print.dto';
 import { ListTracesDto } from './dto/list-traces.dto';
@@ -67,9 +69,6 @@ import { CASE_NOT_FOUND_MESSAGE } from '../../../access/infrastructure/http/case
 
 const IMAGE_MIME = /^image\/(png|jpe?g|tiff)$/;
 const MAX_IMAGE_SIZE_BYTES = 20 * 1024 * 1024;
-
-const statedReason = (dto: DeletePieceDto): string | null =>
-  dto.reason?.trim() || null;
 
 /** Le corps multipart échappe au garde : c'est le handler qui contrôle, et un
  * jeton sans compte dans le service ne dépose rien. */
@@ -124,53 +123,60 @@ export class BiometricsController {
     return this.queryBus.execute(new ListReferencePrintsQuery(dto.caseId));
   }
 
-  @Delete('traces/:id')
+  @Post('traces/:id/withdraw')
   @CaseScoped()
   @HttpCode(204)
-  @ApiOperation({ summary: 'Supprimer une trace' })
-  @ApiResponse({ status: 204, description: 'Trace supprimée' })
+  @ApiOperation({ summary: 'Retirer une trace du dossier' })
+  @ApiResponse({ status: 204, description: 'Trace retirée du dossier' })
+  @ApiResponse({ status: 400, description: 'Motif absent ou hors liste' })
   @ApiResponse({ status: 404, description: 'Trace non trouvée' })
-  async deleteTrace(
+  @ApiResponse({ status: 409, description: 'Trace déjà retirée' })
+  async withdrawTrace(
     @Param('id', ParseUUIDPipe) id: string,
-    @Query() dto: DeletePieceDto,
+    @Body() dto: WithdrawPieceDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     try {
       await this.commandBus.execute(
-        new DeleteTraceCommand(toAuditActor(user), id, statedReason(dto)),
+        new WithdrawTraceCommand(toAuditActor(user), id, dto.motive),
       );
     } catch (e) {
       if (e instanceof TraceNotFoundError)
         throw new NotFoundException(e.message);
+      if (e instanceof AlreadyWithdrawnError)
+        throw new ConflictException(e.message);
       throw e;
     }
   }
 
-  @Delete('reference-prints/:id')
+  @Post('reference-prints/:id/withdraw')
   @CaseScoped()
   @HttpCode(204)
-  @ApiOperation({ summary: 'Supprimer une empreinte de référence' })
-  @ApiResponse({ status: 204, description: 'Empreinte de référence supprimée' })
+  @ApiOperation({ summary: 'Retirer une empreinte de référence du dossier' })
+  @ApiResponse({
+    status: 204,
+    description: 'Empreinte de référence retirée du dossier',
+  })
+  @ApiResponse({ status: 400, description: 'Motif absent ou hors liste' })
   @ApiResponse({
     status: 404,
     description: 'Empreinte de référence non trouvée',
   })
-  async deleteReferencePrint(
+  @ApiResponse({ status: 409, description: 'Empreinte déjà retirée' })
+  async withdrawReferencePrint(
     @Param('id', ParseUUIDPipe) id: string,
-    @Query() dto: DeletePieceDto,
+    @Body() dto: WithdrawPieceDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     try {
       await this.commandBus.execute(
-        new DeleteReferencePrintCommand(
-          toAuditActor(user),
-          id,
-          statedReason(dto),
-        ),
+        new WithdrawReferencePrintCommand(toAuditActor(user), id, dto.motive),
       );
     } catch (e) {
       if (e instanceof ReferencePrintNotFoundError)
         throw new NotFoundException(e.message);
+      if (e instanceof AlreadyWithdrawnError)
+        throw new ConflictException(e.message);
       throw e;
     }
   }

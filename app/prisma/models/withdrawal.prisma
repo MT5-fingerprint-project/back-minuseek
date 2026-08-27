@@ -1,0 +1,5 @@
+enum WithdrawalMotive {
+  DUPLICATE
+  MISFILED
+  WRONG_ATTRIBUTION
+}

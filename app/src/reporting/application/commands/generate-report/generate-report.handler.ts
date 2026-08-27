@@ -140,7 +140,11 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
   ): Promise<ReportViewModel> {
     if (command.type === 'TECHNICAL') {
       const [images, chainEvents] = await Promise.all([
-        this.imagesOf([...data.traces, ...data.referencePrints]),
+        this.imagesOf(
+          [...data.traces, ...data.referencePrints].filter(
+            (piece) => piece.withdrawnAt === null,
+          ),
+        ),
         this.traceabilityData.readCaseEvents(command.caseId),
       ]);
       return buildTechnicalReport({

@@ -17,6 +17,11 @@ const LABEL_OFFSET_RATIO = 1.9;
  * l'écrit plutôt que de dessiner à côté.
  */
 function markedImage(piece: ReportPieceViewModel): string {
+  if (piece.withdrawal) {
+    return `<p class="missing-image">Retirée du dossier le ${formatDay(
+      piece.withdrawal.at,
+    )} — ${escapeHtml(piece.withdrawal.motiveLabel)}.</p>`;
+  }
   if (!piece.image) {
     return '<p class="missing-image">Image non embarquée : fichier illisible au moment du rendu.</p>';
   }
@@ -129,8 +134,14 @@ function pieceSection(piece: ReportPieceViewModel): string {
       <div class="facts">
         <div><span class="fact-label">Reçue le</span> ${formatDate(piece.receivedAt)}</div>
         <div><span class="fact-label">Prise de vue</span> ${formatDate(piece.capturedAt)}</div>
-        <div><span class="fact-label">Statut</span> ${escapeHtml(piece.status ?? '—')}</div>
-        <div><span class="fact-label">Score d'exploitabilité</span> ${escapeHtml(piece.exploitabilityScore ?? '—')}</div>
+        ${
+          piece.withdrawal
+            ? `<div><span class="fact-label">Retirée du dossier</span> ${formatDay(
+                piece.withdrawal.at,
+              )} — ${escapeHtml(piece.withdrawal.motiveLabel)}</div>`
+            : `<div><span class="fact-label">Statut</span> ${escapeHtml(piece.status ?? '—')}</div>
+        <div><span class="fact-label">Score d'exploitabilité</span> ${escapeHtml(piece.exploitabilityScore ?? '—')}</div>`
+        }
       </div>
       <p><span class="fact-label">Empreinte du fichier original</span><br />
         <span class="hash">${escapeHtml(piece.sha256 ?? 'non scellée (pièce déposée avant la mise sous scellé)')}</span>

@@ -25,9 +25,4 @@ export class InMemoryReferencePrintRepository implements ReferencePrintRepositor
   findById(id: string): Promise<ReferencePrint | null> {
     return Promise.resolve(this.store.get(id) ?? null);
   }
-
-  async delete(id: string, act: AuditEventDraft): Promise<void> {
-    this.store.delete(id);
-    await this.auditTrail.append(act);
-  }
 }
