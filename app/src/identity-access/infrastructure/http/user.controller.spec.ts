@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import type { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { PageDto } from '../../../shared/application/pagination/page.dto';
+import { ListUserGradesQuery } from '../../application/queries/list-user-grades/list-user-grades.query';
 import { ListUsersQuery } from '../../application/queries/list-users/list-users.query';
 import { ServiceUserReadModel } from '../../application/queries/list-users/service-user-read-model';
 import { UserReadModel } from '../../application/queries/get-user-by-provider-id/user-read-model';
@@ -38,13 +39,6 @@ const MARIE: ServiceUserReadModel = {
   status: 'ACTIVE',
 };
 
-const CORRECTION = {
-  firstName: 'Julien',
-  lastName: 'Marchand',
-  grade: 'Brigadier-chef',
-  serviceNumber: 'PTS-0042',
-};
-
 const CHEF: UserReadModel = {
   id: 'user-chef',
   identityProviderId: 'kc-sub-chef',
@@ -58,12 +52,25 @@ const CHEF: UserReadModel = {
   updatedAt: new Date('2026-01-01'),
 };
 
+const CORRECTION = {
+  firstName: 'Julien',
+  lastName: 'Marchand',
+  grade: 'Brigadier-chef',
+  serviceNumber: 'PTS-0042',
+};
+
 function build(commandFailure?: Error) {
-  const dispatchedQueries: ListUsersQuery[] = [];
+  const dispatchedQueries: unknown[] = [];
   const dispatchedCommands: unknown[] = [];
   const queryBus = {
-    execute: (query: ListUsersQuery) => {
+    execute: (query: ListUsersQuery | ListUserGradesQuery) => {
+      if (commandFailure) {
+        return Promise.reject(commandFailure);
+      }
       dispatchedQueries.push(query);
+      if (query instanceof ListUserGradesQuery) {
+        return Promise.resolve(['Commandant', 'Technicien']);
+      }
       return Promise.resolve(
         new PageDto([MARIE], {
           itemCount: 1,
@@ -95,9 +102,16 @@ describe('UserController — liste des comptes du service', () => {
   it('rend la page demandée telle que la query la produit', async () => {
     const { controller, dispatchedQueries } = build();
 
-    const page = await controller.list({ page: 2, limit: 5 });
+    const page = await controller.list({ page: 2, limit: 5 }, CHEF);
 
-    expect(dispatchedQueries).toEqual([new ListUsersQuery(2, 5)]);
+    expect(dispatchedQueries).toEqual([
+      new ListUsersQuery(
+        2,
+        5,
+        {},
+        { id: 'user-chef', role: UserRoleEnum.ADMIN },
+      ),
+    ]);
     expect(page.data).toEqual([MARIE]);
     expect(page.meta.page).toBe(2);
     expect(page.meta.limit).toBe(5);
@@ -106,13 +120,117 @@ describe('UserController — liste des comptes du service', () => {
   it('laisse la query poser ses valeurs par défaut quand la requête ne pagine pas', async () => {
     const { controller, dispatchedQueries } = build();
 
-    const page = await controller.list({});
+    const page = await controller.list({}, CHEF);
 
     expect(dispatchedQueries).toEqual([
-      new ListUsersQuery(undefined, undefined),
+      new ListUsersQuery(
+        undefined,
+        undefined,
+        {},
+        {
+          id: 'user-chef',
+          role: UserRoleEnum.ADMIN,
+        },
+      ),
     ]);
     expect(page.meta.page).toBe(1);
     expect(page.meta.limit).toBe(20);
+  });
+});
+
+describe('UserController — filtres de la liste', () => {
+  it('transmet les quatre filtres à la query', async () => {
+    const { controller, dispatchedQueries } = build();
+
+    await controller.list(
+      {
+        page: 1,
+        limit: 20,
+        search: 'Marchand',
+        role: UserRoleEnum.OPERATOR,
+        grade: 'Technicien',
+        status: UserStatusEnum.DISABLED,
+      },
+      CHEF,
+    );
+
+    expect(dispatchedQueries).toEqual([
+      new ListUsersQuery(
+        1,
+        20,
+        {
+          search: 'Marchand',
+          role: UserRoleEnum.OPERATOR,
+          grade: 'Technicien',
+          status: UserStatusEnum.DISABLED,
+        },
+        { id: 'user-chef', role: UserRoleEnum.ADMIN },
+      ),
+    ]);
+  });
+
+  it('transmet un filtre isolé sans inventer les autres', async () => {
+    const { controller, dispatchedQueries } = build();
+
+    await controller.list({ search: 'Curie' }, CHEF);
+
+    expect(dispatchedQueries).toEqual([
+      new ListUsersQuery(
+        undefined,
+        undefined,
+        { search: 'Curie' },
+        {
+          id: 'user-chef',
+          role: UserRoleEnum.ADMIN,
+        },
+      ),
+    ]);
+  });
+
+  it('rend les grades du service', async () => {
+    const { controller, dispatchedQueries } = build();
+
+    expect(await controller.listGrades(CHEF)).toEqual([
+      'Commandant',
+      'Technicien',
+    ]);
+    expect(dispatchedQueries).toEqual([
+      new ListUserGradesQuery({ id: 'user-chef', role: UserRoleEnum.ADMIN }),
+    ]);
+  });
+
+  // Le refus se décide dans la query ; le contrôleur lui passe le rôle sans le
+  // réécrire, et traduit son refus.
+  it.each([UserRoleEnum.OPERATOR, UserRoleEnum.EXPERT])(
+    "transmet le rôle %s de l'appelant à la query de liste",
+    async (role) => {
+      const { controller, dispatchedQueries } = build();
+
+      await controller.list({}, { ...CHEF, role });
+
+      expect(dispatchedQueries).toEqual([
+        new ListUsersQuery(undefined, undefined, {}, { id: 'user-chef', role }),
+      ]);
+    },
+  );
+
+  it("transmet l'absence de compte de service plutôt que d'inventer un rôle", async () => {
+    const { controller, dispatchedQueries } = build();
+
+    await controller.list({}, undefined);
+
+    expect(dispatchedQueries).toEqual([
+      new ListUsersQuery(undefined, undefined, {}, null),
+    ]);
+  });
+
+  it.each([
+    ['la liste', (c: UserController) => c.list({}, CHEF)],
+    ['les grades', (c: UserController) => c.listGrades(CHEF)],
+  ])('traduit en 403 le refus de rôle sur %s', async (_label, call) => {
+    const { controller } = build(new UserAdministrationNotAllowedError());
+
+    await expect(call(controller)).rejects.toThrow(ForbiddenException);
   });
 });
 

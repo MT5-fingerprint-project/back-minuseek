@@ -324,6 +324,12 @@ describe("Le garde d'accès — les routes qui ne touchent aucune affaire", () =
     expect(response.status).toBe(200);
   });
 
+  it('laisse lire les grades du service', async () => {
+    const response = await request(server).get('/users/grades');
+
+    expect(response.status).toBe(200);
+  });
+
   it('laisse lire son propre profil', async () => {
     const response = await request(server).get('/me');
 
