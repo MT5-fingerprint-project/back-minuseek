@@ -9,6 +9,10 @@ import { UnsupportedImageFormatError } from '../../services/displayable-image';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
 import { ReferencePrintRepository } from '../../../domain/reference-print/repository/reference-print.repository';
+import { CaseAccessDeniedError } from '../../../../access/application/case-access-denied.error';
+import { CaseAccessService } from '../../../../access/application/case-access.service';
+import { InMemoryCaseAccessReader } from '../../../../access/infrastructure/persistence/in-memory-case-access.reader';
+import { UserRoleEnum } from '../../../../identity-access/domain/user/value-objects/user-role.vo';
 import { UploadReferencePrintCommand } from './upload-reference-print.command';
 import { UploadReferencePrintHandler } from './upload-reference-print.handler';
 
@@ -18,6 +22,8 @@ const CLEAN_PRINT_SHA256 =
   '752db2b96d9b71f1ae7650aa5b47c569e71473045fad4f54e9290035075d1e66';
 const STORED_PATH =
   'media/investigation-case/case-9/reference-prints/ref-456.png';
+const MARIE = { id: 'marie', role: UserRoleEnum.OPERATOR };
+const LUCIE = { id: 'lucie', role: UserRoleEnum.OPERATOR };
 
 class FailingReferencePrintRepository extends InMemoryReferencePrintRepository {
   constructor(private readonly failure: Error) {
@@ -42,6 +48,11 @@ describe('UploadReferencePrintHandler', () => {
       storage,
       idGenerator,
       new InMemoryImageConverter(),
+      new CaseAccessService(
+        new InMemoryCaseAccessReader({
+          operators: [{ caseId: 'case-9', userId: MARIE.id }],
+        }),
+      ),
     );
 
   beforeEach(() => {
@@ -55,7 +66,42 @@ describe('UploadReferencePrintHandler', () => {
   const tiffBuffer = Buffer.concat([TIFF_MAGIC, Buffer.from('clean-print')]);
 
   const command = () =>
-    new UploadReferencePrintCommand(EXPERT_ACTOR, tiffBuffer, 'case-9');
+    new UploadReferencePrintCommand(EXPERT_ACTOR, MARIE, tiffBuffer, 'case-9');
+
+  it("refuse le dépôt sur une affaire dont l'appelant n'est pas titulaire, sans écrire ni stocker", async () => {
+    await expect(
+      handler.execute(
+        new UploadReferencePrintCommand(
+          EXPERT_ACTOR,
+          LUCIE,
+          tiffBuffer,
+          'case-9',
+        ),
+      ),
+    ).rejects.toThrow(CaseAccessDeniedError);
+
+    expect(await repo.findById('ref-456')).toBeNull();
+    expect(
+      storage.getSaved(
+        'investigation-case/case-9/reference-prints/ref-456.png',
+      ),
+    ).toBeUndefined();
+  });
+
+  it("refuse le dépôt d'un jeton sans compte dans le service", async () => {
+    await expect(
+      handler.execute(
+        new UploadReferencePrintCommand(
+          EXPERT_ACTOR,
+          null,
+          tiffBuffer,
+          'case-9',
+        ),
+      ),
+    ).rejects.toThrow(CaseAccessDeniedError);
+
+    expect(await repo.findById('ref-456')).toBeNull();
+  });
 
   it('converts a TIFF to PNG for display, archives the original under <id>_original.tif and persists the PNG path', async () => {
     const result = await handler.execute(command());
@@ -87,7 +133,7 @@ describe('UploadReferencePrintHandler', () => {
   it('stores a non-TIFF upload as-is, without archive, even with a misleading name', async () => {
     const pngBuffer = Buffer.concat([PNG_MAGIC, Buffer.from('clean-print')]);
     const result = await handler.execute(
-      new UploadReferencePrintCommand(EXPERT_ACTOR, pngBuffer, 'case-9'),
+      new UploadReferencePrintCommand(EXPERT_ACTOR, MARIE, pngBuffer, 'case-9'),
     );
 
     expect(result.path).toBe(
@@ -110,6 +156,7 @@ describe('UploadReferencePrintHandler', () => {
       handler.execute(
         new UploadReferencePrintCommand(
           EXPERT_ACTOR,
+          MARIE,
           Buffer.concat([TIFF_MAGIC, Buffer.from('invalid-image')]),
           'case-9',
         ),
@@ -135,6 +182,7 @@ describe('UploadReferencePrintHandler', () => {
       handler.execute(
         new UploadReferencePrintCommand(
           EXPERT_ACTOR,
+          MARIE,
           Buffer.from('not-an-image'),
           'case-9',
         ),

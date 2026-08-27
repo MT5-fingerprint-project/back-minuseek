@@ -28,6 +28,7 @@ import {
   detectImageMimeType,
   storeDisplayableImage,
 } from '../../services/displayable-image';
+import { CaseAccessService } from '../../../../access/application/case-access.service';
 import { UploadTraceCommand } from './upload-trace.command';
 
 @CommandHandler(UploadTraceCommand)
@@ -48,11 +49,14 @@ export class UploadTraceHandler implements ICommandHandler<
     private readonly caseStatus: CaseStatusPort,
     @Inject(IMAGE_CONVERTER)
     private readonly converter: ImageConverterPort,
+    private readonly caseAccess: CaseAccessService,
   ) {}
 
   async execute(
     cmd: UploadTraceCommand,
   ): Promise<{ id: string; path: string; url: string }> {
+    await this.caseAccess.assertAccessToCase(cmd.requester, cmd.caseId);
+
     const caseStatus = await this.caseStatus.findStatus(cmd.caseId);
     Trace.assertCaseCanReceiveTrace(cmd.caseId, caseStatus);
 

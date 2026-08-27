@@ -26,6 +26,7 @@ import {
   detectImageMimeType,
   storeDisplayableImage,
 } from '../../services/displayable-image';
+import { CaseAccessService } from '../../../../access/application/case-access.service';
 import { UploadReferencePrintCommand } from './upload-reference-print.command';
 
 @CommandHandler(UploadReferencePrintCommand)
@@ -44,11 +45,14 @@ export class UploadReferencePrintHandler implements ICommandHandler<
     private readonly idGenerator: IdGenerator,
     @Inject(IMAGE_CONVERTER)
     private readonly converter: ImageConverterPort,
+    private readonly caseAccess: CaseAccessService,
   ) {}
 
   async execute(
     cmd: UploadReferencePrintCommand,
   ): Promise<{ id: string; path: string; url: string }> {
+    await this.caseAccess.assertAccessToCase(cmd.requester, cmd.caseId);
+
     const id = this.idGenerator.generate();
     const sha256 = FileDigest.ofBuffer(cmd.fileBuffer);
     const mimeType = detectImageMimeType(cmd.fileBuffer);

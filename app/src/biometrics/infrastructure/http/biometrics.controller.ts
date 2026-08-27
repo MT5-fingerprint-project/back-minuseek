@@ -56,12 +56,25 @@ import { ListTracesDto } from './dto/list-traces.dto';
 import { ListReferencePrintsDto } from './dto/list-reference-prints.dto';
 import { CompareTraceDto } from './dto/compare-trace.dto';
 import { RecordHitDto } from './dto/record-hit.dto';
+import {
+  CaseScopeCheckedInHandler,
+  CaseScoped,
+} from '../../../access/infrastructure/http/case-scope.decorator';
+import { UserRoleEnum } from '../../../identity-access/domain/user/value-objects/user-role.vo';
+import type { CaseRequester } from '../../../access/application/case-access.service';
+import { CaseAccessDeniedError } from '../../../access/application/case-access-denied.error';
+import { CASE_NOT_FOUND_MESSAGE } from '../../../access/infrastructure/http/case-access.guard';
 
 const IMAGE_MIME = /^image\/(png|jpe?g|tiff)$/;
 const MAX_IMAGE_SIZE_BYTES = 20 * 1024 * 1024;
 
 const statedReason = (dto: DeletePieceDto): string | null =>
   dto.reason?.trim() || null;
+
+/** Le corps multipart échappe au garde : c'est le handler qui contrôle, et un
+ * jeton sans compte dans le service ne dépose rien. */
+const caseRequesterOf = (user?: UserReadModel): CaseRequester | null =>
+  user ? { id: user.id, role: user.role as UserRoleEnum } : null;
 
 // Les champs d'un multipart arrivent tous en chaîne : ce pipe local active
 // `transform` pour que le contrôleur reçoive des nombres. Le pipe global de
@@ -91,6 +104,7 @@ export class BiometricsController {
   ) {}
 
   @Get('traces')
+  @CaseScoped()
   @ApiOperation({ summary: "Lister les traces d'un dossier" })
   @ApiResponse({ status: 200, description: 'Liste des traces du dossier' })
   @ApiResponse({ status: 400, description: 'caseId manquant ou invalide' })
@@ -99,6 +113,7 @@ export class BiometricsController {
   }
 
   @Get('reference-prints')
+  @CaseScoped()
   @ApiOperation({ summary: "Lister les empreintes de référence d'un dossier" })
   @ApiResponse({
     status: 200,
@@ -110,6 +125,7 @@ export class BiometricsController {
   }
 
   @Delete('traces/:id')
+  @CaseScoped()
   @HttpCode(204)
   @ApiOperation({ summary: 'Supprimer une trace' })
   @ApiResponse({ status: 204, description: 'Trace supprimée' })
@@ -131,6 +147,7 @@ export class BiometricsController {
   }
 
   @Delete('reference-prints/:id')
+  @CaseScoped()
   @HttpCode(204)
   @ApiOperation({ summary: 'Supprimer une empreinte de référence' })
   @ApiResponse({ status: 204, description: 'Empreinte de référence supprimée' })
@@ -159,6 +176,7 @@ export class BiometricsController {
   }
 
   @Post('traces')
+  @CaseScopeCheckedInHandler('corps multipart non lisible par un garde')
   @ApiOperation({ summary: 'Uploader une trace papillaire' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -212,6 +230,7 @@ export class BiometricsController {
     file: { buffer: Buffer },
     @Body(captureMetadataPipe()) dto: UploadTraceDto,
     @CurrentUser() user: AuthenticatedUser,
+    @CurrentServiceUser() requester?: UserReadModel,
   ) {
     try {
       return await this.commandBus.execute<
@@ -220,6 +239,7 @@ export class BiometricsController {
       >(
         new UploadTraceCommand(
           toAuditActor(user),
+          caseRequesterOf(requester),
           file.buffer,
           dto.caseId,
           {
@@ -234,6 +254,8 @@ export class BiometricsController {
         ),
       );
     } catch (e) {
+      if (e instanceof CaseAccessDeniedError)
+        throw new NotFoundException(CASE_NOT_FOUND_MESSAGE);
       if (e instanceof CaseUnavailableForTraceError)
         throw new NotFoundException(e.message);
       if (
@@ -246,6 +268,7 @@ export class BiometricsController {
   }
 
   @Post('reference-prints')
+  @CaseScopeCheckedInHandler('corps multipart non lisible par un garde')
   @ApiOperation({ summary: 'Uploader une empreinte de référence' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -275,6 +298,7 @@ export class BiometricsController {
     file: { buffer: Buffer },
     @Body() dto: UploadReferencePrintDto,
     @CurrentUser() user: AuthenticatedUser,
+    @CurrentServiceUser() requester?: UserReadModel,
   ) {
     try {
       return await this.commandBus.execute<
@@ -283,6 +307,7 @@ export class BiometricsController {
       >(
         new UploadReferencePrintCommand(
           toAuditActor(user),
+          caseRequesterOf(requester),
           file.buffer,
           dto.caseId,
           dto.subjectId,
@@ -290,6 +315,8 @@ export class BiometricsController {
         ),
       );
     } catch (e) {
+      if (e instanceof CaseAccessDeniedError)
+        throw new NotFoundException(CASE_NOT_FOUND_MESSAGE);
       if (
         e instanceof InvalidImageError ||
         e instanceof UnsupportedImageFormatError
@@ -300,6 +327,7 @@ export class BiometricsController {
   }
 
   @Post('traces/:id/compare')
+  @CaseScoped()
   @ApiOperation({
     summary:
       'Comparer une trace avec des empreintes de référence et persister les scores',
@@ -339,6 +367,7 @@ export class BiometricsController {
   }
 
   @Post('traces/:id/hit')
+  @CaseScoped()
   @ApiOperation({
     summary:
       'Déclarer un hit : cette empreinte de référence correspond à cette trace',
@@ -385,6 +414,7 @@ export class BiometricsController {
   }
 
   @Delete('traces/:id/hit/:referencePrintId')
+  @CaseScoped()
   @HttpCode(204)
   @ApiOperation({ summary: 'Retirer un hit précédemment déclaré' })
   @ApiResponse({ status: 204, description: 'Hit retiré' })
@@ -419,6 +449,7 @@ export class BiometricsController {
   }
 
   @Get('traces/:id/hits')
+  @CaseScoped()
   @ApiOperation({
     summary: 'Lister les empreintes de référence en hit pour une trace',
   })
