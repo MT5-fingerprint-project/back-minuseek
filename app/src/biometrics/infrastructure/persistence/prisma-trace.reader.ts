@@ -12,7 +12,7 @@ export class PrismaTraceReader implements TraceReader {
     const prisma = await this.tenantConnection.getCurrentClient();
     const rows = await prisma.trace.findMany({
       where: { caseId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
     });
     // Prisma rend la colonne `Json?` non typée : seul le domaine y écrit, via
     // `CaptureQuality.toPrimitives()`.

@@ -83,6 +83,16 @@ describe("CaseAccessService — l'accès à une affaire", () => {
     ).rejects.toThrow(CaseAccessDeniedError);
   });
 
+  it('refuse un appelant sans compte dans le service, sans interroger le port', async () => {
+    const port = new InMemoryCaseAccessReader(FIXTURE);
+    const titres = jest.spyOn(port, 'findTitle');
+
+    await expect(
+      new CaseAccessService(port).assertAccessToCase(null, DOSSIER_DE_MARIE),
+    ).rejects.toThrow(CaseAccessDeniedError);
+    expect(titres).not.toHaveBeenCalled();
+  });
+
   it('refuse une affaire inexistante comme une affaire étrangère', async () => {
     await expect(
       service.assertAccessToCase(titulaire, 'case-qui-nexiste-pas'),

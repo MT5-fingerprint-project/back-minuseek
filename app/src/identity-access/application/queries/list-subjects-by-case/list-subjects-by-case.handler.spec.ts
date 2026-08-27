@@ -6,9 +6,18 @@ import { CaseSubjectsReader } from './case-subjects.reader';
 class InMemoryCaseSubjectsReader implements CaseSubjectsReader {
   readonly store: Array<{ caseId: string; subject: CaseSubjectReadModel }> = [];
 
+  // Même ordre que `prisma-case-subjects.reader.ts` : la plus ancienne
+  // d'abord, puis l'identifiant pour départager deux ajouts simultanés.
   findByCaseId(caseId: string): Promise<CaseSubjectReadModel[]> {
     return Promise.resolve(
-      this.store.filter((s) => s.caseId === caseId).map((s) => s.subject),
+      this.store
+        .filter((entry) => entry.caseId === caseId)
+        .map((entry) => entry.subject)
+        .sort(
+          (left, right) =>
+            left.createdAt.getTime() - right.createdAt.getTime() ||
+            left.id.localeCompare(right.id),
+        ),
     );
   }
 }
@@ -66,5 +75,28 @@ describe('ListSubjectsByCaseHandler', () => {
     );
 
     expect(data).toEqual([]);
+  });
+
+  it('départage deux personnes ajoutées dans la même seconde par leur identifiant', async () => {
+    const addedAt = new Date('2026-01-01');
+    reader.store.push(
+      makeEntry('case-1', { id: 'subject-c', createdAt: addedAt }),
+    );
+    reader.store.push(
+      makeEntry('case-1', { id: 'subject-a', createdAt: addedAt }),
+    );
+    reader.store.push(
+      makeEntry('case-1', { id: 'subject-b', createdAt: addedAt }),
+    );
+
+    const { data } = await handler.execute(
+      new ListSubjectsByCaseQuery('case-1'),
+    );
+
+    expect(data.map((subject) => subject.id)).toEqual([
+      'subject-a',
+      'subject-b',
+      'subject-c',
+    ]);
   });
 });

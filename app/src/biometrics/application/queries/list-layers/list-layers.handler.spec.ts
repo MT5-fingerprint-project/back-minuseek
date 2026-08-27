@@ -31,4 +31,18 @@ describe('ListLayersHandler', () => {
 
     expect(result.map((l) => l.id)).toEqual(['a', 'b']);
   });
+
+  it("garde l'ordre de création entre deux calques posés au même zIndex", async () => {
+    repo.seed(layer('premier', 'fp-1', 3));
+    repo.seed(layer('second', 'fp-1', 3));
+    repo.seed(layer('troisieme', 'fp-1', 3));
+
+    const result = await handler.execute(new ListLayersQuery('fp-1'));
+
+    expect(result.map((posé) => posé.id)).toEqual([
+      'premier',
+      'second',
+      'troisieme',
+    ]);
+  });
 });

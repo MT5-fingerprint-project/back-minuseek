@@ -1,5 +1,6 @@
 import { Inject } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
+import { CaseAccessService } from '../../../../access/application/case-access.service';
 import { PageDto } from '../../../../shared/application/pagination/page.dto';
 import { InvestigationCaseReadModel } from './investigation-case-read-model';
 import {
@@ -13,6 +14,7 @@ export class ListInvestigationCasesHandler implements IQueryHandler<ListInvestig
   constructor(
     @Inject(INVESTIGATION_CASE_READER)
     private readonly reader: InvestigationCaseReader,
+    private readonly caseAccess: CaseAccessService,
   ) {}
 
   async execute(
@@ -22,8 +24,14 @@ export class ListInvestigationCasesHandler implements IQueryHandler<ListInvestig
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
 
+    // Le filtre descend jusqu'au SQL : appliqué après pagination, il rendrait
+    // trois affaires sur une page de dix.
+    const caseIds = query.requester
+      ? await this.caseAccess.visibleCaseIds(query.requester)
+      : [];
+
     const { items, total } = await this.reader.findAll(
-      { status: query.status },
+      { status: query.status, caseIds },
       { skip, take: limit },
     );
 

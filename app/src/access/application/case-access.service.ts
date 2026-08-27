@@ -27,14 +27,17 @@ export class CaseAccessService {
     private readonly caseAccessReader: CaseAccessReader,
   ) {}
 
+  /** `null` quand le jeton n'a pas de compte dans le service : personne, donc
+   * aucun accès. */
   async assertAccessToCase(
-    requester: CaseRequester,
+    requester: CaseRequester | null,
     caseId: string,
   ): Promise<AccessTitle> {
-    const granted = await this.assertAccessTo(requester, {
-      kind: 'CASE',
-      id: caseId,
-    });
+    const target: CaseScopeTarget = { kind: 'CASE', id: caseId };
+    if (requester === null) {
+      throw new CaseAccessDeniedError(target);
+    }
+    const granted = await this.assertAccessTo(requester, target);
     return granted.title;
   }
 

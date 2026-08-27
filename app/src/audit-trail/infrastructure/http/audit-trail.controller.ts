@@ -2,16 +2,16 @@ import { Controller, Get, Param, Query } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ListCaseAuditEventsQuery } from '../../application/queries/list-case-audit-events/list-case-audit-events.query';
+import { CaseScoped } from '../../../access/infrastructure/http/case-scope.decorator';
 import { ListCaseAuditEventsDto } from './dto/list-case-audit-events.dto';
 
-// Accès = membre du tenant, par les guards globaux : l'isolation dossier↔tenant
-// est physique (une base par tenant). Un guard @Roles() métier reste au backlog.
 @ApiTags('audit-trail')
 @Controller('investigation-cases')
 export class AuditTrailController {
   constructor(private readonly queryBus: QueryBus) {}
 
   @Get(':caseId/audit-events')
+  @CaseScoped()
   @ApiOperation({ summary: "Chronologie d'audit d'un dossier" })
   @ApiResponse({
     status: 200,

@@ -11,7 +11,7 @@ export class PrismaCaseSubjectsReader implements CaseSubjectsReader {
     const prisma = await this.tenantConnection.getCurrentClient();
     const rows = await prisma.subject.findMany({
       where: { caseId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
 
     return rows.map((row) => ({

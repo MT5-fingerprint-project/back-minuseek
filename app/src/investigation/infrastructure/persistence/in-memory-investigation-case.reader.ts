@@ -1,12 +1,14 @@
-import { InvestigationCaseStatusEnum } from '../../domain/investigation-case/value-objects/investigation-case-status.vo';
 import { InvestigationCaseReadModel } from '../../application/queries/list-investigation-cases/investigation-case-read-model';
-import { InvestigationCaseReader } from '../../application/queries/list-investigation-cases/investigation-case.reader';
+import {
+  InvestigationCaseFilters,
+  InvestigationCaseReader,
+} from '../../application/queries/list-investigation-cases/investigation-case.reader';
 
 export class InMemoryInvestigationCaseReader implements InvestigationCaseReader {
   readonly store: InvestigationCaseReadModel[] = [];
 
   findAll(
-    filters: { status?: InvestigationCaseStatusEnum },
+    filters: InvestigationCaseFilters,
     pagination: { skip: number; take: number },
   ): Promise<{ items: InvestigationCaseReadModel[]; total: number }> {
     let all = [...this.store];
@@ -16,7 +18,18 @@ export class InMemoryInvestigationCaseReader implements InvestigationCaseReader 
       all = all.filter((c) => c.status === status);
     }
 
-    all.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    if (filters.caseIds !== null) {
+      const visible = new Set(filters.caseIds);
+      all = all.filter((c) => visible.has(c.id));
+    }
+
+    // Même ordre que `prisma-investigation-case.reader.ts`, départage compris :
+    // sans lui le fake pagine mieux que la vraie requête.
+    all.sort(
+      (left, right) =>
+        right.createdAt.getTime() - left.createdAt.getTime() ||
+        left.id.localeCompare(right.id),
+    );
 
     return Promise.resolve({
       items: all.slice(pagination.skip, pagination.skip + pagination.take),

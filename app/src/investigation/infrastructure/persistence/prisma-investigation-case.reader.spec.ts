@@ -37,6 +37,7 @@ function aCaseRow(overrides: Partial<CaseRow> = {}): CaseRow {
 
 class FakePrismaClient {
   readonly userFindManyArgs: unknown[] = [];
+  readonly caseFindManyArgs: unknown[] = [];
 
   constructor(
     private readonly cases: CaseRow[],
@@ -44,7 +45,10 @@ class FakePrismaClient {
   ) {}
 
   readonly investigationCase = {
-    findMany: (): Promise<CaseRow[]> => Promise.resolve(this.cases),
+    findMany: (args: unknown): Promise<CaseRow[]> => {
+      this.caseFindManyArgs.push(args);
+      return Promise.resolve(this.cases);
+    },
     count: (): Promise<number> => Promise.resolve(this.cases.length),
     findUnique: (args: { where: { id: string } }): Promise<CaseRow | null> =>
       Promise.resolve(
@@ -95,7 +99,10 @@ describe('PrismaInvestigationCaseReader', () => {
   it("rend l'opérateur de chaque dossier de la liste", async () => {
     const { reader } = build();
 
-    const { items } = await reader.findAll({}, { skip: 0, take: 20 });
+    const { items } = await reader.findAll(
+      { caseIds: null },
+      { skip: 0, take: 20 },
+    );
 
     expect(items[0].operator).toMatchObject({ lastName: 'Curie' });
   });
@@ -119,7 +126,7 @@ describe('PrismaInvestigationCaseReader', () => {
   it("n'interroge pas les comptes quand aucun dossier ne porte d'opérateur", async () => {
     const { reader, prisma } = build([aCaseRow({ operatorUserId: null })], []);
 
-    await reader.findAll({}, { skip: 0, take: 20 });
+    await reader.findAll({ caseIds: null }, { skip: 0, take: 20 });
 
     expect(prisma.userFindManyArgs).toHaveLength(0);
   });
@@ -130,10 +137,46 @@ describe('PrismaInvestigationCaseReader', () => {
       [MARIE_ROW],
     );
 
-    await reader.findAll({}, { skip: 0, take: 20 });
+    await reader.findAll({ caseIds: null }, { skip: 0, take: 20 });
 
     expect(prisma.userFindManyArgs[0]).toMatchObject({
       where: { id: { in: [MARIE] } },
+    });
+  });
+
+  it("descend la liste des affaires visibles jusqu'au where, pas après la pagination", async () => {
+    const { reader, prisma } = build();
+
+    await reader.findAll(
+      { caseIds: ['case-1', 'case-2'] },
+      { skip: 0, take: 20 },
+    );
+
+    expect(prisma.caseFindManyArgs[0]).toMatchObject({
+      where: { id: { in: ['case-1', 'case-2'] } },
+    });
+  });
+
+  it("ne filtre pas quand l'appelant voit tout le service", async () => {
+    const { reader, prisma } = build();
+
+    await reader.findAll({ caseIds: null }, { skip: 0, take: 20 });
+
+    expect(prisma.caseFindManyArgs[0]).toEqual({
+      where: {},
+      skip: 0,
+      take: 20,
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+    });
+  });
+
+  it('départage par identifiant deux affaires ouvertes dans la même seconde', async () => {
+    const { reader, prisma } = build();
+
+    await reader.findAll({ caseIds: null }, { skip: 0, take: 20 });
+
+    expect(prisma.caseFindManyArgs[0]).toMatchObject({
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
     });
   });
 

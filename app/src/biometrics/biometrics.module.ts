@@ -46,9 +46,10 @@ import { GcsImageStorageAdapter } from './infrastructure/storage/gcs-image-stora
 import { InMemoryImageStorageAdapter } from './infrastructure/storage/in-memory-image-storage.adapter';
 import { DataFingerprintMatcherAdapter } from './infrastructure/matching/data-fingerprint-matcher.adapter';
 import { AuditTrailModule } from '../audit-trail/audit-trail.module';
+import { AccessModule } from '../access/access.module';
 
 @Module({
-  imports: [CqrsModule, AuditTrailModule],
+  imports: [CqrsModule, AuditTrailModule, AccessModule],
   controllers: [BiometricsController, LayersController],
   providers: [
     UploadTraceHandler,

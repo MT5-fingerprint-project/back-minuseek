@@ -1,4 +1,4 @@
-import type { CommandBus, QueryBus } from '@nestjs/cqrs';
+import type { QueryBus } from '@nestjs/cqrs';
 import { PageDto } from '../../../shared/application/pagination/page.dto';
 import { ListUsersQuery } from '../../application/queries/list-users/list-users.query';
 import { ServiceUserReadModel } from '../../application/queries/list-users/service-user-read-model';
@@ -29,8 +29,7 @@ function build() {
       );
     },
   } as unknown as QueryBus;
-  const commandBus = { execute: jest.fn() } as unknown as CommandBus;
-  return { controller: new UserController(commandBus, queryBus), dispatched };
+  return { controller: new UserController(queryBus), dispatched };
 }
 
 describe('UserController — liste des comptes du service', () => {

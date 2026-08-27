@@ -11,7 +11,7 @@ export class PrismaReferencePrintReader implements ReferencePrintReader {
     const prisma = await this.tenantConnection.getCurrentClient();
     return prisma.referencePrint.findMany({
       where: { caseId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
       include: {
         matchings: {
           select: { traceId: true, score: true, match: true },

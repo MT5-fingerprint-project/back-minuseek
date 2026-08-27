@@ -14,12 +14,19 @@ import { InMemoryImageConverter } from '../../../infrastructure/conversion/in-me
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
 import { TraceRepository } from '../../../domain/trace/repository/trace.repository';
+import { CaseAccessDeniedError } from '../../../../access/application/case-access-denied.error';
+import { CaseAccessService } from '../../../../access/application/case-access.service';
+import { InMemoryCaseAccessReader } from '../../../../access/infrastructure/persistence/in-memory-case-access.reader';
+import { UserRoleEnum } from '../../../../identity-access/domain/user/value-objects/user-role.vo';
 import { UploadTraceCommand } from './upload-trace.command';
 import { UploadTraceHandler } from './upload-trace.handler';
 
 const TEST_IMAGE_SHA256 =
   'cd9de65ea00593ca8023392a7b15e60b322c9a10fd57293ccb428cc7c4d1ce76';
 const STORED_PATH = 'media/investigation-case/case-9/traces/trace-123.png';
+const MARIE = { id: 'marie', role: UserRoleEnum.OPERATOR };
+const LUCIE = { id: 'lucie', role: UserRoleEnum.OPERATOR };
+const NADIA = { id: 'nadia', role: UserRoleEnum.ADMIN };
 
 class FailingTraceRepository extends InMemoryTraceRepository {
   constructor(private readonly failure: Error) {
@@ -46,6 +53,11 @@ describe('UploadTraceHandler', () => {
       idGenerator,
       caseStatus,
       new InMemoryImageConverter(),
+      new CaseAccessService(
+        new InMemoryCaseAccessReader({
+          operators: [{ caseId: 'case-9', userId: MARIE.id }],
+        }),
+      ),
     );
 
   beforeEach(() => {
@@ -69,11 +81,39 @@ describe('UploadTraceHandler', () => {
   ) =>
     new UploadTraceCommand(
       EXPERT_ACTOR,
+      MARIE,
       pngBuffer,
       caseId,
       capture,
       captureQuality,
     );
+
+  it("refuse le dépôt sur une affaire dont l'appelant n'est pas titulaire, sans écrire ni stocker", async () => {
+    caseStatus.set('case-9', 'OPEN');
+
+    await expect(
+      handler.execute(
+        new UploadTraceCommand(EXPERT_ACTOR, LUCIE, pngBuffer, 'case-9'),
+      ),
+    ).rejects.toThrow(CaseAccessDeniedError);
+
+    expect(await repo.findById('trace-123')).toBeNull();
+    expect(
+      storage.getSaved('investigation-case/case-9/traces/trace-123.png'),
+    ).toBeUndefined();
+  });
+
+  it("refuse le dépôt d'un jeton sans compte dans le service", async () => {
+    caseStatus.set('case-9', 'OPEN');
+
+    await expect(
+      handler.execute(
+        new UploadTraceCommand(EXPERT_ACTOR, null, pngBuffer, 'case-9'),
+      ),
+    ).rejects.toThrow(CaseAccessDeniedError);
+
+    expect(await repo.findById('trace-123')).toBeNull();
+  });
 
   it('stores the file under media/{caseId}/traces, persists the trace as RECEIVED and returns id, path and url', async () => {
     caseStatus.set('case-9', 'OPEN');
@@ -267,9 +307,14 @@ describe('UploadTraceHandler', () => {
     ).rejects.toBe(failure);
   });
 
+  // La responsable de service passe le contrôle d'accès sur n'importe quelle
+  // affaire : c'est elle, et plus l'opérateur, qui atteint le contrôle de statut
+  // sur une affaire qui n'existe pas.
   it('rejects and persists nothing when the case does not exist', async () => {
     await expect(
-      handler.execute(command('missing-case')),
+      handler.execute(
+        new UploadTraceCommand(EXPERT_ACTOR, NADIA, pngBuffer, 'missing-case'),
+      ),
     ).rejects.toBeInstanceOf(CaseUnavailableForTraceError);
 
     expect(await repo.findById('trace-123')).toBeNull();
