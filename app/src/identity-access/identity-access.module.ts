@@ -7,6 +7,7 @@ import { GetUserByProviderIdHandler } from './application/queries/get-user-by-pr
 import { RegisterUserHandler } from './application/commands/register-user/register-user.handler';
 import { DeactivateUserHandler } from './application/commands/deactivate-user/deactivate-user.handler';
 import { ReactivateUserHandler } from './application/commands/reactivate-user/reactivate-user.handler';
+import { CorrectUserProfileHandler } from './application/commands/correct-user-profile/correct-user-profile.handler';
 import { ListUsersHandler } from './application/queries/list-users/list-users.handler';
 import { GetSubjectByIdHandler } from './application/queries/get-subject-by-id/get-subject-by-id.handler';
 import { ListSubjectsByCaseHandler } from './application/queries/list-subjects-by-case/list-subjects-by-case.handler';
@@ -38,6 +39,7 @@ import { OrganizationModule } from '../organization/organization.module';
     RegisterUserHandler,
     DeactivateUserHandler,
     ReactivateUserHandler,
+    CorrectUserProfileHandler,
     GetSubjectByIdHandler,
     ListSubjectsByCaseHandler,
     RegisterSubjectHandler,

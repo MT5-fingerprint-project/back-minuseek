@@ -13,8 +13,10 @@ export const UNAUDITED_TABLES: Record<string, string[]> = {
     'identity-access/application/commands/register-user/register-user.handler.ts',
     'identity-access/application/commands/deactivate-user/deactivate-user.handler.ts',
     'identity-access/application/commands/reactivate-user/reactivate-user.handler.ts',
+    'identity-access/application/commands/correct-user-profile/correct-user-profile.handler.ts',
   ],
   PersonalData: [
     'identity-access/application/commands/register-user/register-user.handler.ts',
+    'identity-access/application/commands/correct-user-profile/correct-user-profile.handler.ts',
   ],
 };

@@ -158,4 +158,201 @@ describe('User', () => {
       );
     });
   });
+
+  describe('correction de profil', () => {
+    it('corrige les quatre champs d’un coup', () => {
+      const user = anUser();
+
+      user.correctProfile({
+        firstName: 'Nadia',
+        lastName: 'Belkacem',
+        grade: 'Brigadier-chef',
+        serviceNumber: 'PTS-0099',
+      });
+
+      expect(user.personalData.firstName).toBe('Nadia');
+      expect(user.personalData.lastName).toBe('Belkacem');
+      expect(user.grade).toBe('Brigadier-chef');
+      expect(user.serviceNumber).toBe('PTS-0099');
+    });
+
+    it('trim les quatre champs corrigés', () => {
+      const user = anUser();
+
+      user.correctProfile({
+        firstName: '  Nadia ',
+        lastName: ' Belkacem  ',
+        grade: '  Brigadier-chef ',
+        serviceNumber: ' PTS-0099 ',
+      });
+
+      expect(user.personalData.firstName).toBe('Nadia');
+      expect(user.personalData.lastName).toBe('Belkacem');
+      expect(user.grade).toBe('Brigadier-chef');
+      expect(user.serviceNumber).toBe('PTS-0099');
+    });
+
+    it('accepte un champ d’un seul caractère', () => {
+      const user = anUser();
+
+      user.correctProfile({
+        firstName: 'A',
+        lastName: 'B',
+        grade: 'C',
+        serviceNumber: 'D',
+      });
+
+      expect(user.grade).toBe('C');
+    });
+
+    it('rend un nom accentué et composé tel quel', () => {
+      const user = anUser();
+
+      user.correctProfile({
+        firstName: 'Jean-François',
+        lastName: 'Nguyễn Đức',
+        grade: 'Brigadier',
+        serviceNumber: 'PTS-0099',
+      });
+
+      expect(user.personalData.lastName).toBe('Nguyễn Đức');
+    });
+
+    it.each([
+      ['firstName', { firstName: '' }],
+      ['firstName en espaces', { firstName: '   ' }],
+      ['lastName', { lastName: '' }],
+      ['lastName en espaces', { lastName: '  ' }],
+      ['grade', { grade: '' }],
+      ['grade en espaces', { grade: '\t ' }],
+      ['serviceNumber', { serviceNumber: '' }],
+      ['serviceNumber en tabulations', { serviceNumber: '\t\t' }],
+    ])('refuse de vider %s', (_label, override) => {
+      const user = anUser();
+      const before = user.toPrimitives();
+
+      expect(() =>
+        user.correctProfile({
+          firstName: 'Nadia',
+          lastName: 'Belkacem',
+          grade: 'Brigadier-chef',
+          serviceNumber: 'PTS-0099',
+          ...override,
+        }),
+      ).toThrow(InvalidUserProfileError);
+      expect(user.toPrimitives()).toEqual(before);
+    });
+
+    it.each(['firstName', 'lastName', 'grade', 'serviceNumber'])(
+      'refuse un %s absent',
+      (field) => {
+        const user = anUser();
+
+        expect(() =>
+          user.correctProfile({
+            firstName: 'Nadia',
+            lastName: 'Belkacem',
+            grade: 'Brigadier-chef',
+            serviceNumber: 'PTS-0099',
+            [field]: undefined as unknown as string,
+          }),
+        ).toThrow(InvalidUserProfileError);
+      },
+    );
+
+    it('nomme le champ fautif', () => {
+      const user = anUser();
+
+      expect(() =>
+        user.correctProfile({
+          firstName: 'Nadia',
+          lastName: 'Belkacem',
+          grade: '  ',
+          serviceNumber: 'PTS-0099',
+        }),
+      ).toThrow(/grade/);
+    });
+
+    it('ne change ni le rôle, ni l’identifiant du fournisseur, ni l’état, ni createdAt', () => {
+      const user = anUser();
+      const before = user.toPrimitives();
+
+      user.correctProfile({
+        firstName: 'Nadia',
+        lastName: 'Belkacem',
+        grade: 'Brigadier-chef',
+        serviceNumber: 'PTS-0099',
+      });
+
+      const after = user.toPrimitives();
+      expect(after.role).toBe(before.role);
+      expect(after.identityProviderId).toBe(before.identityProviderId);
+      expect(after.status).toBe(before.status);
+      expect(after.createdAt).toEqual(before.createdAt);
+    });
+
+    it('avance updatedAt à chaque correction', () => {
+      const user = anUser();
+      const before = user.updatedAt;
+      jest.useFakeTimers().setSystemTime(before.getTime() + 1_000);
+
+      user.correctProfile({
+        firstName: 'Nadia',
+        lastName: 'Belkacem',
+        grade: 'Brigadier-chef',
+        serviceNumber: 'PTS-0099',
+      });
+
+      expect(user.updatedAt.getTime()).toBe(before.getTime() + 1_000);
+    });
+
+    it('laisse corriger le profil d’un compte désactivé', () => {
+      const user = anUser();
+      user.disable();
+
+      user.correctProfile({
+        firstName: 'Nadia',
+        lastName: 'Belkacem',
+        grade: 'Brigadier-chef',
+        serviceNumber: 'PTS-0099',
+      });
+
+      expect(user.grade).toBe('Brigadier-chef');
+      expect(user.status.getValue()).toBe(UserStatusEnum.DISABLED);
+    });
+
+    it('reste idempotent sur deux corrections identiques', () => {
+      const user = anUser();
+      const correction = {
+        firstName: 'Nadia',
+        lastName: 'Belkacem',
+        grade: 'Brigadier-chef',
+        serviceNumber: 'PTS-0099',
+      };
+
+      user.correctProfile(correction);
+      const once = user.toPrimitives();
+      user.correctProfile(correction);
+
+      expect(user.toPrimitives()).toEqual({
+        ...once,
+        updatedAt: user.updatedAt,
+      });
+    });
+
+    it('fait un aller-retour sur un compte corrigé et désactivé', () => {
+      const user = anUser();
+      user.disable();
+      user.correctProfile({
+        firstName: 'Nadia',
+        lastName: 'Belkacem',
+        grade: 'Brigadier-chef',
+        serviceNumber: 'PTS-0099',
+      });
+
+      expect(User.reconstitute(user.toPrimitives()).toPrimitives()).toEqual(
+        user.toPrimitives(),
+      );
+    });
+  });
 });

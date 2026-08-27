@@ -12,6 +12,13 @@ interface RegisterUserProps {
   personalData: PersonalData;
 }
 
+export interface UserProfileCorrection {
+  firstName: string;
+  lastName: string;
+  grade: string;
+  serviceNumber: string;
+}
+
 export interface UserPrimitives {
   id: string;
   identityProviderId: string;
@@ -93,6 +100,23 @@ export class User {
 
   reactivate(): void {
     this._status = UserStatus.active();
+    this._updatedAt = new Date();
+  }
+
+  correctProfile(correction: UserProfileCorrection): void {
+    const grade = requireFilled(correction.grade, 'grade');
+    const serviceNumber = requireFilled(
+      correction.serviceNumber,
+      'serviceNumber',
+    );
+    const personalData = PersonalData.of({
+      firstName: correction.firstName,
+      lastName: correction.lastName,
+    });
+
+    this._grade = grade;
+    this._serviceNumber = serviceNumber;
+    this._personalData = personalData;
     this._updatedAt = new Date();
   }
 
