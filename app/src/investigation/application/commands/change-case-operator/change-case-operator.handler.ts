@@ -5,6 +5,7 @@ import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { CaseNotFoundError } from '../../../domain/investigation-case/errors/case-not-found.error';
 import { OperatorChangeNotAllowedError } from '../../../domain/investigation-case/errors/operator-change-not-allowed.error';
+import { DisabledOperatorError } from '../../../domain/investigation-case/errors/disabled-operator.error';
 import { UnknownOperatorError } from '../../../domain/investigation-case/errors/unknown-operator.error';
 import {
   INVESTIGATION_CASE_REPOSITORY,
@@ -39,11 +40,10 @@ export class ChangeCaseOperatorHandler implements ICommandHandler<
       throw new OperatorChangeNotAllowedError(cmd.caseId);
     }
 
-    const designatedExists = await this.serviceUsers.exists(
-      cmd.newOperatorUserId,
-    );
-    if (!designatedExists)
-      throw new UnknownOperatorError(cmd.newOperatorUserId);
+    const designated = await this.serviceUsers.findById(cmd.newOperatorUserId);
+    if (!designated) throw new UnknownOperatorError(cmd.newOperatorUserId);
+    if (designated.disabled)
+      throw new DisabledOperatorError(cmd.newOperatorUserId);
 
     const previousOperatorUserId = investigationCase.operatorUserId;
     investigationCase.changeOperator(cmd.newOperatorUserId);
