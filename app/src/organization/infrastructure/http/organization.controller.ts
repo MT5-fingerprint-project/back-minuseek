@@ -32,11 +32,9 @@ import {
 import { ListOrganizationsHandler } from '../../application/queries/list-organizations/list-organizations.handler';
 import { ListOrganizationUsersQuery } from '../../application/queries/list-organization-users/list-organization-users.query';
 import { ListOrganizationUsersHandler } from '../../application/queries/list-organization-users/list-organization-users.handler';
+import { OrganizationUserReadModel } from '../../application/queries/list-organization-users/organization-user-read-model';
 import { TenantRecord } from '../../../tenancy/application/tenant-registry.service';
-import {
-  CreatedUser,
-  TenantUser,
-} from '../../application/ports/identity-provider.port';
+import { CreatedUser } from '../../application/ports/identity-provider.port';
 import { PageDto } from '../../../shared/application/pagination/page.dto';
 import { PaginationQueryDto } from '../../../shared/infrastructure/http/dto/pagination-query.dto';
 import { CreateOrganizationDto } from './create-organization.dto';
@@ -101,7 +99,7 @@ export class OrganizationController {
   async listUsers(
     @Param('slug') slug: string,
     @Query() dto: PaginationQueryDto,
-  ): Promise<PageDto<TenantUser>> {
+  ): Promise<PageDto<OrganizationUserReadModel>> {
     try {
       return await this.listOrganizationUsers.execute(
         new ListOrganizationUsersQuery(slug, dto.page, dto.limit),
