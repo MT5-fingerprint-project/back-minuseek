@@ -7,6 +7,7 @@ import { InvestigationCase } from '../../../domain/investigation-case/entity/inv
 import { CaseClosedError } from '../../../domain/investigation-case/errors/case-closed.error';
 import { CaseNotFoundError } from '../../../domain/investigation-case/errors/case-not-found.error';
 import { OperatorChangeNotAllowedError } from '../../../domain/investigation-case/errors/operator-change-not-allowed.error';
+import { DisabledOperatorError } from '../../../domain/investigation-case/errors/disabled-operator.error';
 import { UnknownOperatorError } from '../../../domain/investigation-case/errors/unknown-operator.error';
 import { InvestigationCaseStatusEnum } from '../../../domain/investigation-case/value-objects/investigation-case-status.vo';
 import { InMemoryInvestigationCaseRepository } from '../../../infrastructure/persistence/in-memory-investigation-case.repository';
@@ -18,6 +19,7 @@ const CASE_ID = 'case-1';
 const MARIE = 'user-marie';
 const PIERRE = 'user-pierre';
 const CHEF = 'user-chef';
+const PARTI = 'user-parti';
 
 const operator = (id: string) => ({ id, role: UserRoleEnum.OPERATOR });
 const serviceManager = (id: string) => ({ id, role: UserRoleEnum.ADMIN });
@@ -46,7 +48,10 @@ describe('ChangeCaseOperatorHandler', () => {
   beforeEach(() => {
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryInvestigationCaseRepository(auditTrail);
-    directory = new InMemoryServiceUserDirectory([MARIE, PIERRE, CHEF]);
+    directory = new InMemoryServiceUserDirectory(
+      [MARIE, PIERRE, CHEF, PARTI],
+      [PARTI],
+    );
     handler = new ChangeCaseOperatorHandler(repo, directory);
     seedCase();
   });
@@ -138,6 +143,18 @@ describe('ChangeCaseOperatorHandler', () => {
       UnknownOperatorError,
     ],
     [
+      'un compte désactivé',
+      InvestigationCaseStatusEnum.OPEN,
+      () =>
+        new ChangeCaseOperatorCommand(
+          EXPERT_ACTOR,
+          operator(MARIE),
+          CASE_ID,
+          PARTI,
+        ),
+      DisabledOperatorError,
+    ],
+    [
       'une affaire qui n’existe pas',
       InvestigationCaseStatusEnum.OPEN,
       () =>
@@ -173,4 +190,51 @@ describe('ChangeCaseOperatorHandler', () => {
       expect(repo.store.get(CASE_ID)!.operatorUserId).toBe(MARIE);
     },
   );
+
+  it('distingue un compte désactivé d’un compte inconnu', async () => {
+    await expect(
+      handler.execute(
+        new ChangeCaseOperatorCommand(
+          EXPERT_ACTOR,
+          operator(MARIE),
+          CASE_ID,
+          PARTI,
+        ),
+      ),
+    ).rejects.toThrow(/désactivé/);
+  });
+
+  it('oppose à un tiers le refus d’autorisation avant même de lire l’annuaire', async () => {
+    await expect(
+      handler.execute(
+        new ChangeCaseOperatorCommand(
+          EXPERT_ACTOR,
+          operator(PIERRE),
+          CASE_ID,
+          PARTI,
+        ),
+      ),
+    ).rejects.toThrow(OperatorChangeNotAllowedError);
+  });
+
+  // Un compte désactivé n'obtient plus de jeton : le demandeur ne peut pas
+  // l'être, seule la cible de la désignation est à contrôler.
+  it('ne chaîne aucun acte sur deux refus d’affilée', async () => {
+    const command = () =>
+      new ChangeCaseOperatorCommand(
+        EXPERT_ACTOR,
+        operator(MARIE),
+        CASE_ID,
+        PARTI,
+      );
+
+    await expect(handler.execute(command())).rejects.toThrow(
+      DisabledOperatorError,
+    );
+    await expect(handler.execute(command())).rejects.toThrow(
+      DisabledOperatorError,
+    );
+
+    expect(auditTrail.events).toHaveLength(0);
+  });
 });

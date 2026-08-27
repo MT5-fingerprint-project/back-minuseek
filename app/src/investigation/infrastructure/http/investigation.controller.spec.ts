@@ -13,6 +13,7 @@ import { OpenInvestigationCaseCommand } from '../../application/commands/open-in
 import { CaseClosedError } from '../../domain/investigation-case/errors/case-closed.error';
 import { CaseNotFoundError } from '../../domain/investigation-case/errors/case-not-found.error';
 import { OperatorChangeNotAllowedError } from '../../domain/investigation-case/errors/operator-change-not-allowed.error';
+import { DisabledOperatorError } from '../../domain/investigation-case/errors/disabled-operator.error';
 import { UnknownOperatorError } from '../../domain/investigation-case/errors/unknown-operator.error';
 import { InvestigationController } from './investigation.controller';
 
@@ -127,6 +128,7 @@ describe("InvestigationController — changement d'opérateur", () => {
     [new CaseNotFoundError(CASE_ID), NotFoundException],
     [new OperatorChangeNotAllowedError(CASE_ID), ForbiddenException],
     [new UnknownOperatorError(PIERRE_ID), BadRequestException],
+    [new DisabledOperatorError(PIERRE_ID), BadRequestException],
     [new CaseClosedError(CASE_ID), ConflictException],
   ])('traduit %s à la frontière HTTP', async (domainError, httpError) => {
     const { controller } = build(domainError);

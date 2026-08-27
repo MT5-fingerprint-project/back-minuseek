@@ -20,6 +20,7 @@ import { CaseClosedError } from '../../domain/investigation-case/errors/case-clo
 import { CaseNumberAlreadyExistsError } from '../../domain/investigation-case/errors/case-number-already-exists.error';
 import { CaseNotFoundError } from '../../domain/investigation-case/errors/case-not-found.error';
 import { OperatorChangeNotAllowedError } from '../../domain/investigation-case/errors/operator-change-not-allowed.error';
+import { DisabledOperatorError } from '../../domain/investigation-case/errors/disabled-operator.error';
 import { UnknownOperatorError } from '../../domain/investigation-case/errors/unknown-operator.error';
 import { ChangeCaseOperatorCommand } from '../../application/commands/change-case-operator/change-case-operator.command';
 import { OpenInvestigationCaseCommand } from '../../application/commands/open-investigation-case/open-investigation-case.command';
@@ -144,7 +145,8 @@ export class InvestigationController {
   @ApiResponse({ status: 204, description: 'Affaire confiée' })
   @ApiResponse({
     status: 400,
-    description: "Le compte désigné n'existe pas dans ce service",
+    description:
+      "Le compte désigné n'existe pas dans ce service, ou y est désactivé",
   })
   @ApiResponse({
     status: 403,
@@ -175,6 +177,8 @@ export class InvestigationController {
       if (e instanceof OperatorChangeNotAllowedError)
         throw new ForbiddenException(e.message);
       if (e instanceof UnknownOperatorError)
+        throw new BadRequestException(e.message);
+      if (e instanceof DisabledOperatorError)
         throw new BadRequestException(e.message);
       if (e instanceof CaseClosedError) throw new ConflictException(e.message);
       throw e;

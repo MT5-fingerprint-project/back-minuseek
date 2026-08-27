@@ -1,9 +1,21 @@
-import { ServiceUserDirectory } from '../../application/ports/service-user.directory';
+import {
+  DesignatableServiceUser,
+  ServiceUserDirectory,
+} from '../../application/ports/service-user.directory';
 
 export class InMemoryServiceUserDirectory implements ServiceUserDirectory {
-  constructor(private readonly userIds: string[] = []) {}
+  constructor(
+    private readonly userIds: string[] = [],
+    private readonly disabledUserIds: string[] = [],
+  ) {}
 
-  exists(userId: string): Promise<boolean> {
-    return Promise.resolve(this.userIds.includes(userId));
+  findById(userId: string): Promise<DesignatableServiceUser | null> {
+    if (!this.userIds.includes(userId)) {
+      return Promise.resolve(null);
+    }
+    return Promise.resolve({
+      id: userId,
+      disabled: this.disabledUserIds.includes(userId),
+    });
   }
 }
