@@ -10,6 +10,9 @@
 # re-applique toute nouvelle migration à tous les tenants existants.
 set -eu
 
+echo "→ waiting for the database"
+node scripts/wait-for-database.cjs
+
 echo "→ admin registry schema"
 pnpm prisma migrate deploy --config=prisma-admin.config.ts
 
