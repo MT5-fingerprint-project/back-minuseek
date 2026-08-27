@@ -22,28 +22,25 @@ export class PrismaInvestigationCaseRepository implements InvestigationCaseRepos
     private readonly auditTrail: AuditTrailPort,
   ) {}
 
-  async save(c: InvestigationCase, act: AuditEventDraft): Promise<void> {
+  async save(c: InvestigationCase, ...acts: AuditEventDraft[]): Promise<void> {
     await this.transactionRunner.run(async () => {
       const prisma = await this.tenantConnection.getCurrentClient();
+      const columns = {
+        caseNumber: c.caseNumber,
+        pvNumber: c.pvNumber,
+        description: c.description ?? null,
+        status: c.status,
+        operatorUserId: c.operatorUserId,
+        updatedAt: c.updatedAt,
+      };
       await prisma.investigationCase.upsert({
         where: { id: c.id },
-        create: {
-          id: c.id,
-          caseNumber: c.caseNumber,
-          pvNumber: c.pvNumber,
-          description: c.description,
-          status: c.status,
-          operatorUserId: c.operatorUserId,
-          createdAt: c.createdAt,
-          updatedAt: c.updatedAt,
-        },
-        update: {
-          status: c.status,
-          operatorUserId: c.operatorUserId,
-          updatedAt: c.updatedAt,
-        },
+        create: { id: c.id, createdAt: c.createdAt, ...columns },
+        update: columns,
       });
-      await this.auditTrail.append(act);
+      for (const act of acts) {
+        await this.auditTrail.append(act);
+      }
     });
   }
 

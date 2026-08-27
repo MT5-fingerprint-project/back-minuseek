@@ -104,14 +104,7 @@ describe('UserController — liste des comptes du service', () => {
 
     const page = await controller.list({ page: 2, limit: 5 }, CHEF);
 
-    expect(dispatchedQueries).toEqual([
-      new ListUsersQuery(
-        2,
-        5,
-        {},
-        { id: 'user-chef', role: UserRoleEnum.ADMIN },
-      ),
-    ]);
+    expect(dispatchedQueries).toEqual([new ListUsersQuery(2, 5, {})]);
     expect(page.data).toEqual([MARIE]);
     expect(page.meta.page).toBe(2);
     expect(page.meta.limit).toBe(5);
@@ -123,15 +116,7 @@ describe('UserController — liste des comptes du service', () => {
     const page = await controller.list({}, CHEF);
 
     expect(dispatchedQueries).toEqual([
-      new ListUsersQuery(
-        undefined,
-        undefined,
-        {},
-        {
-          id: 'user-chef',
-          role: UserRoleEnum.ADMIN,
-        },
-      ),
+      new ListUsersQuery(undefined, undefined, {}),
     ]);
     expect(page.meta.page).toBe(1);
     expect(page.meta.limit).toBe(20);
@@ -155,17 +140,12 @@ describe('UserController — filtres de la liste', () => {
     );
 
     expect(dispatchedQueries).toEqual([
-      new ListUsersQuery(
-        1,
-        20,
-        {
-          search: 'Marchand',
-          role: UserRoleEnum.OPERATOR,
-          grade: 'Technicien',
-          status: UserStatusEnum.DISABLED,
-        },
-        { id: 'user-chef', role: UserRoleEnum.ADMIN },
-      ),
+      new ListUsersQuery(1, 20, {
+        search: 'Marchand',
+        role: UserRoleEnum.OPERATOR,
+        grade: 'Technicien',
+        status: UserStatusEnum.DISABLED,
+      }),
     ]);
   });
 
@@ -175,15 +155,7 @@ describe('UserController — filtres de la liste', () => {
     await controller.list({ search: 'Curie' }, CHEF);
 
     expect(dispatchedQueries).toEqual([
-      new ListUsersQuery(
-        undefined,
-        undefined,
-        { search: 'Curie' },
-        {
-          id: 'user-chef',
-          role: UserRoleEnum.ADMIN,
-        },
-      ),
+      new ListUsersQuery(undefined, undefined, { search: 'Curie' }),
     ]);
   });
 
@@ -194,44 +166,37 @@ describe('UserController — filtres de la liste', () => {
       'Commandant',
       'Technicien',
     ]);
-    expect(dispatchedQueries).toEqual([
-      new ListUserGradesQuery({ id: 'user-chef', role: UserRoleEnum.ADMIN }),
-    ]);
+    expect(dispatchedQueries).toEqual([new ListUserGradesQuery()]);
   });
 
-  // Le refus se décide dans la query ; le contrôleur lui passe le rôle sans le
-  // réécrire, et traduit son refus.
+  // Désigner un opérateur ou un vérificateur demande de lire ses collègues :
+  // l'annuaire se lit sans être responsable, seuls les gestes sont réservés.
   it.each([UserRoleEnum.OPERATOR, UserRoleEnum.EXPERT])(
-    "transmet le rôle %s de l'appelant à la query de liste",
+    'rend la liste à un appelant %s comme à un responsable',
     async (role) => {
       const { controller, dispatchedQueries } = build();
 
-      await controller.list({}, { ...CHEF, role });
+      const page = await controller.list({}, { ...CHEF, role });
 
+      expect(page.data).toEqual([MARIE]);
       expect(dispatchedQueries).toEqual([
-        new ListUsersQuery(undefined, undefined, {}, { id: 'user-chef', role }),
+        new ListUsersQuery(undefined, undefined, {}),
       ]);
     },
   );
 
-  it("transmet l'absence de compte de service plutôt que d'inventer un rôle", async () => {
-    const { controller, dispatchedQueries } = build();
-
-    await controller.list({}, undefined);
-
-    expect(dispatchedQueries).toEqual([
-      new ListUsersQuery(undefined, undefined, {}, null),
-    ]);
-  });
-
   it.each([
-    ['la liste', (c: UserController) => c.list({}, CHEF)],
-    ['les grades', (c: UserController) => c.listGrades(CHEF)],
-  ])('traduit en 403 le refus de rôle sur %s', async (_label, call) => {
-    const { controller } = build(new UserAdministrationNotAllowedError());
+    ['la liste', (c: UserController) => c.list({}, undefined)],
+    ['les grades', (c: UserController) => c.listGrades(undefined)],
+  ])(
+    "répond 404 sur %s quand le jeton n'a pas de compte dans le service",
+    async (_label, call) => {
+      const { controller, dispatchedQueries } = build();
 
-    await expect(call(controller)).rejects.toThrow(ForbiddenException);
-  });
+      await expect(call(controller)).rejects.toThrow(NotFoundException);
+      expect(dispatchedQueries).toEqual([]);
+    },
+  );
 });
 
 describe("UserController — état d'un compte", () => {

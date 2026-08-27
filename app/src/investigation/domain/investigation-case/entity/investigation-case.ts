@@ -12,6 +12,11 @@ interface OpenInvestigationCaseProps {
   operatorUserId: string;
 }
 
+export interface CaseCorrection {
+  pvNumber?: string;
+  description?: string | null;
+}
+
 export interface InvestigationCasePrimitives {
   id: string;
   caseNumber: string;
@@ -27,8 +32,8 @@ export class InvestigationCase {
   private constructor(
     private readonly _id: string,
     private readonly _caseNumber: string,
-    private readonly _pvNumber: string,
-    private readonly _description: string | undefined,
+    private _pvNumber: string,
+    private _description: string | undefined,
     private _status: InvestigationCaseStatus,
     private _operatorUserId: string | null,
     private readonly _createdAt: Date,
@@ -62,6 +67,19 @@ export class InvestigationCase {
       primitives.createdAt,
       primitives.updatedAt,
     );
+  }
+
+  correct(correction: CaseCorrection): void {
+    if (this.status === InvestigationCaseStatusEnum.CLOSED) {
+      throw new CaseClosedError(this._id);
+    }
+    if (correction.pvNumber !== undefined) {
+      this._pvNumber = correction.pvNumber;
+    }
+    if (correction.description !== undefined) {
+      this._description = correction.description ?? undefined;
+    }
+    this._updatedAt = new Date();
   }
 
   changeOperator(newOperatorUserId: string): void {

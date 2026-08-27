@@ -58,8 +58,6 @@ interface Route {
   body?: Record<string, unknown>;
 }
 
-// Les vingt et une routes que le garde ferme. L'ordre est celui du tableau de
-// L1-4, augmenté de la passation d'opérateur, arrivée avec L1-3.
 const ROUTES_GARDEES: Route[] = [
   {
     label: 'GET /investigation-cases/:id',
@@ -67,10 +65,10 @@ const ROUTES_GARDEES: Route[] = [
     url: `/investigation-cases/${AFFAIRE}`,
   },
   {
-    label: 'PATCH /investigation-cases/:id/operator',
+    label: 'PATCH /investigation-cases/:id',
     method: 'patch',
-    url: `/investigation-cases/${AFFAIRE}/operator`,
-    body: { operatorUserId: PERSONNE },
+    url: `/investigation-cases/${AFFAIRE}`,
+    body: { pvNumber: 'PV-2026-118', operatorUserId: PERSONNE },
   },
   {
     label: 'GET /investigation-cases/:caseId/audit-events',

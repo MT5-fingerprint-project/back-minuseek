@@ -1,7 +1,5 @@
 import { Inject } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { UserAdministrationNotAllowedError } from '../../../domain/user/errors/user-administration-not-allowed.error';
-import { UserRoleEnum } from '../../../domain/user/value-objects/user-role.vo';
 import {
   SERVICE_USER_GRADES_READER,
   ServiceUserGradesReader,
@@ -18,12 +16,7 @@ export class ListUserGradesHandler implements IQueryHandler<
     private readonly reader: ServiceUserGradesReader,
   ) {}
 
-  // async : le refus doit ressortir en promesse rejetée, comme celui de la
-  // liste, et non en jet synchrone.
-  async execute(query: ListUserGradesQuery): Promise<string[]> {
-    if (query.requester?.role !== UserRoleEnum.ADMIN) {
-      throw new UserAdministrationNotAllowedError();
-    }
+  async execute(): Promise<string[]> {
     return this.reader.listGrades();
   }
 }

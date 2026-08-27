@@ -5,7 +5,6 @@ import { InMemoryServiceUsersReader } from '../../../infrastructure/persistence/
 import { UserRoleEnum } from '../../../domain/user/value-objects/user-role.vo';
 import { UserStatusEnum } from '../../../domain/user/value-objects/user-status.vo';
 import { ServiceUsersFilters } from './service-users-filters';
-import { UserAdministrationNotAllowedError } from '../../../domain/user/errors/user-administration-not-allowed.error';
 
 const makeUser = (
   overrides: Partial<ServiceUserReadModel> = {},
@@ -20,8 +19,6 @@ const makeUser = (
   ...overrides,
 });
 
-const CHEF = { id: 'user-chef', role: UserRoleEnum.ADMIN };
-
 describe('ListUsersHandler', () => {
   let handler: ListUsersHandler;
   let reader: InMemoryServiceUsersReader;
@@ -33,7 +30,7 @@ describe('ListUsersHandler', () => {
 
   it('retourne une page vide quand le service ne compte aucun compte', async () => {
     const page = await handler.execute(
-      new ListUsersQuery(undefined, undefined, {}, CHEF),
+      new ListUsersQuery(undefined, undefined, {}),
     );
 
     expect(page.data).toEqual([]);
@@ -60,7 +57,7 @@ describe('ListUsersHandler', () => {
     );
 
     const page = await handler.execute(
-      new ListUsersQuery(undefined, undefined, {}, CHEF),
+      new ListUsersQuery(undefined, undefined, {}),
     );
 
     expect(page.data).toEqual([
@@ -94,7 +91,7 @@ describe('ListUsersHandler', () => {
     );
 
     const page = await handler.execute(
-      new ListUsersQuery(undefined, undefined, {}, CHEF),
+      new ListUsersQuery(undefined, undefined, {}),
     );
 
     expect(page.data.map((user) => user.status)).toEqual([
@@ -113,7 +110,7 @@ describe('ListUsersHandler', () => {
     );
 
     const page = await handler.execute(
-      new ListUsersQuery(undefined, undefined, {}, CHEF),
+      new ListUsersQuery(undefined, undefined, {}),
     );
 
     expect(page.data).toHaveLength(2);
@@ -131,7 +128,7 @@ describe('ListUsersHandler', () => {
     );
 
     const page = await handler.execute(
-      new ListUsersQuery(undefined, undefined, {}, CHEF),
+      new ListUsersQuery(undefined, undefined, {}),
     );
 
     expect(page.data.map((user) => user.id)).toEqual(['b', 'a', 'c']);
@@ -151,7 +148,7 @@ describe('ListUsersHandler', () => {
     );
 
     const page = await handler.execute(
-      new ListUsersQuery(undefined, undefined, {}, CHEF),
+      new ListUsersQuery(undefined, undefined, {}),
     );
 
     expect(page.data.map((user) => user.id)).toEqual(['user-1', 'user-2']);
@@ -164,7 +161,7 @@ describe('ListUsersHandler', () => {
       );
     }
 
-    const page = await handler.execute(new ListUsersQuery(2, 2, {}, CHEF));
+    const page = await handler.execute(new ListUsersQuery(2, 2, {}));
 
     expect(page.data.map((user) => user.id)).toEqual(['user-3', 'user-4']);
     expect(page.meta).toEqual({
@@ -180,7 +177,7 @@ describe('ListUsersHandler', () => {
   it('rend une page vide au-delà de la dernière page sans perdre le total', async () => {
     reader.store.push(makeUser({ id: 'user-1' }));
 
-    const page = await handler.execute(new ListUsersQuery(4, 20, {}, CHEF));
+    const page = await handler.execute(new ListUsersQuery(4, 20, {}));
 
     expect(page.data).toEqual([]);
     expect(page.meta.itemCount).toBe(1);
@@ -221,9 +218,7 @@ describe('ListUsersHandler', () => {
 
     const idsOf = async (filters: ServiceUsersFilters) =>
       (
-        await handler.execute(
-          new ListUsersQuery(undefined, undefined, filters, CHEF),
-        )
+        await handler.execute(new ListUsersQuery(undefined, undefined, filters))
       ).data.map((user) => user.id);
 
     it('rend tout le service quand aucun filtre n’est posé', async () => {
@@ -273,7 +268,7 @@ describe('ListUsersHandler', () => {
 
     it('rend une page vide quand rien ne correspond', async () => {
       const page = await handler.execute(
-        new ListUsersQuery(undefined, undefined, { search: 'personne' }, CHEF),
+        new ListUsersQuery(undefined, undefined, { search: 'personne' }),
       );
 
       expect(page.data).toEqual([]);
@@ -317,7 +312,7 @@ describe('ListUsersHandler', () => {
 
     it('compte le total sur les lignes filtrées, pas sur tout le service', async () => {
       const page = await handler.execute(
-        new ListUsersQuery(1, 1, { role: UserRoleEnum.OPERATOR }, CHEF),
+        new ListUsersQuery(1, 1, { role: UserRoleEnum.OPERATOR }),
       );
 
       expect(page.data.map((user) => user.id)).toEqual(['user-3']);
@@ -343,27 +338,6 @@ describe('ListUsersHandler', () => {
         'user-3',
         'user-1',
       ]);
-    });
-  });
-
-  describe("l'annuaire est réservé au responsable de service", () => {
-    it.each([UserRoleEnum.OPERATOR, UserRoleEnum.EXPERT])(
-      'refuse un appelant %s',
-      async (role) => {
-        reader.store.push(makeUser({ id: 'user-1' }));
-
-        await expect(
-          handler.execute(
-            new ListUsersQuery(undefined, undefined, {}, { id: 'x', role }),
-          ),
-        ).rejects.toThrow(UserAdministrationNotAllowedError);
-      },
-    );
-
-    it('refuse un jeton sans compte de service', async () => {
-      await expect(
-        handler.execute(new ListUsersQuery(undefined, undefined, {}, null)),
-      ).rejects.toThrow(UserAdministrationNotAllowedError);
     });
   });
 });

@@ -3,6 +3,7 @@ const ACTION_LABELS: Record<string, string> = {
   CASE_OPENED: 'Dossier ouvert',
   CASE_STATUS_CHANGED: 'Statut du dossier modifié',
   CASE_OPERATOR_CHANGED: 'Dossier confié à un autre opérateur',
+  CASE_UPDATED: 'Informations du dossier corrigées',
   TRACE_UPLOADED: 'Trace déposée et mise sous scellé',
   TRACE_QUALIFIED: 'Trace qualifiée',
   TRACE_DELETED: 'Trace supprimée',
@@ -90,7 +91,6 @@ function isScalar(value: unknown): boolean {
   );
 }
 
-/** Détail court d'un acte ; le payload complet vit dans l'annexe de traçabilité. */
 export function describeAction(
   eventType: string,
   payload: Record<string, unknown>,

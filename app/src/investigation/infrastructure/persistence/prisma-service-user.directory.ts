@@ -15,11 +15,20 @@ export class PrismaServiceUserDirectory implements ServiceUserDirectory {
     const prisma = await this.tenantConnection.getCurrentClient();
     const found = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, status: true },
+      select: {
+        id: true,
+        status: true,
+        personalData: { select: { firstName: true, lastName: true } },
+      },
     });
     if (!found) {
       return null;
     }
-    return { id: found.id, disabled: found.status !== 'ACTIVE' };
+    return {
+      id: found.id,
+      disabled: found.status !== 'ACTIVE',
+      firstName: found.personalData.firstName,
+      lastName: found.personalData.lastName,
+    };
   }
 }
