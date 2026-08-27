@@ -9,17 +9,20 @@ import { DeactivateUserHandler } from './application/commands/deactivate-user/de
 import { ReactivateUserHandler } from './application/commands/reactivate-user/reactivate-user.handler';
 import { CorrectUserProfileHandler } from './application/commands/correct-user-profile/correct-user-profile.handler';
 import { ListUsersHandler } from './application/queries/list-users/list-users.handler';
+import { ListUserGradesHandler } from './application/queries/list-user-grades/list-user-grades.handler';
 import { GetSubjectByIdHandler } from './application/queries/get-subject-by-id/get-subject-by-id.handler';
 import { ListSubjectsByCaseHandler } from './application/queries/list-subjects-by-case/list-subjects-by-case.handler';
 import { RegisterSubjectHandler } from './application/commands/register-subject/register-subject.handler';
 import { PrismaUserReader } from './infrastructure/persistence/prisma-user.reader';
 import { PrismaServiceUsersReader } from './infrastructure/persistence/prisma-service-users.reader';
+import { PrismaServiceUserGradesReader } from './infrastructure/persistence/prisma-service-user-grades.reader';
 import { PrismaUserRepository } from './infrastructure/persistence/prisma-user.repository';
 import { PrismaSubjectReader } from './infrastructure/persistence/prisma-subject.reader';
 import { PrismaSubjectRepository } from './infrastructure/persistence/prisma-subject.repository';
 import { PrismaCaseSubjectsReader } from './infrastructure/persistence/prisma-case-subjects.reader';
 import { USER_READER } from './application/queries/get-user-by-provider-id/user.reader';
 import { SERVICE_USERS_READER } from './application/queries/list-users/service-users.reader';
+import { SERVICE_USER_GRADES_READER } from './application/queries/list-user-grades/service-user-grades.reader';
 import { USER_REPOSITORY } from './domain/user/repository/user.repository';
 import { SUBJECT_READER } from './application/queries/get-subject-by-id/subject.reader';
 import { SUBJECT_REPOSITORY } from './domain/subject/repository/subject.repository';
@@ -36,6 +39,7 @@ import { OrganizationModule } from '../organization/organization.module';
   providers: [
     GetUserByProviderIdHandler,
     ListUsersHandler,
+    ListUserGradesHandler,
     RegisterUserHandler,
     DeactivateUserHandler,
     ReactivateUserHandler,
@@ -50,6 +54,10 @@ import { OrganizationModule } from '../organization/organization.module';
     {
       provide: SERVICE_USERS_READER,
       useClass: PrismaServiceUsersReader,
+    },
+    {
+      provide: SERVICE_USER_GRADES_READER,
+      useClass: PrismaServiceUserGradesReader,
     },
     {
       provide: USER_REPOSITORY,

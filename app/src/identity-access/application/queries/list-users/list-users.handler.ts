@@ -1,6 +1,8 @@
 import { Inject } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { PageDto } from '../../../../shared/application/pagination/page.dto';
+import { UserAdministrationNotAllowedError } from '../../../domain/user/errors/user-administration-not-allowed.error';
+import { UserRoleEnum } from '../../../domain/user/value-objects/user-role.vo';
 import { ServiceUserReadModel } from './service-user-read-model';
 import {
   SERVICE_USERS_READER,
@@ -16,11 +18,18 @@ export class ListUsersHandler implements IQueryHandler<ListUsersQuery> {
   ) {}
 
   async execute(query: ListUsersQuery): Promise<PageDto<ServiceUserReadModel>> {
+    if (query.requester?.role !== UserRoleEnum.ADMIN) {
+      throw new UserAdministrationNotAllowedError();
+    }
+
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const skip = (page - 1) * limit;
 
-    const { items, total } = await this.reader.findAll({ skip, take: limit });
+    const { items, total } = await this.reader.findAll(query.filters, {
+      skip,
+      take: limit,
+    });
 
     return new PageDto(items, {
       itemCount: total,

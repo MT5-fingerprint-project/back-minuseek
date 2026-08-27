@@ -1,20 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
 import { ServiceUserReadModel } from '../../application/queries/list-users/service-user-read-model';
+import { ServiceUsersFilters } from '../../application/queries/list-users/service-users-filters';
 import type { ServiceUsersReader } from '../../application/queries/list-users/service-users.reader';
 
 @Injectable()
 export class PrismaServiceUsersReader implements ServiceUsersReader {
   constructor(private readonly tenantConnection: TenantConnectionService) {}
 
-  async findAll(pagination: {
-    skip: number;
-    take: number;
-  }): Promise<{ items: ServiceUserReadModel[]; total: number }> {
+  async findAll(
+    filters: ServiceUsersFilters,
+    pagination: { skip: number; take: number },
+  ): Promise<{ items: ServiceUserReadModel[]; total: number }> {
     const prisma = await this.tenantConnection.getCurrentClient();
+    // La même clause pour la page et pour le total : deux clauses distinctes
+    // fausseraient le nombre de pages, donc la dernière page de la liste.
+    const where = whereFrom(filters);
 
     const [rows, total] = await Promise.all([
       prisma.user.findMany({
+        where,
         skip: pagination.skip,
         take: pagination.take,
         // L'identifiant départage les homonymes : sans lui, deux pages
@@ -26,7 +31,7 @@ export class PrismaServiceUsersReader implements ServiceUsersReader {
         ],
         include: { personalData: true },
       }),
-      prisma.user.count(),
+      prisma.user.count({ where }),
     ]);
 
     return {
@@ -42,4 +47,43 @@ export class PrismaServiceUsersReader implements ServiceUsersReader {
       total,
     };
   }
+}
+
+function whereFrom(filters: ServiceUsersFilters) {
+  const search = escapeLikeWildcards(filters.search?.trim());
+
+  return {
+    ...(filters.role ? { role: filters.role } : {}),
+    ...(filters.grade ? { grade: filters.grade } : {}),
+    ...(filters.status ? { status: filters.status } : {}),
+    ...(search
+      ? {
+          OR: [
+            {
+              personalData: {
+                lastName: { contains: search, mode: 'insensitive' as const },
+              },
+            },
+            {
+              personalData: {
+                firstName: { contains: search, mode: 'insensitive' as const },
+              },
+            },
+            {
+              serviceNumber: {
+                contains: search,
+                mode: 'insensitive' as const,
+              },
+            },
+          ],
+        }
+      : {}),
+  };
+}
+
+/** Le fragment cherché est une saisie, pas un motif : sans cet échappement,
+ * « % » rendrait tout le service et « PTS_0002 » trouverait « PTS-0002 ».
+ * L'antislash est le caractère d'échappement par défaut de LIKE en Postgres. */
+function escapeLikeWildcards(search: string | undefined): string | undefined {
+  return search?.replace(/[\\%_]/g, '\\$&');
 }

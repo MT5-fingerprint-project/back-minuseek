@@ -21,13 +21,13 @@ import { GetUserByProviderIdQuery } from '../../application/queries/get-user-by-
 import { UserReadModel } from '../../application/queries/get-user-by-provider-id/user-read-model';
 import { UserNotFoundError } from '../../domain/user/errors/user-not-found.error';
 import { PageDto } from '../../../shared/application/pagination/page.dto';
-import { PaginationQueryDto } from '../../../shared/infrastructure/http/dto/pagination-query.dto';
+import { ListUserGradesQuery } from '../../application/queries/list-user-grades/list-user-grades.query';
 import { ListUsersQuery } from '../../application/queries/list-users/list-users.query';
 import { ServiceUserReadModel } from '../../application/queries/list-users/service-user-read-model';
+import { CorrectUserProfileCommand } from '../../application/commands/correct-user-profile/correct-user-profile.command';
 import { DeactivateUserCommand } from '../../application/commands/deactivate-user/deactivate-user.command';
 import { ReactivateUserCommand } from '../../application/commands/reactivate-user/reactivate-user.command';
 import { IdentityProviderUnavailableError } from '../../application/ports/identity-provider-unavailable.error';
-import { CorrectUserProfileCommand } from '../../application/commands/correct-user-profile/correct-user-profile.command';
 import { InvalidUserProfileError } from '../../domain/user/errors/invalid-user-profile.error';
 import { ServiceAccountNotFoundError } from '../../domain/user/errors/service-account-not-found.error';
 import { ServiceNumberAlreadyExistsError } from '../../domain/user/errors/user-already-registered.error';
@@ -37,8 +37,10 @@ import {
 } from '../../domain/user/errors/user-administration-not-allowed.error';
 import { UserRoleEnum } from '../../domain/user/value-objects/user-role.vo';
 import { UserStatusEnum } from '../../domain/user/value-objects/user-status.vo';
+import { ServiceAccountAdministrator } from '../../application/service-account-administrator';
 import { CurrentServiceUser } from './current-service-user.decorator';
 import { ChangeUserStatusDto } from './dto/change-user-status.dto';
+import { ListServiceUsersDto } from './dto/list-service-users.dto';
 import { CorrectUserProfileDto } from './dto/correct-user-profile.dto';
 
 const NO_SERVICE_ACCOUNT_MESSAGE =
@@ -61,14 +63,56 @@ export class UserController {
 
   @Get()
   @NoCaseScope('annuaire du service, hors périmètre affaire')
-  @ApiOperation({ summary: 'Lister les comptes du service courant' })
+  @ApiOperation({
+    summary: 'Lister les comptes du service courant, filtres compris',
+  })
   @ApiResponse({ status: 200, description: 'Page de comptes du service' })
-  list(
-    @Query() pagination: PaginationQueryDto,
+  @ApiResponse({ status: 403, description: "L'appelant n'est pas responsable" })
+  async list(
+    @Query() query: ListServiceUsersDto,
+    @CurrentServiceUser() requester?: UserReadModel,
   ): Promise<PageDto<ServiceUserReadModel>> {
-    return this.queryBus.execute<ListUsersQuery, PageDto<ServiceUserReadModel>>(
-      new ListUsersQuery(pagination.page, pagination.limit),
-    );
+    // Le filtrage se fait en base : la page rendue et son total portent la même
+    // clause, sinon le nombre de pages mentirait dès le premier filtre.
+    try {
+      return await this.queryBus.execute<
+        ListUsersQuery,
+        PageDto<ServiceUserReadModel>
+      >(
+        new ListUsersQuery(
+          query.page,
+          query.limit,
+          {
+            ...(query.search ? { search: query.search } : {}),
+            ...(query.role ? { role: query.role } : {}),
+            ...(query.grade ? { grade: query.grade } : {}),
+            ...(query.status ? { status: query.status } : {}),
+          },
+          administratorOf(requester),
+        ),
+      );
+    } catch (e) {
+      throw toHttpException(e);
+    }
+  }
+
+  @Get('grades')
+  @NoCaseScope('annuaire du service, hors périmètre affaire')
+  @ApiOperation({
+    summary: 'Lister les grades en usage dans le service, pour le filtre',
+  })
+  @ApiResponse({ status: 200, description: 'Grades distincts, triés' })
+  @ApiResponse({ status: 403, description: "L'appelant n'est pas responsable" })
+  async listGrades(
+    @CurrentServiceUser() requester?: UserReadModel,
+  ): Promise<string[]> {
+    try {
+      return await this.queryBus.execute<ListUserGradesQuery, string[]>(
+        new ListUserGradesQuery(administratorOf(requester)),
+      );
+    } catch (e) {
+      throw toHttpException(e);
+    }
   }
 
   @Get('by-provider-id/:identityProviderId')
@@ -114,10 +158,7 @@ export class UserController {
     @CurrentServiceUser() requester?: UserReadModel,
   ): Promise<void> {
     if (!requester) throw new NotFoundException(NO_SERVICE_ACCOUNT_MESSAGE);
-    const administrator = {
-      id: requester.id,
-      role: requester.role as UserRoleEnum,
-    };
+    const administrator = administratorOf(requester)!;
 
     try {
       await this.commandBus.execute<
@@ -158,21 +199,28 @@ export class UserController {
 
     try {
       await this.commandBus.execute<CorrectUserProfileCommand, void>(
-        new CorrectUserProfileCommand(
-          { id: requester.id, role: requester.role as UserRoleEnum },
-          id,
-          {
-            firstName: dto.firstName,
-            lastName: dto.lastName,
-            grade: dto.grade,
-            serviceNumber: dto.serviceNumber,
-          },
-        ),
+        new CorrectUserProfileCommand(administratorOf(requester)!, id, {
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          grade: dto.grade,
+          serviceNumber: dto.serviceNumber,
+        }),
       );
     } catch (e) {
       throw toHttpException(e);
     }
   }
+}
+
+/** Le rôle vient du compte de service posé par CurrentUserGuard, jamais de la
+ * requête. Absent, l'appelant est traité comme non autorisé, pas comme
+ * responsable. */
+function administratorOf(
+  requester: UserReadModel | undefined,
+): ServiceAccountAdministrator | null {
+  return requester
+    ? { id: requester.id, role: requester.role as UserRoleEnum }
+    : null;
 }
 
 function toHttpException(error: unknown): unknown {

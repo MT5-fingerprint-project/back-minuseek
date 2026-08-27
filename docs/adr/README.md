@@ -25,3 +25,4 @@ On consigne ici les **décisions structurantes** du repo : choix techno, trade-o
 - [ADR-0012](0012-report-generation.md) — Génération et scellement des rapports PDF
 - [ADR-0013](0013-controle-qualite-de-capture-persiste.md) — Persistance du contrôle qualité de capture sur l'upload d'une trace
 - [ADR-0014](0014-compte-de-service-et-utilisateur-courant.md) — Le compte du service naît avec le compte d'identité, et chaque requête porte son auteur
+- [ADR-0015](0015-etat-de-compte-projete-depuis-keycloak.md) — L'état d'un compte de service est décidé par Keycloak et projeté chez nous
