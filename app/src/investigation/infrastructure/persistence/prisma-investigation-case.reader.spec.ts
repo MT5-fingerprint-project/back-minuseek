@@ -166,7 +166,17 @@ describe('PrismaInvestigationCaseReader', () => {
       where: {},
       skip: 0,
       take: 20,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+    });
+  });
+
+  it('départage par identifiant deux affaires ouvertes dans la même seconde', async () => {
+    const { reader, prisma } = build();
+
+    await reader.findAll({ caseIds: null }, { skip: 0, take: 20 });
+
+    expect(prisma.caseFindManyArgs[0]).toMatchObject({
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
     });
   });
 

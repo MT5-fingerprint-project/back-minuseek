@@ -143,6 +143,43 @@ describe('ListInvestigationCasesHandler', () => {
     expect(result.data).toEqual([]);
   });
 
+  it('départage par identifiant deux affaires ouvertes dans la même seconde', async () => {
+    const openedAt = new Date('2026-02-01');
+    reader.store.push(makeCase({ id: 'aa', createdAt: openedAt }));
+    reader.store.push(makeCase({ id: 'cc', createdAt: openedAt }));
+    reader.store.push(makeCase({ id: 'bb', createdAt: openedAt }));
+
+    const result = await handler.execute(
+      new ListInvestigationCasesQuery(undefined, undefined, undefined, NADIA),
+    );
+
+    expect(result.data.map((affaire) => affaire.id)).toEqual([
+      'aa',
+      'bb',
+      'cc',
+    ]);
+  });
+
+  // Les affaires sont poussées à l'envers de l'ordre attendu : sans départage,
+  // un tri stable rendrait « bb » page 1 et « aa » page 2.
+  it('ne rend pas deux fois la même affaire sur deux pages successives', async () => {
+    const openedAt = new Date('2026-02-01');
+    reader.store.push(makeCase({ id: 'bb', createdAt: openedAt }));
+    reader.store.push(makeCase({ id: 'aa', createdAt: openedAt }));
+
+    const premiere = await handler.execute(
+      new ListInvestigationCasesQuery(undefined, 1, 1, NADIA),
+    );
+    const seconde = await handler.execute(
+      new ListInvestigationCasesQuery(undefined, 2, 1, NADIA),
+    );
+
+    const vues = [...premiere.data, ...seconde.data].map(
+      (affaire) => affaire.id,
+    );
+    expect(vues).toEqual(['aa', 'bb']);
+  });
+
   it('trie par createdAt décroissant', async () => {
     reader.store.push(
       makeCase({ id: 'old', createdAt: new Date('2026-01-01') }),

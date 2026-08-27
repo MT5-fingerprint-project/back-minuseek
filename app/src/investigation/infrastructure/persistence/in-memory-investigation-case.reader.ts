@@ -23,7 +23,13 @@ export class InMemoryInvestigationCaseReader implements InvestigationCaseReader 
       all = all.filter((c) => visible.has(c.id));
     }
 
-    all.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    // Même ordre que `prisma-investigation-case.reader.ts`, départage compris :
+    // sans lui le fake pagine mieux que la vraie requête.
+    all.sort(
+      (left, right) =>
+        right.createdAt.getTime() - left.createdAt.getTime() ||
+        left.id.localeCompare(right.id),
+    );
 
     return Promise.resolve({
       items: all.slice(pagination.skip, pagination.skip + pagination.take),

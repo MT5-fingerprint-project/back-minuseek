@@ -12,7 +12,9 @@ export class PrismaLayerReader implements LayerReader {
     const prisma = await this.tenantConnection.getCurrentClient();
     const rows = await prisma.layer.findMany({
       where: { fingerprintId },
-      orderBy: [{ zIndex: 'asc' }, { createdAt: 'asc' }],
+      // Ni `zIndex` ni `createdAt` ne sont uniques, et l'empilement est
+      // métier-significatif : l'identifiant ferme l'ordre.
+      orderBy: [{ zIndex: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
     });
     return rows.map((row) => ({
       id: row.id,

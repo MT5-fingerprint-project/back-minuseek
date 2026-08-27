@@ -40,7 +40,9 @@ export class PrismaInvestigationCaseReader implements InvestigationCaseReader {
         where,
         skip: pagination.skip,
         take: pagination.take,
-        orderBy: { createdAt: 'desc' },
+        // La liste est paginée et `createdAt` n'est pas unique : sans
+        // départage, une affaire peut ressortir page 1 et page 2 à la fois.
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
       }),
       prisma.investigationCase.count({ where }),
     ]);

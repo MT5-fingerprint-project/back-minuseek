@@ -7,9 +7,17 @@ import { TraceReader } from './trace.reader';
 class InMemoryTraceReader implements TraceReader {
   constructor(private readonly traces: TraceReadModel[]) {}
 
+  // Même ordre que `prisma-trace.reader.ts` : la plus récente d'abord, puis
+  // l'identifiant pour départager deux dépôts de la même seconde.
   findByCaseId(caseId: string): Promise<TraceReadModel[]> {
     return Promise.resolve(
-      this.traces.filter((trace) => trace.caseId === caseId),
+      this.traces
+        .filter((trace) => trace.caseId === caseId)
+        .sort(
+          (left, right) =>
+            right.createdAt.getTime() - left.createdAt.getTime() ||
+            left.id.localeCompare(right.id),
+        ),
     );
   }
 }
@@ -110,5 +118,26 @@ describe('ListTracesHandler', () => {
       captureDeviceModel: null,
       captureQuality: null,
     });
+  });
+
+  it('départage deux traces déposées dans la même seconde par leur identifiant', async () => {
+    const capturedAt = new Date('2026-07-01T00:00:00.000Z');
+    const reader = new InMemoryTraceReader([
+      traceRow({ id: 'trace-a', createdAt: capturedAt }),
+      traceRow({ id: 'trace-c', createdAt: capturedAt }),
+      traceRow({ id: 'trace-b', createdAt: capturedAt }),
+    ]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data.map((trace) => trace.id)).toEqual([
+      'trace-a',
+      'trace-b',
+      'trace-c',
+    ]);
   });
 });
