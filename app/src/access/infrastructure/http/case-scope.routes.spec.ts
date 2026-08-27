@@ -16,6 +16,7 @@ import { UserController } from '../../../identity-access/infrastructure/http/use
 import { InvestigationController } from '../../../investigation/infrastructure/http/investigation.controller';
 import { ListInvestigationCasesQuery } from '../../../investigation/application/queries/list-investigation-cases/list-investigation-cases.query';
 import { ReportsController } from '../../../reporting/infrastructure/http/reports.controller';
+import { ServiceSettingsController } from '../../../organization/infrastructure/http/service-settings.controller';
 import { TenantContextService } from '../../../tenancy/application/tenant-context.service';
 import { CASE_ACCESS_READER } from '../../application/case-access.reader';
 import { CaseAccessService } from '../../application/case-access.service';
@@ -192,6 +193,7 @@ async function bootFor(caller: UserReadModel | undefined): Promise<{
       SubjectController,
       UserController,
       MeController,
+      ServiceSettingsController,
     ],
     providers: [
       CaseAccessService,
@@ -371,6 +373,27 @@ describe("Le garde d'accès — les routes qui ne touchent aucune affaire", () =
       'Cannot POST /users',
     );
     expect(bus.dispatched).toEqual([]);
+  });
+
+  it("laisse tout compte du service lire l'en-tête de son service", async () => {
+    const response = await request(server).get('/service-settings');
+
+    expect(response.status).toBe(200);
+    expect(bus.dispatched).toHaveLength(1);
+  });
+
+  it("laisse l'enregistrement de l'en-tête franchir le garde : le rôle se juge dans le handler", async () => {
+    const response = await request(server).put('/service-settings').send({
+      administration: "MINISTÈRE DE L'INTÉRIEUR",
+      serviceName: 'SRPTS',
+      postalAddress: '36 rue du Bastion — 75017 PARIS',
+      phoneNumber: '01 40 79 60 00',
+      email: 'srpts.paris@interieur.gouv.fr',
+      signatureCity: 'Paris',
+    });
+
+    expect(response.status).toBe(204);
+    expect(bus.dispatched).toHaveLength(1);
   });
 
   it.each([

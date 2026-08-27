@@ -18,6 +18,7 @@ const ACTION_LABELS: Record<string, string> = {
   HIT_REMOVED: 'Correspondance retirée par un expert',
   REPORT_GENERATED: 'Rapport généré et scellé',
   CHAIN_ANCHORED: "Chaîne d'audit horodatée par une autorité externe",
+  SERVICE_HEADER_SAVED: 'En-tête du service enregistré',
 };
 
 const POSITION_LABELS: Record<string, string> = {

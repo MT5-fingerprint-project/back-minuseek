@@ -24,6 +24,7 @@ export enum AuditEventTypeEnum {
   HIT_REMOVED = 'HIT_REMOVED',
   REPORT_GENERATED = 'REPORT_GENERATED',
   CHAIN_ANCHORED = 'CHAIN_ANCHORED',
+  SERVICE_HEADER_SAVED = 'SERVICE_HEADER_SAVED',
 }
 
 export class InvalidAuditEventTypeError extends Error {
