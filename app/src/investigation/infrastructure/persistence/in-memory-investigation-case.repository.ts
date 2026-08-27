@@ -17,9 +17,11 @@ export class InMemoryInvestigationCaseRepository implements InvestigationCaseRep
     this.store.set(c.id, c);
   }
 
-  async save(c: InvestigationCase, act: AuditEventDraft): Promise<void> {
+  async save(c: InvestigationCase, ...acts: AuditEventDraft[]): Promise<void> {
     this.store.set(c.id, c);
-    await this.auditTrail.append(act);
+    for (const act of acts) {
+      await this.auditTrail.append(act);
+    }
   }
 
   findById(id: string): Promise<InvestigationCase | null> {
