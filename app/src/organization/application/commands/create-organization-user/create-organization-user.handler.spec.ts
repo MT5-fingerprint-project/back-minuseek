@@ -6,6 +6,7 @@ import type {
   CreateUserInput,
   CreatedUser,
   IdentityProviderPort,
+  UpdateUserInput,
   ListedUsers,
 } from '../../ports/identity-provider.port';
 import type {
@@ -27,6 +28,11 @@ const DEMO_RECORD: TenantRecord = {
 class InMemoryIdentityProvider implements IdentityProviderPort {
   readonly created: Array<{ realm: string; input: CreateUserInput }> = [];
   readonly deleted: Array<{ realm: string; userId: string }> = [];
+  readonly updated: Array<{
+    realm: string;
+    userId: string;
+    input: UpdateUserInput;
+  }> = [];
   readonly preexistingEmails = new Set<string>();
   deletionFailure: Error | null = null;
 
@@ -57,6 +63,15 @@ class InMemoryIdentityProvider implements IdentityProviderPort {
       temporaryPassword: preexisting ? null : 'tmp-secret',
       created: !preexisting,
     });
+  }
+
+  updateUser(
+    realm: string,
+    userId: string,
+    input: UpdateUserInput,
+  ): Promise<void> {
+    this.updated.push({ realm, userId, input });
+    return Promise.resolve();
   }
 
   deleteUser(realm: string, userId: string): Promise<void> {

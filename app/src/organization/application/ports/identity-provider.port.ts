@@ -27,6 +27,13 @@ export interface CreateUserInput {
   lastName?: string;
 }
 
+/** Mise à jour partielle : un champ absent n'est pas touché sur l'identity provider. */
+export interface UpdateUserInput {
+  enabled?: boolean;
+  firstName?: string;
+  lastName?: string;
+}
+
 export interface ListUsersInput {
   first: number;
   max: number;
@@ -42,5 +49,10 @@ export interface IdentityProviderPort {
   deleteRealm(realm: string): Promise<void>;
   listUsers(realm: string, input: ListUsersInput): Promise<ListedUsers>;
   createUser(realm: string, input: CreateUserInput): Promise<CreatedUser>;
+  updateUser(
+    realm: string,
+    userId: string,
+    input: UpdateUserInput,
+  ): Promise<void>;
   deleteUser(realm: string, userId: string): Promise<void>;
 }
