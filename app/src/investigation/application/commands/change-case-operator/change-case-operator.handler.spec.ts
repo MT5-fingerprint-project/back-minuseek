@@ -48,10 +48,12 @@ describe('ChangeCaseOperatorHandler', () => {
   beforeEach(() => {
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryInvestigationCaseRepository(auditTrail);
-    directory = new InMemoryServiceUserDirectory(
-      [MARIE, PIERRE, CHEF, PARTI],
-      [PARTI],
-    );
+    directory = new InMemoryServiceUserDirectory([
+      { id: MARIE, disabled: false, firstName: 'Marie', lastName: 'Curie' },
+      { id: PIERRE, disabled: false, firstName: 'Pierre', lastName: 'Martin' },
+      { id: CHEF, disabled: false, firstName: 'Solène', lastName: 'Roy' },
+      { id: PARTI, disabled: true, firstName: 'Luc', lastName: 'Bonnet' },
+    ]);
     handler = new ChangeCaseOperatorHandler(repo, directory);
     seedCase();
   });
