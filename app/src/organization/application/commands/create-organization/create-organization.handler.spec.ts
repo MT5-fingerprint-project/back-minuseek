@@ -4,6 +4,7 @@ import type {
   CreateUserInput,
   CreatedUser,
   IdentityProviderPort,
+  UpdateUserInput,
   ListedUsers,
 } from '../../ports/identity-provider.port';
 import type { TenantDatabaseAdminPort } from '../../ports/tenant-database.port';
@@ -77,6 +78,21 @@ class InMemoryIdentityProvider implements IdentityProviderPort {
       temporaryPassword: 'tmp-secret',
       created: true,
     });
+  }
+
+  readonly updated: Array<{
+    realm: string;
+    userId: string;
+    input: UpdateUserInput;
+  }> = [];
+
+  updateUser(
+    realm: string,
+    userId: string,
+    input: UpdateUserInput,
+  ): Promise<void> {
+    this.updated.push({ realm, userId, input });
+    return Promise.resolve();
   }
 
   deleteUser(): Promise<void> {

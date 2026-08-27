@@ -43,6 +43,6 @@ import { AuditTrailModule } from '../audit-trail/audit-trail.module';
     { provide: SERVICE_USER_REGISTRAR, useClass: ServiceUserRegistrar },
     { provide: SERVICE_USER_ROLES, useClass: ServiceUserRolesReader },
   ],
-  exports: [CreateOrganizationHandler],
+  exports: [CreateOrganizationHandler, IDENTITY_PROVIDER],
 })
 export class OrganizationModule {}

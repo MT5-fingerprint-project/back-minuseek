@@ -9,6 +9,7 @@ import {
   ListedUsers,
   ListUsersInput,
   TenantUser,
+  UpdateUserInput,
 } from '../../application/ports/identity-provider.port';
 
 const FRONT_CLIENT_ID = 'front-minuseek';
@@ -122,6 +123,18 @@ export class KeycloakAdminService implements IdentityProviderPort {
       temporaryPassword,
       created: true,
     };
+  }
+
+  // Aucune absorption d'erreur ici, contrairement à deleteUser juste en
+  // dessous : un échec avalé laisserait un compte qui se connecte encore alors
+  // que notre colonne le dit inactif.
+  async updateUser(
+    realm: string,
+    userId: string,
+    input: UpdateUserInput,
+  ): Promise<void> {
+    const client = await this.authenticatedClient();
+    await client.users.update({ realm, id: userId }, input);
   }
 
   async deleteUser(realm: string, userId: string): Promise<void> {

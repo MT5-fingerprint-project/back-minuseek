@@ -330,6 +330,19 @@ describe("Le garde d'accès — les routes qui ne touchent aucune affaire", () =
     expect(response.status).toBe(200);
   });
 
+  // Celle-ci documente le périmètre, elle ne le protège pas : le garde laisse
+  // passer une route non marquée (case-access.guard.ts, mode !== GUARDED), donc
+  // retirer le @NoCaseScope la laisserait verte. Le filet réel serait un test
+  // d'exhaustivité des routes, hors périmètre de ce ticket.
+  it("laisse le responsable changer l'état d'un compte du service", async () => {
+    const response = await request(server)
+      .patch(`/users/${PERSONNE}/status`)
+      .send({ status: 'DISABLED' });
+
+    expect(response.status).toBe(204);
+    expect(bus.dispatched).toHaveLength(1);
+  });
+
   it("n'expose plus la création de compte au périmètre tenant", async () => {
     const response = await request(server)
       .post('/users')

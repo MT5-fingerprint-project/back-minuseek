@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
-import { UserRole as PrismaUserRole } from '../../../../generated/prisma/enums';
+import {
+  UserRole as PrismaUserRole,
+  UserStatus as PrismaUserStatus,
+} from '../../../../generated/prisma/enums';
 import { User } from '../../domain/user/entity/user';
 import type { UserRepository } from '../../domain/user/repository/user.repository';
 
@@ -19,6 +22,7 @@ export class PrismaUserRepository implements UserRepository {
         role: p.role as PrismaUserRole,
         grade: p.grade,
         serviceNumber: p.serviceNumber,
+        status: p.status as PrismaUserStatus,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
         personalData: {
@@ -29,11 +33,35 @@ export class PrismaUserRepository implements UserRepository {
         role: p.role as PrismaUserRole,
         grade: p.grade,
         serviceNumber: p.serviceNumber,
+        status: p.status as PrismaUserStatus,
         updatedAt: p.updatedAt,
         personalData: {
           update: { firstName: p.firstName, lastName: p.lastName },
         },
       },
+    });
+  }
+
+  async findById(id: string): Promise<User | null> {
+    const prisma = await this.tenantConnection.getCurrentClient();
+    const row = await prisma.user.findUnique({
+      where: { id },
+      include: { personalData: true },
+    });
+    if (!row) {
+      return null;
+    }
+    return User.reconstitute({
+      id: row.id,
+      identityProviderId: row.identityProviderId,
+      role: row.role,
+      grade: row.grade,
+      serviceNumber: row.serviceNumber,
+      status: row.status,
+      firstName: row.personalData.firstName,
+      lastName: row.personalData.lastName,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     });
   }
 

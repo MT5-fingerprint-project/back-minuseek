@@ -5,6 +5,8 @@ import { SubjectController } from './infrastructure/http/subject.controller';
 import { MeController } from './infrastructure/http/me.controller';
 import { GetUserByProviderIdHandler } from './application/queries/get-user-by-provider-id/get-user-by-provider-id.handler';
 import { RegisterUserHandler } from './application/commands/register-user/register-user.handler';
+import { DeactivateUserHandler } from './application/commands/deactivate-user/deactivate-user.handler';
+import { ReactivateUserHandler } from './application/commands/reactivate-user/reactivate-user.handler';
 import { ListUsersHandler } from './application/queries/list-users/list-users.handler';
 import { GetSubjectByIdHandler } from './application/queries/get-subject-by-id/get-subject-by-id.handler';
 import { ListSubjectsByCaseHandler } from './application/queries/list-subjects-by-case/list-subjects-by-case.handler';
@@ -21,14 +23,21 @@ import { USER_REPOSITORY } from './domain/user/repository/user.repository';
 import { SUBJECT_READER } from './application/queries/get-subject-by-id/subject.reader';
 import { SUBJECT_REPOSITORY } from './domain/subject/repository/subject.repository';
 import { CASE_SUBJECTS_READER } from './application/queries/list-subjects-by-case/case-subjects.reader';
+import { SERVICE_ACCOUNT_IDENTITY } from './application/ports/service-account-identity.port';
+import { KeycloakServiceAccountIdentityAdapter } from './infrastructure/keycloak/keycloak-service-account-identity.adapter';
+import { OrganizationModule } from '../organization/organization.module';
 
 @Module({
-  imports: [CqrsModule],
+  // OrganizationModule pour le seul IDENTITY_PROVIDER : le client admin Keycloak
+  // y est déjà câblé, en dupliquer un second ouvrirait une seconde session.
+  imports: [CqrsModule, OrganizationModule],
   controllers: [UserController, MeController, SubjectController],
   providers: [
     GetUserByProviderIdHandler,
     ListUsersHandler,
     RegisterUserHandler,
+    DeactivateUserHandler,
+    ReactivateUserHandler,
     GetSubjectByIdHandler,
     ListSubjectsByCaseHandler,
     RegisterSubjectHandler,
@@ -55,6 +64,10 @@ import { CASE_SUBJECTS_READER } from './application/queries/list-subjects-by-cas
     {
       provide: CASE_SUBJECTS_READER,
       useClass: PrismaCaseSubjectsReader,
+    },
+    {
+      provide: SERVICE_ACCOUNT_IDENTITY,
+      useClass: KeycloakServiceAccountIdentityAdapter,
     },
   ],
 })

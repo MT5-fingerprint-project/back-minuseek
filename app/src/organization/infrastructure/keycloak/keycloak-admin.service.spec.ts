@@ -35,6 +35,9 @@ class StubAdminClient {
       .mockResolvedValue({ id: 'user-chef' }),
     count: jest.fn<Promise<number>, [unknown]>().mockResolvedValue(0),
     del: jest.fn<Promise<void>, [unknown]>().mockResolvedValue(undefined),
+    update: jest
+      .fn<Promise<void>, [unknown, unknown]>()
+      .mockResolvedValue(undefined),
   };
 }
 
@@ -301,5 +304,83 @@ describe('KeycloakAdminService', () => {
     await expect(
       service.deleteRealm('minuseek-labo-lyon'),
     ).resolves.toBeUndefined();
+  });
+
+  describe('updateUser', () => {
+    it('désactive un compte du royaume visé', async () => {
+      const { service, stub } = buildService();
+
+      await service.updateUser('minuseek-labo-lyon', 'user-1', {
+        enabled: false,
+      });
+
+      expect(stub.users.update).toHaveBeenCalledWith(
+        { realm: 'minuseek-labo-lyon', id: 'user-1' },
+        { enabled: false },
+      );
+    });
+
+    it('réactive un compte', async () => {
+      const { service, stub } = buildService();
+
+      await service.updateUser('minuseek-labo-lyon', 'user-1', {
+        enabled: true,
+      });
+
+      expect(stub.users.update).toHaveBeenCalledWith(
+        { realm: 'minuseek-labo-lyon', id: 'user-1' },
+        { enabled: true },
+      );
+    });
+
+    it("renomme sans toucher à l'état du compte", async () => {
+      const { service, stub } = buildService();
+
+      await service.updateUser('minuseek-labo-lyon', 'user-1', {
+        firstName: 'Nadia',
+        lastName: 'Belkacem',
+      });
+
+      expect(stub.users.update).toHaveBeenCalledWith(
+        { realm: 'minuseek-labo-lyon', id: 'user-1' },
+        { firstName: 'Nadia', lastName: 'Belkacem' },
+      );
+    });
+
+    it("s'authentifie avant d'écrire", async () => {
+      const { service, stub } = buildService();
+
+      await service.updateUser('minuseek-labo-lyon', 'user-1', {
+        enabled: false,
+      });
+
+      expect(stub.auth).toHaveBeenCalled();
+    });
+
+    it('reste identique sur deux appels de suite', async () => {
+      const { service, stub } = buildService();
+
+      await service.updateUser('minuseek-labo-lyon', 'user-1', {
+        enabled: false,
+      });
+      await service.updateUser('minuseek-labo-lyon', 'user-1', {
+        enabled: false,
+      });
+
+      expect(stub.users.update).toHaveBeenCalledTimes(2);
+    });
+
+    // Contrairement à deleteUser, qui absorbe l'échec pour rester idempotent :
+    // une désactivation avalée laisserait un compte qui se connecte encore
+    // alors que notre colonne le dit inactif.
+    it("remonte l'erreur au lieu de l'avaler", async () => {
+      const { service, stub } = buildService();
+      const panne = new Error('keycloak down');
+      stub.users.update.mockRejectedValueOnce(panne);
+
+      await expect(
+        service.updateUser('minuseek-labo-lyon', 'user-1', { enabled: false }),
+      ).rejects.toBe(panne);
+    });
   });
 });
