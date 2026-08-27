@@ -73,6 +73,65 @@ describe('InvestigationCase', () => {
     expect(c.operatorUserId).toBeNull();
   });
 
+  it('applique la correction reçue et laisse le reste intact', () => {
+    const c = InvestigationCase.open({
+      id: 'uuid-test',
+      caseNumber: 'AFF-001',
+      pvNumber: 'PV-2024-001',
+      description: 'Un test',
+      operatorUserId: OPENED_BY,
+    });
+
+    c.correct({ pvNumber: 'PV-2026-118' });
+
+    expect(c.pvNumber).toBe('PV-2026-118');
+    expect(c.description).toBe('Un test');
+  });
+
+  it('vide la description reçue à null, et garde celle qui n’est pas envoyée', () => {
+    const c = InvestigationCase.open({
+      id: 'uuid-test',
+      caseNumber: 'AFF-001',
+      pvNumber: 'PV-2024-001',
+      description: 'Un test',
+      operatorUserId: OPENED_BY,
+    });
+
+    c.correct({ pvNumber: 'PV-2026-118' });
+    expect(c.description).toBe('Un test');
+
+    c.correct({ description: null });
+    expect(c.description).toBeUndefined();
+  });
+
+  it('date la modification quand une information est corrigée', () => {
+    const c = InvestigationCase.reconstitute({
+      id: 'uuid-test',
+      caseNumber: 'AFF-001',
+      pvNumber: 'PV-2024-001',
+      description: null,
+      status: InvestigationCaseStatusEnum.OPEN,
+      operatorUserId: OPENED_BY,
+      createdAt: new Date('2026-01-01T10:00:00Z'),
+      updatedAt: new Date('2026-01-01T10:00:00Z'),
+    });
+
+    c.correct({ pvNumber: 'PV-2026-118' });
+
+    expect(c.updatedAt.getTime()).toBeGreaterThan(
+      new Date('2026-01-01T10:00:00Z').getTime(),
+    );
+  });
+
+  it("refuse de corriger une affaire close, et n'en change rien", () => {
+    const c = aClosedCase();
+
+    expect(() => c.correct({ pvNumber: 'PV-2026-118' })).toThrow(
+      CaseClosedError,
+    );
+    expect(c.pvNumber).toBe('PV-2024-001');
+  });
+
   it("remplace l'opérateur en place, qui n'est jamais deux", () => {
     const c = anOpenCase();
 
