@@ -1,4 +1,5 @@
 import { PersonalData } from './personal-data.vo';
+import { InvalidUserProfileError } from '../errors/invalid-user-profile.error';
 
 describe('PersonalData', () => {
   it('crée une PII valide et trim les espaces', () => {
@@ -10,12 +11,18 @@ describe('PersonalData', () => {
   it('lève une erreur si firstName est vide', () => {
     expect(() =>
       PersonalData.of({ firstName: '  ', lastName: 'Curie' }),
-    ).toThrow('PersonalData firstName is required');
+    ).toThrow(InvalidUserProfileError);
+    expect(() =>
+      PersonalData.of({ firstName: '  ', lastName: 'Curie' }),
+    ).toThrow(/firstName/);
   });
 
   it('lève une erreur si lastName est vide', () => {
     expect(() => PersonalData.of({ firstName: 'Marie', lastName: '' })).toThrow(
-      'PersonalData lastName is required',
+      InvalidUserProfileError,
+    );
+    expect(() => PersonalData.of({ firstName: 'Marie', lastName: '' })).toThrow(
+      /lastName/,
     );
   });
 

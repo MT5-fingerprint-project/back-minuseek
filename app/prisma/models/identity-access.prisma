@@ -4,6 +4,7 @@ model User {
   role               UserRole
   grade              String
   serviceNumber      String       @unique
+  status             UserStatus   @default(ACTIVE)
   personalDataId     String       @unique @db.Uuid
   personalData       PersonalData @relation(fields: [personalDataId], references: [id])
   createdAt          DateTime     @default(now())
@@ -23,6 +24,11 @@ enum UserRole {
   ADMIN
   OPERATOR
   EXPERT
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
 }
 
 model Subject {

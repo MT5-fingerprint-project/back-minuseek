@@ -36,6 +36,7 @@ const MARIE: UserReadModel = {
   role: UserRoleEnum.OPERATOR,
   grade: 'Brigadier',
   serviceNumber: '12345',
+  status: 'ACTIVE',
   firstName: 'Marie',
   lastName: 'Durand',
   createdAt: new Date('2026-01-01T00:00:00.000Z'),

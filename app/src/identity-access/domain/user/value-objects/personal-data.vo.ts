@@ -1,3 +1,5 @@
+import { InvalidUserProfileError } from '../errors/invalid-user-profile.error';
+
 export interface PersonalDataPrimitives {
   firstName: string;
   lastName: string;
@@ -13,10 +15,10 @@ export class PersonalData {
     const firstName = props.firstName?.trim();
     const lastName = props.lastName?.trim();
     if (!firstName) {
-      throw new Error('PersonalData firstName is required');
+      throw new InvalidUserProfileError('firstName');
     }
     if (!lastName) {
-      throw new Error('PersonalData lastName is required');
+      throw new InvalidUserProfileError('lastName');
     }
     return new PersonalData(firstName, lastName);
   }

@@ -7,6 +7,7 @@ interface UserRow {
   role: string;
   grade: string;
   serviceNumber: string;
+  status: string;
   identityProviderId: string;
   personalData: { firstName: string; lastName: string };
 }
@@ -16,6 +17,7 @@ const MARIE: UserRow = {
   role: 'OPERATOR',
   grade: 'Technicien',
   serviceNumber: 'PTS-0007',
+  status: 'DISABLED',
   identityProviderId: 'kc-sub-1',
   personalData: { firstName: 'Marie', lastName: 'Curie' },
 };
@@ -98,8 +100,17 @@ describe('PrismaServiceUsersReader', () => {
         role: 'OPERATOR',
         grade: 'Technicien',
         serviceNumber: 'PTS-0007',
+        status: 'DISABLED',
       },
     ]);
     expect(total).toBe(1);
+  });
+
+  it("n'écarte pas les comptes désactivés de la page ni du total", async () => {
+    const { reader, prisma } = build();
+
+    await reader.findAll({ skip: 0, take: 20 });
+
+    expect(prisma.findManyArgs[0]).not.toHaveProperty('where');
   });
 });

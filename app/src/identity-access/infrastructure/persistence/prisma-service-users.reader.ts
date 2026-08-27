@@ -37,6 +37,7 @@ export class PrismaServiceUsersReader implements ServiceUsersReader {
         role: row.role,
         grade: row.grade,
         serviceNumber: row.serviceNumber,
+        status: row.status,
       })),
       total,
     };
