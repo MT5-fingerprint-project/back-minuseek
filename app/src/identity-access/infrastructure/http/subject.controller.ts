@@ -20,6 +20,7 @@ import { ListSubjectsDto } from './dto/list-subjects.dto';
 import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
 import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
 import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapper';
+import { CaseScoped } from '../../../access/infrastructure/http/case-scope.decorator';
 
 @ApiTags('subjects')
 @Controller('subjects')
@@ -30,6 +31,7 @@ export class SubjectController {
   ) {}
 
   @Post()
+  @CaseScoped()
   @ApiOperation({ summary: 'Enregistrer un nouveau sujet sur une affaire' })
   @ApiResponse({
     status: 201,
@@ -59,6 +61,7 @@ export class SubjectController {
   }
 
   @Get()
+  @CaseScoped()
   @ApiOperation({ summary: "Lister les sujets d'une affaire" })
   @ApiResponse({ status: 200, description: "Liste des sujets de l'affaire" })
   @ApiResponse({ status: 400, description: 'caseId manquant ou invalide' })
@@ -67,6 +70,7 @@ export class SubjectController {
   }
 
   @Get(':id')
+  @CaseScoped()
   @ApiOperation({ summary: 'Récupérer un sujet par son id' })
   @ApiResponse({ status: 200, description: 'Détail du sujet' })
   @ApiResponse({ status: 404, description: 'Sujet non trouvé' })

@@ -24,6 +24,7 @@ import { UpdateLayerDto } from './dto/update-layer.dto';
 import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
 import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
 import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapper';
+import { CaseScoped } from '../../../access/infrastructure/http/case-scope.decorator';
 
 @ApiTags('layers')
 @Controller('layers')
@@ -34,6 +35,7 @@ export class LayersController {
   ) {}
 
   @Get(':fingerprintId')
+  @CaseScoped()
   @ApiOperation({ summary: "Lister les calques d'une trace ou empreinte" })
   @ApiResponse({
     status: 200,
@@ -44,6 +46,7 @@ export class LayersController {
   }
 
   @Post()
+  @CaseScoped()
   @ApiOperation({ summary: 'Créer un calque' })
   @ApiResponse({ status: 201, description: 'Calque créé' })
   @ApiResponse({ status: 400, description: 'Payload invalide' })
@@ -72,6 +75,7 @@ export class LayersController {
   }
 
   @Put(':id')
+  @CaseScoped()
   @ApiOperation({ summary: 'Mettre à jour un calque' })
   @ApiResponse({ status: 200, description: 'Calque mis à jour' })
   @ApiResponse({ status: 404, description: 'Calque non trouvé' })
@@ -102,6 +106,7 @@ export class LayersController {
   }
 
   @Delete(':id')
+  @CaseScoped()
   @HttpCode(204)
   @ApiOperation({ summary: 'Supprimer un calque' })
   @ApiResponse({ status: 204, description: 'Calque supprimé' })

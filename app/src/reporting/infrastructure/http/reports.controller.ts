@@ -17,6 +17,7 @@ import { GetReportDownloadUrlQuery } from '../../application/queries/get-report-
 import { ListCaseReportsQuery } from '../../application/queries/list-case-reports/list-case-reports.query';
 import { CaseNotFoundForReportError } from '../../domain/report/errors/case-not-found-for-report.error';
 import { ReportNotFoundError } from '../../domain/report/errors/report-not-found.error';
+import { CaseScoped } from '../../../access/infrastructure/http/case-scope.decorator';
 import { GenerateReportDto } from './dto/generate-report.dto';
 
 @ApiTags('reports')
@@ -28,6 +29,7 @@ export class ReportsController {
   ) {}
 
   @Post('investigation-cases/:caseId/reports')
+  @CaseScoped()
   @ApiOperation({ summary: 'Générer et sceller un rapport du dossier' })
   @ApiResponse({
     status: 201,
@@ -52,6 +54,7 @@ export class ReportsController {
   }
 
   @Get('investigation-cases/:caseId/reports')
+  @CaseScoped()
   @ApiOperation({ summary: 'Lister les rapports scellés du dossier' })
   @ApiResponse({
     status: 200,
@@ -62,6 +65,7 @@ export class ReportsController {
   }
 
   @Get('reports/:id/download')
+  @CaseScoped()
   @ApiOperation({
     summary: 'URL signée de téléchargement du rapport, avec son empreinte',
   })
