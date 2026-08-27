@@ -1,6 +1,8 @@
 import {
   BadGatewayException,
+  BadRequestException,
   Body,
+  ConflictException,
   Controller,
   ForbiddenException,
   Get,
@@ -25,7 +27,10 @@ import { ServiceUserReadModel } from '../../application/queries/list-users/servi
 import { DeactivateUserCommand } from '../../application/commands/deactivate-user/deactivate-user.command';
 import { ReactivateUserCommand } from '../../application/commands/reactivate-user/reactivate-user.command';
 import { IdentityProviderUnavailableError } from '../../application/ports/identity-provider-unavailable.error';
+import { CorrectUserProfileCommand } from '../../application/commands/correct-user-profile/correct-user-profile.command';
+import { InvalidUserProfileError } from '../../domain/user/errors/invalid-user-profile.error';
 import { ServiceAccountNotFoundError } from '../../domain/user/errors/service-account-not-found.error';
+import { ServiceNumberAlreadyExistsError } from '../../domain/user/errors/user-already-registered.error';
 import {
   SelfStatusChangeNotAllowedError,
   UserAdministrationNotAllowedError,
@@ -34,6 +39,7 @@ import { UserRoleEnum } from '../../domain/user/value-objects/user-role.vo';
 import { UserStatusEnum } from '../../domain/user/value-objects/user-status.vo';
 import { CurrentServiceUser } from './current-service-user.decorator';
 import { ChangeUserStatusDto } from './dto/change-user-status.dto';
+import { CorrectUserProfileDto } from './dto/correct-user-profile.dto';
 
 const NO_SERVICE_ACCOUNT_MESSAGE =
   "Aucun compte de service n'est rattaché à ce jeton";
@@ -41,8 +47,9 @@ const NO_SERVICE_ACCOUNT_MESSAGE =
 /**
  * L'annuaire du service. La création d'un compte n'entre pas par ici : elle
  * passe par `POST /organizations/:slug/users`, réservée au royaume système.
- * Le refus de rôle se décide dans le handler, faute de garde de rôle dans le
- * dépôt.
+ * Les deux gestes du quotidien du responsable — désactiver, corriger — y
+ * entrent, et le refus de rôle se décide dans le handler, faute de garde de
+ * rôle dans le dépôt.
  */
 @ApiTags('users')
 @Controller('users')
@@ -125,6 +132,47 @@ export class UserController {
       throw toHttpException(e);
     }
   }
+
+  @Patch(':id/profile')
+  @NoCaseScope('gestion des comptes du service, hors périmètre affaire')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Corriger le profil d'un compte du service" })
+  @ApiResponse({ status: 204, description: 'Profil corrigé' })
+  @ApiResponse({ status: 400, description: 'Un des quatre champs est vide' })
+  @ApiResponse({ status: 403, description: "L'appelant n'est pas responsable" })
+  @ApiResponse({
+    status: 404,
+    description: 'Compte introuvable dans ce service',
+  })
+  @ApiResponse({ status: 409, description: 'Matricule déjà utilisé' })
+  @ApiResponse({
+    status: 502,
+    description: "Le fournisseur d'identité n'a pas pu être mis à jour",
+  })
+  async correctProfile(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CorrectUserProfileDto,
+    @CurrentServiceUser() requester?: UserReadModel,
+  ): Promise<void> {
+    if (!requester) throw new NotFoundException(NO_SERVICE_ACCOUNT_MESSAGE);
+
+    try {
+      await this.commandBus.execute<CorrectUserProfileCommand, void>(
+        new CorrectUserProfileCommand(
+          { id: requester.id, role: requester.role as UserRoleEnum },
+          id,
+          {
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            grade: dto.grade,
+            serviceNumber: dto.serviceNumber,
+          },
+        ),
+      );
+    } catch (e) {
+      throw toHttpException(e);
+    }
+  }
 }
 
 function toHttpException(error: unknown): unknown {
@@ -136,6 +184,12 @@ function toHttpException(error: unknown): unknown {
   }
   if (error instanceof ServiceAccountNotFoundError) {
     return new NotFoundException(error.message);
+  }
+  if (error instanceof InvalidUserProfileError) {
+    return new BadRequestException(error.message);
+  }
+  if (error instanceof ServiceNumberAlreadyExistsError) {
+    return new ConflictException(error.message);
   }
   if (error instanceof IdentityProviderUnavailableError) {
     return new BadGatewayException(error.message);

@@ -1,5 +1,7 @@
 import {
   BadGatewayException,
+  BadRequestException,
+  ConflictException,
   ForbiddenException,
   HttpException,
   NotFoundException,
@@ -9,10 +11,13 @@ import { PageDto } from '../../../shared/application/pagination/page.dto';
 import { ListUsersQuery } from '../../application/queries/list-users/list-users.query';
 import { ServiceUserReadModel } from '../../application/queries/list-users/service-user-read-model';
 import { UserReadModel } from '../../application/queries/get-user-by-provider-id/user-read-model';
+import { CorrectUserProfileCommand } from '../../application/commands/correct-user-profile/correct-user-profile.command';
 import { DeactivateUserCommand } from '../../application/commands/deactivate-user/deactivate-user.command';
 import { ReactivateUserCommand } from '../../application/commands/reactivate-user/reactivate-user.command';
 import { IdentityProviderUnavailableError } from '../../application/ports/identity-provider-unavailable.error';
+import { InvalidUserProfileError } from '../../domain/user/errors/invalid-user-profile.error';
 import { ServiceAccountNotFoundError } from '../../domain/user/errors/service-account-not-found.error';
+import { ServiceNumberAlreadyExistsError } from '../../domain/user/errors/user-already-registered.error';
 import {
   SelfStatusChangeNotAllowedError,
   UserAdministrationNotAllowedError,
@@ -31,6 +36,13 @@ const MARIE: ServiceUserReadModel = {
   grade: 'Technicien',
   serviceNumber: 'PTS-0007',
   status: 'ACTIVE',
+};
+
+const CORRECTION = {
+  firstName: 'Julien',
+  lastName: 'Marchand',
+  grade: 'Brigadier-chef',
+  serviceNumber: 'PTS-0042',
 };
 
 const CHEF: UserReadModel = {
@@ -205,5 +217,64 @@ describe("UserController — état d'un compte", () => {
 
     expect(rejected).toBe(panne);
     expect(rejected).not.toBeInstanceOf(HttpException);
+  });
+});
+
+describe('UserController — correction de profil', () => {
+  it('dispatche la correction avec les quatre champs', async () => {
+    const { controller, dispatchedCommands } = build();
+
+    await controller.correctProfile(CIBLE, CORRECTION, CHEF);
+
+    expect(dispatchedCommands).toEqual([
+      new CorrectUserProfileCommand(
+        { id: 'user-chef', role: UserRoleEnum.ADMIN },
+        CIBLE,
+        CORRECTION,
+      ),
+    ]);
+  });
+
+  it("répond 404 quand le jeton n'a pas de compte dans le service", async () => {
+    const { controller, dispatchedCommands } = build();
+
+    await expect(
+      controller.correctProfile(CIBLE, CORRECTION, undefined),
+    ).rejects.toThrow(NotFoundException);
+    expect(dispatchedCommands).toEqual([]);
+  });
+
+  it.each([UserRoleEnum.OPERATOR, UserRoleEnum.EXPERT])(
+    "transmet le rôle %s de l'appelant tel quel au handler",
+    async (role) => {
+      const { controller, dispatchedCommands } = build();
+
+      await controller.correctProfile(CIBLE, CORRECTION, { ...CHEF, role });
+
+      expect(dispatchedCommands).toEqual([
+        new CorrectUserProfileCommand(
+          { id: 'user-chef', role },
+          CIBLE,
+          CORRECTION,
+        ),
+      ]);
+    },
+  );
+
+  it.each([
+    [new UserAdministrationNotAllowedError(), ForbiddenException],
+    [new ServiceAccountNotFoundError(CIBLE), NotFoundException],
+    [new InvalidUserProfileError('grade'), BadRequestException],
+    [new ServiceNumberAlreadyExistsError('PTS-0042'), ConflictException],
+    [
+      new IdentityProviderUnavailableError('kc-sub-1', new Error('down')),
+      BadGatewayException,
+    ],
+  ])('traduit %s à la frontière HTTP', async (domainError, httpError) => {
+    const { controller } = build(domainError);
+
+    await expect(
+      controller.correctProfile(CIBLE, CORRECTION, CHEF),
+    ).rejects.toThrow(httpError);
   });
 });
