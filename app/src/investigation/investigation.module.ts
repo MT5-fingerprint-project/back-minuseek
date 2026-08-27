@@ -3,6 +3,8 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { InvestigationController } from './infrastructure/http/investigation.controller';
 import { OpenInvestigationCaseHandler } from './application/commands/open-investigation-case/open-investigation-case.handler';
 import { UpdateInvestigationCaseHandler } from './application/commands/update-investigation-case/update-investigation-case.handler';
+import { CloseInvestigationCaseHandler } from './application/commands/close-investigation-case/close-investigation-case.handler';
+import { ReopenInvestigationCaseHandler } from './application/commands/reopen-investigation-case/reopen-investigation-case.handler';
 import { ListInvestigationCasesHandler } from './application/queries/list-investigation-cases/list-investigation-cases.handler';
 import { GetInvestigationCaseHandler } from './application/queries/get-investigation-case/get-investigation-case.handler';
 import { PrismaInvestigationCaseRepository } from './infrastructure/persistence/prisma-investigation-case.repository';
@@ -20,6 +22,8 @@ import { AccessModule } from '../access/access.module';
   providers: [
     OpenInvestigationCaseHandler,
     UpdateInvestigationCaseHandler,
+    CloseInvestigationCaseHandler,
+    ReopenInvestigationCaseHandler,
     ListInvestigationCasesHandler,
     GetInvestigationCaseHandler,
     {

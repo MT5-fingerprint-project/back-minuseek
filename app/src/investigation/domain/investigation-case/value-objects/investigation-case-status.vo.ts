@@ -29,6 +29,18 @@ export class InvestigationCaseStatus {
     return new InvestigationCaseStatus(InvestigationCaseStatusEnum.OPEN);
   }
 
+  static inProgress(): InvestigationCaseStatus {
+    return new InvestigationCaseStatus(InvestigationCaseStatusEnum.IN_PROGRESS);
+  }
+
+  static closed(): InvestigationCaseStatus {
+    return new InvestigationCaseStatus(InvestigationCaseStatusEnum.CLOSED);
+  }
+
+  isClosed(): boolean {
+    return this.value === InvestigationCaseStatusEnum.CLOSED;
+  }
+
   getValue(): InvestigationCaseStatusEnum {
     return this.value;
   }

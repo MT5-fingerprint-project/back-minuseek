@@ -57,6 +57,8 @@ interface Route {
   method: Method;
   url: string;
   body?: Record<string, unknown>;
+  /** Les routes qui relisent l'affaire après l'avoir changée en envoient deux. */
+  dispatches?: number;
 }
 
 const ROUTES_GARDEES: Route[] = [
@@ -70,6 +72,19 @@ const ROUTES_GARDEES: Route[] = [
     method: 'patch',
     url: `/investigation-cases/${AFFAIRE}`,
     body: { pvNumber: 'PV-2026-118', operatorUserId: PERSONNE },
+  },
+  {
+    label: 'POST /investigation-cases/:id/closure',
+    method: 'post',
+    url: `/investigation-cases/${AFFAIRE}/closure`,
+    dispatches: 2,
+  },
+  {
+    label: 'POST /investigation-cases/:id/reopening',
+    method: 'post',
+    url: `/investigation-cases/${AFFAIRE}/reopening`,
+    body: { reason: 'Réquisition complémentaire' },
+    dispatches: 2,
   },
   {
     label: 'GET /investigation-cases/:caseId/audit-events',
@@ -300,7 +315,7 @@ describe("Le garde d'accès, route par route — l'opérateur de l'affaire", () 
       const response = await call(server, route);
 
       expect(response.status).not.toBe(404);
-      expect(bus.dispatched).toHaveLength(1);
+      expect(bus.dispatched).toHaveLength(route.dispatches ?? 1);
     },
   );
 });
