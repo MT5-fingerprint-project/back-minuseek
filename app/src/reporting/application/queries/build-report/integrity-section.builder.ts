@@ -6,6 +6,7 @@ import {
   AuditEventData,
 } from '../../ports/traceability-data.reader';
 import {
+  ReportImageViewModel,
   ReportIntegrityViewModel,
   ReportPieceIntegrityViewModel,
   ReportTreatmentViewModel,
@@ -21,6 +22,7 @@ export interface IntegritySectionInput {
   anchors: AnchorData[];
   attestation: ChainAttestation;
   verificationUrl: string;
+  images: Map<string, ReportImageViewModel | null>;
 }
 
 const LAYER_DELETED: string = AuditEventTypeEnum.LAYER_DELETED;
@@ -135,6 +137,9 @@ function pieceIntegrity(
   const mimeType =
     deposit === null ? null : stringOf(deposit.payload, 'mimeType');
   const { treatments, lastSeq } = treatmentsOf(piece, input.events);
+  const observedSha256 = input.images.get(piece.path)?.observedSha256 ?? null;
+  const servedFileIsDerived =
+    mimeType === 'image/tiff' && piece.path.endsWith('.png');
 
   const lastActEntryNumber =
     deposit === null && lastSeq === null
@@ -153,10 +158,12 @@ function pieceIntegrity(
       recordedSha256 !== null &&
       piece.sha256 !== null &&
       piece.sha256 !== recordedSha256,
-    servedFileIsDerived:
-      mimeType === 'image/tiff' && piece.path.endsWith('.png'),
-    observedSha256: null,
-    observedMatchesRecord: null,
+    servedFileIsDerived,
+    observedSha256,
+    observedMatchesRecord:
+      servedFileIsDerived || observedSha256 === null || recordedSha256 === null
+        ? null
+        : observedSha256 === recordedSha256,
     treatments,
     lastActEntryNumber,
     coveringAnchor:

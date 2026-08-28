@@ -346,6 +346,7 @@ describe('GenerateReportHandler', () => {
       dataUrl: 'data:image/png;base64,AAA',
       width: 800,
       height: 1200,
+      observedSha256: 'e'.repeat(64),
     });
 
     await generate();
@@ -356,6 +357,7 @@ describe('GenerateReportHandler', () => {
       dataUrl: 'data:image/png;base64,AAA',
       width: 800,
       height: 1200,
+      observedSha256: 'e'.repeat(64),
     });
     expect(model.referencePrints[0].image).toBeNull();
   });

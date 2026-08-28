@@ -47,6 +47,7 @@ export interface ReportImageViewModel {
   dataUrl: string;
   width: number | null;
   height: number | null;
+  observedSha256: string | null;
 }
 
 export interface ReportMinutiaViewModel {
@@ -131,13 +132,6 @@ export interface ReportIdentificationViewModel {
   civility: string;
   firstName: string;
   lastName: string;
-}
-
-export interface ReportImageTreatmentViewModel {
-  reference: string;
-  cote: string;
-  sealedAt: Date;
-  treatments: string;
 }
 
 export interface ReportSignerViewModel {
@@ -253,7 +247,6 @@ export interface TechnicalReportViewModel {
   identifications: ReportIdentificationViewModel[];
   negativeCotes: string[];
   notExaminedCotes: string[];
-  imageTreatments: ReportImageTreatmentViewModel[];
   independentTimestampAt: Date | null;
   integrity: ReportIntegrityViewModel;
   counts: ReportCountsViewModel;

@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import type { ReportImageEmbedderPort } from '../../application/ports/report-image-embedder.port';
 import {
   REPORT_STORAGE,
@@ -45,6 +46,7 @@ export class StorageReportImageEmbedder implements ReportImageEmbedderPort {
       dataUrl: `data:${mimeTypeOf(storedPath)};base64,${bytes.toString('base64')}`,
       width: size?.width ?? null,
       height: size?.height ?? null,
+      observedSha256: createHash('sha256').update(bytes).digest('hex'),
     };
   }
 }
