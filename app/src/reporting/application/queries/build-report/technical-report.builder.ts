@@ -13,13 +13,18 @@ import {
   ReportJournalEntryViewModel,
   ReportJournalViewModel,
   ReportPieceViewModel,
+  ReportWithdrawalViewModel,
   TechnicalReportViewModel,
 } from '../../report-view-model';
-import { actionLabel, describeAction, positionLabel } from './action-labels';
+import {
+  actionLabel,
+  describeAction,
+  positionLabel,
+  withdrawalMotiveLabel,
+} from './action-labels';
 
 export interface TechnicalReportInput {
   data: CaseReportData;
-  /** Maillons du dossier, pour le journal des actes. */
   chainEvents: AuditEventData[];
   reportId: string;
   chainHead: { seq: number; hash: string } | null;
@@ -31,6 +36,15 @@ export interface TechnicalReportInput {
 function labelOf(piece: PieceData): string {
   const fileName = piece.path.slice(piece.path.lastIndexOf('/') + 1);
   return fileName.length > 0 ? fileName : piece.id;
+}
+
+function withdrawalOf(piece: PieceData): ReportWithdrawalViewModel | null {
+  return piece.withdrawnAt === null || piece.withdrawalMotive === null
+    ? null
+    : {
+        at: piece.withdrawnAt,
+        motiveLabel: withdrawalMotiveLabel(piece.withdrawalMotive),
+      };
 }
 
 function toPieceViewModel(
@@ -60,6 +74,7 @@ function toPieceViewModel(
       isVisible: layer.isVisible,
       settings: layer.settings,
     })),
+    withdrawal: withdrawalOf(piece),
   };
 }
 
@@ -95,6 +110,13 @@ function buildDemonstrations(
     const trace = pieces.get(hit.traceId);
     const referencePrint = pieces.get(hit.referencePrintId);
     if (!trace || !referencePrint) {
+      return [];
+    }
+    if (
+      hit.withdrawnAt !== null ||
+      trace.withdrawal ||
+      referencePrint.withdrawal
+    ) {
       return [];
     }
     const subjectId = referencePrintsById.get(hit.referencePrintId)?.subjectId;

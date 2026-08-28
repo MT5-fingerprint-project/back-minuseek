@@ -54,14 +54,18 @@ export class RecordHitHandler implements ICommandHandler<
 
   async execute(cmd: RecordHitCommand): Promise<void> {
     const trace = await this.traceRepo.findById(cmd.traceId);
-    if (!trace || trace.caseId !== cmd.caseId) {
+    if (!trace || trace.caseId !== cmd.caseId || trace.isWithdrawn) {
       throw new TraceNotFoundError(cmd.traceId);
     }
 
     const referencePrint = await this.referencePrintRepo.findById(
       cmd.referencePrintId,
     );
-    if (!referencePrint || referencePrint.caseId !== cmd.caseId) {
+    if (
+      !referencePrint ||
+      referencePrint.caseId !== cmd.caseId ||
+      referencePrint.isWithdrawn
+    ) {
       throw new ReferencePrintNotFoundError(cmd.referencePrintId);
     }
 

@@ -16,6 +16,8 @@ import { RecordHitCommand } from './record-hit.command';
 import { InMemoryMatchingRepository } from '../../../infrastructure/persistence/in-memory-matching.repository';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
+import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
+import { Hit } from '../../../domain/hit/entity/hit';
 import { Matching } from '../../../domain/matching/entity/matching';
 import { RecordHitHandler } from './record-hit.handler';
 
@@ -264,5 +266,79 @@ describe('RecordHitHandler', () => {
       ),
     ).rejects.toThrow(InsufficientMinutiaeError);
     expect(auditTrail.events).toHaveLength(0);
+  });
+  it('refuses a withdrawn trace as if it did not exist', async () => {
+    seedTraceAndReference();
+    seedMinutiae('trace-1', REQUIRED_MINUTIAE, 'circle');
+    seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
+    const trace = Trace.upload({
+      id: 'trace-1',
+      path: 'media/trace-1.png',
+      caseId: 'case-1',
+      sha256: ANY_SEAL,
+    });
+    trace.withdraw('DUPLICATE', new Date());
+    traceRepo.seed(trace);
+
+    await expect(
+      handler.execute(
+        new RecordHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1', null),
+      ),
+    ).rejects.toThrow(TraceNotFoundError);
+    expect(auditTrail.events).toHaveLength(0);
+  });
+
+  it('refuses a withdrawn reference print as if it did not exist', async () => {
+    seedTraceAndReference();
+    seedMinutiae('trace-1', REQUIRED_MINUTIAE, 'circle');
+    seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
+    const referencePrint = ReferencePrint.create({
+      id: 'ref-1',
+      path: 'media/ref-1.png',
+      caseId: 'case-1',
+      sha256: ANY_SEAL,
+    });
+    referencePrint.withdraw('MISFILED', new Date());
+    referencePrintRepo.seed(referencePrint);
+
+    await expect(
+      handler.execute(
+        new RecordHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1', null),
+      ),
+    ).rejects.toThrow(ReferencePrintNotFoundError);
+    expect(auditTrail.events).toHaveLength(0);
+  });
+
+  it('clears the marker when a withdrawn identification is declared again', async () => {
+    seedTraceAndReference();
+    seedMinutiae('trace-1', REQUIRED_MINUTIAE, 'circle');
+    seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
+    hitRepo.seed(
+      Hit.fromPrimitives({
+        id: 'hit-1',
+        traceId: 'trace-1',
+        referencePrintId: 'ref-1',
+        declaredByUserId: 'user-1',
+      }),
+    );
+    await hitRepo.withdrawByPair('trace-1', 'ref-1', new Date(), {
+      eventType: AuditEventTypeEnum.HIT_REMOVED,
+      evidenceClass: EvidenceClassEnum.OBSERVED,
+      actor: EXPERT_ACTOR,
+      caseId: 'case-1',
+      payload: {},
+    });
+
+    await handler.execute(
+      new RecordHitCommand(
+        EXPERT_ACTOR,
+        'case-1',
+        'trace-1',
+        'ref-1',
+        'user-1',
+      ),
+    );
+
+    expect(await hitRepo.findByTraceId('trace-1')).toHaveLength(1);
   });
 });

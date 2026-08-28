@@ -1,6 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
-import { FingerPosition as PrismaFingerPosition } from '../../../../generated/prisma/enums';
+import {
+  FingerPosition as PrismaFingerPosition,
+  WithdrawalMotive as PrismaWithdrawalMotive,
+} from '../../../../generated/prisma/enums';
 import {
   AUDIT_TRAIL,
   AuditEventDraft,
@@ -34,6 +37,8 @@ export class PrismaReferencePrintRepository implements ReferencePrintRepository 
         sha256: p.sha256,
         subjectId: p.subjectId,
         position: p.position as PrismaFingerPosition | null,
+        withdrawnAt: p.withdrawnAt,
+        withdrawalMotive: p.withdrawalMotive as PrismaWithdrawalMotive | null,
       };
       await prisma.referencePrint.upsert({
         where: { id: data.id },
@@ -48,13 +53,5 @@ export class PrismaReferencePrintRepository implements ReferencePrintRepository 
     const prisma = await this.tenantConnection.getCurrentClient();
     const row = await prisma.referencePrint.findUnique({ where: { id } });
     return row ? ReferencePrint.reconstitute(row) : null;
-  }
-
-  async delete(id: string, act: AuditEventDraft): Promise<void> {
-    await this.transactionRunner.run(async () => {
-      const prisma = await this.tenantConnection.getCurrentClient();
-      await prisma.referencePrint.delete({ where: { id } });
-      await this.auditTrail.append(act);
-    });
   }
 }

@@ -1,4 +1,5 @@
 import { Layer } from '../../../domain/layer/entity/layer';
+import { InMemoryFingerprintLocatorAdapter } from '../../../infrastructure/persistence/in-memory-fingerprint-locator.adapter';
 import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-memory-layer.repository';
 import { ListLayersQuery } from './list-layers.query';
 import { ListLayersHandler } from './list-layers.handler';
@@ -6,6 +7,7 @@ import { ListLayersHandler } from './list-layers.handler';
 describe('ListLayersHandler', () => {
   let handler: ListLayersHandler;
   let repo: InMemoryLayerRepository;
+  let locator: InMemoryFingerprintLocatorAdapter;
 
   const layer = (id: string, fingerprintId: string, zIndex: number) =>
     Layer.create({
@@ -19,7 +21,10 @@ describe('ListLayersHandler', () => {
 
   beforeEach(() => {
     repo = new InMemoryLayerRepository();
-    handler = new ListLayersHandler(repo);
+    locator = new InMemoryFingerprintLocatorAdapter();
+    locator.setTrace('fp-1', 'case-1');
+    locator.setTrace('fp-2', 'case-1');
+    handler = new ListLayersHandler(repo, locator);
   });
 
   it('retourne les calques de la trace, triés par zIndex, en excluant les autres', async () => {
@@ -44,5 +49,13 @@ describe('ListLayersHandler', () => {
       'second',
       'troisieme',
     ]);
+  });
+
+  it("ne rend rien d'une pièce que le localisateur ne voit plus", async () => {
+    repo.seed(layer('a', 'retirée', 0));
+
+    const result = await handler.execute(new ListLayersQuery('retirée'));
+
+    expect(result).toEqual([]);
   });
 });

@@ -53,6 +53,8 @@ const DATA: CaseReportData = {
         },
       ],
       minutiae: minutiae(13),
+      withdrawnAt: null,
+      withdrawalMotive: null,
     },
   ],
   referencePrints: [
@@ -68,6 +70,8 @@ const DATA: CaseReportData = {
       position: 'RIGHT_INDEX',
       layers: [],
       minutiae: minutiae(12),
+      withdrawnAt: null,
+      withdrawalMotive: null,
     },
   ],
   comparisons: [
@@ -92,6 +96,7 @@ const DATA: CaseReportData = {
         serviceNumber: 'PN-4412',
         role: 'EXPERT',
       },
+      withdrawnAt: null,
     },
   ],
   subjects: [

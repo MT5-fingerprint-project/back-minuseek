@@ -1,9 +1,9 @@
 import { AuditActor } from '../../../../shared/domain/audit/audit-actor.vo';
 
-export class DeleteReferencePrintCommand {
+export class WithdrawTraceCommand {
   constructor(
     public readonly actor: AuditActor,
     public readonly id: string,
-    public readonly reason: string | null = null,
+    public readonly motive: string,
   ) {}
 }
