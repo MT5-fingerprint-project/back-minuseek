@@ -27,6 +27,7 @@ export interface ReportMinutiaViewModel {
   color: string;
 }
 
+/** Une pièce sortie du dossier de travail : elle reste au rapport, sans image. */
 export interface ReportWithdrawalViewModel {
   at: Date;
   motiveLabel: string;

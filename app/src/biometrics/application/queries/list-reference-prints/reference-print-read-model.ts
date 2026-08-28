@@ -12,4 +12,6 @@ export interface ReferencePrintReadModel {
   position: string | null;
   createdAt: Date;
   matchings: ReferencePrintMatchingReadModel[];
+  withdrawnAt: Date | null;
+  withdrawalMotive: string | null;
 }

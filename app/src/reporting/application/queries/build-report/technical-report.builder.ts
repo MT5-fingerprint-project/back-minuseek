@@ -106,6 +106,8 @@ function buildDemonstrations(
     data.referencePrints.map((print) => [print.id, print]),
   );
 
+  // Une identification retirée, ou portée par une pièce sortie du dossier, n'a
+  // pas de planche : le corps du rapport dit son retrait, cela suffit.
   return data.declaredHits.flatMap((hit: DeclaredHitData) => {
     const trace = pieces.get(hit.traceId);
     const referencePrint = pieces.get(hit.referencePrintId);

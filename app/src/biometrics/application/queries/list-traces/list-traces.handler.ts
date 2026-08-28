@@ -20,7 +20,10 @@ export class ListTracesHandler implements IQueryHandler<ListTracesQuery> {
   ) {}
 
   async execute(query: ListTracesQuery): Promise<{ data: TraceView[] }> {
-    const traces = await this.reader.findByCaseId(query.caseId);
+    const traces = await this.reader.findByCaseId(
+      query.caseId,
+      query.withdrawn,
+    );
     const data = await Promise.all(
       traces.map(async (trace) => ({
         ...trace,
