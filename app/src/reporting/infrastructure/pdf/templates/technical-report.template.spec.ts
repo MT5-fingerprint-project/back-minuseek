@@ -26,6 +26,7 @@ const PIECE = {
       settings: { contrast: 1.4 },
     },
   ],
+  withdrawal: null,
 };
 
 const REFERENCE = {
@@ -161,6 +162,26 @@ describe('renderTechnicalReportHtml — planche de comparaison', () => {
     });
 
     expect(html).toContain('Minuties non replacées');
+  });
+
+  it("dit le retrait d'une trace au lieu d'imprimer sa planche", () => {
+    const html = renderTechnicalReportHtml({
+      ...MODEL,
+      identityDemonstrations: [],
+      traces: [
+        {
+          ...PIECE,
+          withdrawal: {
+            at: new Date('2026-08-12T09:00:00.000Z'),
+            motiveLabel: "doublon d'une pièce déjà versée",
+          },
+        },
+      ],
+    });
+
+    expect(html).toContain('Retirée du dossier le 12/08/2026');
+    expect(html).toContain('pièce déjà versée');
+    expect(html).not.toContain('Image non embarquée');
   });
 });
 

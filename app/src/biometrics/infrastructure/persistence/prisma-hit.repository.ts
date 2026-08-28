@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
+import { NOT_WITHDRAWN } from '../../../shared/infrastructure/persistence/withdrawal';
 import {
   AUDIT_TRAIL,
   AuditEventDraft,
@@ -39,27 +40,40 @@ export class PrismaHitRepository implements HitRepository {
           referencePrintId: data.referencePrintId,
           declaredByUserId: data.declaredByUserId,
         },
-        update: { declaredByUserId: data.declaredByUserId },
+        // Re-déclarer une identification retirée la remet au dossier : sans
+        // cette ligne, l'upsert laisserait le marqueur en place sans erreur.
+        update: { declaredByUserId: data.declaredByUserId, withdrawnAt: null },
       });
       await this.auditTrail.append(act);
     });
   }
 
-  async deleteByPair(
+  async withdrawByPair(
     traceId: string,
     referencePrintId: string,
+    withdrawnAt: Date,
     act: AuditEventDraft,
   ): Promise<void> {
     await this.transactionRunner.run(async () => {
       const prisma = await this.tenantConnection.getCurrentClient();
-      await prisma.hit.deleteMany({ where: { traceId, referencePrintId } });
+      await prisma.hit.updateMany({
+        where: { traceId, referencePrintId, ...NOT_WITHDRAWN },
+        data: { withdrawnAt },
+      });
       await this.auditTrail.append(act);
     });
   }
 
   async findByTraceId(traceId: string): Promise<Hit[]> {
     const prisma = await this.tenantConnection.getCurrentClient();
-    const rows = await prisma.hit.findMany({ where: { traceId } });
+    const rows = await prisma.hit.findMany({
+      where: {
+        traceId,
+        ...NOT_WITHDRAWN,
+        trace: NOT_WITHDRAWN,
+        referencePrint: NOT_WITHDRAWN,
+      },
+    });
     return rows.map((row) => Hit.fromPrimitives(row));
   }
 }

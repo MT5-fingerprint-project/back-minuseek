@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
+import { NOT_WITHDRAWN } from '../../../shared/infrastructure/persistence/withdrawal';
 import { ReferencePrintReadModel } from '../../application/queries/list-reference-prints/reference-print-read-model';
 import type { ReferencePrintReader } from '../../application/queries/list-reference-prints/reference-print.reader';
 
@@ -10,7 +11,7 @@ export class PrismaReferencePrintReader implements ReferencePrintReader {
   async findByCaseId(caseId: string): Promise<ReferencePrintReadModel[]> {
     const prisma = await this.tenantConnection.getCurrentClient();
     return prisma.referencePrint.findMany({
-      where: { caseId },
+      where: { caseId, ...NOT_WITHDRAWN },
       orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
       include: {
         matchings: {

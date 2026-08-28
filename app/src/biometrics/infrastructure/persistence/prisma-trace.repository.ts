@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '../../../../generated/prisma/client';
+import { WithdrawalMotive as PrismaWithdrawalMotive } from '../../../../generated/prisma/enums';
 import {
   AUDIT_TRAIL,
   AuditEventDraft,
@@ -26,12 +27,14 @@ export class PrismaTraceRepository implements TraceRepository {
   async save(trace: Trace, act: AuditEventDraft): Promise<void> {
     await this.transactionRunner.run(async () => {
       const prisma = await this.tenantConnection.getCurrentClient();
-      const { captureQuality, ...columns } = trace.toPrimitives();
+      const { captureQuality, withdrawalMotive, ...columns } =
+        trace.toPrimitives();
       // `captureQuality` est un `Json?` : Prisma distingue l'absence de valeur
       // (`DbNull`, un NULL SQL) du littéral JSON `null`, et refuse un `null`
       // TypeScript qui ne dit pas lequel des deux on veut.
       const data = {
         ...columns,
+        withdrawalMotive: withdrawalMotive as PrismaWithdrawalMotive | null,
         captureQuality:
           captureQuality === null
             ? Prisma.DbNull
@@ -50,13 +53,5 @@ export class PrismaTraceRepository implements TraceRepository {
     const prisma = await this.tenantConnection.getCurrentClient();
     const row = await prisma.trace.findUnique({ where: { id } });
     return row ? Trace.reconstitute(row) : null;
-  }
-
-  async delete(id: string, act: AuditEventDraft): Promise<void> {
-    await this.transactionRunner.run(async () => {
-      const prisma = await this.tenantConnection.getCurrentClient();
-      await prisma.trace.delete({ where: { id } });
-      await this.auditTrail.append(act);
-    });
   }
 }

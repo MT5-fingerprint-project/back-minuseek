@@ -20,6 +20,8 @@ interface PieceRow {
   score?: number | null;
   subjectId?: string | null;
   position?: string | null;
+  withdrawnAt: Date | null;
+  withdrawalMotive?: string | null;
 }
 
 interface LayerRow {
@@ -74,6 +76,8 @@ function toPiece(
     position: row.position ?? null,
     layers,
     minutiae,
+    withdrawnAt: row.withdrawnAt,
+    withdrawalMotive: row.withdrawalMotive ?? null,
   };
 }
 
@@ -199,6 +203,7 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
         declaredBy: hit.declaredByUserId
           ? (experts.get(hit.declaredByUserId) ?? null)
           : null,
+        withdrawnAt: hit.withdrawnAt,
       })),
       subjects: subjects.map((subject) => ({
         id: subject.id,

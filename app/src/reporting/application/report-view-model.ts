@@ -27,6 +27,11 @@ export interface ReportMinutiaViewModel {
   color: string;
 }
 
+export interface ReportWithdrawalViewModel {
+  at: Date;
+  motiveLabel: string;
+}
+
 export interface ReportPieceViewModel {
   label: string;
   sha256: string | null;
@@ -37,6 +42,7 @@ export interface ReportPieceViewModel {
   image: ReportImageViewModel | null;
   minutiae: ReportMinutiaViewModel[];
   layers: ReportLayerViewModel[];
+  withdrawal: ReportWithdrawalViewModel | null;
 }
 
 export interface ReportSubjectViewModel {
@@ -55,7 +61,6 @@ export interface ReportExpertViewModel {
   role: string;
 }
 
-/** Planche de comparaison : les deux pièces, leurs minuties, et l'acte d'expert. */
 export interface ReportIdentityDemonstrationViewModel {
   trace: ReportPieceViewModel;
   referencePrint: ReportPieceViewModel;

@@ -98,11 +98,17 @@ const ROUTES_GARDEES: Route[] = [
     method: 'get',
     url: `/reference-prints?caseId=${AFFAIRE}`,
   },
-  { label: 'DELETE /traces/:id', method: 'delete', url: `/traces/${TRACE}` },
   {
-    label: 'DELETE /reference-prints/:id',
-    method: 'delete',
-    url: `/reference-prints/${EMPREINTE}`,
+    label: 'POST /traces/:id/withdraw',
+    method: 'post',
+    url: `/traces/${TRACE}/withdraw`,
+    body: { motive: 'DUPLICATE' },
+  },
+  {
+    label: 'POST /reference-prints/:id/withdraw',
+    method: 'post',
+    url: `/reference-prints/${EMPREINTE}/withdraw`,
+    body: { motive: 'DUPLICATE' },
   },
   {
     label: 'POST /traces/:id/compare',

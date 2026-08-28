@@ -37,6 +37,8 @@ export interface PieceData {
   position: string | null;
   layers: LayerData[];
   minutiae: MinutiaData[];
+  withdrawnAt: Date | null;
+  withdrawalMotive: string | null;
 }
 
 export interface SubjectData {
@@ -72,6 +74,7 @@ export interface DeclaredHitData {
   referencePrintId: string;
   declaredAt: Date;
   declaredBy: ExpertData | null;
+  withdrawnAt: Date | null;
 }
 
 export interface CaseReportData {

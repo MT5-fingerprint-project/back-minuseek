@@ -6,7 +6,12 @@ import { CaptureQuality } from '../value-objects/capture-quality.vo';
 import { InvalidCaptureQualityError } from '../errors/invalid-capture-quality.error';
 import { ExploitabilityScore } from '../value-objects/exploitability-score.vo';
 import { TraceStatusEnum } from '../value-objects/trace-status.vo';
+import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn.error';
+import { NotWithdrawnError } from '../../withdrawal/errors/not-withdrawn.error';
+import { InvalidWithdrawalMotiveError } from '../../withdrawal/withdrawal.vo';
 import { Trace } from './trace';
+
+const WITHDRAWN_AT = new Date('2026-08-12T09:00:00.000Z');
 
 const TEST_IMAGE_SHA256 =
   '9febe01bd41bfb69683e29d711d8adffc9ae38de17a6873464b416f3b67398b6';
@@ -52,6 +57,8 @@ describe('Trace', () => {
         captureFocalLength: null,
         captureDeviceModel: null,
         captureQuality: null,
+        withdrawnAt: null,
+        withdrawalMotive: null,
       });
     });
 
@@ -82,6 +89,8 @@ describe('Trace', () => {
         captureFocalLength: 6.86,
         captureDeviceModel: 'iPhone 14 Pro',
         captureQuality: null,
+        withdrawnAt: null,
+        withdrawalMotive: null,
       });
     });
 
@@ -203,6 +212,8 @@ describe('Trace', () => {
         captureFocalLength: null,
         captureDeviceModel: null,
         captureQuality: null,
+        withdrawnAt: null,
+        withdrawalMotive: null,
       });
 
       expect(trace.status).toBe(TraceStatusEnum.EXPLOITABLE);
@@ -226,6 +237,8 @@ describe('Trace', () => {
         captureFocalLength: null,
         captureDeviceModel: null,
         captureQuality: null,
+        withdrawnAt: null,
+        withdrawalMotive: null,
       });
 
       expect(trace.sha256).toBeNull();
@@ -246,6 +259,8 @@ describe('Trace', () => {
         captureFocalLength: null,
         captureDeviceModel: null,
         captureQuality: { blurScore: 128.4, passed: true },
+        withdrawnAt: null,
+        withdrawalMotive: null,
       });
 
       expect(trace.captureQuality?.blurScore).toBe(128.4);
@@ -268,6 +283,8 @@ describe('Trace', () => {
           captureFocalLength: null,
           captureDeviceModel: null,
           captureQuality: { blurScore: 'flou', passed: true },
+          withdrawnAt: null,
+          withdrawalMotive: null,
         }),
       ).toThrow(InvalidCaptureQualityError);
     });
@@ -288,6 +305,8 @@ describe('Trace', () => {
           captureFocalLength: null,
           captureDeviceModel: null,
           captureQuality: null,
+          withdrawnAt: null,
+          withdrawalMotive: null,
         }),
       ).toThrow(InvalidFileDigestError);
     });
@@ -309,6 +328,8 @@ describe('Trace', () => {
         captureFocalLength: null,
         captureDeviceModel: null,
         captureQuality: null,
+        withdrawnAt: null,
+        withdrawalMotive: null,
       });
     });
 
@@ -327,6 +348,8 @@ describe('Trace', () => {
         captureFocalLength: null,
         captureDeviceModel: null,
         captureQuality: null,
+        withdrawnAt: null,
+        withdrawalMotive: null,
       });
 
       expect(trace.captureMetadata.width).toBeUndefined();
@@ -351,6 +374,58 @@ describe('Trace', () => {
       const rebuilt = Trace.reconstitute(trace.toPrimitives());
 
       expect(rebuilt.toPrimitives()).toEqual(trace.toPrimitives());
+    });
+  });
+  describe('withdrawal', () => {
+    const withdrawnTrace = () => {
+      const trace = Trace.upload(baseProps);
+      trace.withdraw('DUPLICATE', WITHDRAWN_AT);
+      return trace;
+    };
+
+    it('records the date and the motive of the withdrawal', () => {
+      const trace = withdrawnTrace();
+
+      expect(trace.isWithdrawn).toBe(true);
+      expect(trace.withdrawnAt).toBe(WITHDRAWN_AT);
+      expect(trace.toPrimitives()).toMatchObject({
+        withdrawnAt: WITHDRAWN_AT,
+        withdrawalMotive: 'DUPLICATE',
+      });
+    });
+
+    it('refuses to withdraw a piece already out of the case', () => {
+      const trace = withdrawnTrace();
+
+      expect(() => trace.withdraw('MISFILED', WITHDRAWN_AT)).toThrow(
+        AlreadyWithdrawnError,
+      );
+    });
+
+    it('refuses a motive outside the closed list', () => {
+      const trace = Trace.upload(baseProps);
+
+      expect(() => trace.withdraw('PARCE_QUE', WITHDRAWN_AT)).toThrow(
+        InvalidWithdrawalMotiveError,
+      );
+    });
+
+    it('erases both columns when the piece comes back', () => {
+      const trace = withdrawnTrace();
+
+      trace.restore();
+
+      expect(trace.isWithdrawn).toBe(false);
+      expect(trace.toPrimitives()).toMatchObject({
+        withdrawnAt: null,
+        withdrawalMotive: null,
+      });
+    });
+
+    it('refuses to restore a piece that never left', () => {
+      expect(() => Trace.upload(baseProps).restore()).toThrow(
+        NotWithdrawnError,
+      );
     });
   });
 });

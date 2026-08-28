@@ -8,6 +8,9 @@ model Trace {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
+  withdrawnAt      DateTime?
+  withdrawalMotive WithdrawalMotive?
+
   // Métadonnées de capture (B1b). Toutes nullables : le chemin galerie et les
   // traces antérieures n'en portent aucune. `capturedAt` est la date de PRISE DE
   // VUE (EXIF), à ne pas confondre avec `createdAt`, date de réception serveur.

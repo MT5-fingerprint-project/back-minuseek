@@ -1,4 +1,7 @@
 import { FileDigest } from '../../file-digest.vo';
+import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn.error';
+import { NotWithdrawnError } from '../../withdrawal/errors/not-withdrawn.error';
+import { Withdrawal } from '../../withdrawal/withdrawal.vo';
 import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-trace.error';
 import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
 import { CaptureMetadata } from '../value-objects/capture-metadata.vo';
@@ -25,6 +28,8 @@ export interface TracePrimitives {
   captureFocalLength: number | null;
   captureDeviceModel: string | null;
   captureQuality: CaptureQualityProps | null;
+  withdrawnAt: Date | null;
+  withdrawalMotive: string | null;
 }
 
 interface UploadTraceProps {
@@ -46,6 +51,7 @@ export class Trace {
     private readonly _sha256: FileDigest | null,
     private readonly _captureMetadata: CaptureMetadata,
     private readonly _captureQuality: CaptureQuality | null,
+    private _withdrawal: Withdrawal | null,
   ) {}
 
   static assertCaseCanReceiveTrace(
@@ -79,6 +85,7 @@ export class Trace {
       props.sha256,
       props.captureMetadata ?? CaptureMetadata.empty(),
       props.captureQuality ?? null,
+      null,
     );
   }
 
@@ -96,6 +103,8 @@ export class Trace {
     captureFocalLength: number | null;
     captureDeviceModel: string | null;
     captureQuality: unknown;
+    withdrawnAt: Date | null;
+    withdrawalMotive: string | null;
   }): Trace {
     return new Trace(
       payload.id,
@@ -113,6 +122,7 @@ export class Trace {
         deviceModel: payload.captureDeviceModel ?? undefined,
       }),
       CaptureQuality.fromPersistence(payload.captureQuality),
+      Withdrawal.fromPersistence(payload.withdrawalMotive, payload.withdrawnAt),
     );
   }
 
@@ -124,6 +134,20 @@ export class Trace {
     this._status = score.isExploitable()
       ? TraceStatus.exploitable()
       : TraceStatus.notExploitable();
+  }
+
+  withdraw(motive: string, at: Date): void {
+    if (this._withdrawal !== null) {
+      throw new AlreadyWithdrawnError(this._id);
+    }
+    this._withdrawal = Withdrawal.of(motive, at);
+  }
+
+  restore(): void {
+    if (this._withdrawal === null) {
+      throw new NotWithdrawnError(this._id);
+    }
+    this._withdrawal = null;
   }
 
   toPrimitives(): TracePrimitives {
@@ -141,6 +165,8 @@ export class Trace {
       captureFocalLength: this._captureMetadata.focalLength ?? null,
       captureDeviceModel: this._captureMetadata.deviceModel ?? null,
       captureQuality: this._captureQuality?.toPrimitives() ?? null,
+      withdrawnAt: this._withdrawal?.getAt() ?? null,
+      withdrawalMotive: this._withdrawal?.getMotive() ?? null,
     };
   }
 
@@ -174,5 +200,13 @@ export class Trace {
 
   get captureQuality(): CaptureQuality | null {
     return this._captureQuality;
+  }
+
+  get isWithdrawn(): boolean {
+    return this._withdrawal !== null;
+  }
+
+  get withdrawnAt(): Date | null {
+    return this._withdrawal?.getAt() ?? null;
   }
 }

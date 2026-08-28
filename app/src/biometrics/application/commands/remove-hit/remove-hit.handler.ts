@@ -34,27 +34,36 @@ export class RemoveHitHandler implements ICommandHandler<
 
   async execute(cmd: RemoveHitCommand): Promise<void> {
     const trace = await this.traceRepo.findById(cmd.traceId);
-    if (!trace || trace.caseId !== cmd.caseId) {
+    if (!trace || trace.caseId !== cmd.caseId || trace.isWithdrawn) {
       throw new TraceNotFoundError(cmd.traceId);
     }
 
     const referencePrint = await this.referencePrintRepo.findById(
       cmd.referencePrintId,
     );
-    if (!referencePrint || referencePrint.caseId !== cmd.caseId) {
+    if (
+      !referencePrint ||
+      referencePrint.caseId !== cmd.caseId ||
+      referencePrint.isWithdrawn
+    ) {
       throw new ReferencePrintNotFoundError(cmd.referencePrintId);
     }
 
-    await this.hitRepo.deleteByPair(cmd.traceId, cmd.referencePrintId, {
-      eventType: AuditEventTypeEnum.HIT_REMOVED,
-      evidenceClass: EvidenceClassEnum.OBSERVED,
-      actor: cmd.actor,
-      caseId: cmd.caseId,
-      traceId: cmd.traceId,
-      payload: {
+    await this.hitRepo.withdrawByPair(
+      cmd.traceId,
+      cmd.referencePrintId,
+      new Date(),
+      {
+        eventType: AuditEventTypeEnum.HIT_REMOVED,
+        evidenceClass: EvidenceClassEnum.OBSERVED,
+        actor: cmd.actor,
+        caseId: cmd.caseId,
         traceId: cmd.traceId,
-        referencePrintId: cmd.referencePrintId,
+        payload: {
+          traceId: cmd.traceId,
+          referencePrintId: cmd.referencePrintId,
+        },
       },
-    });
+    );
   }
 }

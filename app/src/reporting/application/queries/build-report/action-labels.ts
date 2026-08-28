@@ -6,16 +6,16 @@ const ACTION_LABELS: Record<string, string> = {
   CASE_UPDATED: 'Informations du dossier corrigées',
   TRACE_UPLOADED: 'Trace déposée et mise sous scellé',
   TRACE_QUALIFIED: 'Trace qualifiée',
-  TRACE_DELETED: 'Trace supprimée',
+  TRACE_DELETED: 'Trace retirée du dossier',
   REFERENCE_PRINT_UPLOADED:
     'Empreinte de référence déposée et mise sous scellé',
-  REFERENCE_PRINT_DELETED: 'Empreinte de référence supprimée',
+  REFERENCE_PRINT_DELETED: 'Empreinte de référence retirée du dossier',
   LAYER_CREATED: "Calque d'amélioration ajouté",
   LAYER_UPDATED: "Calque d'amélioration modifié",
   LAYER_DELETED: "Calque d'amélioration supprimé",
   COMPARISON_EXECUTED: 'Comparaison exécutée',
   HIT_RECORDED: 'Correspondance déclarée par un expert',
-  HIT_REMOVED: 'Correspondance retirée par un expert',
+  HIT_REMOVED: 'Identification retirée par un expert',
   REPORT_GENERATED: 'Rapport généré et scellé',
   CHAIN_ANCHORED: "Chaîne d'audit horodatée par une autorité externe",
   SERVICE_HEADER_SAVED: 'En-tête du service enregistré',
@@ -42,6 +42,12 @@ const SUBJECT_TYPE_LABELS: Record<string, string> = {
   CLOSE_ASSOCIATE: 'proche',
 };
 
+const WITHDRAWAL_MOTIVE_LABELS: Record<string, string> = {
+  DUPLICATE: "doublon d'une pièce déjà versée",
+  MISFILED: 'pièce versée par erreur dans ce dossier',
+  WRONG_ATTRIBUTION: 'rattachement erroné à une personne ou à un doigt',
+};
+
 const SEX_LABELS: Record<string, string> = {
   MALE: 'masculin',
   FEMALE: 'féminin',
@@ -59,6 +65,10 @@ export function subjectTypeLabel(type: string): string {
   return SUBJECT_TYPE_LABELS[type] ?? type;
 }
 
+export function withdrawalMotiveLabel(motive: string): string {
+  return WITHDRAWAL_MOTIVE_LABELS[motive] ?? motive;
+}
+
 export function sexLabel(sex: string): string {
   return SEX_LABELS[sex] ?? sex;
 }
@@ -67,8 +77,8 @@ const SCALAR_KEYS_BY_TYPE: Record<string, string[]> = {
   CASE_OPENED: ['caseNumber', 'pvNumber'],
   TRACE_UPLOADED: ['traceId', 'sha256'],
   REFERENCE_PRINT_UPLOADED: ['referencePrintId', 'sha256'],
-  TRACE_DELETED: ['traceId', 'reason'],
-  REFERENCE_PRINT_DELETED: ['referencePrintId', 'reason'],
+  TRACE_DELETED: ['traceId', 'motive'],
+  REFERENCE_PRINT_DELETED: ['referencePrintId', 'motive'],
   LAYER_CREATED: ['name', 'type', 'zIndex'],
   LAYER_UPDATED: ['name', 'type', 'zIndex'],
   LAYER_DELETED: ['name', 'type'],

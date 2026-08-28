@@ -222,4 +222,47 @@ describe('CompareTraceHandler', () => {
       engineVersion: null,
     });
   });
+  it('refuses a withdrawn trace as if it did not exist', async () => {
+    const trace = Trace.upload({
+      id: 'trace-1',
+      path: 'media/trace-1.png',
+      caseId: 'case-1',
+      sha256: ANY_SEAL,
+    });
+    trace.withdraw('DUPLICATE', new Date());
+    traceRepo.seed(trace);
+
+    await expect(
+      handler.execute(
+        new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', ['ref-1']),
+      ),
+    ).rejects.toThrow(TraceNotFoundError);
+    expect(auditTrail.events).toHaveLength(0);
+  });
+
+  it('refuses a withdrawn reference print as if it did not exist', async () => {
+    traceRepo.seed(
+      Trace.upload({
+        id: 'trace-1',
+        path: 'media/trace-1.png',
+        caseId: 'case-1',
+        sha256: ANY_SEAL,
+      }),
+    );
+    const referencePrint = ReferencePrint.create({
+      id: 'ref-1',
+      path: 'media/ref-1.png',
+      caseId: 'case-1',
+      sha256: ANY_SEAL,
+    });
+    referencePrint.withdraw('MISFILED', new Date());
+    referencePrintRepo.seed(referencePrint);
+
+    await expect(
+      handler.execute(
+        new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', ['ref-1']),
+      ),
+    ).rejects.toThrow(ReferencePrintNotFoundError);
+    expect(auditTrail.events).toHaveLength(0);
+  });
 });

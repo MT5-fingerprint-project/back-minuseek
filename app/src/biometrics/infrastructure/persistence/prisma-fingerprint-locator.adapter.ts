@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
+import { NOT_WITHDRAWN } from '../../../shared/infrastructure/persistence/withdrawal';
 import type {
   FingerprintLocation,
   FingerprintLocatorPort,
@@ -11,15 +12,17 @@ export class PrismaFingerprintLocatorAdapter implements FingerprintLocatorPort {
 
   async locate(fingerprintId: string): Promise<FingerprintLocation | null> {
     const prisma = await this.tenantConnection.getCurrentClient();
-    const trace = await prisma.trace.findUnique({
-      where: { id: fingerprintId },
+    // `findUnique` n'accepte que des champs uniques : filtrer le retrait par
+    // identifiant impose `findFirst`.
+    const trace = await prisma.trace.findFirst({
+      where: { id: fingerprintId, ...NOT_WITHDRAWN },
       select: { caseId: true },
     });
     if (trace) {
       return { caseId: trace.caseId, traceId: fingerprintId };
     }
-    const referencePrint = await prisma.referencePrint.findUnique({
-      where: { id: fingerprintId },
+    const referencePrint = await prisma.referencePrint.findFirst({
+      where: { id: fingerprintId, ...NOT_WITHDRAWN },
       select: { caseId: true },
     });
     if (referencePrint) {

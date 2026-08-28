@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { UploadReferencePrintHandler } from './application/commands/upload-reference-print/upload-reference-print.handler';
 import { UploadTraceHandler } from './application/commands/upload-trace/upload-trace.handler';
-import { DeleteTraceHandler } from './application/commands/delete-trace/delete-trace.handler';
-import { DeleteReferencePrintHandler } from './application/commands/delete-reference-print/delete-reference-print.handler';
+import { WithdrawTraceHandler } from './application/commands/withdraw-trace/withdraw-trace.handler';
+import { WithdrawReferencePrintHandler } from './application/commands/withdraw-reference-print/withdraw-reference-print.handler';
 import { ListTracesHandler } from './application/queries/list-traces/list-traces.handler';
 import { ListReferencePrintsHandler } from './application/queries/list-reference-prints/list-reference-prints.handler';
 import { CreateLayerHandler } from './application/commands/create-layer/create-layer.handler';
@@ -54,8 +54,8 @@ import { AccessModule } from '../access/access.module';
   providers: [
     UploadTraceHandler,
     UploadReferencePrintHandler,
-    DeleteTraceHandler,
-    DeleteReferencePrintHandler,
+    WithdrawTraceHandler,
+    WithdrawReferencePrintHandler,
     ListTracesHandler,
     ListReferencePrintsHandler,
     CreateLayerHandler,
