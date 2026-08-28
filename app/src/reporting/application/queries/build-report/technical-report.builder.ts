@@ -1,31 +1,54 @@
-import { REQUIRED_MINUTIAE } from '../../../../shared/domain/forensics/minutiae';
 import {
   CaseReportData,
-  ComparisonData,
-  DeclaredHitData,
   PieceData,
   SubjectData,
 } from '../../ports/case-report-data.reader';
-import { AuditEventData } from '../../ports/traceability-data.reader';
 import {
-  ReportIdentityDemonstrationViewModel,
+  AnchorData,
+  AuditEventData,
+} from '../../ports/traceability-data.reader';
+import {
+  ReportCountsViewModel,
+  ReportExaminedTraceViewModel,
+  ReportExploitabilityViewModel,
+  ReportIdentificationViewModel,
+  ReportImageTreatmentViewModel,
   ReportImageViewModel,
-  ReportJournalEntryViewModel,
-  ReportJournalViewModel,
   ReportPieceViewModel,
-  ReportWithdrawalViewModel,
+  ReportReferenceSubjectViewModel,
   TechnicalReportViewModel,
 } from '../../report-view-model';
 import {
-  actionLabel,
-  describeAction,
-  positionLabel,
-  withdrawalMotiveLabel,
+  civilityLabel,
+  positionWithArticle,
+  revelationTechniqueLabel,
+  subjectTypeLabel,
+  traceOriginLabel,
 } from './action-labels';
+import { buildCaseHeader } from './case-header';
+import { treatmentsOf } from './image-treatments';
+import { buildJournal } from './report-journal';
+import {
+  buildDemonstrations,
+  isWithdrawn,
+  toPieceViewModel,
+  withdrawalSentence,
+} from './report-pieces';
+import { groupExaminedTraces, traceReference } from './trace-grouping';
+import {
+  discriminationOf,
+  isDeclaredNegative,
+  isIdentified,
+  isNotExamined,
+  NOT_APPLICABLE,
+  TraceVerdict,
+  verdictsByTraceId,
+} from './trace-verdicts';
 
 export interface TechnicalReportInput {
   data: CaseReportData;
   chainEvents: AuditEventData[];
+  anchors: AnchorData[];
   reportId: string;
   chainHead: { seq: number; hash: string } | null;
   generatedAt: Date;
@@ -33,156 +56,165 @@ export interface TechnicalReportInput {
   images: Map<string, ReportImageViewModel | null>;
 }
 
-function labelOf(piece: PieceData): string {
-  const fileName = piece.path.slice(piece.path.lastIndexOf('/') + 1);
-  return fileName.length > 0 ? fileName : piece.id;
-}
+const NOT_STATED = 'Non renseignée';
+const EXPLOITABILITY_LABELS: Record<string, string> = {
+  EXPLOITABLE: 'EXPLOITABLE',
+  NOT_EXPLOITABLE: 'INEXPLOITABLE',
+  RECEIVED: 'Non déclarée',
+};
 
-function withdrawalOf(piece: PieceData): ReportWithdrawalViewModel | null {
-  return piece.withdrawnAt === null || piece.withdrawalMotive === null
-    ? null
-    : {
-        at: piece.withdrawnAt,
-        motiveLabel: withdrawalMotiveLabel(piece.withdrawalMotive),
-      };
-}
-
-function toPieceViewModel(
-  piece: PieceData,
-  images: Map<string, ReportImageViewModel | null>,
-): ReportPieceViewModel {
-  return {
-    label: labelOf(piece),
-    sha256: piece.sha256,
-    receivedAt: piece.createdAt,
-    capturedAt: piece.capturedAt,
-    status: piece.status,
-    exploitabilityScore: piece.score,
-    image: images.get(piece.path) ?? null,
-    minutiae: piece.minutiae.map((minutia, order) => ({
-      index: order + 1,
-      x: minutia.x,
-      y: minutia.y,
-      radius: minutia.radius ?? 6,
-      angleDeg: minutia.angleDeg,
-      color: minutia.color ?? '#d92b2b',
+function buildExaminedTraces(
+  caseNumber: string,
+  traces: PieceData[],
+): ReportExaminedTraceViewModel[] {
+  return groupExaminedTraces(
+    caseNumber,
+    traces.map((trace) => ({
+      number: trace.number ?? 0,
+      origin: trace.origin,
+      location: trace.location,
+      revelationTechnique: trace.revelationTechnique,
     })),
-    layers: piece.layers.map((layer) => ({
-      name: layer.name,
-      type: layer.type,
-      zIndex: layer.zIndex,
-      isVisible: layer.isVisible,
-      settings: layer.settings,
-    })),
-    withdrawal: withdrawalOf(piece),
-    imageDestroyedAt: piece.imageDestroyedAt,
-  };
+  ).map((group) => ({
+    label: group.label,
+    origin: traceOriginLabel(group.origin) ?? NOT_STATED,
+    location: group.location ?? NOT_STATED,
+    revelationTechnique:
+      revelationTechniqueLabel(group.revelationTechnique) ?? NOT_STATED,
+  }));
 }
 
-function toSubjectViewModel(subject: SubjectData) {
-  return {
-    firstName: subject.firstName,
-    lastName: subject.lastName,
-    birthDate: subject.birthDate,
-    birthPlace: subject.birthPlace,
-    sex: subject.sex,
-    type: subject.type,
-  };
+function buildExploitability(
+  caseNumber: string,
+  traces: PieceData[],
+  verdicts: Map<string, TraceVerdict>,
+): ReportExploitabilityViewModel[] {
+  return traces.map((trace) => ({
+    reference: traceReference(caseNumber, trace.number ?? 0),
+    exploitability:
+      EXPLOITABILITY_LABELS[trace.status ?? 'RECEIVED'] ?? NOT_APPLICABLE,
+    cote: trace.cote ?? NOT_APPLICABLE,
+    discrimination: isWithdrawn(trace)
+      ? NOT_APPLICABLE
+      : discriminationOf(trace, verdicts.get(trace.id)),
+    withdrawal: withdrawalSentence(trace),
+  }));
 }
 
-function buildDemonstrations(
+function buildReferenceSubjects(
   data: CaseReportData,
-  pieces: Map<string, ReportPieceViewModel>,
-): ReportIdentityDemonstrationViewModel[] {
-  const comparisonByPair = new Map<string, ComparisonData>(
-    data.comparisons.map((comparison) => [
-      `${comparison.traceId}:${comparison.referencePrintId}`,
-      comparison,
-    ]),
-  );
+): ReportReferenceSubjectViewModel[] {
   const subjectsById = new Map(
     data.subjects.map((subject) => [subject.id, subject]),
   );
-  const referencePrintsById = new Map(
-    data.referencePrints.map((print) => [print.id, print]),
+  const attachedIds = new Set(
+    data.referencePrints
+      .filter((print) => !isWithdrawn(print) && print.subjectId !== null)
+      .map((print) => print.subjectId as string),
   );
 
-  // Une identification retirée, ou portée par une pièce sortie du dossier, n'a
-  // pas de planche : le corps du rapport dit son retrait, cela suffit.
-  return data.declaredHits.flatMap((hit: DeclaredHitData) => {
-    const trace = pieces.get(hit.traceId);
-    const referencePrint = pieces.get(hit.referencePrintId);
-    if (!trace || !referencePrint) {
-      return [];
-    }
-    if (
-      hit.withdrawnAt !== null ||
-      trace.withdrawal ||
-      referencePrint.withdrawal
-    ) {
-      return [];
-    }
-    const subjectId = referencePrintsById.get(hit.referencePrintId)?.subjectId;
-    const subject = subjectId ? subjectsById.get(subjectId) : undefined;
-    const comparison = comparisonByPair.get(
-      `${hit.traceId}:${hit.referencePrintId}`,
-    );
+  return [...attachedIds]
+    .map((id) => subjectsById.get(id))
+    .filter((subject): subject is SubjectData => subject !== undefined)
+    .map((subject) => ({
+      civility: civilityLabel(subject.sex),
+      firstName: subject.firstName,
+      lastName: subject.lastName,
+      quality: subjectTypeLabel(subject.type),
+    }));
+}
 
+function buildIdentifications(
+  traces: PieceData[],
+  verdicts: Map<string, TraceVerdict>,
+): ReportIdentificationViewModel[] {
+  return traces.flatMap((trace) => {
+    const verdict = verdicts.get(trace.id);
+    if (!verdict?.identified || trace.cote === null || isWithdrawn(trace)) {
+      return [];
+    }
+    const subject = verdict.identifiedBy;
     return [
       {
-        trace,
-        referencePrint,
-        subject: subject ? toSubjectViewModel(subject) : null,
-        position: positionLabel(
-          referencePrintsById.get(hit.referencePrintId)?.position ?? null,
-        ),
-        score: comparison?.score ?? null,
-        machineMatch: comparison?.machineMatch ?? null,
-        comparedAt: comparison?.comparedAt ?? null,
-        declaredAt: hit.declaredAt,
-        declaredBy: hit.declaredBy
-          ? {
-              displayName: `${hit.declaredBy.firstName} ${hit.declaredBy.lastName}`,
-              grade: hit.declaredBy.grade,
-              serviceNumber: hit.declaredBy.serviceNumber,
-              role: hit.declaredBy.role,
-            }
-          : null,
-        requiredMinutiae: REQUIRED_MINUTIAE,
+        cote: trace.cote,
+        position:
+          positionWithArticle(verdict.identifiedPosition) ??
+          'à une position non renseignée',
+        civility: subject ? civilityLabel(subject.sex) : '',
+        firstName: subject?.firstName ?? '',
+        lastName: subject?.lastName ?? 'personne non renseignée au dossier',
       },
     ];
   });
 }
 
-function toChainedEntry(event: AuditEventData): ReportJournalEntryViewModel {
+function buildImageTreatments(
+  caseNumber: string,
+  traces: PieceData[],
+): ReportImageTreatmentViewModel[] {
+  return traces.map((trace) => ({
+    reference: traceReference(caseNumber, trace.number ?? 0),
+    cote: trace.cote ?? NOT_APPLICABLE,
+    sealedAt: trace.createdAt,
+    treatments: treatmentsOf(trace),
+  }));
+}
+
+function buildCounts(
+  traces: PieceData[],
+  verdicts: Map<string, TraceVerdict>,
+): ReportCountsViewModel {
+  const exploitable = traces.filter((trace) => trace.status === 'EXPLOITABLE');
   return {
-    label: actionLabel(event.eventType),
-    detail: describeAction(event.eventType, event.payload),
-    occurredAt: event.occurredAt,
-    actorDisplayName: event.actorDisplayName,
-    seq: event.seq,
-    hash: event.hash,
+    total: traces.length,
+    exploitable: exploitable.length,
+    notExploitable: traces.filter((trace) => trace.status === 'NOT_EXPLOITABLE')
+      .length,
+    identified: exploitable.filter((trace) => isIdentified(trace, verdicts))
+      .length,
+    negative: exploitable.filter((trace) => isDeclaredNegative(trace, verdicts))
+      .length,
+    notExamined: exploitable.filter((trace) => isNotExamined(trace, verdicts))
+      .length,
   };
 }
 
-function buildJournal(chainEvents: AuditEventData[]): ReportJournalViewModel {
-  return {
-    chained: [...chainEvents]
-      .sort((left, right) => left.seq - right.seq)
-      .map(toChainedEntry),
-  };
+function cotesOf(traces: PieceData[]): string[] {
+  return traces
+    .map((trace) => trace.cote)
+    .filter((cote): cote is string => cote !== null);
+}
+
+function lastAnchorAt(anchors: AnchorData[]): Date | null {
+  return anchors.reduce<Date | null>(
+    (latest, anchor) =>
+      latest === null || anchor.anchoredAt > latest
+        ? anchor.anchoredAt
+        : latest,
+    null,
+  );
 }
 
 export function buildTechnicalReport(
   input: TechnicalReportInput,
 ): TechnicalReportViewModel {
   const { data, images } = input;
+  const caseNumber = data.investigationCase.caseNumber;
   const allPieces = [...data.traces, ...data.referencePrints];
   const pieceViewModels = new Map(
     allPieces.map((piece) => [piece.id, toPieceViewModel(piece, images)]),
   );
-  const pieceLabels = new Map(
-    allPieces.map((piece) => [piece.id, labelOf(piece)]),
+
+  // Les sections 3 et 4 listent toutes les traces entrées au dossier, retirées
+  // comprises (règle posée par le ticket du retrait) ; les comptes, la section 6
+  // et les annexes ne parlent que du dossier de travail.
+  const orderedTraces = [...data.traces].sort(
+    (left, right) => (left.number ?? 0) - (right.number ?? 0),
+  );
+  const workingTraces = orderedTraces.filter((trace) => !isWithdrawn(trace));
+  const verdicts = verdictsByTraceId(data);
+  const exploitableTraces = workingTraces.filter(
+    (trace) => trace.status === 'EXPLOITABLE',
   );
 
   return {
@@ -191,30 +223,37 @@ export function buildTechnicalReport(
       reportId: input.reportId,
       chainHeadSeq: input.chainHead?.seq ?? null,
       chainHeadHash: input.chainHead?.hash ?? null,
-      caseNumber: data.investigationCase.caseNumber,
+      caseNumber,
       pvNumber: data.investigationCase.pvNumber,
       caseStatus: data.investigationCase.status,
       openedAt: data.investigationCase.createdAt,
       generatedAt: input.generatedAt,
       generatedByDisplayName: input.generatedByDisplayName,
     },
-    caseDescription: data.investigationCase.description,
+    caseHeader: buildCaseHeader(data),
+    examinedTraces: buildExaminedTraces(caseNumber, orderedTraces),
+    exploitability: buildExploitability(caseNumber, orderedTraces, verdicts),
+    referenceSubjects: buildReferenceSubjects(data),
+    unattachedReferencePrintCount: data.referencePrints.filter(
+      (print) => !isWithdrawn(print) && print.subjectId === null,
+    ).length,
+    automaticComparatorUsed: data.comparisons.length > 0,
+    identifications: buildIdentifications(workingTraces, verdicts),
+    negativeCotes: cotesOf(
+      exploitableTraces.filter((trace) => isDeclaredNegative(trace, verdicts)),
+    ),
+    notExaminedCotes: cotesOf(
+      exploitableTraces.filter((trace) => isNotExamined(trace, verdicts)),
+    ),
+    imageTreatments: buildImageTreatments(caseNumber, workingTraces),
+    independentTimestampAt: lastAnchorAt(input.anchors),
+    counts: buildCounts(workingTraces, verdicts),
     traces: data.traces.map(
       (trace) => pieceViewModels.get(trace.id) as ReportPieceViewModel,
     ),
     referencePrints: data.referencePrints.map(
       (print) => pieceViewModels.get(print.id) as ReportPieceViewModel,
     ),
-    comparisons: data.comparisons.map((comparison) => ({
-      traceLabel: pieceLabels.get(comparison.traceId) ?? comparison.traceId,
-      referencePrintLabel:
-        pieceLabels.get(comparison.referencePrintId) ??
-        comparison.referencePrintId,
-      score: comparison.score,
-      machineMatch: comparison.machineMatch,
-      declaredHit: comparison.declaredHit,
-      comparedAt: comparison.comparedAt,
-    })),
     identityDemonstrations: buildDemonstrations(data, pieceViewModels),
     journal: buildJournal(input.chainEvents),
   };

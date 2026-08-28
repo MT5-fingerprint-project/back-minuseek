@@ -1,220 +1,269 @@
 import { TechnicalReportViewModel } from '../../../application/report-view-model';
 import { renderTechnicalReportHtml } from './technical-report.template';
 
-const PIECE = {
-  label: 'trace-1.png',
-  sha256: 'a'.repeat(64),
-  receivedAt: new Date('2026-08-01T10:00:00.000Z'),
-  capturedAt: null,
-  status: 'EXPLOITABLE',
-  exploitabilityScore: 72,
-  image: {
-    dataUrl: 'data:image/png;base64,AAA',
-    width: 800,
-    height: 1200,
-  },
-  minutiae: [
-    { index: 1, x: 120, y: 340, radius: 6, angleDeg: 45, color: '#d92b2b' },
-    { index: 2, x: 200, y: 410, radius: 6, angleDeg: null, color: '#d92b2b' },
-  ],
-  layers: [
-    {
-      name: '<script>alert(1)</script>',
-      type: 'FILTER',
-      zIndex: 1,
-      isVisible: true,
-      settings: { contrast: 1.4 },
+function model(
+  overrides: Partial<TechnicalReportViewModel> = {},
+): TechnicalReportViewModel {
+  return {
+    kind: 'TECHNICAL',
+    header: {
+      reportId: 'report-1',
+      chainHeadSeq: 42,
+      chainHeadHash: 'c'.repeat(64),
+      caseNumber: '3455',
+      pvNumber: 'PV-2026-001',
+      caseStatus: 'OPEN',
+      openedAt: new Date('2026-08-01T09:00:00.000Z'),
+      generatedAt: new Date('2026-08-19T08:00:00.000Z'),
+      generatedByDisplayName: 'Alex Martin',
     },
-  ],
-  withdrawal: null,
-  imageDestroyedAt: null,
-};
-
-const REFERENCE = {
-  ...PIECE,
-  label: 'ref-1.png',
-  sha256: 'b'.repeat(64),
-  image: { dataUrl: 'data:image/png;base64,BBB', width: 500, height: 700 },
-};
-
-const MODEL: TechnicalReportViewModel = {
-  kind: 'TECHNICAL',
-  header: {
-    reportId: 'report-1',
-    chainHeadSeq: 42,
-    chainHeadHash: 'c'.repeat(64),
-    caseNumber: 'AFF-001',
-    pvNumber: 'PV-2026-001',
-    caseStatus: 'OPEN',
-    openedAt: new Date('2026-08-01T09:00:00.000Z'),
-    generatedAt: new Date('2026-08-19T08:00:00.000Z'),
-    generatedByDisplayName: 'Alex Martin',
-  },
-  caseDescription: null,
-  traces: [PIECE],
-  referencePrints: [REFERENCE],
-  comparisons: [],
-  identityDemonstrations: [
-    {
-      trace: PIECE,
-      referencePrint: REFERENCE,
-      subject: {
-        firstName: 'Camille',
-        lastName: 'Durand',
-        birthDate: new Date('1990-04-12T00:00:00.000Z'),
-        birthPlace: 'Lyon',
-        sex: 'FEMALE',
-        type: 'PERSON_OF_INTEREST',
+    caseHeader: {
+      caseNumber: '3455',
+      pvNumber: 'PV-2026-001',
+      requestDate: new Date('2026-03-14T00:00:00.000Z'),
+      requesterQuality: 'Brigadier-Chef de Police',
+      requesterName: 'MARCHAND Claire',
+      requesterService: '3e District de Police Judiciaire',
+      offenseNature: 'Vol par effraction',
+      offenseLocation: '12 rue Léon Frot à Paris 11e',
+      offenseDateFrom: new Date('2026-03-13T00:00:00.000Z'),
+      offenseDateTo: null,
+      interventionDate: new Date('2026-03-14T00:00:00.000Z'),
+      caseAgainst: 'X',
+      victims: ['Madame BERGER Hélène, née le 04/09/1958'],
+      recipient: {
+        authority: 'Le Commissaire Général',
+        attention: 'Brigadier-Chef de Police MARCHAND Claire',
       },
-      position: 'index droit',
-      score: 88.5,
-      machineMatch: true,
-      comparedAt: new Date('2026-08-10T14:00:00.000Z'),
-      declaredAt: new Date('2026-08-11T09:30:00.000Z'),
-      declaredBy: {
-        displayName: 'Alex Martin',
-        grade: 'Brigadier',
-        serviceNumber: 'PN-4412',
-        role: 'EXPERT',
-      },
-      requiredMinutiae: 12,
     },
-  ],
-  journal: {
-    chained: [
+    examinedTraces: [
       {
-        label: 'Trace déposée et mise sous scellé',
-        detail: 'traceId trace-1',
-        occurredAt: new Date('2026-08-01T10:00:00.000Z'),
-        actorDisplayName: 'Alex Martin',
-        seq: 2,
-        hash: 'e'.repeat(64),
+        label: '3455-T1 et T2',
+        origin: 'Digitale',
+        location: 'Sur la porte-fenêtre du séjour',
+        revelationTechnique: 'Poudre dactyloscopique',
       },
     ],
-  },
-};
+    exploitability: [
+      {
+        reference: '3455-T1',
+        exploitability: 'EXPLOITABLE',
+        cote: 'A',
+        discrimination: 'Index droit — SADIK Samir',
+        withdrawal: null,
+      },
+      {
+        reference: '3455-T2',
+        exploitability: 'EXPLOITABLE',
+        cote: 'B',
+        discrimination: 'Non examinée',
+        withdrawal: null,
+      },
+    ],
+    referenceSubjects: [
+      {
+        civility: 'Monsieur',
+        firstName: 'Samir',
+        lastName: 'Sadik',
+        quality: 'mis en cause',
+      },
+    ],
+    unattachedReferencePrintCount: 0,
+    automaticComparatorUsed: false,
+    identifications: [
+      {
+        cote: 'A',
+        position: "à l'index droit",
+        civility: 'Monsieur',
+        firstName: 'Samir',
+        lastName: 'Sadik',
+      },
+    ],
+    negativeCotes: [],
+    notExaminedCotes: ['B'],
+    imageTreatments: [
+      {
+        reference: '3455-T1',
+        cote: 'A',
+        sealedAt: new Date('2026-03-14T16:42:00.000Z'),
+        treatments: 'Luminosité +20 %, contraste +15 %',
+      },
+    ],
+    independentTimestampAt: new Date('2026-03-15T03:00:00.000Z'),
+    counts: {
+      total: 2,
+      exploitable: 2,
+      notExploitable: 0,
+      identified: 1,
+      negative: 0,
+      notExamined: 1,
+    },
+    traces: [],
+    referencePrints: [],
+    identityDemonstrations: [],
+    journal: { chained: [] },
+    ...overrides,
+  };
+}
 
-describe('renderTechnicalReportHtml — planche de comparaison', () => {
-  it('dessine chaque pièce dans le repère pixel de son image', () => {
-    const html = renderTechnicalReportHtml(MODEL);
+const SECTION_TITLES = [
+  '1. Objet et pièces examinées',
+  '2. Méthodes et techniques employées',
+  '3. Traces papillaires examinées',
+  '4. Exploitabilité et cotation',
+  '5. Comparaisons et identifications',
+  '6. Traitements appliqués aux images et intégrité des pièces',
+  '7. Conclusion',
+];
 
-    expect(html).toContain('viewBox="0 0 800 1200"');
-    expect(html).toContain('viewBox="0 0 500 700"');
+describe('renderTechnicalReportHtml — structure', () => {
+  it('sort les sept sections dans l’ordre', () => {
+    const html = renderTechnicalReportHtml(model());
+    const positions = SECTION_TITLES.map((title) => html.indexOf(title));
+
+    expect(positions.every((position) => position > 0)).toBe(true);
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
   });
 
-  it('replace et numérote les minuties', () => {
-    const html = renderTechnicalReportHtml(MODEL);
+  it('imprime le titre, le sous-titre et le pied de page', () => {
+    const html = renderTechnicalReportHtml(model());
 
-    expect(html).toContain('cx="120" cy="340"');
-    expect(html).toContain('>1</text>');
-    expect(html).toContain('>2</text>');
+    expect(html).toContain("RAPPORT D'EXPLOITATION DE TRACES PAPILLAIRES");
+    expect(html).toContain(
+      "Examen dactyloscopique, comparaison et démonstration d'identité",
+    );
+    expect(html).toContain(
+      'Toute reproduction partielle du rapport et des annexes est interdite.',
+    );
   });
 
-  it('trace la direction du flux seulement quand elle est saisie', () => {
-    const html = renderTechnicalReportHtml(MODEL);
-    const lines = html.match(/<line /g) ?? [];
+  it('annonce les trois annexes et garde le journal en annexe C', () => {
+    const html = renderTechnicalReportHtml(model());
 
-    // 1 minutie orientée par pièce, deux pièces affichées deux fois (planche + section pièce)
-    expect(lines.length).toBeGreaterThan(0);
-    expect(html).not.toContain('x2="NaN"');
+    expect(html).toContain(
+      'Annexe A — Planches des traces papillaires exploitables',
+    );
+    expect(html).toContain("Annexe B — Démonstrations d'identité");
+    expect(html).toContain('Annexe C — Journal des actes');
   });
 
-  it("conclut en nommant le sujet, la zone et l'expert", () => {
-    const html = renderTechnicalReportHtml(MODEL);
+  it('ne code aucun numéro de page dans le sommaire', () => {
+    const html = renderTechnicalReportHtml(model());
 
-    expect(html).toContain('DURAND');
-    expect(html).toContain('Camille');
-    expect(html).toContain('index droit');
-    expect(html).toContain('Brigadier');
-    expect(html).toContain('PN-4412');
-    expect(html).toContain('minimum 12 points');
-  });
-
-  it('rappelle que le score est un appui, pas la conclusion', () => {
-    const html = renderTechnicalReportHtml(MODEL);
-
-    expect(html).toContain("Le score est un élément d'appui");
-    expect(html).toContain("acte d'expert");
-  });
-
-  it("dit qu'aucune identité n'est conclue sans correspondance déclarée", () => {
-    const html = renderTechnicalReportHtml({
-      ...MODEL,
-      identityDemonstrations: [],
-    });
-
-    expect(html).toContain('conclut à aucune identité');
-  });
-
-  it('signale une image dont les dimensions sont illisibles', () => {
-    const html = renderTechnicalReportHtml({
-      ...MODEL,
-      identityDemonstrations: [],
-      traces: [
-        {
-          ...PIECE,
-          image: {
-            dataUrl: 'data:image/tiff;base64,AAA',
-            width: null,
-            height: null,
-          },
-        },
-      ],
-    });
-
-    expect(html).toContain('Minuties non replacées');
-  });
-
-  it("dit le retrait d'une trace au lieu d'imprimer sa planche", () => {
-    const html = renderTechnicalReportHtml({
-      ...MODEL,
-      identityDemonstrations: [],
-      traces: [
-        {
-          ...PIECE,
-          withdrawal: {
-            at: new Date('2026-08-12T09:00:00.000Z'),
-            motiveLabel: "doublon d'une pièce déjà versée",
-          },
-        },
-      ],
-    });
-
-    expect(html).toContain('Retirée du dossier le 12/08/2026');
-    expect(html).toContain('pièce déjà versée');
-    expect(html).not.toContain('Image non embarquée');
+    expect(html).not.toMatch(/page\s*\d/i);
+    expect(html).not.toContain('counter(page)');
   });
 });
 
-describe('renderTechnicalReportHtml — journal des actes', () => {
-  it('liste les actes chaînés avec leur maillon', () => {
-    const html = renderTechnicalReportHtml(MODEL);
+describe('renderTechnicalReportHtml — ce qui ne doit jamais sortir', () => {
+  it('n’imprime ni score, ni coordonnée, ni JSON brut', () => {
+    const html = renderTechnicalReportHtml(model());
 
-    expect(html).toContain('Journal des actes (1)');
-    expect(html).toContain('Trace déposée et mise sous scellé');
+    expect(html.toLowerCase()).not.toContain('score');
+    expect(html).not.toContain('<pre>');
+    expect(html).not.toContain('Score d’exploitabilité');
+  });
+
+  it('ne réintroduit pas le bloc « VU ET TRANSMIS »', () => {
+    expect(renderTechnicalReportHtml(model())).not.toContain('VU ET TRANSMIS');
   });
 
   it('échappe le texte libre venu de la base', () => {
-    const html = renderTechnicalReportHtml(MODEL);
+    const html = renderTechnicalReportHtml(
+      model({
+        examinedTraces: [
+          {
+            label: '3455-T1',
+            origin: 'Digitale',
+            location: '<script>alert(1)</script>',
+            revelationTechnique: 'DFO',
+          },
+        ],
+      }),
+    );
 
     expect(html).not.toContain('<script>alert(1)</script>');
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
   });
-  it("dit la destruction légale d'une empreinte, jamais « fichier illisible »", () => {
-    const html = renderTechnicalReportHtml({
-      ...MODEL,
-      identityDemonstrations: [],
-      referencePrints: [
-        {
-          ...REFERENCE,
-          image: null,
-          imageDestroyedAt: new Date('2026-09-01T09:00:00.000Z'),
-        },
-      ],
-    });
+});
 
-    expect(html).toContain('Image détruite le 01/09/2026');
-    expect(html).toContain('aux fins d');
-    expect(html).not.toContain('Image non embarquée');
+describe('renderTechnicalReportHtml — le comparateur automatique', () => {
+  it('imprime le paragraphe quand le comparateur a été employé', () => {
+    const html = renderTechnicalReportHtml(
+      model({ automaticComparatorUsed: true }),
+    );
+
+    expect(html.replace(/\s+/g, ' ')).toContain(
+      'Le comparateur automatique de la plateforme a été employé dans le cadre de la présente affaire.',
+    );
+    expect(html.replace(/\s+/g, ' ')).toContain(
+      "l'examen comparatif et la conclusion d'identité relèvent exclusivement de l'expert signataire",
+    );
+  });
+
+  it('ne l’imprime pas quand il ne l’a pas été', () => {
+    const html = renderTechnicalReportHtml(
+      model({ automaticComparatorUsed: false }),
+    );
+
+    expect(html).not.toContain('Le comparateur automatique de la plateforme');
+  });
+});
+
+describe('renderTechnicalReportHtml — les conclusions', () => {
+  it('écrit les identifications avec la règle des douze points', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html).toContain(
+      'la trace papillaire cotée <b>« A »</b> est identifiée',
+    );
+    expect(html).toContain(
+      'au moins DOUZE (12) minuties concordantes, sans aucune discordance inexplicable',
+    );
+  });
+
+  it('distingue une trace déclarée négative d’une trace non examinée', () => {
+    const html = renderTechnicalReportHtml(
+      model({ negativeCotes: ['C'], notExaminedCotes: ['F'] }),
+    );
+
+    const flat = html.replace(/\s+/g, ' ');
+
+    expect(flat).toContain(
+      "La trace papillaire cotée <b>« C »</b> n'a pas été identifiée au terme des comparaisons effectuées.",
+    );
+    expect(flat).toContain(
+      "La trace papillaire cotée <b>« F »</b> n'a pas encore été examinée.",
+    );
+  });
+
+  it('remplace la cote et la discrimination d’une trace retirée par la phrase de retrait', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        exploitability: [
+          {
+            reference: '3455-T1',
+            exploitability: 'EXPLOITABLE',
+            cote: '/',
+            discrimination: '/',
+            withdrawal:
+              "Retirée du dossier le 12 août 2026 — doublon d'une pièce déjà versée",
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain(
+      '<td colspan="2">Retirée du dossier le 12 août 2026 — doublon d&#39;une pièce déjà versée</td>',
+    );
+  });
+
+  it('n’affirme pas d’horodatage indépendant quand il n’y en a pas', () => {
+    const html = renderTechnicalReportHtml(
+      model({ independentTimestampAt: null }),
+    );
+
+    expect(html).not.toContain('horodaté par un tiers');
+    expect(html).toContain('Le détail acte par acte figure en Annexe C.');
   });
 });

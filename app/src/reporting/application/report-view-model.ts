@@ -12,6 +12,28 @@ export interface ReportHeaderViewModel {
   generatedByDisplayName: string;
 }
 
+export interface ReportRecipientViewModel {
+  authority: string;
+  attention: string | null;
+}
+
+export interface ReportCaseHeaderViewModel {
+  caseNumber: string;
+  pvNumber: string;
+  requestDate: Date | null;
+  requesterQuality: string | null;
+  requesterName: string | null;
+  requesterService: string | null;
+  offenseNature: string | null;
+  offenseLocation: string | null;
+  offenseDateFrom: Date | null;
+  offenseDateTo: Date | null;
+  interventionDate: Date | null;
+  caseAgainst: string | null;
+  victims: string[];
+  recipient: ReportRecipientViewModel | null;
+}
+
 export interface ReportImageViewModel {
   dataUrl: string;
   width: number | null;
@@ -27,7 +49,6 @@ export interface ReportMinutiaViewModel {
   color: string;
 }
 
-/** Une pièce sortie du dossier de travail : elle reste au rapport, sans image. */
 export interface ReportWithdrawalViewModel {
   at: Date;
   motiveLabel: string;
@@ -39,7 +60,6 @@ export interface ReportPieceViewModel {
   receivedAt: Date;
   capturedAt: Date | null;
   status: string | null;
-  exploitabilityScore: number | null;
   image: ReportImageViewModel | null;
   minutiae: ReportMinutiaViewModel[];
   layers: ReportLayerViewModel[];
@@ -50,8 +70,8 @@ export interface ReportPieceViewModel {
 export interface ReportSubjectViewModel {
   firstName: string;
   lastName: string;
-  birthDate: Date;
-  birthPlace: string;
+  birthDate: Date | null;
+  birthPlace: string | null;
   sex: string;
   type: string;
 }
@@ -68,12 +88,56 @@ export interface ReportIdentityDemonstrationViewModel {
   referencePrint: ReportPieceViewModel;
   subject: ReportSubjectViewModel | null;
   position: string | null;
-  score: number | null;
-  machineMatch: boolean | null;
   comparedAt: Date | null;
   declaredAt: Date;
   declaredBy: ReportExpertViewModel | null;
   requiredMinutiae: number;
+}
+
+export interface ReportExaminedTraceViewModel {
+  label: string;
+  origin: string;
+  location: string;
+  revelationTechnique: string;
+}
+
+export interface ReportExploitabilityViewModel {
+  reference: string;
+  exploitability: string;
+  cote: string;
+  discrimination: string;
+  withdrawal: string | null;
+}
+
+export interface ReportReferenceSubjectViewModel {
+  civility: string;
+  firstName: string;
+  lastName: string;
+  quality: string;
+}
+
+export interface ReportIdentificationViewModel {
+  cote: string;
+  position: string;
+  civility: string;
+  firstName: string;
+  lastName: string;
+}
+
+export interface ReportImageTreatmentViewModel {
+  reference: string;
+  cote: string;
+  sealedAt: Date;
+  treatments: string;
+}
+
+export interface ReportCountsViewModel {
+  total: number;
+  exploitable: number;
+  notExploitable: number;
+  identified: number;
+  negative: number;
+  notExamined: number;
 }
 
 export interface ReportJournalEntryViewModel {
@@ -97,22 +161,23 @@ export interface ReportLayerViewModel {
   settings: Record<string, unknown>;
 }
 
-export interface ReportComparisonViewModel {
-  traceLabel: string;
-  referencePrintLabel: string;
-  score: number;
-  machineMatch: boolean;
-  declaredHit: boolean;
-  comparedAt: Date;
-}
-
 export interface TechnicalReportViewModel {
   kind: 'TECHNICAL';
   header: ReportHeaderViewModel;
-  caseDescription: string | null;
+  caseHeader: ReportCaseHeaderViewModel;
+  examinedTraces: ReportExaminedTraceViewModel[];
+  exploitability: ReportExploitabilityViewModel[];
+  referenceSubjects: ReportReferenceSubjectViewModel[];
+  unattachedReferencePrintCount: number;
+  automaticComparatorUsed: boolean;
+  identifications: ReportIdentificationViewModel[];
+  negativeCotes: string[];
+  notExaminedCotes: string[];
+  imageTreatments: ReportImageTreatmentViewModel[];
+  independentTimestampAt: Date | null;
+  counts: ReportCountsViewModel;
   traces: ReportPieceViewModel[];
   referencePrints: ReportPieceViewModel[];
-  comparisons: ReportComparisonViewModel[];
   identityDemonstrations: ReportIdentityDemonstrationViewModel[];
   journal: ReportJournalViewModel;
 }
@@ -140,7 +205,6 @@ export interface TraceabilityReportViewModel {
   kind: 'TRACEABILITY';
   header: ReportHeaderViewModel;
   events: TraceabilityEventViewModel[];
-  /** Épine de hashes du tenant, genesis → tête (ADR-0012, point 6). */
   hashSpine: { seq: number; hash: string }[];
   anchors: TraceabilityAnchorViewModel[];
   attestation: {

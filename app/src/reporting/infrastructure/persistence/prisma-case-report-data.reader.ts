@@ -17,7 +17,6 @@ interface PieceRow {
   createdAt: Date;
   capturedAt?: Date | null;
   status?: string | null;
-  score?: number | null;
   subjectId?: string | null;
   position?: string | null;
   withdrawnAt: Date | null;
@@ -60,10 +59,18 @@ function toMinutia(settings: Record<string, unknown>): MinutiaData | null {
   };
 }
 
+/**
+ * Les champs à `null` ci-dessous n'ont pas encore de colonne : le rapport les
+ * imprime dès que le ticket qui les crée est fusionné, et c'est le seul endroit
+ * à reprendre. `number` — L4-1a ; `origin`, `location`, `revelationTechnique` —
+ * L4-2a ; `cote` — L7-1a, via `assignCotes` sur les traces du dossier ;
+ * `notIdentifiedAt` — L7-1c.
+ */
 function toPiece(
   row: PieceRow,
   layers: LayerData[],
   minutiae: MinutiaData[],
+  number: number | null = null,
 ): PieceData {
   return {
     id: row.id,
@@ -72,7 +79,6 @@ function toPiece(
     createdAt: row.createdAt,
     capturedAt: row.capturedAt ?? null,
     status: row.status ?? null,
-    score: row.score ?? null,
     subjectId: row.subjectId ?? null,
     position: row.position ?? null,
     layers,
@@ -80,6 +86,12 @@ function toPiece(
     withdrawnAt: row.withdrawnAt,
     withdrawalMotive: row.withdrawalMotive ?? null,
     imageDestroyedAt: row.imageDestroyedAt ?? null,
+    number,
+    origin: null,
+    location: null,
+    revelationTechnique: null,
+    cote: null,
+    notIdentifiedAt: null,
   };
 }
 
@@ -173,12 +185,31 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
         description: investigationCase.description,
         status: investigationCase.status,
         createdAt: investigationCase.createdAt,
+        // Colonnes judiciaires : L2-1a. Destinataire : L2-2.
+        requestDate: null,
+        requesterQuality: null,
+        requesterName: null,
+        requesterService: null,
+        offenseNature: null,
+        offenseLocation: null,
+        offenseDateFrom: null,
+        offenseDateTo: null,
+        interventionDate: null,
+        caseAgainst: null,
+        recipient: {
+          authority: null,
+          attentionQuality: null,
+          attentionName: null,
+        },
       },
-      traces: traces.map((trace) =>
+      // Rang provisoire dans l'ordre de dépôt, celui que la migration de L4-1a
+      // écrira en colonne : à remplacer par `trace.number` dès sa fusion.
+      traces: traces.map((trace, order) =>
         toPiece(
           trace,
           layersByPiece.get(trace.id) ?? [],
           minutiaeByPiece.get(trace.id) ?? [],
+          order + 1,
         ),
       ),
       referencePrints: referencePrints.map((print) =>

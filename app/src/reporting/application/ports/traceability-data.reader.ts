@@ -19,7 +19,6 @@ export interface AnchorData {
 
 export interface TraceabilityData {
   caseEvents: AuditEventData[];
-  /** Genesis → tête, tous dossiers confondus : seq et hash seuls (ADR-0012). */
   hashSpine: { seq: number; hash: string }[];
   anchors: AnchorData[];
 }
@@ -27,6 +26,7 @@ export interface TraceabilityData {
 export interface TraceabilityDataReader {
   read(caseId: string): Promise<TraceabilityData>;
   readCaseEvents(caseId: string): Promise<AuditEventData[]>;
+  readAnchors(): Promise<AnchorData[]>;
 }
 
 export const TRACEABILITY_DATA_READER = 'TraceabilityDataReader';

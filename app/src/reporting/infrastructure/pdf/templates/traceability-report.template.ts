@@ -1,5 +1,6 @@
 import { TraceabilityReportViewModel } from '../../../application/report-view-model';
-import { escapeHtml, formatDate, formatJson } from '../html';
+import { formatDate } from '../../../application/report-dates';
+import { escapeHtml, formatJson } from '../html';
 import { REPORT_STYLES } from './report-styles';
 
 function attestationBlock(model: TraceabilityReportViewModel): string {
