@@ -5,8 +5,10 @@ import {
   TRACE_REPOSITORY,
   TraceRepository,
 } from '../../../domain/trace/repository/trace.repository';
+import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
+import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
 import { RestoreTraceCommand } from './restore-trace.command';
 
 @CommandHandler(RestoreTraceCommand)
@@ -17,6 +19,8 @@ export class RestoreTraceHandler implements ICommandHandler<
   constructor(
     @Inject(TRACE_REPOSITORY)
     private readonly repo: TraceRepository,
+    @Inject(CASE_STATUS)
+    private readonly caseStatus: CaseStatusPort,
   ) {}
 
   async execute(cmd: RestoreTraceCommand): Promise<void> {
@@ -24,6 +28,11 @@ export class RestoreTraceHandler implements ICommandHandler<
     if (!trace) {
       throw new TraceNotFoundError(cmd.id);
     }
+
+    assertCaseAcceptsWork(
+      trace.caseId,
+      await this.caseStatus.findStatus(trace.caseId),
+    );
 
     // Le journal ne sérialise que des scalaires : la date part en ISO-8601.
     const withdrawnAt = trace.withdrawnAt?.toISOString() ?? null;

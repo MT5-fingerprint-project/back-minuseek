@@ -14,8 +14,10 @@ import {
 } from '../../../domain/reference-print/repository/reference-print.repository';
 import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found.error';
 import { ReferencePrintNotFoundError } from '../../../domain/reference-print/errors/reference-print-not-found.error';
+import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
+import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
 import { RemoveHitCommand } from './remove-hit.command';
 
 @CommandHandler(RemoveHitCommand)
@@ -24,6 +26,8 @@ export class RemoveHitHandler implements ICommandHandler<
   void
 > {
   constructor(
+    @Inject(CASE_STATUS)
+    private readonly caseStatus: CaseStatusPort,
     @Inject(TRACE_REPOSITORY)
     private readonly traceRepo: TraceRepository,
     @Inject(REFERENCE_PRINT_REPOSITORY)
@@ -48,6 +52,11 @@ export class RemoveHitHandler implements ICommandHandler<
     ) {
       throw new ReferencePrintNotFoundError(cmd.referencePrintId);
     }
+
+    assertCaseAcceptsWork(
+      cmd.caseId,
+      await this.caseStatus.findStatus(cmd.caseId),
+    );
 
     await this.hitRepo.withdrawByPair(
       cmd.traceId,

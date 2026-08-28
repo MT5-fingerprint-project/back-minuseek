@@ -1,6 +1,7 @@
 import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
+import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryReferencePrintRepository } from '../../../infrastructure/persistence/in-memory-reference-print.repository';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
 import { InMemoryImageConverter } from '../../../infrastructure/conversion/in-memory-image-converter.adapter';
@@ -41,6 +42,7 @@ describe('UploadReferencePrintHandler', () => {
   let storage: InMemoryImageStorageAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
   let idGenerator: IdGenerator;
+  let caseStatus: InMemoryCaseStatusAdapter;
 
   const buildHandler = (referencePrintRepo: ReferencePrintRepository) =>
     new UploadReferencePrintHandler(
@@ -48,6 +50,7 @@ describe('UploadReferencePrintHandler', () => {
       storage,
       idGenerator,
       new InMemoryImageConverter(),
+      caseStatus,
       new CaseAccessService(
         new InMemoryCaseAccessReader({
           operators: [{ caseId: 'case-9', userId: MARIE.id }],
@@ -60,6 +63,8 @@ describe('UploadReferencePrintHandler', () => {
     repo = new InMemoryReferencePrintRepository(auditTrail);
     storage = new InMemoryImageStorageAdapter();
     idGenerator = { generate: jest.fn().mockReturnValue('ref-456') };
+    caseStatus = new InMemoryCaseStatusAdapter();
+    caseStatus.set('case-9', 'OPEN');
     handler = buildHandler(repo);
   });
 

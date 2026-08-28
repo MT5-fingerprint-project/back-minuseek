@@ -5,6 +5,7 @@ import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructu
 import { Layer } from '../../../domain/layer/entity/layer';
 import { LayerNotFoundError } from '../../../domain/layer/errors/layer-not-found.error';
 import { FingerprintNotFoundError } from '../../../domain/fingerprint-not-found.error';
+import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryFingerprintLocatorAdapter } from '../../../infrastructure/persistence/in-memory-fingerprint-locator.adapter';
 import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-memory-layer.repository';
 import { UpdateLayerCommand } from './update-layer.command';
@@ -27,6 +28,7 @@ describe('UpdateLayerHandler', () => {
   };
 
   let handler: UpdateLayerHandler;
+  let caseStatus: InMemoryCaseStatusAdapter;
   let repo: InMemoryLayerRepository;
   let fingerprintLocator: InMemoryFingerprintLocatorAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
@@ -47,7 +49,9 @@ describe('UpdateLayerHandler', () => {
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryLayerRepository(auditTrail);
     fingerprintLocator = new InMemoryFingerprintLocatorAdapter();
-    handler = new UpdateLayerHandler(repo, fingerprintLocator);
+    caseStatus = new InMemoryCaseStatusAdapter();
+    caseStatus.set('case-9', 'OPEN');
+    handler = new UpdateLayerHandler(repo, fingerprintLocator, caseStatus);
     fingerprintLocator.setTrace('fp-1', 'case-9');
   });
 

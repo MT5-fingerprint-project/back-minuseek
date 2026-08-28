@@ -1,5 +1,6 @@
 import { FileDigest, InvalidFileDigestError } from '../../file-digest.vo';
 import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-trace.error';
+import { CaseNotOpenForWorkError } from '../../errors/case-not-open-for-work.error';
 import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
 import { CaptureMetadata } from '../value-objects/capture-metadata.vo';
 import { CaptureQuality } from '../value-objects/capture-quality.vo';
@@ -142,7 +143,7 @@ describe('Trace', () => {
   });
 
   describe('assertCaseCanReceiveTrace', () => {
-    it.each(['OPEN', 'IN_PROGRESS'])(
+    it.each(['OPEN', 'IN_PROGRESS', 'UNDER_REVIEW'])(
       'accepts a case in %s status',
       (status) => {
         expect(() =>
@@ -157,14 +158,11 @@ describe('Trace', () => {
       );
     });
 
-    it.each(['CLOSED', 'UNDER_REVIEW'])(
-      'rejects a case in %s status',
-      (status) => {
-        expect(() => Trace.assertCaseCanReceiveTrace('case-9', status)).toThrow(
-          CaseUnavailableForTraceError,
-        );
-      },
-    );
+    it('rejects a closed case', () => {
+      expect(() => Trace.assertCaseCanReceiveTrace('case-9', 'CLOSED')).toThrow(
+        CaseNotOpenForWorkError,
+      );
+    });
   });
 
   describe('evaluate', () => {

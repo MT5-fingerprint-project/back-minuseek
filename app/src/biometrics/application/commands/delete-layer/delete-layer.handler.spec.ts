@@ -4,6 +4,7 @@ import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-clas
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { Layer } from '../../../domain/layer/entity/layer';
 import { LayerNotFoundError } from '../../../domain/layer/errors/layer-not-found.error';
+import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryFingerprintLocatorAdapter } from '../../../infrastructure/persistence/in-memory-fingerprint-locator.adapter';
 import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-memory-layer.repository';
 import { DeleteLayerCommand } from './delete-layer.command';
@@ -19,6 +20,7 @@ describe('DeleteLayerHandler', () => {
   };
 
   let handler: DeleteLayerHandler;
+  let caseStatus: InMemoryCaseStatusAdapter;
   let repo: InMemoryLayerRepository;
   let fingerprintLocator: InMemoryFingerprintLocatorAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
@@ -39,7 +41,9 @@ describe('DeleteLayerHandler', () => {
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryLayerRepository(auditTrail);
     fingerprintLocator = new InMemoryFingerprintLocatorAdapter();
-    handler = new DeleteLayerHandler(repo, fingerprintLocator);
+    caseStatus = new InMemoryCaseStatusAdapter();
+    caseStatus.set('case-9', 'OPEN');
+    handler = new DeleteLayerHandler(repo, fingerprintLocator, caseStatus);
     fingerprintLocator.setTrace('fp-1', 'case-9');
   });
 
