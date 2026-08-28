@@ -1,4 +1,5 @@
 import { ANY_SEAL } from '../../../domain/file-digest.fixture';
+import { ReferencePrintImageDestroyedError } from '../../../domain/reference-print/errors/reference-print-image-destroyed.error';
 import { CaseNotOpenForWorkError } from '../../../domain/errors/case-not-open-for-work.error';
 import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { Trace } from '../../../domain/trace/entity/trace';
@@ -358,6 +359,26 @@ describe('RecordHitHandler', () => {
         new RecordHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1', null),
       ),
     ).rejects.toBeInstanceOf(CaseNotOpenForWorkError);
+    expect(auditTrail.events).toHaveLength(0);
+  });
+  it("refuse une empreinte dont l'image a été détruite, sans rien inscrire", async () => {
+    seedTraceAndReference();
+    seedMinutiae('trace-1', REQUIRED_MINUTIAE, 'circle');
+    seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
+    const referencePrint = ReferencePrint.create({
+      id: 'ref-1',
+      path: 'media/ref-1.png',
+      caseId: 'case-1',
+      sha256: ANY_SEAL,
+    });
+    referencePrint.markImageDestroyed(new Date());
+    referencePrintRepo.seed(referencePrint);
+
+    await expect(
+      handler.execute(
+        new RecordHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1', null),
+      ),
+    ).rejects.toBeInstanceOf(ReferencePrintImageDestroyedError);
     expect(auditTrail.events).toHaveLength(0);
   });
 });

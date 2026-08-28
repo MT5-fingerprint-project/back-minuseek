@@ -27,6 +27,7 @@ const PIECE = {
     },
   ],
   withdrawal: null,
+  imageDestroyedAt: null,
 };
 
 const REFERENCE = {
@@ -198,5 +199,22 @@ describe('renderTechnicalReportHtml — journal des actes', () => {
 
     expect(html).not.toContain('<script>alert(1)</script>');
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+  it("dit la destruction légale d'une empreinte, jamais « fichier illisible »", () => {
+    const html = renderTechnicalReportHtml({
+      ...MODEL,
+      identityDemonstrations: [],
+      referencePrints: [
+        {
+          ...REFERENCE,
+          image: null,
+          imageDestroyedAt: new Date('2026-09-01T09:00:00.000Z'),
+        },
+      ],
+    });
+
+    expect(html).toContain('Image détruite le 01/09/2026');
+    expect(html).toContain('aux fins d');
+    expect(html).not.toContain('Image non embarquée');
   });
 });

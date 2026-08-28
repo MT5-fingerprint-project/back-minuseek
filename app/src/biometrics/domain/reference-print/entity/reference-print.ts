@@ -1,4 +1,5 @@
 import { FileDigest } from '../../file-digest.vo';
+import { ReferencePrintImageAlreadyDestroyedError } from '../errors/reference-print-image-already-destroyed.error';
 import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../withdrawal/errors/not-withdrawn.error';
 import { Withdrawal } from '../../withdrawal/withdrawal.vo';
@@ -13,6 +14,7 @@ export interface ReferencePrintPrimitives {
   position: string | null;
   withdrawnAt: Date | null;
   withdrawalMotive: string | null;
+  imageDestroyedAt: Date | null;
 }
 
 interface CreateReferencePrintProps {
@@ -33,6 +35,7 @@ export class ReferencePrint {
     private readonly _subjectId: string | null,
     private readonly _position: FingerPosition | null,
     private _withdrawal: Withdrawal | null,
+    private _imageDestroyedAt: Date | null,
   ) {}
 
   static create(props: CreateReferencePrintProps): ReferencePrint {
@@ -53,6 +56,7 @@ export class ReferencePrint {
       props.subjectId ?? null,
       props.position ?? null,
       null,
+      null,
     );
   }
 
@@ -68,7 +72,16 @@ export class ReferencePrint {
         primitives.withdrawalMotive,
         primitives.withdrawnAt,
       ),
+      primitives.imageDestroyedAt,
     );
+  }
+
+  /** On ne réécrit pas une date de destruction : elle sera imprimée telle quelle. */
+  markImageDestroyed(destroyedAt: Date): void {
+    if (this._imageDestroyedAt !== null) {
+      throw new ReferencePrintImageAlreadyDestroyedError(this._id);
+    }
+    this._imageDestroyedAt = destroyedAt;
   }
 
   withdraw(motive: string, at: Date): void {
@@ -95,6 +108,7 @@ export class ReferencePrint {
       position: this._position ? this._position.getValue() : null,
       withdrawnAt: this._withdrawal?.getAt() ?? null,
       withdrawalMotive: this._withdrawal?.getMotive() ?? null,
+      imageDestroyedAt: this._imageDestroyedAt,
     };
   }
 
@@ -120,6 +134,14 @@ export class ReferencePrint {
 
   get position(): FingerPosition | null {
     return this._position;
+  }
+
+  get imageDestroyedAt(): Date | null {
+    return this._imageDestroyedAt;
+  }
+
+  get isImageDestroyed(): boolean {
+    return this._imageDestroyedAt !== null;
   }
 
   get isWithdrawn(): boolean {

@@ -47,6 +47,7 @@ import { CaseUnavailableForTraceError } from '../../domain/trace/errors/case-una
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
 import { InsufficientMinutiaeError } from '../../domain/hit/errors/insufficient-minutiae.error';
 import { CaseNotOpenForWorkError } from '../../domain/errors/case-not-open-for-work.error';
+import { ReferencePrintImageDestroyedError } from '../../domain/reference-print/errors/reference-print-image-destroyed.error';
 import { AlreadyWithdrawnError } from '../../domain/withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../domain/withdrawal/errors/not-withdrawn.error';
 import { InvalidImageError } from '../../application/ports/image-converter.port';
@@ -151,6 +152,8 @@ export class BiometricsController {
     } catch (e) {
       if (e instanceof CaseNotOpenForWorkError)
         throw new ConflictException(e.message);
+      if (e instanceof ReferencePrintImageDestroyedError)
+        throw new ConflictException(e.message);
       if (e instanceof TraceNotFoundError)
         throw new NotFoundException(e.message);
       if (e instanceof AlreadyWithdrawnError)
@@ -185,6 +188,8 @@ export class BiometricsController {
     } catch (e) {
       if (e instanceof CaseNotOpenForWorkError)
         throw new ConflictException(e.message);
+      if (e instanceof ReferencePrintImageDestroyedError)
+        throw new ConflictException(e.message);
       if (e instanceof ReferencePrintNotFoundError)
         throw new NotFoundException(e.message);
       if (e instanceof AlreadyWithdrawnError)
@@ -210,6 +215,8 @@ export class BiometricsController {
       );
     } catch (e) {
       if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
+      if (e instanceof ReferencePrintImageDestroyedError)
         throw new ConflictException(e.message);
       if (e instanceof TraceNotFoundError)
         throw new NotFoundException(e.message);
@@ -244,6 +251,8 @@ export class BiometricsController {
       );
     } catch (e) {
       if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
+      if (e instanceof ReferencePrintImageDestroyedError)
         throw new ConflictException(e.message);
       if (e instanceof ReferencePrintNotFoundError)
         throw new NotFoundException(e.message);
@@ -335,6 +344,8 @@ export class BiometricsController {
     } catch (e) {
       if (e instanceof CaseNotOpenForWorkError)
         throw new ConflictException(e.message);
+      if (e instanceof ReferencePrintImageDestroyedError)
+        throw new ConflictException(e.message);
       if (e instanceof CaseAccessDeniedError)
         throw new NotFoundException(CASE_NOT_FOUND_MESSAGE);
       if (e instanceof CaseUnavailableForTraceError)
@@ -399,6 +410,8 @@ export class BiometricsController {
     } catch (e) {
       if (e instanceof CaseNotOpenForWorkError)
         throw new ConflictException(e.message);
+      if (e instanceof ReferencePrintImageDestroyedError)
+        throw new ConflictException(e.message);
       if (e instanceof CaseAccessDeniedError)
         throw new NotFoundException(CASE_NOT_FOUND_MESSAGE);
       if (
@@ -442,6 +455,8 @@ export class BiometricsController {
       return { matchings };
     } catch (e) {
       if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
+      if (e instanceof ReferencePrintImageDestroyedError)
         throw new ConflictException(e.message);
       if (
         e instanceof TraceNotFoundError ||
@@ -490,6 +505,8 @@ export class BiometricsController {
     } catch (e) {
       if (e instanceof CaseNotOpenForWorkError)
         throw new ConflictException(e.message);
+      if (e instanceof ReferencePrintImageDestroyedError)
+        throw new ConflictException(e.message);
       if (
         e instanceof TraceNotFoundError ||
         e instanceof ReferencePrintNotFoundError
@@ -530,6 +547,8 @@ export class BiometricsController {
       );
     } catch (e) {
       if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
+      if (e instanceof ReferencePrintImageDestroyedError)
         throw new ConflictException(e.message);
       if (
         e instanceof TraceNotFoundError ||

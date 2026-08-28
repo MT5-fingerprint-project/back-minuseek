@@ -15,9 +15,10 @@ import { INVESTIGATION_CASE_READER } from './application/queries/list-investigat
 import { SERVICE_USER_DIRECTORY } from './application/ports/service-user.directory';
 import { AuditTrailModule } from '../audit-trail/audit-trail.module';
 import { AccessModule } from '../access/access.module';
+import { BiometricsModule } from '../biometrics/biometrics.module';
 
 @Module({
-  imports: [CqrsModule, AuditTrailModule, AccessModule],
+  imports: [CqrsModule, AuditTrailModule, AccessModule, BiometricsModule],
   controllers: [InvestigationController],
   providers: [
     OpenInvestigationCaseHandler,

@@ -11,7 +11,7 @@ import {
 } from './reference-print.reader';
 import { ListReferencePrintsQuery } from './list-reference-prints.query';
 
-type ReferencePrintView = ReferencePrintReadModel & { url: string };
+type ReferencePrintView = ReferencePrintReadModel & { url: string | null };
 
 @QueryHandler(ListReferencePrintsQuery)
 export class ListReferencePrintsHandler implements IQueryHandler<ListReferencePrintsQuery> {
@@ -32,7 +32,12 @@ export class ListReferencePrintsHandler implements IQueryHandler<ListReferencePr
     const data = await Promise.all(
       referencePrints.map(async (referencePrint) => ({
         ...referencePrint,
-        url: await this.storage.getUrl(referencePrint.path),
+        // Une URL signée se fabrique sans erreur sur un objet supprimé : le
+        // front afficherait une image cassée au lieu d'une explication.
+        url:
+          referencePrint.imageDestroyedAt === null
+            ? await this.storage.getUrl(referencePrint.path)
+            : null,
       })),
     );
     return { data };

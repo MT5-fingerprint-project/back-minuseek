@@ -39,6 +39,7 @@ export class PrismaReferencePrintRepository implements ReferencePrintRepository 
         position: p.position as PrismaFingerPosition | null,
         withdrawnAt: p.withdrawnAt,
         withdrawalMotive: p.withdrawalMotive as PrismaWithdrawalMotive | null,
+        imageDestroyedAt: p.imageDestroyedAt,
       };
       await prisma.referencePrint.upsert({
         where: { id: data.id },

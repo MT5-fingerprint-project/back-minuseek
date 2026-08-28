@@ -98,6 +98,7 @@ describe('ReferencePrint', () => {
         position: 'LEFT_PALM',
         withdrawnAt: null,
         withdrawalMotive: null,
+        imageDestroyedAt: null,
       });
 
       expect(rp.id).toBe('r-1');
@@ -117,6 +118,7 @@ describe('ReferencePrint', () => {
         position: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        imageDestroyedAt: null,
       });
 
       expect(rp.sha256).toBeNull();
@@ -133,6 +135,7 @@ describe('ReferencePrint', () => {
           position: null,
           withdrawnAt: null,
           withdrawalMotive: null,
+          imageDestroyedAt: null,
         }),
       ).toThrow(InvalidFileDigestError);
     });
@@ -156,6 +159,7 @@ describe('ReferencePrint', () => {
         position: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        imageDestroyedAt: null,
       });
     });
   });
@@ -179,6 +183,7 @@ describe('ReferencePrint', () => {
       expect(rp.toPrimitives()).toMatchObject({
         withdrawnAt: WITHDRAWN_AT,
         withdrawalMotive: 'WRONG_ATTRIBUTION',
+        imageDestroyedAt: null,
       });
     });
 
@@ -199,6 +204,7 @@ describe('ReferencePrint', () => {
       expect(rp.toPrimitives()).toMatchObject({
         withdrawnAt: null,
         withdrawalMotive: null,
+        imageDestroyedAt: null,
       });
     });
 
@@ -223,6 +229,7 @@ describe('ReferencePrint', () => {
         position: null,
         withdrawnAt: WITHDRAWN_AT,
         withdrawalMotive: 'MISFILED',
+        imageDestroyedAt: null,
       });
 
       expect(rp.isWithdrawn).toBe(true);

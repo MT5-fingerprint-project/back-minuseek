@@ -10,6 +10,8 @@ export const READS_INCLUDING_WITHDRAWN: Record<string, string> = {
     'lecture des commandes : le rétablissement doit retrouver une pièce retirée',
   'biometrics/infrastructure/persistence/prisma-reference-print.repository.ts':
     'même motif',
+  'biometrics/infrastructure/persistence/prisma-familiar-reference-print.reader.ts':
+    "l'obligation de destruction porte aussi sur les empreintes de familiers retirées du dossier",
   'access/infrastructure/persistence/prisma-case-access.reader.ts':
     "le garde d'accès rattache une pièce à son affaire, y compris pour la rétablir",
 };

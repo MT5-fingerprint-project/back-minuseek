@@ -55,6 +55,7 @@ const DATA: CaseReportData = {
       minutiae: minutiae(13),
       withdrawnAt: null,
       withdrawalMotive: null,
+      imageDestroyedAt: null,
     },
   ],
   referencePrints: [
@@ -72,6 +73,7 @@ const DATA: CaseReportData = {
       minutiae: minutiae(12),
       withdrawnAt: null,
       withdrawalMotive: null,
+      imageDestroyedAt: null,
     },
   ],
   comparisons: [

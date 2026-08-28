@@ -75,6 +75,7 @@ function toPieceViewModel(
       settings: layer.settings,
     })),
     withdrawal: withdrawalOf(piece),
+    imageDestroyedAt: piece.imageDestroyedAt,
   };
 }
 

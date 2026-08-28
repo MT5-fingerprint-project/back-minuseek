@@ -6,6 +6,7 @@ import { InvestigationCase } from '../../../domain/investigation-case/entity/inv
 import { CaseNotFoundError } from '../../../domain/investigation-case/errors/case-not-found.error';
 import { InvalidCaseTransitionError } from '../../../domain/investigation-case/errors/invalid-case-transition.error';
 import { InvestigationCaseStatusEnum } from '../../../domain/investigation-case/value-objects/investigation-case-status.vo';
+import { InMemoryFamiliarPrintDestruction } from '../../../infrastructure/persistence/in-memory-familiar-print-destruction.adapter';
 import { InMemoryInvestigationCaseRepository } from '../../../infrastructure/persistence/in-memory-investigation-case.repository';
 import { CloseInvestigationCaseCommand } from './close-investigation-case.command';
 import { CloseInvestigationCaseHandler } from './close-investigation-case.handler';
@@ -16,6 +17,7 @@ describe('CloseInvestigationCaseHandler', () => {
   let handler: CloseInvestigationCaseHandler;
   let repo: InMemoryInvestigationCaseRepository;
   let auditTrail: InMemoryAuditTrailAppender;
+  let familiarPrints: InMemoryFamiliarPrintDestruction;
 
   const seedCase = (status: InvestigationCaseStatusEnum): void => {
     repo.seed(
@@ -35,7 +37,8 @@ describe('CloseInvestigationCaseHandler', () => {
   beforeEach(() => {
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryInvestigationCaseRepository(auditTrail);
-    handler = new CloseInvestigationCaseHandler(repo);
+    familiarPrints = new InMemoryFamiliarPrintDestruction();
+    handler = new CloseInvestigationCaseHandler(repo, familiarPrints);
   });
 
   it('clôt une affaire ouverte', async () => {
@@ -67,6 +70,7 @@ describe('CloseInvestigationCaseHandler', () => {
       previousStatus: 'OPEN',
       newStatus: 'CLOSED',
       reason: null,
+      destroyedPrintCount: 0,
     });
   });
 
@@ -85,6 +89,46 @@ describe('CloseInvestigationCaseHandler', () => {
         new CloseInvestigationCaseCommand(EXPERT_ACTOR, 'introuvable'),
       ),
     ).rejects.toBeInstanceOf(CaseNotFoundError);
+    expect(auditTrail.events).toHaveLength(0);
+  });
+  it('détruit les empreintes de familiers avant de changer le statut', async () => {
+    seedCase(InvestigationCaseStatusEnum.OPEN);
+    familiarPrints.set(CASE_ID, 2);
+
+    await handler.execute(
+      new CloseInvestigationCaseCommand(EXPERT_ACTOR, CASE_ID),
+    );
+
+    expect(familiarPrints.calls[0]).toEqual({
+      caseId: CASE_ID,
+      actor: EXPERT_ACTOR,
+    });
+    expect(auditTrail.events[0].payload).toMatchObject({
+      destroyedPrintCount: 2,
+    });
+  });
+
+  it('repasse après le changement de statut pour fermer la fenêtre', async () => {
+    seedCase(InvestigationCaseStatusEnum.OPEN);
+
+    await handler.execute(
+      new CloseInvestigationCaseCommand(EXPERT_ACTOR, CASE_ID),
+    );
+
+    expect(familiarPrints.calls).toHaveLength(2);
+  });
+
+  it("laisse l'affaire ouverte quand la destruction échoue", async () => {
+    seedCase(InvestigationCaseStatusEnum.OPEN);
+    const failure = new Error('stockage injoignable');
+    familiarPrints.failWith(failure);
+
+    await expect(
+      handler.execute(new CloseInvestigationCaseCommand(EXPERT_ACTOR, CASE_ID)),
+    ).rejects.toBe(failure);
+    expect((await repo.findById(CASE_ID))?.status).toBe(
+      InvestigationCaseStatusEnum.OPEN,
+    );
     expect(auditTrail.events).toHaveLength(0);
   });
 });
