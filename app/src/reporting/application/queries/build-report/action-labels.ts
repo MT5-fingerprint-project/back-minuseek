@@ -77,6 +77,7 @@ export function sexLabel(sex: string): string {
 
 const SCALAR_KEYS_BY_TYPE: Record<string, string[]> = {
   CASE_OPENED: ['caseNumber', 'pvNumber'],
+  CASE_STATUS_CHANGED: ['previousStatus', 'newStatus', 'reason'],
   TRACE_UPLOADED: ['traceId', 'sha256'],
   REFERENCE_PRINT_UPLOADED: ['referencePrintId', 'sha256'],
   TRACE_DELETED: ['traceId', 'motive'],

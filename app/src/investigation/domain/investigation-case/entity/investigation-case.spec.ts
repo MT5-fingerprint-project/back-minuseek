@@ -1,6 +1,7 @@
 import { InvestigationCase } from './investigation-case';
 import { InvestigationCaseStatusEnum } from '../value-objects/investigation-case-status.vo';
 import { CaseClosedError } from '../errors/case-closed.error';
+import { InvalidCaseTransitionError } from '../errors/invalid-case-transition.error';
 
 const OPENED_BY = 'user-marie';
 const HANDED_TO = 'user-pierre';
@@ -11,6 +12,19 @@ function anOpenCase() {
     caseNumber: 'AFF-001',
     pvNumber: 'PV-2024-001',
     operatorUserId: OPENED_BY,
+  });
+}
+
+function aCaseIn(status: InvestigationCaseStatusEnum) {
+  return InvestigationCase.reconstitute({
+    id: 'uuid-test',
+    caseNumber: 'AFF-001',
+    pvNumber: 'PV-2024-001',
+    description: null,
+    status,
+    operatorUserId: OPENED_BY,
+    createdAt: new Date('2026-01-01T10:00:00Z'),
+    updatedAt: new Date('2026-01-01T10:00:00Z'),
   });
 }
 
@@ -170,5 +184,40 @@ describe('InvestigationCase', () => {
 
     expect(() => c.changeOperator(HANDED_TO)).toThrow(CaseClosedError);
     expect(c.operatorUserId).toBe(OPENED_BY);
+  });
+  describe('clôture et réouverture', () => {
+    it.each([
+      InvestigationCaseStatusEnum.OPEN,
+      InvestigationCaseStatusEnum.IN_PROGRESS,
+      InvestigationCaseStatusEnum.UNDER_REVIEW,
+    ])('clôt une affaire %s', (status) => {
+      const c = aCaseIn(status);
+
+      c.close();
+
+      expect(c.status).toBe(InvestigationCaseStatusEnum.CLOSED);
+      expect(c.updatedAt.getTime()).toBeGreaterThan(
+        new Date('2026-01-01T10:00:00Z').getTime(),
+      );
+    });
+
+    it('refuse de clore une affaire déjà close', () => {
+      expect(() => aClosedCase().close()).toThrow(InvalidCaseTransitionError);
+    });
+
+    it('rouvre une affaire close en travail en cours', () => {
+      const c = aClosedCase();
+
+      c.reopen();
+
+      expect(c.status).toBe(InvestigationCaseStatusEnum.IN_PROGRESS);
+      expect(c.updatedAt.getTime()).toBeGreaterThan(
+        new Date('2026-01-01T10:00:00Z').getTime(),
+      );
+    });
+
+    it("refuse de rouvrir une affaire qui n'est pas close", () => {
+      expect(() => anOpenCase().reopen()).toThrow(InvalidCaseTransitionError);
+    });
   });
 });

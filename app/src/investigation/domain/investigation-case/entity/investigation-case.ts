@@ -3,6 +3,7 @@ import {
   InvestigationCaseStatusEnum,
 } from '../value-objects/investigation-case-status.vo';
 import { CaseClosedError } from '../errors/case-closed.error';
+import { InvalidCaseTransitionError } from '../errors/invalid-case-transition.error';
 
 interface OpenInvestigationCaseProps {
   id: string;
@@ -79,6 +80,28 @@ export class InvestigationCase {
     if (correction.description !== undefined) {
       this._description = correction.description ?? undefined;
     }
+    this._updatedAt = new Date();
+  }
+
+  close(): void {
+    if (this._status.isClosed()) {
+      throw new InvalidCaseTransitionError(
+        this.status,
+        InvestigationCaseStatusEnum.CLOSED,
+      );
+    }
+    this._status = InvestigationCaseStatus.closed();
+    this._updatedAt = new Date();
+  }
+
+  reopen(): void {
+    if (!this._status.isClosed()) {
+      throw new InvalidCaseTransitionError(
+        this.status,
+        InvestigationCaseStatusEnum.IN_PROGRESS,
+      );
+    }
+    this._status = InvestigationCaseStatus.inProgress();
     this._updatedAt = new Date();
   }
 

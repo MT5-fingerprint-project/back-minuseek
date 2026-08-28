@@ -21,4 +21,21 @@ describe('InvestigationCaseStatus', () => {
       InvestigationCaseStatusEnum.OPEN,
     );
   });
+  it('InvestigationCaseStatus.closed() retourne CLOSED', () => {
+    expect(InvestigationCaseStatus.closed().getValue()).toBe(
+      InvestigationCaseStatusEnum.CLOSED,
+    );
+  });
+
+  it('InvestigationCaseStatus.inProgress() retourne IN_PROGRESS', () => {
+    expect(InvestigationCaseStatus.inProgress().getValue()).toBe(
+      InvestigationCaseStatusEnum.IN_PROGRESS,
+    );
+  });
+
+  it('ne reconnaît close que le statut CLOSED', () => {
+    expect(InvestigationCaseStatus.closed().isClosed()).toBe(true);
+    expect(InvestigationCaseStatus.open().isClosed()).toBe(false);
+    expect(InvestigationCaseStatus.inProgress().isClosed()).toBe(false);
+  });
 });
