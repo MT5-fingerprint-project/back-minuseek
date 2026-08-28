@@ -18,7 +18,6 @@ const FOOTER_TEMPLATE = `
     Toute reproduction partielle du rapport et des annexes est interdite.
   </div>`;
 
-
 @Injectable()
 export class PuppeteerReportRenderer
   implements ReportRendererPort, OnModuleDestroy
