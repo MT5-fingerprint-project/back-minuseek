@@ -119,6 +119,15 @@ function model(
     traces: [],
     referencePrints: [],
     identityDemonstrations: [],
+    integrity: {
+      traces: [],
+      referencePrints: [],
+      lastAnchor: null,
+      recordVerifiedAtEdition: true,
+      firstBrokenEntryNumber: null,
+      anchorsFailed: 0,
+      verificationUrl: 'https://minuseek.fr/srpts-paris/verifier',
+    },
     journal: {
       detail: 'SUMMARY',
       acts: [],

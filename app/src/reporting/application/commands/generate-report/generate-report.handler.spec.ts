@@ -184,7 +184,10 @@ class FakeImageEmbedder implements ReportImageEmbedderPort {
 }
 
 class FakeAttestation implements ChainAttestationPort {
+  calls = 0;
+
   attest(): Promise<ChainAttestation> {
+    this.calls += 1;
     return Promise.resolve(ATTESTATION);
   }
 }
@@ -258,6 +261,7 @@ describe('GenerateReportHandler', () => {
   let imageEmbedder: FakeImageEmbedder;
   let contributors: FakeCaseContributorsReader;
   let letterhead: FakeServiceLetterheadReader;
+  let attestation: FakeAttestation;
 
   beforeEach(() => {
     caseData = new FakeCaseDataReader();
@@ -270,14 +274,16 @@ describe('GenerateReportHandler', () => {
     contributors = new FakeCaseContributorsReader();
     letterhead = new FakeServiceLetterheadReader();
     let issued = 0;
+    attestation = new FakeAttestation();
     handler = new GenerateReportHandler(
       caseData,
       traceability,
-      new FakeAttestation(),
+      attestation,
       new FakeChainHeadReader(),
       new FakeReportNumberingReader(repository),
       contributors,
       letterhead,
+      { build: () => 'https://minuseek.fr/demo/verifier' },
       imageEmbedder,
       renderer,
       storage,
@@ -472,6 +478,7 @@ describe('GenerateReportHandler', () => {
       stale,
       contributors,
       letterhead,
+      { build: () => 'https://minuseek.fr/demo/verifier' },
       imageEmbedder,
       renderer,
       storage,
@@ -524,5 +531,30 @@ describe('GenerateReportHandler', () => {
     );
 
     expect(repository.store[0].toPrimitives().journalDetail).toBe('FULL');
+  });
+
+  it('lit les ancres et l’attestation pour un rapport d’exploitation', async () => {
+    await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER),
+    );
+
+    expect(attestation.calls).toBe(1);
+    const model = renderer.rendered[0];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.integrity.recordVerifiedAtEdition).toBe(true);
+    expect(model.integrity.verificationUrl).toBe(
+      'https://minuseek.fr/demo/verifier',
+    );
+  });
+
+  it('décrit chaque pièce du dossier dans la section d’intégrité', async () => {
+    await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER),
+    );
+
+    const model = renderer.rendered[0];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.integrity.traces).toHaveLength(1);
+    expect(model.integrity.referencePrints).toHaveLength(1);
   });
 });

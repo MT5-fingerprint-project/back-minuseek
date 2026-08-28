@@ -43,6 +43,10 @@ import {
   type ServiceLetterheadReader,
 } from '../../ports/service-letterhead.reader';
 import {
+  VERIFICATION_URL,
+  type VerificationUrlPort,
+} from '../../ports/verification-url.port';
+import {
   REPORT_IMAGE_EMBEDDER,
   type ReportImageEmbedderPort,
 } from '../../ports/report-image-embedder.port';
@@ -87,6 +91,8 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     private readonly contributors: CaseContributorsReader,
     @Inject(SERVICE_LETTERHEAD_READER)
     private readonly letterhead: ServiceLetterheadReader,
+    @Inject(VERIFICATION_URL)
+    private readonly verificationUrl: VerificationUrlPort,
     @Inject(REPORT_IMAGE_EMBEDDER)
     private readonly imageEmbedder: ReportImageEmbedderPort,
     @Inject(REPORT_RENDERER)
@@ -180,17 +186,19 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     },
   ): Promise<ReportViewModel> {
     if (command.type === 'TECHNICAL') {
-      const [images, chainEvents, anchors, contributors] = await Promise.all([
-        this.imagesOf(
-          [...data.traces, ...data.referencePrints].filter(
-            (piece) =>
-              piece.withdrawnAt === null && piece.imageDestroyedAt === null,
+      const [images, chainEvents, anchors, contributors, attestation] =
+        await Promise.all([
+          this.imagesOf(
+            [...data.traces, ...data.referencePrints].filter(
+              (piece) =>
+                piece.withdrawnAt === null && piece.imageDestroyedAt === null,
+            ),
           ),
-        ),
-        this.traceabilityData.readCaseEvents(command.caseId),
-        this.traceabilityData.readAnchors(),
-        this.contributors.read(command.caseId),
-      ]);
+          this.traceabilityData.readCaseEvents(command.caseId),
+          this.traceabilityData.readAnchors(),
+          this.contributors.read(command.caseId),
+          this.chainAttestation.attest(),
+        ]);
       return buildTechnicalReport({
         data,
         letterhead: seal.letterhead,
@@ -205,6 +213,8 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
         generatedAt: seal.generatedAt,
         generatedByDisplayName: command.actor.toPrimitives().displayName,
         journalDetail: command.journalDetail,
+        attestation,
+        verificationUrl: this.verificationUrl.build(),
         images,
       });
     }
