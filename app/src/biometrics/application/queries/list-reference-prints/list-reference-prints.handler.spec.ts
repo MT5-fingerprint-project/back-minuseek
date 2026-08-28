@@ -9,10 +9,17 @@ class InMemoryReferencePrintReader implements ReferencePrintReader {
 
   // Même ordre que `prisma-reference-print.reader.ts` : la plus récente
   // d'abord, puis l'identifiant pour départager deux versements simultanés.
-  findByCaseId(caseId: string): Promise<ReferencePrintReadModel[]> {
+  findByCaseId(
+    caseId: string,
+    withdrawn = false,
+  ): Promise<ReferencePrintReadModel[]> {
     return Promise.resolve(
       this.referencePrints
-        .filter((referencePrint) => referencePrint.caseId === caseId)
+        .filter(
+          (referencePrint) =>
+            referencePrint.caseId === caseId &&
+            (referencePrint.withdrawnAt !== null) === withdrawn,
+        )
         .sort(
           (left, right) =>
             right.createdAt.getTime() - left.createdAt.getTime() ||
@@ -33,6 +40,8 @@ describe('ListReferencePrintsHandler', () => {
         position: null,
         createdAt: new Date('2026-07-01T00:00:00.000Z'),
         matchings: [],
+        withdrawnAt: null,
+        withdrawalMotive: null,
       },
     ]);
     const handler = new ListReferencePrintsHandler(
@@ -60,6 +69,8 @@ describe('ListReferencePrintsHandler', () => {
       position: null,
       createdAt: versedAt,
       matchings: [],
+      withdrawnAt: null,
+      withdrawalMotive: null,
     });
     const reader = new InMemoryReferencePrintReader([
       referencePrint('ref-a'),
@@ -76,5 +87,43 @@ describe('ListReferencePrintsHandler', () => {
     );
 
     expect(data.map((print) => print.id)).toEqual(['ref-a', 'ref-b', 'ref-c']);
+  });
+  it('ne liste que les empreintes retirées quand on les demande', async () => {
+    const reader = new InMemoryReferencePrintReader([
+      {
+        id: 'ref-1',
+        path: 'media/investigation-case/case-9/reference-prints/ref-1.png',
+        caseId: 'case-9',
+        subjectId: null,
+        position: null,
+        createdAt: new Date('2026-07-01T00:00:00.000Z'),
+        matchings: [],
+        withdrawnAt: null,
+        withdrawalMotive: null,
+      },
+      {
+        id: 'ref-2',
+        path: 'media/investigation-case/case-9/reference-prints/ref-2.png',
+        caseId: 'case-9',
+        subjectId: 'subject-1',
+        position: 'RIGHT_INDEX',
+        createdAt: new Date('2026-07-02T00:00:00.000Z'),
+        matchings: [],
+        withdrawnAt: new Date('2026-08-12T09:00:00.000Z'),
+        withdrawalMotive: 'WRONG_ATTRIBUTION',
+      },
+    ]);
+    const handler = new ListReferencePrintsHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(
+      new ListReferencePrintsQuery('case-9', true),
+    );
+
+    expect(data.map((print) => print.id)).toEqual(['ref-2']);
+    expect(data[0].withdrawalMotive).toBe('WRONG_ATTRIBUTION');
+    expect(data[0].url).toBeDefined();
   });
 });

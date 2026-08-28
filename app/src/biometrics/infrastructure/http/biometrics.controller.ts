@@ -31,6 +31,8 @@ import {
 import { UploadTraceCommand } from '../../application/commands/upload-trace/upload-trace.command';
 import { UploadReferencePrintCommand } from '../../application/commands/upload-reference-print/upload-reference-print.command';
 import { WithdrawTraceCommand } from '../../application/commands/withdraw-trace/withdraw-trace.command';
+import { RestoreTraceCommand } from '../../application/commands/restore-trace/restore-trace.command';
+import { RestoreReferencePrintCommand } from '../../application/commands/restore-reference-print/restore-reference-print.command';
 import { WithdrawReferencePrintCommand } from '../../application/commands/withdraw-reference-print/withdraw-reference-print.command';
 import { CompareTraceCommand } from '../../application/commands/compare-trace/compare-trace.command';
 import { RecordHitCommand } from '../../application/commands/record-hit/record-hit.command';
@@ -45,6 +47,7 @@ import { CaseUnavailableForTraceError } from '../../domain/trace/errors/case-una
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
 import { InsufficientMinutiaeError } from '../../domain/hit/errors/insufficient-minutiae.error';
 import { AlreadyWithdrawnError } from '../../domain/withdrawal/errors/already-withdrawn.error';
+import { NotWithdrawnError } from '../../domain/withdrawal/errors/not-withdrawn.error';
 import { InvalidImageError } from '../../application/ports/image-converter.port';
 import { UnsupportedImageFormatError } from '../../application/services/displayable-image';
 import { MatchingPrimitives } from '../../domain/matching/entity/matching';
@@ -108,7 +111,9 @@ export class BiometricsController {
   @ApiResponse({ status: 200, description: 'Liste des traces du dossier' })
   @ApiResponse({ status: 400, description: 'caseId manquant ou invalide' })
   listTraces(@Query() dto: ListTracesDto) {
-    return this.queryBus.execute(new ListTracesQuery(dto.caseId));
+    return this.queryBus.execute(
+      new ListTracesQuery(dto.caseId, dto.withdrawn === 'true'),
+    );
   }
 
   @Get('reference-prints')
@@ -120,7 +125,9 @@ export class BiometricsController {
   })
   @ApiResponse({ status: 400, description: 'caseId manquant ou invalide' })
   listReferencePrints(@Query() dto: ListReferencePrintsDto) {
-    return this.queryBus.execute(new ListReferencePrintsQuery(dto.caseId));
+    return this.queryBus.execute(
+      new ListReferencePrintsQuery(dto.caseId, dto.withdrawn === 'true'),
+    );
   }
 
   @Post('traces/:id/withdraw')
@@ -176,6 +183,62 @@ export class BiometricsController {
       if (e instanceof ReferencePrintNotFoundError)
         throw new NotFoundException(e.message);
       if (e instanceof AlreadyWithdrawnError)
+        throw new ConflictException(e.message);
+      throw e;
+    }
+  }
+
+  @Post('traces/:id/restore')
+  @CaseScoped()
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Rétablir une trace retirée du dossier' })
+  @ApiResponse({ status: 204, description: 'Trace rétablie au dossier' })
+  @ApiResponse({ status: 404, description: 'Trace non trouvée' })
+  @ApiResponse({ status: 409, description: "La trace n'était pas retirée" })
+  async restoreTrace(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    try {
+      await this.commandBus.execute(
+        new RestoreTraceCommand(toAuditActor(user), id),
+      );
+    } catch (e) {
+      if (e instanceof TraceNotFoundError)
+        throw new NotFoundException(e.message);
+      if (e instanceof NotWithdrawnError)
+        throw new ConflictException(e.message);
+      throw e;
+    }
+  }
+
+  @Post('reference-prints/:id/restore')
+  @CaseScoped()
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Rétablir une empreinte de référence retirée du dossier',
+  })
+  @ApiResponse({
+    status: 204,
+    description: 'Empreinte de référence rétablie au dossier',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Empreinte de référence non trouvée',
+  })
+  @ApiResponse({ status: 409, description: "L'empreinte n'était pas retirée" })
+  async restoreReferencePrint(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    try {
+      await this.commandBus.execute(
+        new RestoreReferencePrintCommand(toAuditActor(user), id),
+      );
+    } catch (e) {
+      if (e instanceof ReferencePrintNotFoundError)
+        throw new NotFoundException(e.message);
+      if (e instanceof NotWithdrawnError)
         throw new ConflictException(e.message);
       throw e;
     }

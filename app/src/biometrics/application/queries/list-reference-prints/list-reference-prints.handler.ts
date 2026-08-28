@@ -25,7 +25,10 @@ export class ListReferencePrintsHandler implements IQueryHandler<ListReferencePr
   async execute(
     query: ListReferencePrintsQuery,
   ): Promise<{ data: ReferencePrintView[] }> {
-    const referencePrints = await this.reader.findByCaseId(query.caseId);
+    const referencePrints = await this.reader.findByCaseId(
+      query.caseId,
+      query.withdrawn,
+    );
     const data = await Promise.all(
       referencePrints.map(async (referencePrint) => ({
         ...referencePrint,

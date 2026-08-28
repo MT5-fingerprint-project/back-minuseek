@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsIn, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
 
 export class ListReferencePrintsDto {
   @ApiProperty({
@@ -10,4 +10,13 @@ export class ListReferencePrintsDto {
   @IsUUID()
   @IsNotEmpty()
   caseId!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'À « true », liste les pièces retirées du dossier au lieu des pièces vivantes',
+    enum: ['true', 'false'],
+  })
+  @IsOptional()
+  @IsIn(['true', 'false'])
+  withdrawn?: string;
 }

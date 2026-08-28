@@ -111,6 +111,16 @@ const ROUTES_GARDEES: Route[] = [
     body: { motive: 'DUPLICATE' },
   },
   {
+    label: 'POST /traces/:id/restore',
+    method: 'post',
+    url: `/traces/${TRACE}/restore`,
+  },
+  {
+    label: 'POST /reference-prints/:id/restore',
+    method: 'post',
+    url: `/reference-prints/${EMPREINTE}/restore`,
+  },
+  {
     label: 'POST /traces/:id/compare',
     method: 'post',
     url: `/traces/${TRACE}/compare`,

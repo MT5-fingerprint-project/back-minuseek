@@ -9,10 +9,14 @@ class InMemoryTraceReader implements TraceReader {
 
   // Même ordre que `prisma-trace.reader.ts` : la plus récente d'abord, puis
   // l'identifiant pour départager deux dépôts de la même seconde.
-  findByCaseId(caseId: string): Promise<TraceReadModel[]> {
+  findByCaseId(caseId: string, withdrawn = false): Promise<TraceReadModel[]> {
     return Promise.resolve(
       this.traces
-        .filter((trace) => trace.caseId === caseId)
+        .filter(
+          (trace) =>
+            trace.caseId === caseId &&
+            (trace.withdrawnAt !== null) === withdrawn,
+        )
         .sort(
           (left, right) =>
             right.createdAt.getTime() - left.createdAt.getTime() ||
@@ -36,6 +40,8 @@ const traceRow = (overrides: Partial<TraceReadModel> = {}): TraceReadModel => ({
   captureFocalLength: null,
   captureDeviceModel: null,
   captureQuality: null,
+  withdrawnAt: null,
+  withdrawalMotive: null,
   ...overrides,
 });
 
@@ -139,5 +145,25 @@ describe('ListTracesHandler', () => {
       'trace-b',
       'trace-c',
     ]);
+  });
+  it('ne liste que les traces retirées quand on les demande', async () => {
+    const reader = new InMemoryTraceReader([
+      traceRow(),
+      traceRow({
+        id: 'trace-2',
+        withdrawnAt: new Date('2026-08-12T09:00:00.000Z'),
+        withdrawalMotive: 'DUPLICATE',
+      }),
+    ]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9', true));
+
+    expect(data.map((trace) => trace.id)).toEqual(['trace-2']);
+    expect(data[0].withdrawalMotive).toBe('DUPLICATE');
+    expect(data[0].url).toBeDefined();
   });
 });

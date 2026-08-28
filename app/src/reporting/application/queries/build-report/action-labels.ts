@@ -10,6 +10,8 @@ const ACTION_LABELS: Record<string, string> = {
   REFERENCE_PRINT_UPLOADED:
     'Empreinte de référence déposée et mise sous scellé',
   REFERENCE_PRINT_DELETED: 'Empreinte de référence retirée du dossier',
+  TRACE_RESTORED: 'Trace rétablie au dossier',
+  REFERENCE_PRINT_RESTORED: 'Empreinte de référence rétablie au dossier',
   LAYER_CREATED: "Calque d'amélioration ajouté",
   LAYER_UPDATED: "Calque d'amélioration modifié",
   LAYER_DELETED: "Calque d'amélioration supprimé",
@@ -79,6 +81,8 @@ const SCALAR_KEYS_BY_TYPE: Record<string, string[]> = {
   REFERENCE_PRINT_UPLOADED: ['referencePrintId', 'sha256'],
   TRACE_DELETED: ['traceId', 'motive'],
   REFERENCE_PRINT_DELETED: ['referencePrintId', 'motive'],
+  TRACE_RESTORED: ['withdrawnAt'],
+  REFERENCE_PRINT_RESTORED: ['withdrawnAt'],
   LAYER_CREATED: ['name', 'type', 'zIndex'],
   LAYER_UPDATED: ['name', 'type', 'zIndex'],
   LAYER_DELETED: ['name', 'type'],
