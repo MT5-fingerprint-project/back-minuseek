@@ -143,6 +143,12 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
       : `Dossier confié à ${name}`;
   },
   [AuditEventTypeEnum.CASE_UPDATED]: () => 'Informations du dossier corrigées',
+  [AuditEventTypeEnum.CASE_EXPERTISE_DECLARED]: (event) => {
+    const court = text(event, 'courtReference');
+    return court === null
+      ? 'Dossier déclaré en expertise, serment prêté'
+      : `Dossier déclaré en expertise, serment prêté devant ${court}`;
+  },
   [AuditEventTypeEnum.TRACE_UPLOADED]: (event, named) =>
     `Dépôt de ${trace(event, named).full} et mise sous scellé`,
   [AuditEventTypeEnum.TRACE_QUALIFIED]: (event, named) => {

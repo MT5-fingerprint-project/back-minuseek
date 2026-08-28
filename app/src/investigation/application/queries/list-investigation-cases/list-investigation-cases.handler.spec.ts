@@ -19,6 +19,7 @@ const makeCase = (
   description: null,
   status: InvestigationCaseStatusEnum.OPEN,
   operator: null,
+  expertise: null,
   createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-01-01'),
   ...overrides,

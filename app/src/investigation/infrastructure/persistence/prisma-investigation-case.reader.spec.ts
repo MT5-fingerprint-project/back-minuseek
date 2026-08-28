@@ -21,6 +21,14 @@ interface UserRow {
   personalData: { firstName: string; lastName: string };
 }
 
+interface ExpertiseRow {
+  caseId: string;
+  expertUserId: string;
+  courtReference: string;
+  oathStatement: string;
+  swornAt: Date;
+}
+
 function aCaseRow(overrides: Partial<CaseRow> = {}): CaseRow {
   return {
     id: 'case-1',
@@ -42,6 +50,7 @@ class FakePrismaClient {
   constructor(
     private readonly cases: CaseRow[],
     private readonly users: UserRow[],
+    private readonly expertises: ExpertiseRow[] = [],
   ) {}
 
   readonly investigationCase = {
@@ -62,6 +71,17 @@ class FakePrismaClient {
       return Promise.resolve(this.users);
     },
   };
+
+  readonly caseExpertise = {
+    findMany: (args: {
+      where: { caseId: { in: string[] } };
+    }): Promise<ExpertiseRow[]> =>
+      Promise.resolve(
+        this.expertises.filter((row) =>
+          args.where.caseId.in.includes(row.caseId),
+        ),
+      ),
+  };
 }
 
 const MARIE_ROW: UserRow = {
@@ -69,11 +89,24 @@ const MARIE_ROW: UserRow = {
   personalData: { firstName: 'Marie', lastName: 'Curie' },
 };
 
+const SERMENT =
+  'Je soussigné Marie Curie, expert désigné, prête serment de bien et ' +
+  'fidèlement remplir ma mission en mon honneur et conscience.';
+
+const UNE_EXPERTISE: ExpertiseRow = {
+  caseId: 'case-1',
+  expertUserId: MARIE,
+  courtReference: 'Tribunal judiciaire de Paris',
+  oathStatement: SERMENT,
+  swornAt: new Date('2026-03-04T09:00:00Z'),
+};
+
 function build(
   cases: CaseRow[] = [aCaseRow()],
   users: UserRow[] = [MARIE_ROW],
+  expertises: ExpertiseRow[] = [],
 ) {
-  const prisma = new FakePrismaClient(cases, users);
+  const prisma = new FakePrismaClient(cases, users, expertises);
   const tenantConnection = {
     getCurrentClient: () => Promise.resolve(prisma as unknown as PrismaClient),
   } as unknown as TenantConnectionService;
@@ -178,6 +211,71 @@ describe('PrismaInvestigationCaseReader', () => {
     expect(prisma.caseFindManyArgs[0]).toMatchObject({
       orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
     });
+  });
+
+  it("rend une expertise nulle sur un dossier qui n'en porte pas", async () => {
+    const { reader } = build();
+
+    const found = await reader.findById('case-1');
+
+    expect(found!.expertise).toBeNull();
+  });
+
+  it("rend le serment et l'expert du dossier déclaré en expertise", async () => {
+    const { reader } = build([aCaseRow()], [MARIE_ROW], [UNE_EXPERTISE]);
+
+    const found = await reader.findById('case-1');
+
+    expect(found!.expertise).toEqual({
+      expert: { id: MARIE, firstName: 'Marie', lastName: 'Curie' },
+      courtReference: 'Tribunal judiciaire de Paris',
+      oathStatement: SERMENT,
+      swornAt: new Date('2026-03-04T09:00:00Z'),
+    });
+  });
+
+  it('rend le serment mot pour mot, sans le retailler', async () => {
+    const brut = `  ${SERMENT}\n`;
+    const { reader } = build(
+      [aCaseRow()],
+      [MARIE_ROW],
+      [{ ...UNE_EXPERTISE, oathStatement: brut }],
+    );
+
+    const found = await reader.findById('case-1');
+
+    expect(found!.expertise!.oathStatement).toBe(brut);
+  });
+
+  it("interroge le compte de l'expert même quand le dossier n'a plus d'opérateur", async () => {
+    const { reader, prisma } = build(
+      [aCaseRow({ operatorUserId: null })],
+      [MARIE_ROW],
+      [UNE_EXPERTISE],
+    );
+
+    const found = await reader.findById('case-1');
+
+    expect(prisma.userFindManyArgs).toHaveLength(1);
+    expect(found!.expertise!.expert).toMatchObject({ lastName: 'Curie' });
+  });
+
+  it("n'attache l'expertise qu'au dossier qui la porte", async () => {
+    const { reader } = build(
+      [aCaseRow(), aCaseRow({ id: 'case-2', caseNumber: 'AFF-002' })],
+      [MARIE_ROW],
+      [UNE_EXPERTISE],
+    );
+
+    const { items } = await reader.findAll(
+      { caseIds: null },
+      { skip: 0, take: 20 },
+    );
+
+    expect(
+      items.find((item) => item.id === 'case-1')!.expertise,
+    ).not.toBeNull();
+    expect(items.find((item) => item.id === 'case-2')!.expertise).toBeNull();
   });
 
   it("rend null quand le dossier demandé n'existe pas", async () => {

@@ -16,6 +16,8 @@ import {
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { CaseAlreadyUnderExpertiseError } from '../../domain/case-expertise/errors/case-already-under-expertise.error';
+import { InvalidCaseExpertiseError } from '../../domain/case-expertise/errors/invalid-case-expertise.error';
 import { CaseClosedError } from '../../domain/investigation-case/errors/case-closed.error';
 import { CaseNumberAlreadyExistsError } from '../../domain/investigation-case/errors/case-number-already-exists.error';
 import { CaseNotFoundError } from '../../domain/investigation-case/errors/case-not-found.error';
@@ -23,10 +25,12 @@ import { InvalidCaseTransitionError } from '../../domain/investigation-case/erro
 import { OperatorChangeNotAllowedError } from '../../domain/investigation-case/errors/operator-change-not-allowed.error';
 import { DisabledOperatorError } from '../../domain/investigation-case/errors/disabled-operator.error';
 import { UnknownOperatorError } from '../../domain/investigation-case/errors/unknown-operator.error';
+import { DeclareCaseExpertiseCommand } from '../../application/commands/declare-case-expertise/declare-case-expertise.command';
 import { OpenInvestigationCaseCommand } from '../../application/commands/open-investigation-case/open-investigation-case.command';
 import { UpdateInvestigationCaseCommand } from '../../application/commands/update-investigation-case/update-investigation-case.command';
 import { CloseInvestigationCaseCommand } from '../../application/commands/close-investigation-case/close-investigation-case.command';
 import { ReopenInvestigationCaseCommand } from '../../application/commands/reopen-investigation-case/reopen-investigation-case.command';
+import { DeclareCaseExpertiseDto } from './dto/declare-case-expertise.dto';
 import { OpenInvestigationCaseDto } from './dto/open-investigation-case.dto';
 import { UpdateInvestigationCaseDto } from './dto/update-investigation-case.dto';
 import { ReopenInvestigationCaseDto } from './dto/reopen-investigation-case.dto';
@@ -227,6 +231,48 @@ export class InvestigationController {
       id,
       new ReopenInvestigationCaseCommand(toAuditActor(user), id, dto.reason),
     );
+  }
+
+  @Post(':id/expertise')
+  @CaseScoped()
+  @ApiOperation({
+    summary: 'Déclarer une affaire en expertise, serment prêté',
+  })
+  @ApiResponse({ status: 201, description: "Détail de l'affaire en expertise" })
+  @ApiResponse({ status: 400, description: 'Serment ou juridiction absent' })
+  @ApiResponse({ status: 404, description: 'Affaire non trouvée' })
+  @ApiResponse({ status: 409, description: 'Affaire déjà en expertise' })
+  async declareExpertise(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DeclareCaseExpertiseDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentServiceUser() requester?: UserReadModel,
+  ): Promise<InvestigationCaseReadModel> {
+    if (!requester) throw new NotFoundException(NO_SERVICE_ACCOUNT_MESSAGE);
+
+    try {
+      await this.commandBus.execute<DeclareCaseExpertiseCommand, void>(
+        new DeclareCaseExpertiseCommand(
+          toAuditActor(user),
+          requester.id,
+          id,
+          dto.oathStatement,
+          dto.courtReference,
+        ),
+      );
+      return await this.queryBus.execute<
+        GetInvestigationCaseQuery,
+        InvestigationCaseReadModel
+      >(new GetInvestigationCaseQuery(id));
+    } catch (e) {
+      if (e instanceof CaseNotFoundError)
+        throw new NotFoundException(e.message);
+      if (e instanceof CaseAlreadyUnderExpertiseError)
+        throw new ConflictException(e.message);
+      if (e instanceof InvalidCaseExpertiseError)
+        throw new BadRequestException(e.message);
+      throw e;
+    }
   }
 
   /** Clore et rouvrir répondent tous deux le détail à jour de l'affaire. */
