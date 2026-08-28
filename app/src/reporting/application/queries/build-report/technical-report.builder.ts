@@ -25,7 +25,6 @@ import {
 
 export interface TechnicalReportInput {
   data: CaseReportData;
-  /** Maillons du dossier, pour le journal des actes. */
   chainEvents: AuditEventData[];
   reportId: string;
   chainHead: { seq: number; hash: string } | null;

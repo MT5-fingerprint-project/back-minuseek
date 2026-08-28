@@ -3,10 +3,6 @@ import { join, relative, sep } from 'node:path';
 
 const SOURCE_ROOT = join(__dirname, '..', '..', '..');
 
-/**
- * Les lectures qui voient délibérément les pièces retirées, avec leur motif.
- * Toute autre lecture de `Trace`, `ReferencePrint` ou `Hit` doit filtrer.
- */
 export const READS_INCLUDING_WITHDRAWN: Record<string, string> = {
   'reporting/infrastructure/persistence/prisma-case-report-data.reader.ts':
     'le rapport liste aussi les pièces retirées, avec la date et le motif de leur retrait',

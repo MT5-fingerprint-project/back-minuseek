@@ -62,7 +62,6 @@ export interface ReportExpertViewModel {
   role: string;
 }
 
-/** Planche de comparaison : les deux pièces, leurs minuties, et l'acte d'expert. */
 export interface ReportIdentityDemonstrationViewModel {
   trace: ReportPieceViewModel;
   referencePrint: ReportPieceViewModel;

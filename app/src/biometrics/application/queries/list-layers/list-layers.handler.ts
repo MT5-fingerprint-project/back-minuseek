@@ -19,9 +19,6 @@ export class ListLayersHandler implements IQueryHandler<
     private readonly locator: FingerprintLocatorPort,
   ) {}
 
-  // Les calques n'ont pas de clé étrangère vers leur pièce : c'est le
-  // localisateur, qui ignore les pièces retirées, qui décide s'il y a quelque
-  // chose à lire.
   async execute(query: ListLayersQuery): Promise<LayerReadModel[]> {
     const location = await this.locator.locate(query.fingerprintId);
     if (!location) {
