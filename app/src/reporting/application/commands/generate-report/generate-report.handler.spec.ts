@@ -18,6 +18,7 @@ import type {
   ChainHeadSummary,
 } from '../../ports/chain-head.reader';
 import type {
+  AnchorData,
   AuditEventData,
   TraceabilityData,
   TraceabilityDataReader,
@@ -44,6 +45,21 @@ const CASE_DATA: CaseReportData = {
     description: null,
     status: 'OPEN',
     createdAt: new Date('2026-08-01T09:00:00.000Z'),
+    requestDate: null,
+    requesterQuality: null,
+    requesterName: null,
+    requesterService: null,
+    offenseNature: null,
+    offenseLocation: null,
+    offenseDateFrom: null,
+    offenseDateTo: null,
+    interventionDate: null,
+    caseAgainst: null,
+    recipient: {
+      authority: null,
+      attentionQuality: null,
+      attentionName: null,
+    },
   },
   traces: [
     {
@@ -53,7 +69,6 @@ const CASE_DATA: CaseReportData = {
       createdAt: new Date('2026-08-01T10:00:00.000Z'),
       capturedAt: null,
       status: 'EXPLOITABLE',
-      score: 70,
       subjectId: null,
       position: null,
       layers: [],
@@ -61,6 +76,12 @@ const CASE_DATA: CaseReportData = {
       withdrawnAt: null,
       withdrawalMotive: null,
       imageDestroyedAt: null,
+      number: 1,
+      origin: null,
+      location: null,
+      revelationTechnique: null,
+      cote: null,
+      notIdentifiedAt: null,
     },
   ],
   referencePrints: [
@@ -71,7 +92,6 @@ const CASE_DATA: CaseReportData = {
       createdAt: new Date('2026-08-01T11:00:00.000Z'),
       capturedAt: null,
       status: null,
-      score: null,
       subjectId: null,
       position: null,
       layers: [],
@@ -79,6 +99,12 @@ const CASE_DATA: CaseReportData = {
       withdrawnAt: null,
       withdrawalMotive: null,
       imageDestroyedAt: null,
+      number: null,
+      origin: null,
+      location: null,
+      revelationTechnique: null,
+      cote: null,
+      notIdentifiedAt: null,
     },
   ],
   comparisons: [],
@@ -119,6 +145,10 @@ class FakeTraceabilityReader implements TraceabilityDataReader {
   readCaseEvents(caseId: string): Promise<AuditEventData[]> {
     this.caseEventsReadFor.push(caseId);
     return Promise.resolve(this.caseEvents);
+  }
+
+  readAnchors(): Promise<AnchorData[]> {
+    return Promise.resolve(TRACEABILITY_DATA.anchors);
   }
 }
 

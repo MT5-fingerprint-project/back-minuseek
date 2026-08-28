@@ -1,236 +1,566 @@
-import { REQUIRED_MINUTIAE } from '../../../../shared/domain/forensics/minutiae';
-import type { CaseReportData } from '../../ports/case-report-data.reader';
-import type { AuditEventData } from '../../ports/traceability-data.reader';
+import type {
+  CaseReportData,
+  PieceData,
+  SubjectData,
+} from '../../ports/case-report-data.reader';
+import type {
+  AnchorData,
+  AuditEventData,
+} from '../../ports/traceability-data.reader';
 import type { ReportImageViewModel } from '../../report-view-model';
 import { buildTechnicalReport } from './technical-report.builder';
 
 const OPENED_AT = new Date('2026-08-01T09:00:00.000Z');
-const COMPARED_AT = new Date('2026-08-10T14:00:00.000Z');
 const DECLARED_AT = new Date('2026-08-11T09:30:00.000Z');
 const GENERATED_AT = new Date('2026-08-19T08:00:00.000Z');
 
-const TRACE_PATH = 'media/investigation-case/case-1/traces/trace-1.png';
-const REF_PATH = 'media/investigation-case/case-1/reference-prints/ref-1.png';
-
-function minutiae(count: number) {
-  return Array.from({ length: count }, (_unused, index) => ({
-    kind: 'minutiae',
-    x: 100 + index * 10,
-    y: 200 + index * 5,
-    radius: 6,
-    angleDeg: index * 15,
-    color: '#d92b2b',
-  }));
+function trace(overrides: Partial<PieceData> & { id: string }): PieceData {
+  return {
+    path: `media/case-1/traces/${overrides.id}.png`,
+    sha256: 'a'.repeat(64),
+    createdAt: OPENED_AT,
+    capturedAt: null,
+    status: 'EXPLOITABLE',
+    subjectId: null,
+    position: null,
+    layers: [],
+    minutiae: [],
+    withdrawnAt: null,
+    withdrawalMotive: null,
+    imageDestroyedAt: null,
+    number: 1,
+    origin: 'DIGITAL',
+    location: 'Sur la porte-fenêtre du séjour',
+    revelationTechnique: 'FINGERPRINT_POWDER',
+    cote: 'A',
+    notIdentifiedAt: null,
+    ...overrides,
+  };
 }
 
-const DATA: CaseReportData = {
-  investigationCase: {
-    id: 'case-1',
-    caseNumber: 'AFF-001',
-    pvNumber: 'PV-2026-001',
-    description: null,
-    status: 'OPEN',
-    createdAt: OPENED_AT,
-  },
-  traces: [
-    {
-      id: 'trace-1',
-      path: TRACE_PATH,
-      sha256: 'a'.repeat(64),
+function referencePrint(
+  overrides: Partial<PieceData> & { id: string },
+): PieceData {
+  return trace({
+    ...overrides,
+    path: `media/case-1/reference-prints/${overrides.id}.png`,
+    number: null,
+    origin: null,
+    location: null,
+    revelationTechnique: null,
+    cote: null,
+    status: null,
+  });
+}
+
+function subject(
+  overrides: Partial<SubjectData> & { id: string },
+): SubjectData {
+  return {
+    firstName: 'Samir',
+    lastName: 'Sadik',
+    birthDate: new Date('1979-04-02T00:00:00.000Z'),
+    birthPlace: 'Paris',
+    sex: 'MALE',
+    type: 'PERSON_OF_INTEREST',
+    ...overrides,
+  };
+}
+
+function caseData(overrides: Partial<CaseReportData> = {}): CaseReportData {
+  return {
+    investigationCase: {
+      id: 'case-1',
+      caseNumber: '3455',
+      pvNumber: 'PV-2026-001',
+      description: null,
+      status: 'OPEN',
       createdAt: OPENED_AT,
-      capturedAt: null,
-      status: 'EXPLOITABLE',
-      score: 72,
-      subjectId: null,
-      position: null,
-      layers: [
-        {
-          name: 'Contraste',
-          type: 'FILTER',
-          zIndex: 1,
-          isVisible: true,
-          settings: { contrast: 1.4 },
-        },
-      ],
-      minutiae: minutiae(13),
-      withdrawnAt: null,
-      withdrawalMotive: null,
-      imageDestroyedAt: null,
-    },
-  ],
-  referencePrints: [
-    {
-      id: 'ref-1',
-      path: REF_PATH,
-      sha256: 'b'.repeat(64),
-      createdAt: OPENED_AT,
-      capturedAt: null,
-      status: null,
-      score: null,
-      subjectId: 'subject-1',
-      position: 'RIGHT_INDEX',
-      layers: [],
-      minutiae: minutiae(12),
-      withdrawnAt: null,
-      withdrawalMotive: null,
-      imageDestroyedAt: null,
-    },
-  ],
-  comparisons: [
-    {
-      traceId: 'trace-1',
-      referencePrintId: 'ref-1',
-      score: 88.5,
-      machineMatch: true,
-      declaredHit: true,
-      comparedAt: COMPARED_AT,
-    },
-  ],
-  declaredHits: [
-    {
-      traceId: 'trace-1',
-      referencePrintId: 'ref-1',
-      declaredAt: DECLARED_AT,
-      declaredBy: {
-        firstName: 'Alex',
-        lastName: 'Martin',
-        grade: 'Brigadier',
-        serviceNumber: 'PN-4412',
-        role: 'EXPERT',
+      requestDate: null,
+      requesterQuality: null,
+      requesterName: null,
+      requesterService: null,
+      offenseNature: null,
+      offenseLocation: null,
+      offenseDateFrom: null,
+      offenseDateTo: null,
+      interventionDate: null,
+      caseAgainst: null,
+      recipient: {
+        authority: null,
+        attentionQuality: null,
+        attentionName: null,
       },
-      withdrawnAt: null,
     },
-  ],
-  subjects: [
-    {
-      id: 'subject-1',
-      firstName: 'Camille',
-      lastName: 'Durand',
-      birthDate: new Date('1990-04-12T00:00:00.000Z'),
-      birthPlace: 'Lyon',
-      sex: 'FEMALE',
-      type: 'PERSON_OF_INTEREST',
-    },
-  ],
-};
-
-const CHAIN_EVENTS: AuditEventData[] = [
-  {
-    seq: 4,
-    eventType: 'CASE_OPENED',
-    evidenceClass: 'OBSERVED',
-    actorDisplayName: 'Alex Martin',
-    occurredAt: OPENED_AT,
-    payload: { caseNumber: 'AFF-001', pvNumber: 'PV-2026-001' },
-    hash: 'c'.repeat(64),
-    prevHash: 'd'.repeat(64),
-  },
-  {
-    seq: 2,
-    eventType: 'TRACE_UPLOADED',
-    evidenceClass: 'OBSERVED',
-    actorDisplayName: 'Alex Martin',
-    occurredAt: OPENED_AT,
-    payload: { traceId: 'trace-1', sha256: 'a'.repeat(64) },
-    hash: 'e'.repeat(64),
-    prevHash: 'f'.repeat(64),
-  },
-];
-
-const IMAGES = new Map<string, ReportImageViewModel | null>([
-  [
-    TRACE_PATH,
-    { dataUrl: 'data:image/png;base64,AAA', width: 800, height: 1200 },
-  ],
-  [REF_PATH, { dataUrl: 'data:image/png;base64,BBB', width: 500, height: 700 }],
-]);
+    traces: [],
+    referencePrints: [],
+    comparisons: [],
+    declaredHits: [],
+    subjects: [],
+    ...overrides,
+  };
+}
 
 function build(
-  overrides: Partial<Parameters<typeof buildTechnicalReport>[0]> = {},
+  data: CaseReportData,
+  extras: {
+    chainEvents?: AuditEventData[];
+    anchors?: AnchorData[];
+  } = {},
 ) {
   return buildTechnicalReport({
-    data: DATA,
-    chainEvents: CHAIN_EVENTS,
+    data,
+    chainEvents: extras.chainEvents ?? [],
+    anchors: extras.anchors ?? [],
     reportId: 'report-1',
-    chainHead: { seq: 42, hash: 'b'.repeat(64) },
+    chainHead: null,
     generatedAt: GENERATED_AT,
     generatedByDisplayName: 'Alex Martin',
-    images: IMAGES,
-    ...overrides,
+    images: new Map<string, ReportImageViewModel | null>(),
   });
 }
 
-describe("buildTechnicalReport — démonstration d'identité", () => {
-  it('compose une planche par correspondance déclarée', () => {
-    const model = build();
+describe('buildTechnicalReport — cotation', () => {
+  it('imprime « / » pour une trace sans cote', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({ id: 't1', number: 1, status: 'NOT_EXPLOITABLE', cote: null }),
+        ],
+      }),
+    );
 
-    expect(model.identityDemonstrations).toHaveLength(1);
-    const [demonstration] = model.identityDemonstrations;
-    expect(demonstration.trace.label).toBe('trace-1.png');
-    expect(demonstration.referencePrint.label).toBe('ref-1.png');
-    expect(demonstration.score).toBe(88.5);
-    expect(demonstration.machineMatch).toBe(true);
-    expect(demonstration.comparedAt).toEqual(COMPARED_AT);
-    expect(demonstration.declaredAt).toEqual(DECLARED_AT);
-    expect(demonstration.requiredMinutiae).toBe(REQUIRED_MINUTIAE);
-  });
-
-  it('nomme le sujet et la zone attribuée', () => {
-    const [demonstration] = build().identityDemonstrations;
-
-    expect(demonstration.subject).toEqual({
-      firstName: 'Camille',
-      lastName: 'Durand',
-      birthDate: new Date('1990-04-12T00:00:00.000Z'),
-      birthPlace: 'Lyon',
-      sex: 'FEMALE',
-      type: 'PERSON_OF_INTEREST',
+    expect(model.exploitability[0]).toMatchObject({
+      reference: '3455-T1',
+      exploitability: 'INEXPLOITABLE',
+      cote: '/',
     });
-    expect(demonstration.position).toBe('index droit');
-  });
-
-  it("identifie l'expert qui a déclaré la correspondance", () => {
-    const [demonstration] = build().identityDemonstrations;
-
-    expect(demonstration.declaredBy).toEqual({
-      displayName: 'Alex Martin',
-      grade: 'Brigadier',
-      serviceNumber: 'PN-4412',
-      role: 'EXPERT',
-    });
-  });
-
-  it('numérote les minuties de chaque pièce et garde leurs coordonnées', () => {
-    const [demonstration] = build().identityDemonstrations;
-
-    expect(demonstration.trace.minutiae).toHaveLength(13);
-    expect(demonstration.referencePrint.minutiae).toHaveLength(12);
-    expect(demonstration.trace.minutiae[0]).toEqual({
-      index: 1,
-      x: 100,
-      y: 200,
-      radius: 6,
-      angleDeg: 0,
-      color: '#d92b2b',
-    });
-    expect(demonstration.trace.minutiae[12].index).toBe(13);
-  });
-
-  it('ne compose aucune planche sans correspondance déclarée', () => {
-    const model = build({
-      data: { ...DATA, declaredHits: [], comparisons: [] },
-    });
-
-    expect(model.identityDemonstrations).toEqual([]);
   });
 });
 
-describe('buildTechnicalReport — journal des actes', () => {
-  it("liste les actes chaînés dans l'ordre des maillons", () => {
-    const { journal } = build();
+describe('buildTechnicalReport — discrimination', () => {
+  it('nomme la personne identifiée et la position', () => {
+    const model = build(
+      caseData({
+        traces: [trace({ id: 't1', number: 1, cote: 'A' })],
+        referencePrints: [
+          referencePrint({
+            id: 'r1',
+            subjectId: 's1',
+            position: 'RIGHT_INDEX',
+          }),
+        ],
+        subjects: [subject({ id: 's1' })],
+        declaredHits: [
+          {
+            traceId: 't1',
+            referencePrintId: 'r1',
+            declaredAt: DECLARED_AT,
+            declaredBy: null,
+            withdrawnAt: null,
+          },
+        ],
+      }),
+    );
 
-    expect(journal.chained.map((entry) => entry.seq)).toEqual([2, 4]);
-    expect(journal.chained[0].label).toBe('Trace déposée et mise sous scellé');
-    expect(journal.chained[0].hash).toBe('e'.repeat(64));
+    expect(model.exploitability[0].discrimination).toBe(
+      'Index droit — SADIK Samir',
+    );
+    expect(model.identifications).toEqual([
+      {
+        cote: 'A',
+        position: "à l'index droit",
+        civility: 'Monsieur',
+        firstName: 'Samir',
+        lastName: 'Sadik',
+      },
+    ]);
+  });
+
+  it('imprime « / » pour une trace inexploitable', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({ id: 't1', number: 1, status: 'NOT_EXPLOITABLE', cote: null }),
+        ],
+      }),
+    );
+
+    expect(model.exploitability[0].discrimination).toBe('/');
+  });
+
+  it('écrit NÉGATIVE sur une déclaration de non-identification', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            cote: 'A',
+            notIdentifiedAt: DECLARED_AT,
+          }),
+        ],
+      }),
+    );
+
+    expect(model.exploitability[0].discrimination).toBe('NÉGATIVE');
+    expect(model.negativeCotes).toEqual(['A']);
+    expect(model.notExaminedCotes).toEqual([]);
+  });
+
+  it('écrit « Non examinée », jamais NÉGATIVE, sans déclaration', () => {
+    const model = build(
+      caseData({ traces: [trace({ id: 't1', number: 1, cote: 'A' })] }),
+    );
+
+    expect(model.exploitability[0].discrimination).toBe('Non examinée');
+    expect(model.exploitability[0].discrimination).not.toBe('NÉGATIVE');
+    expect(model.notExaminedCotes).toEqual(['A']);
+    expect(model.negativeCotes).toEqual([]);
+  });
+
+  it('écrit « Non examinée » même quand le dossier n’a aucune empreinte de référence', () => {
+    const model = build(
+      caseData({
+        traces: [trace({ id: 't1', number: 1, cote: 'A' })],
+        referencePrints: [],
+      }),
+    );
+
+    expect(model.exploitability[0].discrimination).toBe('Non examinée');
+    expect(model.negativeCotes).toEqual([]);
+  });
+
+  it('remplace cote et discrimination par la phrase de retrait', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            cote: null,
+            withdrawnAt: new Date('2026-08-12T00:00:00.000Z'),
+            withdrawalMotive: 'DUPLICATE',
+          }),
+        ],
+      }),
+    );
+
+    expect(model.exploitability[0].withdrawal).toBe(
+      "Retirée du dossier le 12 août 2026 — doublon d'une pièce déjà versée",
+    );
+    expect(model.counts.total).toBe(0);
+  });
+});
+
+describe('buildTechnicalReport — réglages en clair', () => {
+  it('traduit chaque calque de filtre, dans l’ordre des calques', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            layers: [
+              {
+                name: 'Inversion',
+                type: 'FILTER',
+                zIndex: 1,
+                isVisible: true,
+                settings: { filterKey: 'inversion', value: 1 },
+              },
+              {
+                name: 'Saturation',
+                type: 'FILTER',
+                zIndex: 2,
+                isVisible: true,
+                settings: { filterKey: 'saturation', value: -40 },
+              },
+              {
+                name: 'Rotation',
+                type: 'FILTER',
+                zIndex: 3,
+                isVisible: true,
+                settings: { filterKey: 'rotation', value: 12 },
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+
+    expect(model.imageTreatments[0].treatments).toBe(
+      'Inversion, saturation −40 %, rotation 12°',
+    );
+  });
+
+  it('écrit « Aucun » quand la trace ne porte aucun filtre', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            layers: [
+              {
+                name: 'Minutie',
+                type: 'ANNOTATION',
+                zIndex: 1,
+                isVisible: true,
+                settings: { type: 'minutiae', x: 10, y: 20 },
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+
+    expect(model.imageTreatments[0].treatments).toBe('Aucun');
+  });
+
+  it('passe sous silence un calque dont le réglage n’a pas de valeur chiffrée', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            layers: [
+              {
+                name: 'Luminosité',
+                type: 'FILTER',
+                zIndex: 1,
+                isVisible: true,
+                settings: { filterKey: 'brightness' },
+              },
+              {
+                name: 'Contraste',
+                type: 'FILTER',
+                zIndex: 2,
+                isVisible: true,
+                settings: { filterKey: 'contrast', value: 15 },
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+
+    expect(model.imageTreatments[0].treatments).toBe('Contraste +15 %');
+    expect(model.imageTreatments[0].treatments).not.toContain('NaN');
+  });
+});
+
+describe('buildTechnicalReport — comptes de la conclusion', () => {
+  it('compte exploitables, inexploitables, identifiées, négatives et non examinées', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            cote: 'A',
+            notIdentifiedAt: DECLARED_AT,
+          }),
+          trace({ id: 't2', number: 2, cote: 'B' }),
+          trace({ id: 't3', number: 3, status: 'NOT_EXPLOITABLE', cote: null }),
+          trace({ id: 't4', number: 4, cote: 'C' }),
+        ],
+        referencePrints: [
+          referencePrint({
+            id: 'r1',
+            subjectId: 's1',
+            position: 'RIGHT_PALM',
+          }),
+        ],
+        subjects: [subject({ id: 's1' })],
+        declaredHits: [
+          {
+            traceId: 't2',
+            referencePrintId: 'r1',
+            declaredAt: DECLARED_AT,
+            declaredBy: null,
+            withdrawnAt: null,
+          },
+        ],
+      }),
+    );
+
+    expect(model.counts).toEqual({
+      total: 4,
+      exploitable: 3,
+      notExploitable: 1,
+      identified: 1,
+      negative: 1,
+      notExamined: 1,
+    });
+    expect(model.negativeCotes).toEqual(['A']);
+    expect(model.notExaminedCotes).toEqual(['C']);
+  });
+});
+
+describe('buildTechnicalReport — emploi du comparateur', () => {
+  it('est vrai dès qu’une comparaison est enregistrée', () => {
+    const model = build(
+      caseData({
+        traces: [trace({ id: 't1', number: 1 })],
+        referencePrints: [referencePrint({ id: 'r1' })],
+        comparisons: [
+          {
+            traceId: 't1',
+            referencePrintId: 'r1',
+            score: 91,
+            machineMatch: true,
+            declaredHit: false,
+            comparedAt: DECLARED_AT,
+          },
+        ],
+      }),
+    );
+
+    expect(model.automaticComparatorUsed).toBe(true);
+  });
+
+  it('est faux sans aucune comparaison', () => {
+    const model = build(caseData({ traces: [trace({ id: 't1', number: 1 })] }));
+
+    expect(model.automaticComparatorUsed).toBe(false);
+  });
+});
+
+describe('buildTechnicalReport — en-tête et personnes', () => {
+  it('compose la phrase d’une victime d’après son sexe et sa date de naissance', () => {
+    const model = build(
+      caseData({
+        subjects: [
+          subject({
+            id: 's1',
+            firstName: 'Hélène',
+            lastName: 'Berger',
+            sex: 'FEMALE',
+            type: 'VICTIM',
+            birthDate: new Date('1958-09-04T00:00:00.000Z'),
+          }),
+          subject({
+            id: 's2',
+            firstName: 'Jean-Pierre',
+            lastName: 'Le Goff',
+            sex: 'MALE',
+            type: 'VICTIM',
+            birthDate: null,
+          }),
+        ],
+      }),
+    );
+
+    expect(model.caseHeader.victims).toEqual([
+      'Madame BERGER Hélène, née le 04/09/1958',
+      'Monsieur LE GOFF Jean-Pierre',
+    ]);
+  });
+
+  it('ne liste que les personnes portant une empreinte au dossier, et compte les autres empreintes', () => {
+    const model = build(
+      caseData({
+        referencePrints: [
+          referencePrint({ id: 'r1', subjectId: 's1' }),
+          referencePrint({ id: 'r2', subjectId: null }),
+        ],
+        subjects: [
+          subject({ id: 's1', type: 'CLOSE_ASSOCIATE' }),
+          subject({ id: 's2' }),
+        ],
+      }),
+    );
+
+    expect(model.referenceSubjects).toEqual([
+      {
+        civility: 'Monsieur',
+        firstName: 'Samir',
+        lastName: 'Sadik',
+        quality: 'familier',
+      },
+    ]);
+    expect(model.unattachedReferencePrintCount).toBe(1);
+  });
+
+  it('retient la date du dernier horodatage indépendant', () => {
+    const model = build(caseData(), {
+      anchors: [
+        {
+          headSeq: 10,
+          headHash: 'a'.repeat(64),
+          tsaUrl: 'https://freetsa.org/tsr',
+          anchoredAt: new Date('2026-08-14T03:00:00.000Z'),
+          tsrSha256: 'b'.repeat(64),
+        },
+        {
+          headSeq: 20,
+          headHash: 'c'.repeat(64),
+          tsaUrl: 'https://freetsa.org/tsr',
+          anchoredAt: new Date('2026-08-15T03:00:00.000Z'),
+          tsrSha256: 'd'.repeat(64),
+        },
+      ],
+    });
+
+    expect(model.independentTimestampAt).toEqual(
+      new Date('2026-08-15T03:00:00.000Z'),
+    );
+  });
+
+  it('n’a pas d’horodatage indépendant tant qu’aucun ancrage n’existe', () => {
+    expect(build(caseData()).independentTimestampAt).toBeNull();
+  });
+});
+
+describe('buildTechnicalReport — traces examinées', () => {
+  it('regroupe les traces consécutives de même description', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({ id: 't1', number: 1 }),
+          trace({ id: 't2', number: 2 }),
+          trace({ id: 't3', number: 3, location: 'Sur le coffre-fort' }),
+        ],
+      }),
+    );
+
+    expect(model.examinedTraces).toEqual([
+      {
+        label: '3455-T1 et T2',
+        origin: 'Digitale',
+        location: 'Sur la porte-fenêtre du séjour',
+        revelationTechnique: 'Poudre dactyloscopique',
+      },
+      {
+        label: '3455-T3',
+        origin: 'Digitale',
+        location: 'Sur le coffre-fort',
+        revelationTechnique: 'Poudre dactyloscopique',
+      },
+    ]);
+  });
+
+  it('dit qu’une description manque plutôt que d’imprimer un trou', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            origin: null,
+            location: null,
+            revelationTechnique: null,
+          }),
+        ],
+      }),
+    );
+
+    expect(model.examinedTraces[0]).toMatchObject({
+      origin: 'Non renseignée',
+      location: 'Non renseignée',
+      revelationTechnique: 'Non renseignée',
+    });
   });
 });

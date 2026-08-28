@@ -11,10 +11,14 @@ function toHtml(model: ReportViewModel): string {
     : renderTraceabilityReportHtml(model);
 }
 
-/**
- * Un seul navigateur pour tout le process : sur Cloud Run scale-to-zero, un
- * lancement de Chromium par rapport doublerait le temps de génération.
- */
+const FOOTER_TEMPLATE = `
+  <div style="width:100%; margin:0 16mm; padding-top:4px; border-top:1px solid #000;
+              font-family:'Times New Roman', Georgia, serif; font-size:8pt;
+              font-style:italic; text-align:center; color:#111;">
+    Toute reproduction partielle du rapport et des annexes est interdite.
+  </div>`;
+
+
 @Injectable()
 export class PuppeteerReportRenderer
   implements ReportRendererPort, OnModuleDestroy
@@ -30,6 +34,9 @@ export class PuppeteerReportRenderer
         format: 'A4',
         printBackground: true,
         preferCSSPageSize: true,
+        displayHeaderFooter: true,
+        headerTemplate: '<div></div>',
+        footerTemplate: FOOTER_TEMPLATE,
       });
       return Buffer.from(pdf);
     } finally {

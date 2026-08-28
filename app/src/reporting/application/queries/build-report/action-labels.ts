@@ -42,9 +42,29 @@ const POSITION_LABELS: Record<string, string> = {
 };
 
 const SUBJECT_TYPE_LABELS: Record<string, string> = {
-  PERSON_OF_INTEREST: "personne d'intérêt",
-  CLOSE_ASSOCIATE: 'proche',
+  PERSON_OF_INTEREST: 'mis en cause',
+  CLOSE_ASSOCIATE: 'familier',
+  VICTIM: 'victime',
 };
+
+const CIVILITY_LABELS: Record<string, string> = {
+  MALE: 'Monsieur',
+  FEMALE: 'Madame',
+};
+
+const TRACE_ORIGIN_LABELS: Record<string, string> = {
+  DIGITAL: 'Digitale',
+  PALMAR: 'Palmaire',
+};
+
+const REVELATION_TECHNIQUE_LABELS: Record<string, string> = {
+  OPTICAL_PROCESS: 'Procédé optique',
+  FINGERPRINT_POWDER: 'Poudre dactyloscopique',
+  DFO: 'DFO',
+  NINHYDRIN: 'Ninhydrine',
+};
+
+const FEMININE_POSITIONS = new Set(['RIGHT_PALM', 'LEFT_PALM']);
 
 const WITHDRAWAL_MOTIVE_LABELS: Record<string, string> = {
   DUPLICATE: "doublon d'une pièce déjà versée",
@@ -75,6 +95,39 @@ export function withdrawalMotiveLabel(motive: string): string {
 
 export function sexLabel(sex: string): string {
   return SEX_LABELS[sex] ?? sex;
+}
+
+export function civilityLabel(sex: string): string {
+  return CIVILITY_LABELS[sex] ?? sex;
+}
+
+export function traceOriginLabel(origin: string | null): string | null {
+  return origin ? (TRACE_ORIGIN_LABELS[origin] ?? origin) : null;
+}
+
+export function revelationTechniqueLabel(
+  technique: string | null,
+): string | null {
+  return technique
+    ? (REVELATION_TECHNIQUE_LABELS[technique] ?? technique)
+    : null;
+}
+
+/**
+ * « identifiée à l'index droit », « à la paume droite », « au pouce droit » :
+ * le rapport écrit la position dans une phrase, pas dans une case.
+ */
+export function positionWithArticle(position: string | null): string | null {
+  const label = positionLabel(position);
+  if (label === null) {
+    return null;
+  }
+  if (/^[aeiouyéèêà]/i.test(label)) {
+    return `à l'${label}`;
+  }
+  return position !== null && FEMININE_POSITIONS.has(position)
+    ? `à la ${label}`
+    : `au ${label}`;
 }
 
 const SCALAR_KEYS_BY_TYPE: Record<string, string[]> = {

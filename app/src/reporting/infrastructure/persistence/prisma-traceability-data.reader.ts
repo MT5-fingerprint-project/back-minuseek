@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
 import { AuditActorPrimitives } from '../../../shared/domain/audit/audit-actor.vo';
 import type {
+  AnchorData,
   AuditEventData,
   TraceabilityData,
   TraceabilityDataReader,
@@ -31,6 +32,22 @@ export class PrismaTraceabilityDataReader implements TraceabilityDataReader {
     }));
   }
 
+  async readAnchors(): Promise<AnchorData[]> {
+    const prisma = await this.tenantConnection.getCurrentClient();
+    const anchors = await prisma.auditAnchor.findMany({
+      orderBy: [{ headSeq: 'asc' }, { id: 'asc' }],
+    });
+    return anchors.map((anchor) => ({
+      headSeq: Number(anchor.headSeq),
+      headHash: anchor.headHash,
+      tsaUrl: anchor.tsaUrl,
+      anchoredAt: anchor.anchoredAt,
+      tsrSha256: createHash('sha256')
+        .update(Buffer.from(anchor.tsaResponse))
+        .digest('hex'),
+    }));
+  }
+
   async read(caseId: string): Promise<TraceabilityData> {
     const prisma = await this.tenantConnection.getCurrentClient();
 
@@ -40,9 +57,7 @@ export class PrismaTraceabilityDataReader implements TraceabilityDataReader {
         orderBy: { seq: 'asc' },
         select: { seq: true, hash: true },
       }),
-      prisma.auditAnchor.findMany({
-        orderBy: [{ headSeq: 'asc' }, { id: 'asc' }],
-      }),
+      this.readAnchors(),
     ]);
 
     return {
@@ -51,15 +66,7 @@ export class PrismaTraceabilityDataReader implements TraceabilityDataReader {
         seq: Number(link.seq),
         hash: link.hash,
       })),
-      anchors: anchors.map((anchor) => ({
-        headSeq: Number(anchor.headSeq),
-        headHash: anchor.headHash,
-        tsaUrl: anchor.tsaUrl,
-        anchoredAt: anchor.anchoredAt,
-        tsrSha256: createHash('sha256')
-          .update(Buffer.from(anchor.tsaResponse))
-          .digest('hex'),
-      })),
+      anchors,
     };
   }
 }

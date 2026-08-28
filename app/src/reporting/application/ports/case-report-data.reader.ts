@@ -1,3 +1,9 @@
+export interface CaseRecipientData {
+  authority: string | null;
+  attentionQuality: string | null;
+  attentionName: string | null;
+}
+
 export interface CaseSummaryData {
   id: string;
   caseNumber: string;
@@ -5,6 +11,17 @@ export interface CaseSummaryData {
   description: string | null;
   status: string;
   createdAt: Date;
+  requestDate: Date | null;
+  requesterQuality: string | null;
+  requesterName: string | null;
+  requesterService: string | null;
+  offenseNature: string | null;
+  offenseLocation: string | null;
+  offenseDateFrom: Date | null;
+  offenseDateTo: Date | null;
+  interventionDate: Date | null;
+  caseAgainst: string | null;
+  recipient: CaseRecipientData;
 }
 
 export interface LayerData {
@@ -15,7 +32,6 @@ export interface LayerData {
   settings: Record<string, unknown>;
 }
 
-/** Une minutie relevée sur une pièce : coordonnées dans le repère pixel de l'image. */
 export interface MinutiaData {
   kind: string;
   x: number;
@@ -32,7 +48,6 @@ export interface PieceData {
   createdAt: Date;
   capturedAt: Date | null;
   status: string | null;
-  score: number | null;
   subjectId: string | null;
   position: string | null;
   layers: LayerData[];
@@ -40,14 +55,20 @@ export interface PieceData {
   withdrawnAt: Date | null;
   withdrawalMotive: string | null;
   imageDestroyedAt: Date | null;
+  number: number | null;
+  origin: string | null;
+  location: string | null;
+  revelationTechnique: string | null;
+  cote: string | null;
+  notIdentifiedAt: Date | null;
 }
 
 export interface SubjectData {
   id: string;
   firstName: string;
   lastName: string;
-  birthDate: Date;
-  birthPlace: string;
+  birthDate: Date | null;
+  birthPlace: string | null;
   sex: string;
   type: string;
 }
@@ -69,7 +90,6 @@ export interface ComparisonData {
   comparedAt: Date;
 }
 
-/** Acte d'expert : la correspondance déclarée, socle de la démonstration d'identité. */
 export interface DeclaredHitData {
   traceId: string;
   referencePrintId: string;
