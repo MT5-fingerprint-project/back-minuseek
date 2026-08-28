@@ -1,6 +1,7 @@
 import { InMemoryAuditTrailAppender } from '../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import {
   AuditEventDraft,
+  AuditLink,
   AuditTrailPort,
 } from '../../../shared/domain/ports/audit-trail.port';
 import { ReferencePrint } from '../../domain/reference-print/entity/reference-print';
@@ -17,9 +18,9 @@ export class InMemoryReferencePrintRepository implements ReferencePrintRepositor
     this.store.set(rp.id, rp);
   }
 
-  async save(rp: ReferencePrint, act: AuditEventDraft): Promise<void> {
+  async save(rp: ReferencePrint, act: AuditEventDraft): Promise<AuditLink> {
     this.store.set(rp.id, rp);
-    await this.auditTrail.append(act);
+    return this.auditTrail.append(act);
   }
 
   findById(id: string): Promise<ReferencePrint | null> {

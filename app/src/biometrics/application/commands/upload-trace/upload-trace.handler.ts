@@ -1,4 +1,10 @@
 import { Inject, Logger } from '@nestjs/common';
+import type { AuditLink } from '../../../../shared/domain/ports/audit-trail.port';
+import { recordSealSafely } from '../../../../shared/application/record-seal-safely';
+import {
+  SEAL_REGISTRY,
+  type SealRegistryPort,
+} from '../../../../shared/domain/ports/seal-registry.port';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { FileDigest } from '../../../domain/file-digest.vo';
 import { Trace } from '../../../domain/trace/entity/trace';
@@ -50,6 +56,8 @@ export class UploadTraceHandler implements ICommandHandler<
     @Inject(IMAGE_CONVERTER)
     private readonly converter: ImageConverterPort,
     private readonly caseAccess: CaseAccessService,
+    @Inject(SEAL_REGISTRY)
+    private readonly sealRegistry: SealRegistryPort,
   ) {}
 
   async execute(
@@ -85,8 +93,9 @@ export class UploadTraceHandler implements ICommandHandler<
       captureQuality,
     });
 
+    let link: AuditLink;
     try {
-      await this.repo.save(trace, {
+      link = await this.repo.save(trace, {
         eventType: AuditEventTypeEnum.TRACE_UPLOADED,
         evidenceClass: EvidenceClassEnum.OBSERVED,
         actor: cmd.actor,
@@ -107,6 +116,18 @@ export class UploadTraceHandler implements ICommandHandler<
       }
       throw error;
     }
+
+    await recordSealSafely(
+      this.sealRegistry,
+      {
+        sha256: sha256.getValue(),
+        kind: 'TRACE',
+        chainSeq: link.seq,
+        sealedAt: link.occurredAt,
+        caseId: cmd.caseId,
+      },
+      this.logger,
+    );
 
     const url = await this.storage.getUrl(storedPath);
     return { id, path: storedPath, url };

@@ -13,6 +13,11 @@ export interface AuditEventDraft {
   payload: Record<string, unknown>;
 }
 
+export interface AuditLink {
+  seq: bigint;
+  occurredAt: Date;
+}
+
 export interface AuditTrailPort {
-  append(draft: AuditEventDraft): Promise<void>;
+  append(draft: AuditEventDraft): Promise<AuditLink>;
 }

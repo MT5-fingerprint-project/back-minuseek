@@ -7,6 +7,7 @@ import {
 import {
   AUDIT_TRAIL,
   AuditEventDraft,
+  AuditLink,
   AuditTrailPort,
 } from '../../../shared/domain/ports/audit-trail.port';
 import {
@@ -26,8 +27,8 @@ export class PrismaReferencePrintRepository implements ReferencePrintRepository 
     private readonly auditTrail: AuditTrailPort,
   ) {}
 
-  async save(rp: ReferencePrint, act: AuditEventDraft): Promise<void> {
-    await this.transactionRunner.run(async () => {
+  async save(rp: ReferencePrint, act: AuditEventDraft): Promise<AuditLink> {
+    return this.transactionRunner.run(async () => {
       const prisma = await this.tenantConnection.getCurrentClient();
       const p = rp.toPrimitives();
       const data = {
@@ -47,7 +48,7 @@ export class PrismaReferencePrintRepository implements ReferencePrintRepository 
         create: data,
         update: data,
       });
-      await this.auditTrail.append(act);
+      return this.auditTrail.append(act);
     });
   }
 

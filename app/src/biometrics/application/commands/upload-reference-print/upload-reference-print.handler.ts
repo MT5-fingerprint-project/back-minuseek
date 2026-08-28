@@ -1,4 +1,10 @@
 import { Inject, Logger } from '@nestjs/common';
+import type { AuditLink } from '../../../../shared/domain/ports/audit-trail.port';
+import { recordSealSafely } from '../../../../shared/application/record-seal-safely';
+import {
+  SEAL_REGISTRY,
+  type SealRegistryPort,
+} from '../../../../shared/domain/ports/seal-registry.port';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { FileDigest } from '../../../domain/file-digest.vo';
 import { ReferencePrint } from '../../../domain/reference-print/entity/reference-print';
@@ -50,6 +56,8 @@ export class UploadReferencePrintHandler implements ICommandHandler<
     @Inject(CASE_STATUS)
     private readonly caseStatus: CaseStatusPort,
     private readonly caseAccess: CaseAccessService,
+    @Inject(SEAL_REGISTRY)
+    private readonly sealRegistry: SealRegistryPort,
   ) {}
 
   async execute(
@@ -80,8 +88,9 @@ export class UploadReferencePrintHandler implements ICommandHandler<
       position: cmd.position ? FingerPosition.from(cmd.position) : null,
     });
 
+    let link: AuditLink;
     try {
-      await this.repo.save(referencePrint, {
+      link = await this.repo.save(referencePrint, {
         eventType: AuditEventTypeEnum.REFERENCE_PRINT_UPLOADED,
         evidenceClass: EvidenceClassEnum.OBSERVED,
         actor: cmd.actor,
@@ -102,6 +111,18 @@ export class UploadReferencePrintHandler implements ICommandHandler<
       }
       throw error;
     }
+
+    await recordSealSafely(
+      this.sealRegistry,
+      {
+        sha256: sha256.getValue(),
+        kind: 'REFERENCE_PRINT',
+        chainSeq: link.seq,
+        sealedAt: link.occurredAt,
+        caseId: cmd.caseId,
+      },
+      this.logger,
+    );
 
     const url = await this.storage.getUrl(storedPath);
     return { id, path: storedPath, url };

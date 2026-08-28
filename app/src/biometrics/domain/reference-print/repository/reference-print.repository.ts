@@ -1,8 +1,11 @@
-import { AuditEventDraft } from '../../../../shared/domain/ports/audit-trail.port';
+import {
+  AuditEventDraft,
+  AuditLink,
+} from '../../../../shared/domain/ports/audit-trail.port';
 import { ReferencePrint } from '../entity/reference-print';
 
 export interface ReferencePrintRepository {
-  save(rp: ReferencePrint, act: AuditEventDraft): Promise<void>;
+  save(rp: ReferencePrint, act: AuditEventDraft): Promise<AuditLink>;
   findById(id: string): Promise<ReferencePrint | null>;
 }
 

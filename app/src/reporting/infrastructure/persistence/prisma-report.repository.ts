@@ -5,6 +5,7 @@ import { AuditActorPrimitives } from '../../../shared/domain/audit/audit-actor.v
 import {
   AUDIT_TRAIL,
   AuditEventDraft,
+  AuditLink,
   AuditTrailPort,
 } from '../../../shared/domain/ports/audit-trail.port';
 import {
@@ -68,10 +69,10 @@ export class PrismaReportRepository implements ReportRepository {
     private readonly auditTrail: AuditTrailPort,
   ) {}
 
-  async save(report: Report, act: AuditEventDraft): Promise<void> {
+  async save(report: Report, act: AuditEventDraft): Promise<AuditLink> {
     const primitives = report.toPrimitives();
     try {
-      await this.transactionRunner.run(async () => {
+      return await this.transactionRunner.run(async () => {
         const prisma = await this.tenantConnection.getCurrentClient();
         await prisma.report.create({
           data: {
@@ -89,7 +90,7 @@ export class PrismaReportRepository implements ReportRepository {
             createdAt: primitives.createdAt,
           },
         });
-        await this.auditTrail.append(act);
+        return this.auditTrail.append(act);
       });
     } catch (error) {
       if (isSequenceCollision(error)) {

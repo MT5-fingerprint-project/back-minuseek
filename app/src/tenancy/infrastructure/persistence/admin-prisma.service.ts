@@ -1,6 +1,7 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import {
   PrismaClient,
+  type SealRegistry,
   type Tenant,
 } from '../../../../generated/prisma-admin/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -44,6 +45,60 @@ export class AdminPrismaService implements OnModuleInit, OnModuleDestroy {
 
   listTenants(): Promise<Tenant[]> {
     return this.client.tenant.findMany({ orderBy: { createdAt: 'asc' } });
+  }
+
+  async recordSeals(
+    seals: {
+      tenantSlug: string;
+      sha256: string;
+      kind: SealRegistry['kind'];
+      chainSeq: bigint;
+      sealedAt: Date;
+      anchoredAt: Date | null;
+      caseId: string | null;
+      reportType: string | null;
+    }[],
+  ): Promise<void> {
+    if (seals.length === 0) {
+      return;
+    }
+    await this.client.sealRegistry.createMany({
+      data: seals,
+      skipDuplicates: true,
+    });
+  }
+
+  findSeal(tenantSlug: string, sha256: string): Promise<SealRegistry | null> {
+    return this.client.sealRegistry.findUnique({
+      where: { tenantSlug_sha256: { tenantSlug, sha256 } },
+    });
+  }
+
+  findReportSealDates(
+    tenantSlug: string,
+    caseId: string,
+    reportType: string,
+  ): Promise<{ sealedAt: Date }[]> {
+    return this.client.sealRegistry.findMany({
+      where: { tenantSlug, caseId, reportType, kind: 'REPORT' },
+      select: { sealedAt: true },
+    });
+  }
+
+  async markSealsAnchored(
+    tenantSlug: string,
+    coveredThroughSeq: bigint,
+    anchoredAt: Date,
+  ): Promise<number> {
+    const { count } = await this.client.sealRegistry.updateMany({
+      where: {
+        tenantSlug,
+        anchoredAt: null,
+        chainSeq: { lte: coveredThroughSeq },
+      },
+      data: { anchoredAt },
+    });
+    return count;
   }
 
   async deleteTenantBySlug(slug: string): Promise<Tenant | null> {

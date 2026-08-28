@@ -123,6 +123,11 @@ seed-demo-users:
 audit-verify:
 	$(COMPOSE) run --rm app pnpm ts-node src/audit-trail/infrastructure/cli/verify-chain.cli.ts $(TENANT)
 
+## Reconstruit le registre public des scellés depuis les chaînes d'audit
+## (tous les tenants, ou make seals-sync TENANT=demo) — idempotent
+seals-sync:
+	$(COMPOSE) run --rm app pnpm ts-node src/audit-trail/infrastructure/cli/sync-seals.cli.ts $(TENANT)
+
 ## Ancre la tête de chaîne d'audit auprès de la TSA (ou make audit-anchor TENANT=demo)
 audit-anchor:
 	$(COMPOSE) run --rm app pnpm ts-node src/audit-trail/infrastructure/cli/anchor-chain.cli.ts $(TENANT)

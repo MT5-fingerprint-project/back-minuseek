@@ -1,3 +1,5 @@
+import { InMemorySealRegistry } from '../../../../audit-trail/infrastructure/persistence/in-memory-seal-registry';
+import type { AuditLink } from '../../../../shared/domain/ports/audit-trail.port';
 import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
@@ -31,7 +33,7 @@ class FailingReferencePrintRepository extends InMemoryReferencePrintRepository {
     super();
   }
 
-  save(): Promise<void> {
+  save(): Promise<AuditLink> {
     return Promise.reject(this.failure);
   }
 }
@@ -43,6 +45,7 @@ describe('UploadReferencePrintHandler', () => {
   let auditTrail: InMemoryAuditTrailAppender;
   let idGenerator: IdGenerator;
   let caseStatus: InMemoryCaseStatusAdapter;
+  let sealRegistry: InMemorySealRegistry;
 
   const buildHandler = (referencePrintRepo: ReferencePrintRepository) =>
     new UploadReferencePrintHandler(
@@ -56,9 +59,11 @@ describe('UploadReferencePrintHandler', () => {
           operators: [{ caseId: 'case-9', userId: MARIE.id }],
         }),
       ),
+      sealRegistry,
     );
 
   beforeEach(() => {
+    sealRegistry = new InMemorySealRegistry();
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryReferencePrintRepository(auditTrail);
     storage = new InMemoryImageStorageAdapter();

@@ -1,3 +1,5 @@
+import { InMemorySealRegistry } from '../../../../audit-trail/infrastructure/persistence/in-memory-seal-registry';
+import type { AuditLink } from '../../../../shared/domain/ports/audit-trail.port';
 import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
@@ -34,7 +36,7 @@ class FailingTraceRepository extends InMemoryTraceRepository {
     super();
   }
 
-  save(): Promise<void> {
+  save(): Promise<AuditLink> {
     return Promise.reject(this.failure);
   }
 }
@@ -46,6 +48,7 @@ describe('UploadTraceHandler', () => {
   let caseStatus: InMemoryCaseStatusAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
   let idGenerator: IdGenerator;
+  let sealRegistry: InMemorySealRegistry;
 
   const buildHandler = (traceRepo: TraceRepository) =>
     new UploadTraceHandler(
@@ -59,9 +62,11 @@ describe('UploadTraceHandler', () => {
           operators: [{ caseId: 'case-9', userId: MARIE.id }],
         }),
       ),
+      sealRegistry,
     );
 
   beforeEach(() => {
+    sealRegistry = new InMemorySealRegistry();
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryTraceRepository(auditTrail);
     storage = new InMemoryImageStorageAdapter();
@@ -343,5 +348,35 @@ describe('UploadTraceHandler', () => {
     caseStatus.set('case-9', 'UNDER_REVIEW');
 
     await expect(handler.execute(command())).resolves.toBeDefined();
+  });
+  it('projette le scellé de la trace au registre public, avec son maillon', async () => {
+    caseStatus.set('case-9', 'OPEN');
+
+    await handler.execute(command());
+
+    const link = auditTrail.events.at(-1);
+    expect(sealRegistry.seals).toEqual([
+      {
+        tenantSlug: 'demo',
+        sha256: auditTrail.events[0].payload.fileSha256,
+        kind: 'TRACE',
+        chainSeq: link?.seq,
+        sealedAt: link?.occurredAt,
+        caseId: 'case-9',
+        reportType: null,
+        anchoredAt: null,
+      },
+    ]);
+  });
+
+  it('ne perd pas un dépôt réussi quand la projection du scellé échoue', async () => {
+    caseStatus.set('case-9', 'OPEN');
+    sealRegistry.failWith = new Error("base d'administration injoignable");
+
+    const uploaded = await handler.execute(command());
+
+    expect(uploaded.id).toBe('trace-123');
+    expect(await repo.findById('trace-123')).not.toBeNull();
+    expect(auditTrail.events).toHaveLength(1);
   });
 });

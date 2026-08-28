@@ -4,6 +4,7 @@ import { WithdrawalMotive as PrismaWithdrawalMotive } from '../../../../generate
 import {
   AUDIT_TRAIL,
   AuditEventDraft,
+  AuditLink,
   AuditTrailPort,
 } from '../../../shared/domain/ports/audit-trail.port';
 import {
@@ -24,8 +25,8 @@ export class PrismaTraceRepository implements TraceRepository {
     private readonly auditTrail: AuditTrailPort,
   ) {}
 
-  async save(trace: Trace, act: AuditEventDraft): Promise<void> {
-    await this.transactionRunner.run(async () => {
+  async save(trace: Trace, act: AuditEventDraft): Promise<AuditLink> {
+    return this.transactionRunner.run(async () => {
       const prisma = await this.tenantConnection.getCurrentClient();
       const { captureQuality, withdrawalMotive, ...columns } =
         trace.toPrimitives();
@@ -45,7 +46,7 @@ export class PrismaTraceRepository implements TraceRepository {
         create: data,
         update: data,
       });
-      await this.auditTrail.append(act);
+      return this.auditTrail.append(act);
     });
   }
 

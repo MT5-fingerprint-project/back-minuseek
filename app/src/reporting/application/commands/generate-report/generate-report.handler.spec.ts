@@ -1,3 +1,4 @@
+import { InMemorySealRegistry } from '../../../../audit-trail/infrastructure/persistence/in-memory-seal-registry';
 import { createHash } from 'node:crypto';
 import { AuditActor } from '../../../../shared/domain/audit/audit-actor.vo';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
@@ -265,8 +266,10 @@ describe('GenerateReportHandler', () => {
   let contributors: FakeCaseContributorsReader;
   let letterhead: FakeServiceLetterheadReader;
   let attestation: FakeAttestation;
+  let sealRegistry: InMemorySealRegistry;
 
   beforeEach(() => {
+    sealRegistry = new InMemorySealRegistry();
     caseData = new FakeCaseDataReader();
     traceability = new FakeTraceabilityReader();
     imageEmbedder = new FakeImageEmbedder();
@@ -292,6 +295,7 @@ describe('GenerateReportHandler', () => {
       storage,
       repository,
       { generate: () => `report-${++issued}` },
+      sealRegistry,
     );
   });
 
@@ -489,6 +493,7 @@ describe('GenerateReportHandler', () => {
       storage,
       repository,
       { generate: () => `report-${repository.store.length + 1}` },
+      sealRegistry,
     );
 
     await generate();
@@ -586,5 +591,45 @@ describe('GenerateReportHandler', () => {
     const model = renderer.rendered[0];
     if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
     expect(model.traces[0].image).toBeNull();
+  });
+
+  it('projette le scellé du rapport au registre public, avec sa nature', async () => {
+    const generated = await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER),
+    );
+
+    const link = appender.events.at(-1);
+    expect(sealRegistry.seals).toEqual([
+      {
+        tenantSlug: 'demo',
+        sha256: generated.sha256,
+        kind: 'REPORT',
+        chainSeq: link?.seq,
+        sealedAt: link?.occurredAt,
+        caseId: CASE_ID,
+        reportType: 'TECHNICAL',
+        anchoredAt: null,
+      },
+    ]);
+  });
+
+  it('distingue la nature du document projeté', async () => {
+    await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TRACEABILITY', SIGNER),
+    );
+
+    expect(sealRegistry.seals[0].reportType).toBe('TRACEABILITY');
+  });
+
+  it('ne perd pas un rapport scellé quand la projection échoue', async () => {
+    sealRegistry.failWith = new Error("base d'administration injoignable");
+
+    const generated = await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER),
+    );
+
+    expect(generated.id).toBe('report-1');
+    expect(repository.store).toHaveLength(1);
+    expect(appender.events).toHaveLength(1);
   });
 });

@@ -1,6 +1,7 @@
 import { InMemoryAuditTrailAppender } from '../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import {
   AuditEventDraft,
+  AuditLink,
   AuditTrailPort,
 } from '../../../shared/domain/ports/audit-trail.port';
 import { Trace } from '../../domain/trace/entity/trace';
@@ -17,9 +18,9 @@ export class InMemoryTraceRepository implements TraceRepository {
     this.store.set(trace.id, trace);
   }
 
-  async save(trace: Trace, act: AuditEventDraft): Promise<void> {
+  async save(trace: Trace, act: AuditEventDraft): Promise<AuditLink> {
     this.store.set(trace.id, trace);
-    await this.auditTrail.append(act);
+    return this.auditTrail.append(act);
   }
 
   findById(id: string): Promise<Trace | null> {
