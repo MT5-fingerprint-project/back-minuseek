@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import type { TenantContext } from '../../application/tenant-context.service';
+import { PUBLIC_ROUTE_KEY } from '../../../auth/infrastructure/http/public-route.decorator';
 import { SYSTEM_REALM_ONLY_KEY } from './system-realm-only.decorator';
 
 type TenantAwareUser = {
@@ -25,6 +26,14 @@ export class TenantGuard implements CanActivate {
         tenantContext?: TenantContext;
       }
     >();
+    const isPublic = this.reflector.getAllAndOverride<boolean>(
+      PUBLIC_ROUTE_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    if (isPublic) {
+      return true;
+    }
+
     const user = request.user;
 
     if (!user) {
