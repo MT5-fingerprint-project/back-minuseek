@@ -62,6 +62,7 @@ import {
   TRACEABILITY_DATA_READER,
   type TraceabilityDataReader,
 } from '../../ports/traceability-data.reader';
+import { printedPieces } from '../../queries/build-report/printed-pieces';
 import { buildTechnicalReport } from '../../queries/build-report/technical-report.builder';
 import { buildTraceabilityReport } from '../../queries/build-report/traceability-report.builder';
 import { ReportImageViewModel, ReportViewModel } from '../../report-view-model';
@@ -188,12 +189,7 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     if (command.type === 'TECHNICAL') {
       const [images, chainEvents, anchors, contributors, attestation] =
         await Promise.all([
-          this.imagesOf(
-            [...data.traces, ...data.referencePrints].filter(
-              (piece) =>
-                piece.withdrawnAt === null && piece.imageDestroyedAt === null,
-            ),
-          ),
+          this.imagesOf(printedPieces(data)),
           this.traceabilityData.readCaseEvents(command.caseId),
           this.traceabilityData.readAnchors(),
           this.contributors.read(command.caseId),

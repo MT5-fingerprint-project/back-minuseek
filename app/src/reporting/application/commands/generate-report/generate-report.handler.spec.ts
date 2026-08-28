@@ -177,8 +177,10 @@ class FakeTraceabilityReader implements TraceabilityDataReader {
 
 class FakeImageEmbedder implements ReportImageEmbedderPort {
   readonly images = new Map<string, ReportImageViewModel>();
+  readonly embedded: string[] = [];
 
   embed(storedPath: string): Promise<ReportImageViewModel | null> {
+    this.embedded.push(storedPath);
     return Promise.resolve(this.images.get(storedPath) ?? null);
   }
 }
@@ -558,5 +560,30 @@ describe('GenerateReportHandler', () => {
     if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
     expect(model.integrity.traces).toHaveLength(1);
     expect(model.integrity.referencePrints).toHaveLength(1);
+  });
+
+  it('n’embarque pas l’image d’une trace inexploitable que personne n’a identifiée', async () => {
+    caseData.data = {
+      ...CASE_DATA,
+      traces: [
+        {
+          ...CASE_DATA.traces[0],
+          status: 'NOT_EXPLOITABLE',
+        },
+      ],
+    };
+    imageEmbedder.images.set(TRACE_PATH, {
+      dataUrl: 'data:image/png;base64,AAA',
+      width: 800,
+      height: 1200,
+      observedSha256: null,
+    });
+
+    await generate();
+
+    expect(imageEmbedder.embedded).toEqual([]);
+    const model = renderer.rendered[0];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.traces[0].image).toBeNull();
   });
 });

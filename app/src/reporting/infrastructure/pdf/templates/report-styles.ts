@@ -48,6 +48,20 @@ export const REPORT_STYLES = `
     .pied { display: none; }
   }
     
+  .annexe-titre { break-before: page; break-after: page; text-align: center; padding-top: 40mm; }
+  .planche { break-before: page; break-inside: avoid; text-align: center; }
+  .planche h3 { text-align: center; text-transform: uppercase; letter-spacing: .04em; }
+  .planche-sous { text-align: center; font-style: italic; font-size: 9.5pt; }
+  .planche-image { position: relative; display: inline-block; max-width: 100%; }
+  .planche-image img { max-height: 150mm; max-width: 100%; width: auto; height: auto; }
+  .planche-cote {
+    position: absolute; right: 2mm; bottom: 2mm;
+    border: 1px solid #111; background: #fff; padding: 1mm 2.5mm;
+    font-weight: bold; font-size: 11pt;
+  }
+  .planche-points { font-size: 9pt; margin-top: 2mm; }
+  .planche-legende { text-align: center; font-size: 9.5pt; margin-top: 3mm; }
+
   .sign { margin-top: 12mm; text-align: right; break-inside: avoid; }
   .sign .vide { height: 18mm; }
 

@@ -134,6 +134,14 @@ export interface ReportIdentificationViewModel {
   lastName: string;
 }
 
+export interface ReportPlateViewModel {
+  reference: string;
+  cote: string;
+  location: string | null;
+  image: ReportImageViewModel | null;
+  sealedAt: Date;
+}
+
 export interface ReportSignerViewModel {
   grade: string;
   firstName: string;
@@ -253,6 +261,7 @@ export interface TechnicalReportViewModel {
   traces: ReportPieceViewModel[];
   referencePrints: ReportPieceViewModel[];
   identityDemonstrations: ReportIdentityDemonstrationViewModel[];
+  annexA: ReportPlateViewModel[];
   journal: ReportJournalViewModel;
 }
 

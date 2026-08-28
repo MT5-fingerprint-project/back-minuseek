@@ -21,7 +21,9 @@ import {
   formatLongDay,
 } from '../../../application/report-dates';
 import { escapeHtml } from '../html';
+import { toRoman } from '../roman-numerals';
 import { renderLetterhead } from './letterhead-block';
+import { renderPlate } from './plate-block';
 import { REPORT_STYLES } from './report-styles';
 import { REVELATION_TECHNIQUE_TEXTS } from './revelation-techniques';
 
@@ -207,7 +209,15 @@ function recipientSection(header: ReportCaseHeaderViewModel): string {
     }`;
 }
 
-function summarySection(): string {
+function summarySection(model: TechnicalReportViewModel): string {
+  const annexes = [
+    model.annexA.length === 0
+      ? null
+      : 'Annexe A — Inventaire des traces papillaires exploitables',
+    "Annexe B — Démonstrations d'identité",
+    'Annexe C — Journal des actes',
+  ].filter((line): line is string => line !== null);
+
   return `
     <h2>Sommaire</h2>
     <ul class="rec">
@@ -219,9 +229,38 @@ function summarySection(): string {
       <li>6. Traitements appliqués aux images et intégrité des pièces</li>
       <li>7. Conclusion</li>
     </ul>
-    <p class="champ" style="font-size:9.5pt">Annexe A — Planches des traces papillaires exploitables<br />
-    Annexe B — Démonstrations d'identité<br />
-    Annexe C — Journal des actes</p>`;
+    <p class="champ" style="font-size:9.5pt">${annexes.join('<br />')}</p>`;
+}
+
+function annexASection(model: TechnicalReportViewModel): string {
+  if (model.annexA.length === 0) {
+    return '';
+  }
+  const plates = model.annexA
+    .map((plate, order) =>
+      renderPlate({
+        title: `Planche ${toRoman(order + 1)}`,
+        subtitle: null,
+        image: plate.image,
+        cote: plate.cote,
+        legend: null,
+        caption: `Trace papillaire cotée ${quoted(plate.cote)}, ${
+          plate.location === null
+            ? 'localisation non renseignée'
+            : `révélée ${plate.location}`
+        }.`,
+      }),
+    )
+    .join('');
+
+  return `
+    <div class="annexe-titre">
+      <h2>Annexe A — Inventaire des traces papillaires exploitables</h2>
+      <p class="champ">Dossier ${escapeHtml(
+        model.caseHeader.caseNumber,
+      )} — procès-verbal ${escapeHtml(model.caseHeader.pvNumber)}</p>
+    </div>
+    ${plates}`;
 }
 
 function objectSection(model: TechnicalReportViewModel): string {
@@ -736,7 +775,7 @@ export function renderTechnicalReportHtml(
     ${referencesSection(model)}
     ${offenceSection(caseHeader)}
     ${recipientSection(caseHeader)}
-    ${summarySection()}
+    ${summarySection(model)}
 
     ${objectSection(model)}
     ${methodsSection(model)}
@@ -747,6 +786,8 @@ export function renderTechnicalReportHtml(
     ${conclusionSection(model)}
     ${contributorsSentence(model.contributors)}
     ${signatureSection(model)}
+
+    ${annexASection(model)}
 
     ${journalSection(model)}
 

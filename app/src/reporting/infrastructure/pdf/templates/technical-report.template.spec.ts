@@ -111,6 +111,7 @@ function model(
     traces: [],
     referencePrints: [],
     identityDemonstrations: [],
+    annexA: [],
     integrity: {
       traces: [],
       referencePrints: [],
@@ -163,10 +164,22 @@ describe('renderTechnicalReportHtml — structure', () => {
   });
 
   it('annonce les trois annexes et garde le journal en annexe C', () => {
-    const html = renderTechnicalReportHtml(model());
+    const html = renderTechnicalReportHtml(
+      model({
+        annexA: [
+          {
+            reference: '3455-T1',
+            cote: 'A',
+            location: null,
+            image: null,
+            sealedAt: new Date('2026-08-16T17:03:00.000Z'),
+          },
+        ],
+      }),
+    );
 
     expect(html).toContain(
-      'Annexe A — Planches des traces papillaires exploitables',
+      'Annexe A — Inventaire des traces papillaires exploitables',
     );
     expect(html).toContain("Annexe B — Démonstrations d'identité");
     expect(html).toContain('Annexe C — Journal des actes');
@@ -934,5 +947,83 @@ describe('renderTechnicalReportHtml — section 6', () => {
 
     expect(html).toContain("une anomalie a été relevée à l'inscription n° 17.");
     expect(html).not.toContain('aucune anomalie relevée.');
+  });
+});
+
+const PLATE = {
+  reference: '3455-T1',
+  cote: 'A',
+  location: 'sur la face extérieure de la porte-fenêtre du séjour',
+  image: {
+    dataUrl: 'data:image/png;base64,AAA',
+    width: 800,
+    height: 1200,
+    observedSha256: null,
+  },
+  sealedAt: new Date('2026-08-16T17:03:00.000Z'),
+};
+
+describe('renderTechnicalReportHtml — annexe A', () => {
+  it('ouvre l’annexe par sa page de titre, dossier et procès-verbal', () => {
+    const html = renderTechnicalReportHtml(model({ annexA: [PLATE] }));
+
+    expect(html).toContain(
+      'Annexe A — Inventaire des traces papillaires exploitables',
+    );
+    expect(html).toContain('Dossier 3455 — procès-verbal PV-2026-001');
+  });
+
+  it('numérote les planches en chiffres romains', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexA: [PLATE, { ...PLATE, reference: '3455-T2', cote: 'B' }] }),
+    );
+
+    expect(html).toContain('Planche I');
+    expect(html).toContain('Planche II');
+  });
+
+  it('imprime la cote dans l’encadré de chaque planche', () => {
+    const html = renderTechnicalReportHtml(model({ annexA: [PLATE] }));
+
+    expect(html).toContain('<span class="planche-cote">A</span>');
+  });
+
+  it('légende la planche avec sa cote et l’endroit du relevé', () => {
+    const html = renderTechnicalReportHtml(model({ annexA: [PLATE] }));
+
+    expect(html).toContain(
+      'Trace papillaire cotée « A », révélée sur la face extérieure de la porte-fenêtre du séjour.',
+    );
+  });
+
+  it('le dit plutôt que de laisser un blanc quand la localisation manque', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexA: [{ ...PLATE, location: null }] }),
+    );
+
+    expect(html).toContain(
+      'Trace papillaire cotée « A », localisation non renseignée.',
+    );
+  });
+
+  it('écrit le repli plutôt que de laisser un cadre vide quand l’image est illisible', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexA: [{ ...PLATE, image: null }] }),
+    );
+
+    expect(html).toContain(
+      "L'image n'a pas pu être relue à l'édition du présent rapport.",
+    );
+    expect(html).not.toContain('<img');
+  });
+
+  it('n’imprime aucune annexe A, ni son renvoi au sommaire, sans trace exploitable', () => {
+    const html = renderTechnicalReportHtml(model({ annexA: [] }));
+
+    expect(html).not.toContain(
+      'Annexe A — Inventaire des traces papillaires exploitables',
+    );
+    expect(html).not.toContain('class="planche"');
+    expect(html).toContain("Annexe B — Démonstrations d'identité");
   });
 });
