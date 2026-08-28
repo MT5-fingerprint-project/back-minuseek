@@ -2,6 +2,7 @@ import { REQUIRED_MINUTIAE } from '../../../../shared/domain/forensics/minutiae'
 import {
   ReportCaseHeaderViewModel,
   ReportContributorViewModel,
+  ReportDemonstrationViewModel,
   ReportIntegrityViewModel,
   ReportJournalSummaryViewModel,
   ReportJournalViewModel,
@@ -214,7 +215,7 @@ function summarySection(model: TechnicalReportViewModel): string {
     model.annexA.length === 0
       ? null
       : 'Annexe A — Inventaire des traces papillaires exploitables',
-    "Annexe B — Démonstrations d'identité",
+    model.annexB.length === 0 ? null : "Annexe B — Démonstrations d'identité",
     'Annexe C — Journal des actes',
   ].filter((line): line is string => line !== null);
 
@@ -232,6 +233,19 @@ function summarySection(model: TechnicalReportViewModel): string {
     <p class="champ" style="font-size:9.5pt">${annexes.join('<br />')}</p>`;
 }
 
+function annexTitlePage(
+  title: string,
+  model: TechnicalReportViewModel,
+): string {
+  return `
+    <div class="annexe-titre">
+      <h2>${escapeHtml(title)}</h2>
+      <p class="champ">Dossier ${escapeHtml(
+        model.caseHeader.caseNumber,
+      )} — procès-verbal ${escapeHtml(model.caseHeader.pvNumber)}</p>
+    </div>`;
+}
+
 function annexASection(model: TechnicalReportViewModel): string {
   if (model.annexA.length === 0) {
     return '';
@@ -242,8 +256,8 @@ function annexASection(model: TechnicalReportViewModel): string {
         title: `Planche ${toRoman(order + 1)}`,
         subtitle: null,
         image: plate.image,
+        marks: [],
         cote: plate.cote,
-        legend: null,
         caption: `Trace papillaire cotée ${quoted(plate.cote)}, ${
           plate.location === null
             ? 'localisation non renseignée'
@@ -254,12 +268,101 @@ function annexASection(model: TechnicalReportViewModel): string {
     .join('');
 
   return `
-    <div class="annexe-titre">
-      <h2>Annexe A — Inventaire des traces papillaires exploitables</h2>
-      <p class="champ">Dossier ${escapeHtml(
-        model.caseHeader.caseNumber,
-      )} — procès-verbal ${escapeHtml(model.caseHeader.pvNumber)}</p>
-    </div>
+    ${annexTitlePage(
+      'Annexe A — Inventaire des traces papillaires exploitables',
+      model,
+    )}
+    ${plates}`;
+}
+
+function demonstratedPerson(
+  demonstration: ReportDemonstrationViewModel,
+): string {
+  const { subject } = demonstration;
+  return subject === null
+    ? 'personne non renseignée au dossier'
+    : `${subject.civility} ${subject.lastName.toLocaleUpperCase('fr')} ${
+        subject.firstName
+      }`;
+}
+
+function demonstratedPosition(
+  demonstration: ReportDemonstrationViewModel,
+): string {
+  const { position } = demonstration;
+  return position === null
+    ? 'Position non renseignée'
+    : position.charAt(0).toLocaleUpperCase('fr') + position.slice(1);
+}
+
+function annexBSection(model: TechnicalReportViewModel): string {
+  if (model.annexB.length === 0) {
+    return '';
+  }
+
+  let rank = 0;
+  const plates = model.annexB
+    .map((demonstration) => {
+      const subtitle = `Démonstration d'identité — trace papillaire cotée ${quoted(
+        demonstration.cote,
+      )}`;
+      const marked = demonstration.trace.marks.length;
+      const pages: string[] = [];
+
+      if (demonstration.localisationPhoto !== null) {
+        pages.push(
+          renderPlate({
+            title: `Planche ${toRoman(++rank)}`,
+            subtitle,
+            image: demonstration.localisationPhoto,
+            marks: [],
+            cote: null,
+            caption: `Endroit où la trace papillaire cotée ${quoted(
+              demonstration.cote,
+            )} a été relevée.`,
+          }),
+        );
+      }
+
+      pages.push(
+        renderPlate({
+          title: `Planche ${toRoman(++rank)}`,
+          subtitle,
+          image: demonstration.trace.image,
+          marks: demonstration.trace.marks,
+          cote: demonstration.cote,
+          caption:
+            marked === 0
+              ? `Trace papillaire cotée ${quoted(demonstration.cote)}.`
+              : `Trace papillaire cotée ${quoted(
+                  demonstration.cote,
+                )}. ${spelled(marked)} minuties concordantes numérotées.`,
+        }),
+      );
+
+      const who = `${demonstratedPosition(demonstration)} de ${demonstratedPerson(
+        demonstration,
+      )}.`;
+      pages.push(
+        renderPlate({
+          title: `Planche ${toRoman(++rank)}`,
+          subtitle,
+          image: demonstration.referencePrint.image,
+          marks: demonstration.referencePrint.marks,
+          cote: null,
+          caption:
+            marked === 0
+              ? who
+              : `${who} Chaque numéro désigne le même détail que sur la planche précédente : l'appariement a été établi point par point par l'expert.`,
+        }),
+      );
+
+      return pages.join('');
+    })
+    .join('');
+
+  return `
+    ${annexTitlePage("Annexe B — Démonstrations d'identité", model)}
     ${plates}`;
 }
 
@@ -788,6 +891,7 @@ export function renderTechnicalReportHtml(
     ${signatureSection(model)}
 
     ${annexASection(model)}
+    ${annexBSection(model)}
 
     ${journalSection(model)}
 

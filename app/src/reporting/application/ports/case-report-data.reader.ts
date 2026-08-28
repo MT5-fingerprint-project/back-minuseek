@@ -39,6 +39,14 @@ export interface MinutiaData {
   radius: number | null;
   angleDeg: number | null;
   color: string | null;
+  typeLabel: string | null;
+}
+
+export interface MinutiaPairData {
+  traceId: string;
+  referencePrintId: string;
+  traceMinutiaRank: number;
+  referenceMinutiaRank: number;
 }
 
 export interface PieceData {
@@ -105,6 +113,7 @@ export interface CaseReportData {
   comparisons: ComparisonData[];
   declaredHits: DeclaredHitData[];
   subjects: SubjectData[];
+  minutiaPairs: MinutiaPairData[];
 }
 
 export interface CaseReportDataReader {

@@ -1,5 +1,31 @@
-import { TechnicalReportViewModel } from '../../../application/report-view-model';
+import {
+  ReportDemonstrationViewModel,
+  TechnicalReportViewModel,
+} from '../../../application/report-view-model';
 import { renderTechnicalReportHtml } from './technical-report.template';
+
+const IMAGE = {
+  dataUrl: 'data:image/png;base64,AAA',
+  width: 800,
+  height: 1200,
+  observedSha256: null,
+};
+
+function demonstration(
+  overrides: Partial<ReportDemonstrationViewModel> = {},
+): ReportDemonstrationViewModel {
+  return {
+    reference: '3455-T2',
+    cote: 'B',
+    location: 'sur la porte-fenêtre du séjour',
+    subject: { civility: 'Madame', firstName: 'Hélène', lastName: 'Berger' },
+    position: 'index droit',
+    localisationPhoto: null,
+    trace: { image: IMAGE, marks: [] },
+    referencePrint: { image: IMAGE, marks: [] },
+    ...overrides,
+  };
+}
 
 function model(
   overrides: Partial<TechnicalReportViewModel> = {},
@@ -112,6 +138,7 @@ function model(
     referencePrints: [],
     identityDemonstrations: [],
     annexA: [],
+    annexB: [],
     integrity: {
       traces: [],
       referencePrints: [],
@@ -166,6 +193,7 @@ describe('renderTechnicalReportHtml — structure', () => {
   it('annonce les trois annexes et garde le journal en annexe C', () => {
     const html = renderTechnicalReportHtml(
       model({
+        annexB: [demonstration()],
         annexA: [
           {
             reference: '3455-T1',
@@ -1024,6 +1052,181 @@ describe('renderTechnicalReportHtml — annexe A', () => {
       'Annexe A — Inventaire des traces papillaires exploitables',
     );
     expect(html).not.toContain('class="planche"');
-    expect(html).toContain("Annexe B — Démonstrations d'identité");
+    expect(html).toContain('Annexe C — Journal des actes');
+  });
+});
+
+const MARKED = [
+  { number: 1, x: 120, y: 340, radius: 6, label: 'bifurcation' },
+  { number: 2, x: 220, y: 440, radius: 6, label: 'arrêt de ligne' },
+];
+
+function outsideSvg(html: string): string {
+  return html.replace(/<svg[\s\S]*?<\/svg>/g, '');
+}
+
+describe('renderTechnicalReportHtml — annexe B', () => {
+  it('ouvre l’annexe par sa page de titre', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexB: [demonstration()] }),
+    );
+
+    expect(html).toContain('Annexe B — Démonstrations d&#39;identité');
+    expect(html).toContain('Dossier 3455 — procès-verbal PV-2026-001');
+  });
+
+  it('rappelle en sous-titre de quelle trace la démonstration parle', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexB: [demonstration()] }),
+    );
+
+    expect(html).toContain(
+      'Démonstration d&#39;identité — trace papillaire cotée « B »',
+    );
+  });
+
+  it('commence par la planche de la trace quand aucune photographie de localisation n’a été versée', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexB: [demonstration()] }),
+    );
+
+    expect(html.indexOf('Planche I')).toBeLessThan(html.indexOf('Planche II'));
+    expect(html).not.toContain('Planche III');
+    expect(html).not.toContain('photographie de localisation');
+  });
+
+  it('numérote les planches en continu d’une démonstration à la suivante', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration(),
+          demonstration({ reference: '3455-T5', cote: 'E' }),
+        ],
+      }),
+    );
+
+    expect(html).toContain('Planche III');
+    expect(html).toContain('Planche IV');
+    expect(html).not.toContain('Planche V<');
+  });
+
+  it('intercale la planche de localisation quand la photographie existe', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [demonstration({ localisationPhoto: IMAGE })],
+      }),
+    );
+
+    expect(html).toContain(
+      'Endroit où la trace papillaire cotée « B » a été relevée.',
+    );
+    expect(html).toContain('Planche III');
+  });
+
+  it('porte les mêmes numéros et les mêmes noms de points sur les deux planches', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+        ],
+      }),
+    );
+
+    const names = html.match(/1 — bifurcation, 2 — arrêt de ligne/g) ?? [];
+    expect(names).toHaveLength(2);
+    expect(html).toContain('DEUX (2) minuties concordantes numérotées');
+  });
+
+  it('dit que l’appariement a été établi point par point', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toContain(
+      'Index droit de Madame BERGER Hélène. Chaque numéro désigne le même détail que sur la planche précédente : l&#39;appariement a été établi point par point par l&#39;expert.',
+    );
+  });
+
+  it('ne promet aucune numérotation quand aucune paire n’est enregistrée', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexB: [demonstration()] }),
+    );
+
+    expect(html).toContain('Trace papillaire cotée « B ».');
+    expect(html).not.toContain('minuties concordantes numérotées');
+    expect(html).not.toContain('point par point');
+  });
+
+  it('n’imprime aucune coordonnée hors du dessin', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+        ],
+      }),
+    );
+
+    const printed = outsideSvg(html);
+    expect(printed).not.toContain('120');
+    expect(printed).not.toContain('340');
+    expect(printed).not.toContain('<pre');
+  });
+
+  it('écrit le repli quand les dimensions natives de l’image sont illisibles', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            trace: {
+              image: {
+                dataUrl: 'data:image/tiff;base64,AAA',
+                width: null,
+                height: null,
+                observedSha256: null,
+              },
+              marks: MARKED,
+            },
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toContain(
+      "Les dimensions natives de cette image n'ont pas pu être lues",
+    );
+    expect(html).toContain('<img src="data:image/tiff;base64,AAA"');
+  });
+
+  it('écrit le repli quand l’image n’a pas pu être relue', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [demonstration({ trace: { image: null, marks: MARKED } })],
+      }),
+    );
+
+    expect(html).toContain(
+      "L'image n'a pas pu être relue à l'édition du présent rapport.",
+    );
+  });
+
+  it('n’imprime aucune annexe B, ni son renvoi au sommaire, sans identification', () => {
+    const html = renderTechnicalReportHtml(model({ annexB: [] }));
+
+    expect(html).not.toContain('Annexe B — Démonstrations d&#39;identité');
+    expect(html).not.toContain("Annexe B — Démonstrations d'identité");
+    expect(html).not.toContain('class="planche"');
   });
 });

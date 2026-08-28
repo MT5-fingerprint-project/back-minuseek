@@ -72,6 +72,7 @@ function caseData(overrides: Partial<CaseReportData> = {}): CaseReportData {
     comparisons: [],
     declaredHits: [],
     subjects: [],
+    minutiaPairs: [],
     ...overrides,
   };
 }
