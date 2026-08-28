@@ -22,6 +22,7 @@ interface PieceRow {
   position?: string | null;
   withdrawnAt: Date | null;
   withdrawalMotive?: string | null;
+  imageDestroyedAt?: Date | null;
 }
 
 interface LayerRow {
@@ -78,6 +79,7 @@ function toPiece(
     minutiae,
     withdrawnAt: row.withdrawnAt,
     withdrawalMotive: row.withdrawalMotive ?? null,
+    imageDestroyedAt: row.imageDestroyedAt ?? null,
   };
 }
 

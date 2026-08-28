@@ -17,6 +17,11 @@ const LABEL_OFFSET_RATIO = 1.9;
  * l'écrit plutôt que de dessiner à côté.
  */
 function markedImage(piece: ReportPieceViewModel): string {
+  if (piece.imageDestroyedAt) {
+    return `<p class="missing-image"><strong>Image détruite le ${formatDay(
+      piece.imageDestroyedAt,
+    )}.</strong> Empreinte de référence relevée sur un familier, détruite à la clôture du dossier : ces empreintes ne sont relevées qu'aux fins d'exclusion et ne sont pas conservées au-delà. Le scellé de l'image détruite est conservé.</p>`;
+  }
   if (piece.withdrawal) {
     return `<p class="missing-image">Retirée du dossier le ${formatDay(
       piece.withdrawal.at,

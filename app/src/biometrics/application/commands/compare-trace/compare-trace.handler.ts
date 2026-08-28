@@ -18,6 +18,7 @@ import {
 } from '../../../domain/reference-print/repository/reference-print.repository';
 import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found.error';
 import { ReferencePrintNotFoundError } from '../../../domain/reference-print/errors/reference-print-not-found.error';
+import { ReferencePrintImageDestroyedError } from '../../../domain/reference-print/errors/reference-print-image-destroyed.error';
 import {
   ID_GENERATOR,
   IdGenerator,
@@ -69,6 +70,9 @@ export class CompareTraceHandler implements ICommandHandler<
         referencePrint.isWithdrawn
       ) {
         throw new ReferencePrintNotFoundError(cmd.referencePrintIds[index]);
+      }
+      if (referencePrint.isImageDestroyed) {
+        throw new ReferencePrintImageDestroyedError(referencePrint.id);
       }
     });
 

@@ -12,6 +12,8 @@ const ACTION_LABELS: Record<string, string> = {
   REFERENCE_PRINT_DELETED: 'Empreinte de référence retirée du dossier',
   TRACE_RESTORED: 'Trace rétablie au dossier',
   REFERENCE_PRINT_RESTORED: 'Empreinte de référence rétablie au dossier',
+  REFERENCE_PRINT_IMAGE_DESTROYED:
+    'Empreinte de familier détruite à la clôture du dossier',
   LAYER_CREATED: "Calque d'amélioration ajouté",
   LAYER_UPDATED: "Calque d'amélioration modifié",
   LAYER_DELETED: "Calque d'amélioration supprimé",
@@ -84,6 +86,7 @@ const SCALAR_KEYS_BY_TYPE: Record<string, string[]> = {
   REFERENCE_PRINT_DELETED: ['referencePrintId', 'motive'],
   TRACE_RESTORED: ['withdrawnAt'],
   REFERENCE_PRINT_RESTORED: ['withdrawnAt'],
+  REFERENCE_PRINT_IMAGE_DESTROYED: ['referencePrintId', 'fileSha256'],
   LAYER_CREATED: ['name', 'type', 'zIndex'],
   LAYER_UPDATED: ['name', 'type', 'zIndex'],
   LAYER_DELETED: ['name', 'type'],

@@ -39,6 +39,7 @@ export interface PieceData {
   minutiae: MinutiaData[];
   withdrawnAt: Date | null;
   withdrawalMotive: string | null;
+  imageDestroyedAt: Date | null;
 }
 
 export interface SubjectData {

@@ -42,6 +42,7 @@ describe('ListReferencePrintsHandler', () => {
         matchings: [],
         withdrawnAt: null,
         withdrawalMotive: null,
+        imageDestroyedAt: null,
       },
     ]);
     const handler = new ListReferencePrintsHandler(
@@ -71,6 +72,7 @@ describe('ListReferencePrintsHandler', () => {
       matchings: [],
       withdrawnAt: null,
       withdrawalMotive: null,
+      imageDestroyedAt: null,
     });
     const reader = new InMemoryReferencePrintReader([
       referencePrint('ref-a'),
@@ -100,6 +102,7 @@ describe('ListReferencePrintsHandler', () => {
         matchings: [],
         withdrawnAt: null,
         withdrawalMotive: null,
+        imageDestroyedAt: null,
       },
       {
         id: 'ref-2',
@@ -111,6 +114,7 @@ describe('ListReferencePrintsHandler', () => {
         matchings: [],
         withdrawnAt: new Date('2026-08-12T09:00:00.000Z'),
         withdrawalMotive: 'WRONG_ATTRIBUTION',
+        imageDestroyedAt: null,
       },
     ]);
     const handler = new ListReferencePrintsHandler(
@@ -125,5 +129,31 @@ describe('ListReferencePrintsHandler', () => {
     expect(data.map((print) => print.id)).toEqual(['ref-2']);
     expect(data[0].withdrawalMotive).toBe('WRONG_ATTRIBUTION');
     expect(data[0].url).toBeDefined();
+  });
+  it("ne signe aucune URL pour une empreinte dont l'image est détruite", async () => {
+    const reader = new InMemoryReferencePrintReader([
+      {
+        id: 'ref-1',
+        path: 'media/investigation-case/case-9/reference-prints/ref-1.png',
+        caseId: 'case-9',
+        subjectId: 'subject-1',
+        position: 'RIGHT_INDEX',
+        createdAt: new Date('2026-07-01T00:00:00.000Z'),
+        matchings: [],
+        withdrawnAt: null,
+        withdrawalMotive: null,
+        imageDestroyedAt: new Date('2026-09-01T09:00:00.000Z'),
+      },
+    ]);
+    const handler = new ListReferencePrintsHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(
+      new ListReferencePrintsQuery('case-9'),
+    );
+
+    expect(data[0].url).toBeNull();
   });
 });

@@ -19,6 +19,10 @@ import { ListHitsHandler } from './application/queries/list-hits/list-hits.handl
 import { IMAGE_STORAGE } from './application/ports/image-storage.port';
 import { IMAGE_CONVERTER } from './application/ports/image-converter.port';
 import { CASE_STATUS } from './application/ports/case-status.port';
+import { FAMILIAR_REFERENCE_PRINT_READER } from './application/ports/familiar-reference-print.reader';
+import { FAMILIAR_PRINT_DESTRUCTION } from '../investigation/application/ports/familiar-print-destruction.port';
+import { FamiliarPrintDestructionService } from './application/services/familiar-print-destruction.service';
+import { PrismaFamiliarReferencePrintReader } from './infrastructure/persistence/prisma-familiar-reference-print.reader';
 import { FINGERPRINT_LOCATOR } from './application/ports/fingerprint-locator.port';
 import { FINGERPRINT_MATCHER } from './application/ports/fingerprint-matcher.port';
 import { TRACE_READER } from './application/queries/list-traces/trace.reader';
@@ -83,6 +87,14 @@ import { AccessModule } from '../access/access.module';
     { provide: LAYER_REPOSITORY, useClass: PrismaLayerRepository },
     { provide: MATCHING_REPOSITORY, useClass: PrismaMatchingRepository },
     { provide: HIT_REPOSITORY, useClass: PrismaHitRepository },
+    {
+      provide: FAMILIAR_REFERENCE_PRINT_READER,
+      useClass: PrismaFamiliarReferencePrintReader,
+    },
+    {
+      provide: FAMILIAR_PRINT_DESTRUCTION,
+      useClass: FamiliarPrintDestructionService,
+    },
     { provide: TRACE_READER, useClass: PrismaTraceReader },
     { provide: REFERENCE_PRINT_READER, useClass: PrismaReferencePrintReader },
     { provide: LAYER_READER, useClass: PrismaLayerReader },
@@ -119,5 +131,6 @@ import { AccessModule } from '../access/access.module';
       },
     },
   ],
+  exports: [FAMILIAR_PRINT_DESTRUCTION],
 })
 export class BiometricsModule {}

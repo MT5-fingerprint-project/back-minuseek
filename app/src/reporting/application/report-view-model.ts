@@ -44,6 +44,7 @@ export interface ReportPieceViewModel {
   minutiae: ReportMinutiaViewModel[];
   layers: ReportLayerViewModel[];
   withdrawal: ReportWithdrawalViewModel | null;
+  imageDestroyedAt: Date | null;
 }
 
 export interface ReportSubjectViewModel {

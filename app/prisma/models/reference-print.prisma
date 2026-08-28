@@ -10,6 +10,7 @@ model ReferencePrint {
 
   withdrawnAt      DateTime?
   withdrawalMotive WithdrawalMotive?
+  imageDestroyedAt DateTime?
 
   matchings Matching[]
   hits      Hit[]
