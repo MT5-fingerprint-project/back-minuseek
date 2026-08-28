@@ -22,8 +22,10 @@ import {
   ID_GENERATOR,
   IdGenerator,
 } from '../../../../shared/domain/ports/id-generator';
+import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
+import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
 import { MATCH_THRESHOLD } from '../../../domain/matching/value-objects/matching-score.vo';
 import {
   FINGERPRINT_MATCHER,
@@ -37,6 +39,8 @@ export class CompareTraceHandler implements ICommandHandler<
   MatchingPrimitives[]
 > {
   constructor(
+    @Inject(CASE_STATUS)
+    private readonly caseStatus: CaseStatusPort,
     @Inject(TRACE_REPOSITORY)
     private readonly traceRepo: TraceRepository,
     @Inject(REFERENCE_PRINT_REPOSITORY)
@@ -67,6 +71,11 @@ export class CompareTraceHandler implements ICommandHandler<
         throw new ReferencePrintNotFoundError(cmd.referencePrintIds[index]);
       }
     });
+
+    assertCaseAcceptsWork(
+      cmd.caseId,
+      await this.caseStatus.findStatus(cmd.caseId),
+    );
 
     const { candidates, engineVersion } = await this.matcher.compare({
       caseId: cmd.caseId,

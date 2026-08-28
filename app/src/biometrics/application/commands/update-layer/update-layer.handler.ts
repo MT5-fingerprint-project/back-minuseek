@@ -3,6 +3,7 @@ import { Inject } from '@nestjs/common';
 import { UpdateLayerCommand } from './update-layer.command';
 import { LayerNotFoundError } from '../../../domain/layer/errors/layer-not-found.error';
 import { layerAuditPayload } from '../../../domain/layer/layer-audit-payload';
+import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
 import { FingerprintNotFoundError } from '../../../domain/fingerprint-not-found.error';
 import {
   LAYER_REPOSITORY,
@@ -14,6 +15,7 @@ import {
   FINGERPRINT_LOCATOR,
   type FingerprintLocatorPort,
 } from '../../ports/fingerprint-locator.port';
+import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
 
 @CommandHandler(UpdateLayerCommand)
 export class UpdateLayerHandler implements ICommandHandler<UpdateLayerCommand> {
@@ -21,6 +23,8 @@ export class UpdateLayerHandler implements ICommandHandler<UpdateLayerCommand> {
     @Inject(LAYER_REPOSITORY) private readonly repository: LayerRepository,
     @Inject(FINGERPRINT_LOCATOR)
     private readonly fingerprintLocator: FingerprintLocatorPort,
+    @Inject(CASE_STATUS)
+    private readonly caseStatus: CaseStatusPort,
   ) {}
 
   async execute(command: UpdateLayerCommand): Promise<void> {
@@ -29,6 +33,10 @@ export class UpdateLayerHandler implements ICommandHandler<UpdateLayerCommand> {
 
     const location = await this.fingerprintLocator.locate(layer.fingerprintId);
     if (!location) throw new FingerprintNotFoundError(layer.fingerprintId);
+    assertCaseAcceptsWork(
+      location.caseId,
+      await this.caseStatus.findStatus(location.caseId),
+    );
 
     layer.update({
       name: command.name,

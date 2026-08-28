@@ -3,6 +3,7 @@ import { Inject } from '@nestjs/common';
 import { CreateLayerCommand } from './create-layer.command';
 import { Layer } from '../../../domain/layer/entity/layer';
 import { layerAuditPayload } from '../../../domain/layer/layer-audit-payload';
+import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
 import { FingerprintNotFoundError } from '../../../domain/fingerprint-not-found.error';
 import {
   LAYER_REPOSITORY,
@@ -14,6 +15,7 @@ import {
   FINGERPRINT_LOCATOR,
   type FingerprintLocatorPort,
 } from '../../ports/fingerprint-locator.port';
+import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
 
 @CommandHandler(CreateLayerCommand)
 export class CreateLayerHandler implements ICommandHandler<CreateLayerCommand> {
@@ -21,6 +23,8 @@ export class CreateLayerHandler implements ICommandHandler<CreateLayerCommand> {
     @Inject(LAYER_REPOSITORY) private readonly repository: LayerRepository,
     @Inject(FINGERPRINT_LOCATOR)
     private readonly fingerprintLocator: FingerprintLocatorPort,
+    @Inject(CASE_STATUS)
+    private readonly caseStatus: CaseStatusPort,
   ) {}
 
   async execute(command: CreateLayerCommand): Promise<void> {
@@ -28,6 +32,10 @@ export class CreateLayerHandler implements ICommandHandler<CreateLayerCommand> {
       command.fingerprintId,
     );
     if (!location) throw new FingerprintNotFoundError(command.fingerprintId);
+    assertCaseAcceptsWork(
+      location.caseId,
+      await this.caseStatus.findStatus(location.caseId),
+    );
 
     const layer = Layer.create({
       id: command.id,

@@ -1,9 +1,11 @@
 import { ANY_SEAL } from '../../../domain/file-digest.fixture';
+import { CaseNotOpenForWorkError } from '../../../domain/errors/case-not-open-for-work.error';
 import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { Trace } from '../../../domain/trace/entity/trace';
 import { ReferencePrint } from '../../../domain/reference-print/entity/reference-print';
 import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found.error';
 import { ReferencePrintNotFoundError } from '../../../domain/reference-print/errors/reference-print-not-found.error';
+import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
 import { InMemoryReferencePrintRepository } from '../../../infrastructure/persistence/in-memory-reference-print.repository';
 import { InMemoryMatchingRepository } from '../../../infrastructure/persistence/in-memory-matching.repository';
@@ -23,6 +25,7 @@ describe('CompareTraceHandler', () => {
   let idGenerator: IdGenerator;
   let auditTrail: InMemoryAuditTrailAppender;
   let handler: CompareTraceHandler;
+  let caseStatus: InMemoryCaseStatusAdapter;
 
   beforeEach(() => {
     auditTrail = new InMemoryAuditTrailAppender();
@@ -32,7 +35,10 @@ describe('CompareTraceHandler', () => {
     matcher = new InMemoryFingerprintMatcherAdapter();
     let counter = 0;
     idGenerator = { generate: jest.fn(() => `matching-${++counter}`) };
+    caseStatus = new InMemoryCaseStatusAdapter();
+    caseStatus.set('case-1', 'OPEN');
     handler = new CompareTraceHandler(
+      caseStatus,
       traceRepo,
       referencePrintRepo,
       matcher,
@@ -263,6 +269,32 @@ describe('CompareTraceHandler', () => {
         new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', ['ref-1']),
       ),
     ).rejects.toThrow(ReferencePrintNotFoundError);
+    expect(auditTrail.events).toHaveLength(0);
+  });
+  it('refuse de comparer sur une affaire close, sans rien inscrire', async () => {
+    traceRepo.seed(
+      Trace.upload({
+        id: 'trace-1',
+        path: 'media/trace-1.png',
+        caseId: 'case-1',
+        sha256: ANY_SEAL,
+      }),
+    );
+    referencePrintRepo.seed(
+      ReferencePrint.create({
+        id: 'ref-1',
+        path: 'media/ref-1.png',
+        caseId: 'case-1',
+        sha256: ANY_SEAL,
+      }),
+    );
+    caseStatus.set('case-1', 'CLOSED');
+
+    await expect(
+      handler.execute(
+        new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', ['ref-1']),
+      ),
+    ).rejects.toBeInstanceOf(CaseNotOpenForWorkError);
     expect(auditTrail.events).toHaveLength(0);
   });
 });

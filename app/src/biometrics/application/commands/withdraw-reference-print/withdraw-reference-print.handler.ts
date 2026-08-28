@@ -5,8 +5,10 @@ import {
   REFERENCE_PRINT_REPOSITORY,
   ReferencePrintRepository,
 } from '../../../domain/reference-print/repository/reference-print.repository';
+import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
+import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
 import { WithdrawReferencePrintCommand } from './withdraw-reference-print.command';
 
 @CommandHandler(WithdrawReferencePrintCommand)
@@ -17,6 +19,8 @@ export class WithdrawReferencePrintHandler implements ICommandHandler<
   constructor(
     @Inject(REFERENCE_PRINT_REPOSITORY)
     private readonly repo: ReferencePrintRepository,
+    @Inject(CASE_STATUS)
+    private readonly caseStatus: CaseStatusPort,
   ) {}
 
   async execute(cmd: WithdrawReferencePrintCommand): Promise<void> {
@@ -24,6 +28,11 @@ export class WithdrawReferencePrintHandler implements ICommandHandler<
     if (!referencePrint) {
       throw new ReferencePrintNotFoundError(cmd.id);
     }
+
+    assertCaseAcceptsWork(
+      referencePrint.caseId,
+      await this.caseStatus.findStatus(referencePrint.caseId),
+    );
 
     referencePrint.withdraw(cmd.motive, new Date());
 

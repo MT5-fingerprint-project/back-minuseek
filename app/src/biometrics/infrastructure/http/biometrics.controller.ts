@@ -46,6 +46,7 @@ import { TraceNotFoundError } from '../../domain/trace/errors/trace-not-found.er
 import { CaseUnavailableForTraceError } from '../../domain/trace/errors/case-unavailable-for-trace.error';
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
 import { InsufficientMinutiaeError } from '../../domain/hit/errors/insufficient-minutiae.error';
+import { CaseNotOpenForWorkError } from '../../domain/errors/case-not-open-for-work.error';
 import { AlreadyWithdrawnError } from '../../domain/withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../domain/withdrawal/errors/not-withdrawn.error';
 import { InvalidImageError } from '../../application/ports/image-converter.port';
@@ -148,6 +149,8 @@ export class BiometricsController {
         new WithdrawTraceCommand(toAuditActor(user), id, dto.motive),
       );
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (e instanceof TraceNotFoundError)
         throw new NotFoundException(e.message);
       if (e instanceof AlreadyWithdrawnError)
@@ -180,6 +183,8 @@ export class BiometricsController {
         new WithdrawReferencePrintCommand(toAuditActor(user), id, dto.motive),
       );
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (e instanceof ReferencePrintNotFoundError)
         throw new NotFoundException(e.message);
       if (e instanceof AlreadyWithdrawnError)
@@ -204,6 +209,8 @@ export class BiometricsController {
         new RestoreTraceCommand(toAuditActor(user), id),
       );
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (e instanceof TraceNotFoundError)
         throw new NotFoundException(e.message);
       if (e instanceof NotWithdrawnError)
@@ -236,6 +243,8 @@ export class BiometricsController {
         new RestoreReferencePrintCommand(toAuditActor(user), id),
       );
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (e instanceof ReferencePrintNotFoundError)
         throw new NotFoundException(e.message);
       if (e instanceof NotWithdrawnError)
@@ -293,6 +302,7 @@ export class BiometricsController {
     description:
       'Affaire inexistante ou non accessible (statut ≠ OPEN/IN_PROGRESS)',
   })
+  @ApiResponse({ status: 409, description: 'Affaire close' })
   @UseInterceptors(FileInterceptor('file'))
   async uploadTrace(
     @UploadedFile(imageFileValidator())
@@ -323,6 +333,8 @@ export class BiometricsController {
         ),
       );
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (e instanceof CaseAccessDeniedError)
         throw new NotFoundException(CASE_NOT_FOUND_MESSAGE);
       if (e instanceof CaseUnavailableForTraceError)
@@ -361,6 +373,7 @@ export class BiometricsController {
     description:
       'Fichier manquant, type non supporté (PNG/JPEG/TIFF), au-delà de 20 Mo, caseId/subjectId ou position invalide',
   })
+  @ApiResponse({ status: 409, description: 'Affaire close' })
   @UseInterceptors(FileInterceptor('file'))
   async uploadReferencePrint(
     @UploadedFile(imageFileValidator())
@@ -384,6 +397,8 @@ export class BiometricsController {
         ),
       );
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (e instanceof CaseAccessDeniedError)
         throw new NotFoundException(CASE_NOT_FOUND_MESSAGE);
       if (
@@ -406,6 +421,7 @@ export class BiometricsController {
     status: 404,
     description: 'Trace ou empreinte de référence introuvable pour ce dossier',
   })
+  @ApiResponse({ status: 409, description: 'Affaire close' })
   async compare(
     @Param('id', ParseUUIDPipe) traceId: string,
     @Body() dto: CompareTraceDto,
@@ -425,6 +441,8 @@ export class BiometricsController {
       );
       return { matchings };
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (
         e instanceof TraceNotFoundError ||
         e instanceof ReferencePrintNotFoundError
@@ -446,6 +464,7 @@ export class BiometricsController {
     status: 404,
     description: 'Trace ou empreinte de référence introuvable pour ce dossier',
   })
+  @ApiResponse({ status: 409, description: 'Affaire close' })
   @ApiResponse({
     status: 422,
     description:
@@ -469,6 +488,8 @@ export class BiometricsController {
         ),
       );
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (
         e instanceof TraceNotFoundError ||
         e instanceof ReferencePrintNotFoundError
@@ -491,6 +512,7 @@ export class BiometricsController {
     status: 404,
     description: 'Trace ou empreinte de référence introuvable pour ce dossier',
   })
+  @ApiResponse({ status: 409, description: 'Affaire close' })
   async removeHit(
     @Param('id', ParseUUIDPipe) traceId: string,
     @Param('referencePrintId', ParseUUIDPipe) referencePrintId: string,
@@ -507,6 +529,8 @@ export class BiometricsController {
         ),
       );
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (
         e instanceof TraceNotFoundError ||
         e instanceof ReferencePrintNotFoundError

@@ -1,4 +1,5 @@
 import { ANY_SEAL } from '../../../domain/file-digest.fixture';
+import { CaseNotOpenForWorkError } from '../../../domain/errors/case-not-open-for-work.error';
 import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { Trace } from '../../../domain/trace/entity/trace';
 import { ReferencePrint } from '../../../domain/reference-print/entity/reference-print';
@@ -7,6 +8,7 @@ import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found
 import { ReferencePrintNotFoundError } from '../../../domain/reference-print/errors/reference-print-not-found.error';
 import { InsufficientMinutiaeError } from '../../../domain/hit/errors/insufficient-minutiae.error';
 import { REQUIRED_MINUTIAE } from '../../../domain/hit/hit-rules';
+import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
 import { InMemoryReferencePrintRepository } from '../../../infrastructure/persistence/in-memory-reference-print.repository';
 import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-memory-layer.repository';
@@ -30,6 +32,7 @@ describe('RecordHitHandler', () => {
   let matchingRepo: InMemoryMatchingRepository;
   let auditTrail: InMemoryAuditTrailAppender;
   let handler: RecordHitHandler;
+  let caseStatus: InMemoryCaseStatusAdapter;
 
   const seedMinutiae = (
     fingerprintId: string,
@@ -64,7 +67,10 @@ describe('RecordHitHandler', () => {
     hitRepo = new InMemoryHitRepository(auditTrail);
     idGenerator = { generate: jest.fn(() => 'hit-1') };
     matchingRepo = new InMemoryMatchingRepository();
+    caseStatus = new InMemoryCaseStatusAdapter();
+    caseStatus.set('case-1', 'OPEN');
     handler = new RecordHitHandler(
+      caseStatus,
       traceRepo,
       referencePrintRepo,
       layerRepo,
@@ -340,5 +346,18 @@ describe('RecordHitHandler', () => {
     );
 
     expect(await hitRepo.findByTraceId('trace-1')).toHaveLength(1);
+  });
+  it('refuse de déclarer une identification sur une affaire close, sans rien inscrire', async () => {
+    seedTraceAndReference();
+    seedMinutiae('trace-1', REQUIRED_MINUTIAE, 'circle');
+    seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
+    caseStatus.set('case-1', 'CLOSED');
+
+    await expect(
+      handler.execute(
+        new RecordHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1', null),
+      ),
+    ).rejects.toBeInstanceOf(CaseNotOpenForWorkError);
+    expect(auditTrail.events).toHaveLength(0);
   });
 });

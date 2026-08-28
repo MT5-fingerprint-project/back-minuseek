@@ -3,6 +3,7 @@ import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { FingerprintNotFoundError } from '../../../domain/fingerprint-not-found.error';
+import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryFingerprintLocatorAdapter } from '../../../infrastructure/persistence/in-memory-fingerprint-locator.adapter';
 import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-memory-layer.repository';
 import { CreateLayerCommand } from './create-layer.command';
@@ -18,6 +19,7 @@ describe('CreateLayerHandler', () => {
   };
 
   let handler: CreateLayerHandler;
+  let caseStatus: InMemoryCaseStatusAdapter;
   let repo: InMemoryLayerRepository;
   let fingerprintLocator: InMemoryFingerprintLocatorAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
@@ -37,7 +39,9 @@ describe('CreateLayerHandler', () => {
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryLayerRepository(auditTrail);
     fingerprintLocator = new InMemoryFingerprintLocatorAdapter();
-    handler = new CreateLayerHandler(repo, fingerprintLocator);
+    caseStatus = new InMemoryCaseStatusAdapter();
+    caseStatus.set('case-9', 'OPEN');
+    handler = new CreateLayerHandler(repo, fingerprintLocator, caseStatus);
   });
 
   it('persiste un calque ANNOTATION visible par défaut en conservant ses settings', async () => {

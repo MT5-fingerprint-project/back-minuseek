@@ -1,8 +1,8 @@
+import { assertCaseAcceptsWork } from '../../case-work-window';
 import { FileDigest } from '../../file-digest.vo';
 import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../withdrawal/errors/not-withdrawn.error';
 import { Withdrawal } from '../../withdrawal/withdrawal.vo';
-import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-trace.error';
 import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
 import { CaptureMetadata } from '../value-objects/capture-metadata.vo';
 import {
@@ -11,8 +11,6 @@ import {
 } from '../value-objects/capture-quality.vo';
 import { ExploitabilityScore } from '../value-objects/exploitability-score.vo';
 import { TraceStatus, TraceStatusEnum } from '../value-objects/trace-status.vo';
-
-const CASE_STATUSES_ACCEPTING_TRACES = ['OPEN', 'IN_PROGRESS'];
 
 export interface TracePrimitives {
   id: string;
@@ -58,12 +56,7 @@ export class Trace {
     caseId: string,
     caseStatus: string | null,
   ): void {
-    if (
-      caseStatus === null ||
-      !CASE_STATUSES_ACCEPTING_TRACES.includes(caseStatus)
-    ) {
-      throw new CaseUnavailableForTraceError(caseId);
-    }
+    assertCaseAcceptsWork(caseId, caseStatus);
   }
 
   static upload(props: UploadTraceProps): Trace {

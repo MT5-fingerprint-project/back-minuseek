@@ -1,4 +1,5 @@
 import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
+import { CaseNotOpenForWorkError } from '../../../domain/errors/case-not-open-for-work.error';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { ANY_SEAL } from '../../../domain/file-digest.fixture';
@@ -6,6 +7,7 @@ import { ReferencePrint } from '../../../domain/reference-print/entity/reference
 import { ReferencePrintNotFoundError } from '../../../domain/reference-print/errors/reference-print-not-found.error';
 import { NotWithdrawnError } from '../../../domain/withdrawal/errors/not-withdrawn.error';
 import { InMemoryReferencePrintRepository } from '../../../infrastructure/persistence/in-memory-reference-print.repository';
+import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { RestoreReferencePrintCommand } from './restore-reference-print.command';
 import { RestoreReferencePrintHandler } from './restore-reference-print.handler';
@@ -16,6 +18,7 @@ describe('RestoreReferencePrintHandler', () => {
   let handler: RestoreReferencePrintHandler;
   let repo: InMemoryReferencePrintRepository;
   let auditTrail: InMemoryAuditTrailAppender;
+  let caseStatus: InMemoryCaseStatusAdapter;
 
   const referencePrint = (): ReferencePrint =>
     ReferencePrint.create({
@@ -28,7 +31,9 @@ describe('RestoreReferencePrintHandler', () => {
   beforeEach(() => {
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryReferencePrintRepository(auditTrail);
-    handler = new RestoreReferencePrintHandler(repo);
+    caseStatus = new InMemoryCaseStatusAdapter();
+    caseStatus.set('case-1', 'OPEN');
+    handler = new RestoreReferencePrintHandler(repo, caseStatus);
   });
 
   it('brings a withdrawn reference print back to the working case', async () => {
@@ -79,6 +84,17 @@ describe('RestoreReferencePrintHandler', () => {
       ),
     ).rejects.toBeInstanceOf(ReferencePrintNotFoundError);
 
+    expect(auditTrail.events).toHaveLength(0);
+  });
+  it('refuse de rétablir une empreinte dans une affaire close, sans rien inscrire', async () => {
+    const withdrawn = referencePrint();
+    withdrawn.withdraw('MISFILED', WITHDRAWN_AT);
+    repo.seed(withdrawn);
+    caseStatus.set('case-1', 'CLOSED');
+
+    await expect(
+      handler.execute(new RestoreReferencePrintCommand(EXPERT_ACTOR, 'ref-1')),
+    ).rejects.toBeInstanceOf(CaseNotOpenForWorkError);
     expect(auditTrail.events).toHaveLength(0);
   });
 });

@@ -1,5 +1,6 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Delete,
   Get,
@@ -19,6 +20,7 @@ import { DeleteLayerCommand } from '../../application/commands/delete-layer/dele
 import { ListLayersQuery } from '../../application/queries/list-layers/list-layers.query';
 import { LayerNotFoundError } from '../../domain/layer/errors/layer-not-found.error';
 import { FingerprintNotFoundError } from '../../domain/fingerprint-not-found.error';
+import { CaseNotOpenForWorkError } from '../../domain/errors/case-not-open-for-work.error';
 import { CreateLayerDto } from './dto/create-layer.dto';
 import { UpdateLayerDto } from './dto/update-layer.dto';
 import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
@@ -51,6 +53,7 @@ export class LayersController {
   @ApiResponse({ status: 201, description: 'Calque créé' })
   @ApiResponse({ status: 400, description: 'Payload invalide' })
   @ApiResponse({ status: 404, description: 'Trace ou empreinte non trouvée' })
+  @ApiResponse({ status: 409, description: 'Affaire close' })
   async createLayer(
     @Body() dto: CreateLayerDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -68,6 +71,8 @@ export class LayersController {
         ),
       );
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (e instanceof FingerprintNotFoundError)
         throw new NotFoundException(e.message);
       throw e;
@@ -79,6 +84,7 @@ export class LayersController {
   @ApiOperation({ summary: 'Mettre à jour un calque' })
   @ApiResponse({ status: 200, description: 'Calque mis à jour' })
   @ApiResponse({ status: 404, description: 'Calque non trouvé' })
+  @ApiResponse({ status: 409, description: 'Affaire close' })
   async updateLayer(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateLayerDto,
@@ -96,6 +102,8 @@ export class LayersController {
         ),
       );
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (
         e instanceof LayerNotFoundError ||
         e instanceof FingerprintNotFoundError
@@ -111,6 +119,7 @@ export class LayersController {
   @ApiOperation({ summary: 'Supprimer un calque' })
   @ApiResponse({ status: 204, description: 'Calque supprimé' })
   @ApiResponse({ status: 404, description: 'Calque non trouvé' })
+  @ApiResponse({ status: 409, description: 'Affaire close' })
   async deleteLayer(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -120,6 +129,8 @@ export class LayersController {
         new DeleteLayerCommand(toAuditActor(user), id),
       );
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (
         e instanceof LayerNotFoundError ||
         e instanceof FingerprintNotFoundError

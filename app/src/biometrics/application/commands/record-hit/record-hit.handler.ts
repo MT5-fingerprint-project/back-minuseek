@@ -23,8 +23,10 @@ import {
   ID_GENERATOR,
   IdGenerator,
 } from '../../../../shared/domain/ports/id-generator';
+import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
+import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
 import { REQUIRED_MINUTIAE } from '../../../domain/hit/hit-rules';
 import {
   MATCHING_REPOSITORY,
@@ -38,6 +40,8 @@ export class RecordHitHandler implements ICommandHandler<
   void
 > {
   constructor(
+    @Inject(CASE_STATUS)
+    private readonly caseStatus: CaseStatusPort,
     @Inject(TRACE_REPOSITORY)
     private readonly traceRepo: TraceRepository,
     @Inject(REFERENCE_PRINT_REPOSITORY)
@@ -68,6 +72,11 @@ export class RecordHitHandler implements ICommandHandler<
     ) {
       throw new ReferencePrintNotFoundError(cmd.referencePrintId);
     }
+
+    assertCaseAcceptsWork(
+      cmd.caseId,
+      await this.caseStatus.findStatus(cmd.caseId),
+    );
 
     const [traceMinutiae, referenceMinutiae] = await Promise.all([
       this.layerRepo.countMinutiae(cmd.traceId),

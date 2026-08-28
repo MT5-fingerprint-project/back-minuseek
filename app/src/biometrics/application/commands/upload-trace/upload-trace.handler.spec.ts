@@ -2,6 +2,7 @@ import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixtur
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { TraceStatusEnum } from '../../../domain/trace/value-objects/trace-status.vo';
+import { CaseNotOpenForWorkError } from '../../../domain/errors/case-not-open-for-work.error';
 import { CaseUnavailableForTraceError } from '../../../domain/trace/errors/case-unavailable-for-trace.error';
 import { InvalidCaptureMetadataError } from '../../../domain/trace/errors/invalid-capture-metadata.error';
 import { CaptureMetadataProps } from '../../../domain/trace/value-objects/capture-metadata.vo';
@@ -324,20 +325,23 @@ describe('UploadTraceHandler', () => {
     expect(auditTrail.events).toHaveLength(0);
   });
 
-  it.each(['CLOSED', 'UNDER_REVIEW'])(
-    'rejects and persists nothing when the case status is %s',
-    async (status) => {
-      caseStatus.set('case-9', status);
+  it('rejects and persists nothing when the case is closed', async () => {
+    caseStatus.set('case-9', 'CLOSED');
 
-      await expect(handler.execute(command())).rejects.toBeInstanceOf(
-        CaseUnavailableForTraceError,
-      );
+    await expect(handler.execute(command())).rejects.toBeInstanceOf(
+      CaseNotOpenForWorkError,
+    );
 
-      expect(await repo.findById('trace-123')).toBeNull();
-      expect(
-        storage.getSaved('investigation-case/case-9/traces/trace-123.png'),
-      ).toBeUndefined();
-      expect(auditTrail.events).toHaveLength(0);
-    },
-  );
+    expect(await repo.findById('trace-123')).toBeNull();
+    expect(
+      storage.getSaved('investigation-case/case-9/traces/trace-123.png'),
+    ).toBeUndefined();
+    expect(auditTrail.events).toHaveLength(0);
+  });
+
+  it('accepte un dépôt sur une affaire en relecture', async () => {
+    caseStatus.set('case-9', 'UNDER_REVIEW');
+
+    await expect(handler.execute(command())).resolves.toBeDefined();
+  });
 });

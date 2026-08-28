@@ -26,6 +26,8 @@ import {
   detectImageMimeType,
   storeDisplayableImage,
 } from '../../services/displayable-image';
+import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
+import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
 import { CaseAccessService } from '../../../../access/application/case-access.service';
 import { UploadReferencePrintCommand } from './upload-reference-print.command';
 
@@ -45,6 +47,8 @@ export class UploadReferencePrintHandler implements ICommandHandler<
     private readonly idGenerator: IdGenerator,
     @Inject(IMAGE_CONVERTER)
     private readonly converter: ImageConverterPort,
+    @Inject(CASE_STATUS)
+    private readonly caseStatus: CaseStatusPort,
     private readonly caseAccess: CaseAccessService,
   ) {}
 
@@ -52,6 +56,10 @@ export class UploadReferencePrintHandler implements ICommandHandler<
     cmd: UploadReferencePrintCommand,
   ): Promise<{ id: string; path: string; url: string }> {
     await this.caseAccess.assertAccessToCase(cmd.requester, cmd.caseId);
+    assertCaseAcceptsWork(
+      cmd.caseId,
+      await this.caseStatus.findStatus(cmd.caseId),
+    );
 
     const id = this.idGenerator.generate();
     const sha256 = FileDigest.ofBuffer(cmd.fileBuffer);

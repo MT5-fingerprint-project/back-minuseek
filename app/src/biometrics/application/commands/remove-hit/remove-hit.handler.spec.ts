@@ -1,10 +1,12 @@
 import { ANY_SEAL } from '../../../domain/file-digest.fixture';
+import { CaseNotOpenForWorkError } from '../../../domain/errors/case-not-open-for-work.error';
 import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { Trace } from '../../../domain/trace/entity/trace';
 import { ReferencePrint } from '../../../domain/reference-print/entity/reference-print';
 import { Hit } from '../../../domain/hit/entity/hit';
 import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found.error';
 import { ReferencePrintNotFoundError } from '../../../domain/reference-print/errors/reference-print-not-found.error';
+import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
 import { InMemoryReferencePrintRepository } from '../../../infrastructure/persistence/in-memory-reference-print.repository';
 import { InMemoryHitRepository } from '../../../infrastructure/persistence/in-memory-hit.repository';
@@ -19,6 +21,7 @@ describe('RemoveHitHandler', () => {
   let hitRepo: InMemoryHitRepository;
   let auditTrail: InMemoryAuditTrailAppender;
   let handler: RemoveHitHandler;
+  let caseStatus: InMemoryCaseStatusAdapter;
 
   const seedTraceAndReference = (): void => {
     traceRepo.seed(
@@ -44,7 +47,14 @@ describe('RemoveHitHandler', () => {
     traceRepo = new InMemoryTraceRepository();
     referencePrintRepo = new InMemoryReferencePrintRepository();
     hitRepo = new InMemoryHitRepository(auditTrail);
-    handler = new RemoveHitHandler(traceRepo, referencePrintRepo, hitRepo);
+    caseStatus = new InMemoryCaseStatusAdapter();
+    caseStatus.set('case-1', 'OPEN');
+    handler = new RemoveHitHandler(
+      caseStatus,
+      traceRepo,
+      referencePrintRepo,
+      hitRepo,
+    );
   });
 
   it('marks an existing hit instead of erasing it', async () => {
@@ -189,6 +199,17 @@ describe('RemoveHitHandler', () => {
         new RemoveHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
       ),
     ).rejects.toThrow(ReferencePrintNotFoundError);
+    expect(auditTrail.events).toHaveLength(0);
+  });
+  it('refuse de retirer une identification sur une affaire close, sans rien inscrire', async () => {
+    seedTraceAndReference();
+    caseStatus.set('case-1', 'CLOSED');
+
+    await expect(
+      handler.execute(
+        new RemoveHitCommand(EXPERT_ACTOR, 'case-1', 'trace-1', 'ref-1'),
+      ),
+    ).rejects.toBeInstanceOf(CaseNotOpenForWorkError);
     expect(auditTrail.events).toHaveLength(0);
   });
 });

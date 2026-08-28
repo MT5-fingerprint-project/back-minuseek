@@ -1,4 +1,5 @@
 import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
+import { CaseNotOpenForWorkError } from '../../../domain/errors/case-not-open-for-work.error';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { ANY_SEAL } from '../../../domain/file-digest.fixture';
@@ -7,6 +8,7 @@ import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found
 import { AlreadyWithdrawnError } from '../../../domain/withdrawal/errors/already-withdrawn.error';
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
+import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { TraceRepository } from '../../../domain/trace/repository/trace.repository';
 import { WithdrawTraceCommand } from './withdraw-trace.command';
@@ -31,9 +33,10 @@ describe('WithdrawTraceHandler', () => {
   let repo: InMemoryTraceRepository;
   let storage: InMemoryImageStorageAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
+  let caseStatus: InMemoryCaseStatusAdapter;
 
   const buildHandler = (traceRepo: TraceRepository) =>
-    new WithdrawTraceHandler(traceRepo);
+    new WithdrawTraceHandler(traceRepo, caseStatus);
 
   const seededTrace = () =>
     Trace.upload({
@@ -47,6 +50,8 @@ describe('WithdrawTraceHandler', () => {
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryTraceRepository(auditTrail);
     storage = new InMemoryImageStorageAdapter();
+    caseStatus = new InMemoryCaseStatusAdapter();
+    caseStatus.set('case-1', 'OPEN');
     handler = buildHandler(repo);
 
     repo.seed(seededTrace());
@@ -127,5 +132,16 @@ describe('WithdrawTraceHandler', () => {
     ).rejects.toBeInstanceOf(TraceNotFoundError);
 
     expect(auditTrail.events).toHaveLength(0);
+  });
+  it("refuse de retirer une trace d'une affaire close, sans rien inscrire", async () => {
+    caseStatus.set('case-1', 'CLOSED');
+
+    await expect(
+      handler.execute(
+        new WithdrawTraceCommand(EXPERT_ACTOR, 'trace-1', 'DUPLICATE'),
+      ),
+    ).rejects.toBeInstanceOf(CaseNotOpenForWorkError);
+    expect(auditTrail.events).toHaveLength(0);
+    expect(storage.getSaved(STORED_KEY)).toBeDefined();
   });
 });
