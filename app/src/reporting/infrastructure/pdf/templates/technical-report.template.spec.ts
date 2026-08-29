@@ -17,6 +17,14 @@ function model(
       openedAt: new Date('2026-08-01T09:00:00.000Z'),
       generatedAt: new Date('2026-08-19T08:00:00.000Z'),
       generatedByDisplayName: 'Alex Martin',
+      letterhead: {
+        administration: 'Ministère de l’Intérieur',
+        serviceName: 'Service Régional de Police Technique et Scientifique',
+        postalAddress: '36 rue du Bastion — 75017 Paris',
+        phoneNumber: '01 40 79 00 00',
+        email: 'srpts-paris@interieur.gouv.fr',
+      },
+      signatureCity: 'Paris',
     },
     caseHeader: {
       caseNumber: '3455',
@@ -358,7 +366,7 @@ describe('renderTechnicalReportHtml — numéro, filiation et signature', () => 
       'Technicien en Chef de Police Technique et Scientifique',
     );
     expect(html).toContain('AGUILAR Sébastien — Matricule 118 402');
-    expect(html).toContain('Fait le 19/08/2026');
+    expect(html).toContain('Fait à Paris, le 19/08/2026');
   });
 
   it('porte le numéro du rapport en pied de page', () => {
@@ -412,5 +420,59 @@ describe('renderTechnicalReportHtml — numéro, filiation et signature', () => 
     expect(html).toContain(
       'Ont concouru à ces opérations : Sébastien Aguilar.',
     );
+  });
+});
+
+describe('renderTechnicalReportHtml — en-tête du service', () => {
+  it('imprime les lignes du service en tête du document', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html).toContain('Ministère de l’Intérieur');
+    expect(html).toContain(
+      'Service Régional de Police Technique et Scientifique',
+    );
+    expect(html).toContain('36 rue du Bastion — 75017 Paris');
+    expect(html).toContain('01 40 79 00 00 — srpts-paris@interieur.gouv.fr');
+  });
+
+  it('place l’en-tête avant le titre du rapport', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html.indexOf('class="lettre"')).toBeLessThan(
+      html.indexOf("RAPPORT D'EXPLOITATION DE TRACES PAPILLAIRES"),
+    );
+  });
+
+  it('ne laisse aucun cadre quand le service n’a rien saisi', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        header: { ...model().header, letterhead: null, signatureCity: null },
+      }),
+    );
+
+    expect(html).not.toContain('class="lettre"');
+    expect(html).toContain('Fait le 19/08/2026');
+    expect(html).not.toContain('Fait à');
+  });
+
+  it('n’imprime que les lignes renseignées d’un en-tête partiel', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        header: {
+          ...model().header,
+          letterhead: {
+            administration: null,
+            serviceName: 'S.R.P.T.S. de Paris',
+            postalAddress: null,
+            phoneNumber: null,
+            email: null,
+          },
+        },
+      }),
+    );
+
+    expect(html).toContain('S.R.P.T.S. de Paris');
+    expect(html).not.toContain('<b></b>');
+    expect(html).not.toContain('undefined');
   });
 });

@@ -14,6 +14,14 @@ const MODEL: TraceabilityReportViewModel = {
     openedAt: new Date('2026-08-01T09:00:00.000Z'),
     generatedAt: new Date('2026-08-19T08:00:00.000Z'),
     generatedByDisplayName: 'Alex Martin',
+    letterhead: {
+      administration: 'Ministère de l’Intérieur',
+      serviceName: 'Service Régional de Police Technique et Scientifique',
+      postalAddress: '36 rue du Bastion — 75017 Paris',
+      phoneNumber: null,
+      email: null,
+    },
+    signatureCity: 'Paris',
   },
   events: [
     {
@@ -79,5 +87,18 @@ describe('renderTraceabilityReportHtml', () => {
 
     expect(html).not.toContain('<b>AFF-001</b>');
     expect(html).toContain('&lt;b&gt;AFF-001&lt;/b&gt;');
+  });
+});
+
+describe('renderTraceabilityReportHtml — en-tête du service', () => {
+  it('porte le même émetteur que le rapport d’exploitation', () => {
+    const html = renderTraceabilityReportHtml(MODEL);
+
+    expect(html).toContain(
+      'Service Régional de Police Technique et Scientifique',
+    );
+    expect(html.indexOf('class="lettre"')).toBeLessThan(
+      html.indexOf('<h1>Annexe de traçabilité</h1>'),
+    );
   });
 });

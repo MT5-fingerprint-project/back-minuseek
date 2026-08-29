@@ -6,6 +6,7 @@ import {
 } from '../../ports/case-report-data.reader';
 import { PreviousDocumentData } from '../../ports/report-numbering.reader';
 import { ReportSignerData } from '../../report-signer';
+import { ServiceLetterheadData } from '../../ports/service-letterhead.reader';
 import {
   AnchorData,
   AuditEventData,
@@ -31,6 +32,7 @@ import {
   traceOriginLabel,
 } from './action-labels';
 import { buildCaseHeader } from './case-header';
+import { buildLetterhead, signatureCityOf } from './letterhead';
 import { treatmentsOf } from './image-treatments';
 import { buildJournal } from './report-journal';
 import {
@@ -59,6 +61,7 @@ export interface TechnicalReportInput {
   signer: ReportSignerData;
   contributors: CaseContributorData[];
   previousDocument: PreviousDocumentData | null;
+  letterhead: ServiceLetterheadData;
   chainHead: { seq: number; hash: string } | null;
   generatedAt: Date;
   generatedByDisplayName: string;
@@ -255,6 +258,8 @@ export function buildTechnicalReport(
       openedAt: data.investigationCase.createdAt,
       generatedAt: input.generatedAt,
       generatedByDisplayName: input.generatedByDisplayName,
+      letterhead: buildLetterhead(input.letterhead),
+      signatureCity: signatureCityOf(input.letterhead),
     },
     caseHeader: buildCaseHeader(data),
     revelationTechniques: buildRevelationTechniques(orderedTraces),

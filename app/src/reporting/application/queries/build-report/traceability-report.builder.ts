@@ -1,5 +1,7 @@
 import { ChainAttestation } from '../../ports/chain-attestation.port';
+import { ServiceLetterheadData } from '../../ports/service-letterhead.reader';
 import { TraceabilityData } from '../../ports/traceability-data.reader';
+import { buildLetterhead, signatureCityOf } from './letterhead';
 import { TraceabilityReportViewModel } from '../../report-view-model';
 
 export interface TraceabilityReportInput {
@@ -14,6 +16,7 @@ export interface TraceabilityReportInput {
   generatedByDisplayName: string;
   data: TraceabilityData;
   attestation: ChainAttestation;
+  letterhead: ServiceLetterheadData;
 }
 
 export function buildTraceabilityReport(
@@ -32,6 +35,8 @@ export function buildTraceabilityReport(
       openedAt: input.openedAt,
       generatedAt: input.generatedAt,
       generatedByDisplayName: input.generatedByDisplayName,
+      letterhead: buildLetterhead(input.letterhead),
+      signatureCity: signatureCityOf(input.letterhead),
     },
     events: input.data.caseEvents.map((event) => ({
       seq: event.seq,
