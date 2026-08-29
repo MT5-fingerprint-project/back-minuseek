@@ -32,6 +32,10 @@ import type {
   ReportNumberingReader,
 } from '../../ports/report-numbering.reader';
 import type { ReportSignerData } from '../../report-signer';
+import type {
+  ServiceLetterheadData,
+  ServiceLetterheadReader,
+} from '../../ports/service-letterhead.reader';
 import { ReportSequenceAlreadyTakenError } from '../../../domain/report/errors/report-sequence-already-taken.error';
 import { ReportTypeName } from '../../../domain/report/entity/report';
 import type { ReportImageEmbedderPort } from '../../ports/report-image-embedder.port';
@@ -218,6 +222,21 @@ class FakeReportNumberingReader implements ReportNumberingReader {
   }
 }
 
+class FakeServiceLetterheadReader implements ServiceLetterheadReader {
+  settings: ServiceLetterheadData = {
+    administration: 'Ministère de l’Intérieur',
+    serviceName: 'Service Régional de Police Technique et Scientifique',
+    postalAddress: '36 rue du Bastion — 75017 Paris',
+    phoneNumber: '01 40 79 00 00',
+    email: 'srpts-paris@interieur.gouv.fr',
+    signatureCity: 'Paris',
+  };
+
+  read(): Promise<ServiceLetterheadData> {
+    return Promise.resolve(this.settings);
+  }
+}
+
 class FakeCaseContributorsReader implements CaseContributorsReader {
   contributors: CaseContributorData[] = [];
   readFor: string[] = [];
@@ -238,6 +257,7 @@ describe('GenerateReportHandler', () => {
   let traceability: FakeTraceabilityReader;
   let imageEmbedder: FakeImageEmbedder;
   let contributors: FakeCaseContributorsReader;
+  let letterhead: FakeServiceLetterheadReader;
 
   beforeEach(() => {
     caseData = new FakeCaseDataReader();
@@ -248,6 +268,7 @@ describe('GenerateReportHandler', () => {
     appender = new InMemoryAuditTrailAppender();
     repository = new InMemoryReportRepository(appender);
     contributors = new FakeCaseContributorsReader();
+    letterhead = new FakeServiceLetterheadReader();
     let issued = 0;
     handler = new GenerateReportHandler(
       caseData,
@@ -256,6 +277,7 @@ describe('GenerateReportHandler', () => {
       new FakeChainHeadReader(),
       new FakeReportNumberingReader(repository),
       contributors,
+      letterhead,
       imageEmbedder,
       renderer,
       storage,
@@ -448,6 +470,7 @@ describe('GenerateReportHandler', () => {
       new FakeChainHeadReader(),
       stale,
       contributors,
+      letterhead,
       imageEmbedder,
       renderer,
       storage,
@@ -459,5 +482,17 @@ describe('GenerateReportHandler', () => {
 
     await expect(generate()).rejects.toThrow(ReportSequenceAlreadyTakenError);
     expect(repository.store).toHaveLength(1);
+  });
+  it('imprime l’en-tête du service sur les deux documents scellés', async () => {
+    await generate();
+    await generate('TRACEABILITY');
+
+    expect(renderer.rendered[0].header.letterhead).toMatchObject({
+      serviceName: 'Service Régional de Police Technique et Scientifique',
+    });
+    expect(renderer.rendered[1].header.letterhead).toEqual(
+      renderer.rendered[0].header.letterhead,
+    );
+    expect(renderer.rendered[0].header.signatureCity).toBe('Paris');
   });
 });

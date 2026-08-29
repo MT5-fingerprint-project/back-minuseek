@@ -12,6 +12,7 @@ import {
   formatLongDay,
 } from '../../../application/report-dates';
 import { escapeHtml } from '../html';
+import { renderLetterhead } from './letterhead-block';
 import { REPORT_STYLES } from './report-styles';
 import { REVELATION_TECHNIQUE_TEXTS } from './revelation-techniques';
 
@@ -117,7 +118,13 @@ function signatureSection(model: TechnicalReportViewModel): string {
   const { signer } = model;
   return `
     <div class="sign">
-      Fait le ${formatDay(model.header.generatedAt)}<div class="vide"></div>
+      ${
+        model.header.signatureCity === null
+          ? `Fait le ${formatDay(model.header.generatedAt)}`
+          : `Fait à ${escapeHtml(model.header.signatureCity)}, le ${formatDay(
+              model.header.generatedAt,
+            )}`
+      }<div class="vide"></div>
       ${escapeHtml(signer.grade)}<br />
       ${escapeHtml(signer.lastName.toLocaleUpperCase('fr'))} ${escapeHtml(
         signer.firstName,
@@ -562,6 +569,7 @@ export function renderTechnicalReportHtml(
     <style>${REPORT_STYLES}</style>
   </head>
   <body>
+    ${renderLetterhead(model.header.letterhead)}
     <h1>RAPPORT D'EXPLOITATION DE TRACES PAPILLAIRES</h1>
     <p class="subtitle">Examen dactyloscopique, comparaison et démonstration d'identité</p>
 

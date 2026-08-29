@@ -1,3 +1,11 @@
+export interface ReportLetterheadViewModel {
+  administration: string | null;
+  serviceName: string | null;
+  postalAddress: string | null;
+  phoneNumber: string | null;
+  email: string | null;
+}
+
 export interface ReportHeaderViewModel {
   reportId: string;
   reportNumber: string;
@@ -9,6 +17,8 @@ export interface ReportHeaderViewModel {
   openedAt: Date;
   generatedAt: Date;
   generatedByDisplayName: string;
+  letterhead: ReportLetterheadViewModel | null;
+  signatureCity: string | null;
 }
 
 export interface ReportRecipientViewModel {

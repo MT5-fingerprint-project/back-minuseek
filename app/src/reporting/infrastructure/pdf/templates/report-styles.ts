@@ -8,6 +8,12 @@ export const REPORT_STYLES = `
     color: #111;
     margin: 0;
   }
+  .lettre {
+    text-align: center; font-family: Arial, Helvetica, sans-serif; font-size: 8pt;
+    line-height: 1.3; letter-spacing: .04em;
+    border-bottom: 1px solid #000; padding-bottom: 6px; margin-bottom: 14px;
+  }
+  .lettre b { display: block; font-size: 9pt; }
   h1 { font-size: 14pt; text-align: center; margin: 18px 0 2px; letter-spacing: .04em; font-weight: bold; }
   h2 { font-size: 11pt; margin: 20px 0 6px; text-transform: uppercase; letter-spacing: .03em; break-after: avoid; }
   h3 { font-size: 10.5pt; margin: 14px 0 4px; font-weight: bold; break-after: avoid; }

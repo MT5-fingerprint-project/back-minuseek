@@ -10,12 +10,14 @@ import { REPORT_IMAGE_EMBEDDER } from './application/ports/report-image-embedder
 import { REPORT_NUMBERING_READER } from './application/ports/report-numbering.reader';
 import { REPORT_RENDERER } from './application/ports/report-renderer.port';
 import { REPORT_STORAGE } from './application/ports/report-storage.port';
+import { SERVICE_LETTERHEAD_READER } from './application/ports/service-letterhead.reader';
 import { TRACEABILITY_DATA_READER } from './application/ports/traceability-data.reader';
 import { GetReportDownloadUrlHandler } from './application/queries/get-report-download-url/get-report-download-url.handler';
 import { CASE_REPORTS_READER } from './application/queries/list-case-reports/case-reports.reader';
 import { ListCaseReportsHandler } from './application/queries/list-case-reports/list-case-reports.handler';
 import { REPORT_REPOSITORY } from './domain/report/repository/report.repository';
 import { QueryBusChainAttestationAdapter } from './infrastructure/audit/query-bus-chain-attestation.adapter';
+import { QueryBusServiceLetterheadAdapter } from './infrastructure/organization/query-bus-service-letterhead.adapter';
 import { ReportsController } from './infrastructure/http/reports.controller';
 import { PuppeteerReportRenderer } from './infrastructure/pdf/puppeteer-report.renderer';
 import { StorageReportImageEmbedder } from './infrastructure/pdf/storage-report-image.embedder';
@@ -52,6 +54,10 @@ const DEFAULT_SIGNED_URL_TTL_SECONDS = 900;
       useClass: PrismaCaseContributorsReader,
     },
     { provide: CHAIN_ATTESTATION, useClass: QueryBusChainAttestationAdapter },
+    {
+      provide: SERVICE_LETTERHEAD_READER,
+      useClass: QueryBusServiceLetterheadAdapter,
+    },
     { provide: REPORT_IMAGE_EMBEDDER, useClass: StorageReportImageEmbedder },
     { provide: REPORT_RENDERER, useClass: PuppeteerReportRenderer },
     {

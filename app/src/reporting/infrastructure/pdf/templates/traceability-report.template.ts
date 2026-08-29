@@ -1,6 +1,7 @@
 import { TraceabilityReportViewModel } from '../../../application/report-view-model';
 import { formatDate } from '../../../application/report-dates';
 import { escapeHtml, formatJson } from '../html';
+import { renderLetterhead } from './letterhead-block';
 import { REPORT_STYLES } from './report-styles';
 
 function attestationBlock(model: TraceabilityReportViewModel): string {
@@ -104,6 +105,7 @@ export function renderTraceabilityReportHtml(
     <style>${REPORT_STYLES}</style>
   </head>
   <body>
+    ${renderLetterhead(header.letterhead)}
     <h1>Annexe de traçabilité</h1>
     <p class="subtitle">Dossier ${escapeHtml(header.caseNumber)} — procès-verbal ${escapeHtml(header.pvNumber)}</p>
 

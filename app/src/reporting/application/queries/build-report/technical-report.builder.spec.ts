@@ -10,6 +10,7 @@ import type {
 import type { ReportImageViewModel } from '../../report-view-model';
 import { CaseContributorData } from '../../ports/case-contributors.reader';
 import { PreviousDocumentData } from '../../ports/report-numbering.reader';
+import { ServiceLetterheadData } from '../../ports/service-letterhead.reader';
 import { buildTechnicalReport } from './technical-report.builder';
 
 const OPENED_AT = new Date('2026-08-01T09:00:00.000Z');
@@ -103,6 +104,15 @@ function caseData(overrides: Partial<CaseReportData> = {}): CaseReportData {
   };
 }
 
+const LETTERHEAD: ServiceLetterheadData = {
+  administration: 'Ministère de l’Intérieur',
+  serviceName: 'Service Régional de Police Technique et Scientifique',
+  postalAddress: '36 rue du Bastion — 75017 Paris',
+  phoneNumber: '01 40 79 00 00',
+  email: 'srpts-paris@interieur.gouv.fr',
+  signatureCity: 'Paris',
+};
+
 const SIGNER = {
   id: 'user-aguilar',
   grade: 'Technicien en Chef de Police Technique et Scientifique',
@@ -118,6 +128,7 @@ function build(
     anchors?: AnchorData[];
     contributors?: CaseContributorData[];
     previousDocument?: PreviousDocumentData | null;
+    letterhead?: ServiceLetterheadData;
   } = {},
 ) {
   return buildTechnicalReport({
@@ -127,6 +138,7 @@ function build(
     contributors: extras.contributors ?? [],
     signer: SIGNER,
     previousDocument: extras.previousDocument ?? null,
+    letterhead: extras.letterhead ?? LETTERHEAD,
     reportId: 'report-1',
     reportNumber: '3455-R1',
     chainHead: null,
@@ -135,6 +147,33 @@ function build(
     images: new Map<string, ReportImageViewModel | null>(),
   });
 }
+
+describe('buildTechnicalReport — en-tête du service', () => {
+  it('imprime l’en-tête du service et la ville de sa signature', () => {
+    const model = build(caseData());
+
+    expect(model.header.letterhead).toMatchObject({
+      serviceName: 'Service Régional de Police Technique et Scientifique',
+    });
+    expect(model.header.signatureCity).toBe('Paris');
+  });
+
+  it('n’imprime aucun en-tête pour un service qui n’a rien saisi', () => {
+    const model = build(caseData(), {
+      letterhead: {
+        administration: '',
+        serviceName: '',
+        postalAddress: '',
+        phoneNumber: '',
+        email: '',
+        signatureCity: '',
+      },
+    });
+
+    expect(model.header.letterhead).toBeNull();
+    expect(model.header.signatureCity).toBeNull();
+  });
+});
 
 describe('buildTechnicalReport — signataire, concours et filiation', () => {
   it('porte le numéro imprimé et le signataire choisi', () => {

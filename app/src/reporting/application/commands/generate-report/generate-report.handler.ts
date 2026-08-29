@@ -38,6 +38,11 @@ import {
 } from '../../ports/report-numbering.reader';
 import { ReportSignerData } from '../../report-signer';
 import {
+  SERVICE_LETTERHEAD_READER,
+  type ServiceLetterheadData,
+  type ServiceLetterheadReader,
+} from '../../ports/service-letterhead.reader';
+import {
   REPORT_IMAGE_EMBEDDER,
   type ReportImageEmbedderPort,
 } from '../../ports/report-image-embedder.port';
@@ -80,6 +85,8 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     private readonly numbering: ReportNumberingReader,
     @Inject(CASE_CONTRIBUTORS_READER)
     private readonly contributors: CaseContributorsReader,
+    @Inject(SERVICE_LETTERHEAD_READER)
+    private readonly letterhead: ServiceLetterheadReader,
     @Inject(REPORT_IMAGE_EMBEDDER)
     private readonly imageEmbedder: ReportImageEmbedderPort,
     @Inject(REPORT_RENDERER)
@@ -105,8 +112,12 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
 
     const reportId = this.idGenerator.generate();
     const generatedAt = new Date();
-    const chainHead = await this.chainHead.read();
+    const [chainHead, letterhead] = await Promise.all([
+      this.chainHead.read(),
+      this.letterhead.read(),
+    ]);
     const model = await this.buildModel(command, data, {
+      letterhead,
       reportId,
       reportNumber: number,
       signer: command.signer,
@@ -158,6 +169,7 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     command: GenerateReportCommand,
     data: CaseReportData,
     seal: {
+      letterhead: ServiceLetterheadData;
       reportId: string;
       reportNumber: string;
       signer: ReportSignerData;
@@ -180,6 +192,7 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
       ]);
       return buildTechnicalReport({
         data,
+        letterhead: seal.letterhead,
         chainEvents,
         anchors,
         contributors,
@@ -211,14 +224,10 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
       generatedByDisplayName: command.actor.toPrimitives().displayName,
       data: traceabilityData,
       attestation,
+      letterhead: seal.letterhead,
     });
   }
 
-  /**
-   * Les images sont embarquées en data-URL : le PDF scellé ne doit pas dépendre
-   * d'une URL signée qui expire. Leurs dimensions natives sont nécessaires pour
-   * replacer les minuties, relevées dans le repère pixel de l'image.
-   */
   private async imagesOf(
     pieces: PieceData[],
   ): Promise<Map<string, ReportImageViewModel | null>> {
