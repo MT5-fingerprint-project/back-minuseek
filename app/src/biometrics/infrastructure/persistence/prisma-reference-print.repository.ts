@@ -40,6 +40,7 @@ export class PrismaReferencePrintRepository implements ReferencePrintRepository 
         withdrawnAt: p.withdrawnAt,
         withdrawalMotive: p.withdrawalMotive as PrismaWithdrawalMotive | null,
         imageDestroyedAt: p.imageDestroyedAt,
+        resolutionDpi: p.resolutionDpi,
       };
       await prisma.referencePrint.upsert({
         where: { id: data.id },

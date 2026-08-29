@@ -12,6 +12,11 @@ model ReferencePrint {
   withdrawalMotive WithdrawalMotive?
   imageDestroyedAt DateTime?
 
+  // Résolution calibrée par l'opérateur sur la règle photographiée (L5-4), en
+  // points par pouce de l'image telle qu'elle a été déposée. L'absence ne se
+  // confond pas avec un zéro : une empreinte non calibrée rend `null`.
+  resolutionDpi Float?
+
   matchings Matching[]
   hits      Hit[]
 }

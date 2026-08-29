@@ -23,6 +23,8 @@ const ACTION_LABELS: Record<string, string> = {
   REPORT_GENERATED: 'Rapport généré et scellé',
   CHAIN_ANCHORED: "Chaîne d'audit horodatée par une autorité externe",
   SERVICE_HEADER_SAVED: 'En-tête du service enregistré',
+  TRACE_CALIBRATED: 'Résolution de la trace calibrée',
+  REFERENCE_PRINT_CALIBRATED: "Résolution de l'empreinte de référence calibrée",
 };
 
 const POSITION_LABELS: Record<string, string> = {
@@ -156,6 +158,12 @@ const SCALAR_KEYS_BY_TYPE: Record<string, string[]> = {
   HIT_REMOVED: ['traceId', 'referencePrintId'],
   REPORT_GENERATED: ['type', 'sha256'],
   CHAIN_ANCHORED: ['headSeq', 'tsaUrl'],
+  TRACE_CALIBRATED: ['resolutionDpi', 'previousResolutionDpi'],
+  REFERENCE_PRINT_CALIBRATED: [
+    'referencePrintId',
+    'resolutionDpi',
+    'previousResolutionDpi',
+  ],
 };
 
 function isScalar(value: unknown): boolean {

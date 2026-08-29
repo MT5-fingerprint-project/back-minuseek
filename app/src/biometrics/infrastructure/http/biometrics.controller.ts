@@ -12,6 +12,7 @@ import {
   Param,
   ParseFilePipe,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UnprocessableEntityException,
@@ -29,6 +30,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { UploadTraceCommand } from '../../application/commands/upload-trace/upload-trace.command';
+import { CalibrateTraceCommand } from '../../application/commands/calibrate-trace/calibrate-trace.command';
+import { CalibrateReferencePrintCommand } from '../../application/commands/calibrate-reference-print/calibrate-reference-print.command';
 import { UploadReferencePrintCommand } from '../../application/commands/upload-reference-print/upload-reference-print.command';
 import { WithdrawTraceCommand } from '../../application/commands/withdraw-trace/withdraw-trace.command';
 import { RestoreTraceCommand } from '../../application/commands/restore-trace/restore-trace.command';
@@ -50,6 +53,7 @@ import { CaseNotOpenForWorkError } from '../../domain/errors/case-not-open-for-w
 import { ReferencePrintImageDestroyedError } from '../../domain/reference-print/errors/reference-print-image-destroyed.error';
 import { AlreadyWithdrawnError } from '../../domain/withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../domain/withdrawal/errors/not-withdrawn.error';
+import { InvalidImageResolutionError } from '../../domain/image-resolution.vo';
 import { InvalidImageError } from '../../application/ports/image-converter.port';
 import { UnsupportedImageFormatError } from '../../application/services/displayable-image';
 import { MatchingPrimitives } from '../../domain/matching/entity/matching';
@@ -57,6 +61,7 @@ import { CurrentUser } from '../../../auth/infrastructure/http/current-user.deco
 import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types';
 import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapper';
 import { WithdrawPieceDto } from './dto/withdraw-piece.dto';
+import { CalibrateImageDto } from './dto/calibrate-image.dto';
 import { UploadTraceDto } from './dto/upload-trace.dto';
 import { UploadReferencePrintDto } from './dto/upload-reference-print.dto';
 import { ListTracesDto } from './dto/list-traces.dto';
@@ -258,6 +263,71 @@ export class BiometricsController {
         throw new NotFoundException(e.message);
       if (e instanceof NotWithdrawnError)
         throw new ConflictException(e.message);
+      throw e;
+    }
+  }
+
+  @Patch('traces/:id/calibration')
+  @CaseScoped()
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Calibrer la résolution de la trace' })
+  @ApiResponse({ status: 204, description: 'Résolution enregistrée' })
+  @ApiResponse({
+    status: 400,
+    description: 'Résolution non numérique ou hors intervalle 50–10 000',
+  })
+  @ApiResponse({ status: 404, description: 'Trace non trouvée' })
+  async calibrateTrace(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CalibrateImageDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    try {
+      await this.commandBus.execute(
+        new CalibrateTraceCommand(toAuditActor(user), id, dto.resolutionDpi),
+      );
+    } catch (e) {
+      if (e instanceof TraceNotFoundError)
+        throw new NotFoundException(e.message);
+      if (e instanceof InvalidImageResolutionError)
+        throw new BadRequestException(e.message);
+      throw e;
+    }
+  }
+
+  @Patch('reference-prints/:id/calibration')
+  @CaseScoped()
+  @HttpCode(204)
+  @ApiOperation({
+    summary: "Calibrer la résolution de l'empreinte de référence",
+  })
+  @ApiResponse({ status: 204, description: 'Résolution enregistrée' })
+  @ApiResponse({
+    status: 400,
+    description: 'Résolution non numérique ou hors intervalle 50–10 000',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Empreinte de référence non trouvée',
+  })
+  async calibrateReferencePrint(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CalibrateImageDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    try {
+      await this.commandBus.execute(
+        new CalibrateReferencePrintCommand(
+          toAuditActor(user),
+          id,
+          dto.resolutionDpi,
+        ),
+      );
+    } catch (e) {
+      if (e instanceof ReferencePrintNotFoundError)
+        throw new NotFoundException(e.message);
+      if (e instanceof InvalidImageResolutionError)
+        throw new BadRequestException(e.message);
       throw e;
     }
   }

@@ -3,6 +3,8 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { UploadReferencePrintHandler } from './application/commands/upload-reference-print/upload-reference-print.handler';
 import { UploadTraceHandler } from './application/commands/upload-trace/upload-trace.handler';
 import { WithdrawTraceHandler } from './application/commands/withdraw-trace/withdraw-trace.handler';
+import { CalibrateTraceHandler } from './application/commands/calibrate-trace/calibrate-trace.handler';
+import { CalibrateReferencePrintHandler } from './application/commands/calibrate-reference-print/calibrate-reference-print.handler';
 import { RestoreTraceHandler } from './application/commands/restore-trace/restore-trace.handler';
 import { RestoreReferencePrintHandler } from './application/commands/restore-reference-print/restore-reference-print.handler';
 import { WithdrawReferencePrintHandler } from './application/commands/withdraw-reference-print/withdraw-reference-print.handler';
@@ -62,6 +64,8 @@ import { AccessModule } from '../access/access.module';
     UploadReferencePrintHandler,
     WithdrawTraceHandler,
     WithdrawReferencePrintHandler,
+    CalibrateTraceHandler,
+    CalibrateReferencePrintHandler,
     RestoreTraceHandler,
     RestoreReferencePrintHandler,
     ListTracesHandler,

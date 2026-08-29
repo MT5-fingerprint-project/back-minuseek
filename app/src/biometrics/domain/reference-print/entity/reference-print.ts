@@ -1,4 +1,5 @@
 import { FileDigest } from '../../file-digest.vo';
+import { ImageResolution } from '../../image-resolution.vo';
 import { ReferencePrintImageAlreadyDestroyedError } from '../errors/reference-print-image-already-destroyed.error';
 import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../withdrawal/errors/not-withdrawn.error';
@@ -15,6 +16,7 @@ export interface ReferencePrintPrimitives {
   withdrawnAt: Date | null;
   withdrawalMotive: string | null;
   imageDestroyedAt: Date | null;
+  resolutionDpi: number | null;
 }
 
 interface CreateReferencePrintProps {
@@ -36,6 +38,7 @@ export class ReferencePrint {
     private readonly _position: FingerPosition | null,
     private _withdrawal: Withdrawal | null,
     private _imageDestroyedAt: Date | null,
+    private _resolution: ImageResolution | null,
   ) {}
 
   static create(props: CreateReferencePrintProps): ReferencePrint {
@@ -57,6 +60,7 @@ export class ReferencePrint {
       props.position ?? null,
       null,
       null,
+      null,
     );
   }
 
@@ -73,7 +77,14 @@ export class ReferencePrint {
         primitives.withdrawnAt,
       ),
       primitives.imageDestroyedAt,
+      ImageResolution.fromPersistence(primitives.resolutionDpi),
     );
+  }
+
+  /** Un calibrage se refait autant de fois que l'opérateur le veut : contrairement à
+   * `markImageDestroyed`, `calibrate` n'a aucune garde d'état. */
+  calibrate(resolutionDpi: number): void {
+    this._resolution = ImageResolution.of(resolutionDpi);
   }
 
   /** On ne réécrit pas une date de destruction : elle sera imprimée telle quelle. */
@@ -109,6 +120,7 @@ export class ReferencePrint {
       withdrawnAt: this._withdrawal?.getAt() ?? null,
       withdrawalMotive: this._withdrawal?.getMotive() ?? null,
       imageDestroyedAt: this._imageDestroyedAt,
+      resolutionDpi: this._resolution?.getValue() ?? null,
     };
   }
 
@@ -150,5 +162,9 @@ export class ReferencePrint {
 
   get withdrawnAt(): Date | null {
     return this._withdrawal?.getAt() ?? null;
+  }
+
+  get resolutionDpi(): number | null {
+    return this._resolution?.getValue() ?? null;
   }
 }

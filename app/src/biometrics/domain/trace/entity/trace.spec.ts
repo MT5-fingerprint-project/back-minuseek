@@ -1,4 +1,5 @@
 import { FileDigest, InvalidFileDigestError } from '../../file-digest.vo';
+import { InvalidImageResolutionError } from '../../image-resolution.vo';
 import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-trace.error';
 import { CaseNotOpenForWorkError } from '../../errors/case-not-open-for-work.error';
 import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
@@ -60,6 +61,7 @@ describe('Trace', () => {
         captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        resolutionDpi: null,
       });
     });
 
@@ -92,6 +94,7 @@ describe('Trace', () => {
         captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        resolutionDpi: null,
       });
     });
 
@@ -212,6 +215,7 @@ describe('Trace', () => {
         captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        resolutionDpi: null,
       });
 
       expect(trace.status).toBe(TraceStatusEnum.EXPLOITABLE);
@@ -237,6 +241,7 @@ describe('Trace', () => {
         captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        resolutionDpi: null,
       });
 
       expect(trace.sha256).toBeNull();
@@ -259,6 +264,7 @@ describe('Trace', () => {
         captureQuality: { blurScore: 128.4, passed: true },
         withdrawnAt: null,
         withdrawalMotive: null,
+        resolutionDpi: null,
       });
 
       expect(trace.captureQuality?.blurScore).toBe(128.4);
@@ -283,6 +289,7 @@ describe('Trace', () => {
           captureQuality: { blurScore: 'flou', passed: true },
           withdrawnAt: null,
           withdrawalMotive: null,
+          resolutionDpi: null,
         }),
       ).toThrow(InvalidCaptureQualityError);
     });
@@ -305,6 +312,7 @@ describe('Trace', () => {
           captureQuality: null,
           withdrawnAt: null,
           withdrawalMotive: null,
+          resolutionDpi: null,
         }),
       ).toThrow(InvalidFileDigestError);
     });
@@ -328,6 +336,7 @@ describe('Trace', () => {
         captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        resolutionDpi: null,
       });
     });
 
@@ -348,6 +357,7 @@ describe('Trace', () => {
         captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        resolutionDpi: null,
       });
 
       expect(trace.captureMetadata.width).toBeUndefined();
@@ -373,7 +383,46 @@ describe('Trace', () => {
 
       expect(rebuilt.toPrimitives()).toEqual(trace.toPrimitives());
     });
+
+    it('round-trips a calibrated resolution', () => {
+      const trace = Trace.upload(baseProps);
+      trace.calibrate(1207.34);
+
+      const rebuilt = Trace.reconstitute(trace.toPrimitives());
+
+      expect(rebuilt.resolutionDpi).toBe(1207.34);
+    });
   });
+  describe('calibrate', () => {
+    it('starts uncalibrated', () => {
+      expect(Trace.upload(baseProps).resolutionDpi).toBeNull();
+    });
+
+    it('sets the resolution in points per inch of the source image', () => {
+      const trace = Trace.upload(baseProps);
+
+      trace.calibrate(1207.34);
+
+      expect(trace.resolutionDpi).toBe(1207.34);
+    });
+
+    it('replaces the previous value when recalibrated', () => {
+      const trace = Trace.upload(baseProps);
+      trace.calibrate(500);
+
+      trace.calibrate(600);
+
+      expect(trace.resolutionDpi).toBe(600);
+    });
+
+    it('refuses a resolution outside the accepted range', () => {
+      const trace = Trace.upload(baseProps);
+
+      expect(() => trace.calibrate(3)).toThrow(InvalidImageResolutionError);
+      expect(trace.resolutionDpi).toBeNull();
+    });
+  });
+
   describe('withdrawal', () => {
     const withdrawnTrace = () => {
       const trace = Trace.upload(baseProps);
@@ -417,6 +466,7 @@ describe('Trace', () => {
       expect(trace.toPrimitives()).toMatchObject({
         withdrawnAt: null,
         withdrawalMotive: null,
+        resolutionDpi: null,
       });
     });
 
