@@ -64,6 +64,13 @@ const REVELATION_TECHNIQUE_LABELS: Record<string, string> = {
   NINHYDRIN: 'Ninhydrine',
 };
 
+export const REVELATION_TECHNIQUE_SEQUENCE = [
+  'OPTICAL_PROCESS',
+  'FINGERPRINT_POWDER',
+  'DFO',
+  'NINHYDRIN',
+];
+
 const FEMININE_POSITIONS = new Set(['RIGHT_PALM', 'LEFT_PALM']);
 
 const WITHDRAWAL_MOTIVE_LABELS: Record<string, string> = {
@@ -113,10 +120,6 @@ export function revelationTechniqueLabel(
     : null;
 }
 
-/**
- * « identifiée à l'index droit », « à la paume droite », « au pouce droit » :
- * le rapport écrit la position dans une phrase, pas dans une case.
- */
 export function positionWithArticle(position: string | null): string | null {
   const label = positionLabel(position);
   if (label === null) {

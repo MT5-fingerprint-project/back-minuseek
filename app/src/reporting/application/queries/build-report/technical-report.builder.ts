@@ -21,6 +21,7 @@ import {
 import {
   civilityLabel,
   positionWithArticle,
+  REVELATION_TECHNIQUE_SEQUENCE,
   revelationTechniqueLabel,
   subjectTypeLabel,
   traceOriginLabel,
@@ -82,6 +83,15 @@ function buildExaminedTraces(
     revelationTechnique:
       revelationTechniqueLabel(group.revelationTechnique) ?? NOT_STATED,
   }));
+}
+
+/** Les mêmes traces que la section 3, retirées comprises : une technique qui
+ * paraît dans son tableau doit être décrite au-dessus. */
+function buildRevelationTechniques(traces: PieceData[]): string[] {
+  const employed = new Set(traces.map((trace) => trace.revelationTechnique));
+  return REVELATION_TECHNIQUE_SEQUENCE.filter((technique) =>
+    employed.has(technique),
+  );
 }
 
 function buildExploitability(
@@ -231,6 +241,7 @@ export function buildTechnicalReport(
       generatedByDisplayName: input.generatedByDisplayName,
     },
     caseHeader: buildCaseHeader(data),
+    revelationTechniques: buildRevelationTechniques(orderedTraces),
     examinedTraces: buildExaminedTraces(caseNumber, orderedTraces),
     exploitability: buildExploitability(caseNumber, orderedTraces, verdicts),
     referenceSubjects: buildReferenceSubjects(data),

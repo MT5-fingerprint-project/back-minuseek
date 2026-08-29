@@ -36,6 +36,7 @@ function model(
         attention: 'Brigadier-Chef de Police MARCHAND Claire',
       },
     },
+    revelationTechniques: ['FINGERPRINT_POWDER'],
     examinedTraces: [
       {
         label: '3455-T1 et T2',
@@ -184,6 +185,46 @@ describe('renderTechnicalReportHtml — ce qui ne doit jamais sortir', () => {
 
     expect(html).not.toContain('<script>alert(1)</script>');
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+});
+
+describe('renderTechnicalReportHtml — méthodes et techniques employées', () => {
+  it('ne décrit pas une technique qui n’a pas servi', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html).toContain('Révélation par poudre dactyloscopique');
+    expect(html.toLowerCase()).not.toContain('ninhydrine');
+    expect(html).not.toContain('DFO');
+  });
+
+  it('décrit le DFO avant la ninhydrine, comme il s’emploie', () => {
+    const html = renderTechnicalReportHtml(
+      model({ revelationTechniques: ['DFO', 'NINHYDRIN'] }),
+    );
+
+    expect(html.indexOf('Révélation au DFO')).toBeLessThan(
+      html.indexOf('Révélation à la ninhydrine'),
+    );
+  });
+
+  it('le dit quand aucune technique n’est enregistrée', () => {
+    const html = renderTechnicalReportHtml(model({ revelationTechniques: [] }));
+
+    expect(html).toContain(
+      "Aucune technique de révélation n'est enregistrée pour les traces de ce dossier.",
+    );
+    expect(html).not.toContain(
+      'Les techniques décrites ci-dessous sont celles effectivement employées',
+    );
+  });
+
+  it('passe une technique qu’il ne sait pas décrire plutôt que d’imprimer un trou', () => {
+    const html = renderTechnicalReportHtml(
+      model({ revelationTechniques: ['FINGERPRINT_POWDER', 'CYANOACRYLATE'] }),
+    );
+
+    expect(html).toContain('Révélation par poudre dactyloscopique');
+    expect(html).not.toContain('undefined');
   });
 });
 

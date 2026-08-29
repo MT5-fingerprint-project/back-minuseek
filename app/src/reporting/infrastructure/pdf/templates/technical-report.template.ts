@@ -8,6 +8,7 @@ import { frenchCardinal } from '../french-numbers';
 import { formatDate, formatLongDay } from '../../../application/report-dates';
 import { escapeHtml } from '../html';
 import { REPORT_STYLES } from './report-styles';
+import { REVELATION_TECHNIQUE_TEXTS } from './revelation-techniques';
 
 const FOOTER =
   'Toute reproduction partielle du rapport et des annexes est interdite.';
@@ -190,9 +191,25 @@ function objectSection(model: TechnicalReportViewModel): string {
     }`;
 }
 
-function methodsSection(): string {
+function methodsSection(model: TechnicalReportViewModel): string {
+  const described = model.revelationTechniques
+    .map((technique) => REVELATION_TECHNIQUE_TEXTS[technique])
+    .filter((text) => text !== undefined);
+
   return `
-    <h2>2. Méthodes et techniques employées</h2>`;
+    <h2>2. Méthodes et techniques employées</h2>
+    ${
+      described.length === 0
+        ? `<p class="empty">Aucune technique de révélation n'est enregistrée pour les traces de ce dossier.</p>`
+        : `<p>Les techniques décrites ci-dessous sont celles effectivement employées sur les traces papillaires examinées dans le présent dossier.</p>
+        ${described
+          .map(
+            (text) => `
+        <h3>${text.title}</h3>
+        <p>${text.paragraph}</p>`,
+          )
+          .join('')}`
+    }`;
 }
 
 function examinedTracesSection(model: TechnicalReportViewModel): string {
@@ -501,7 +518,7 @@ export function renderTechnicalReportHtml(
     ${summarySection()}
 
     ${objectSection(model)}
-    ${methodsSection()}
+    ${methodsSection(model)}
     ${examinedTracesSection(model)}
     ${exploitabilitySection(model)}
     ${comparisonsSection(model)}

@@ -514,6 +514,80 @@ describe('buildTechnicalReport — en-tête et personnes', () => {
   });
 });
 
+describe('buildTechnicalReport — méthodes de révélation', () => {
+  it('ne retient qu’une fois chaque technique employée', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({ id: 't1', number: 1 }),
+          trace({ id: 't2', number: 2 }),
+          trace({ id: 't3', number: 3 }),
+          trace({ id: 't4', number: 4, revelationTechnique: 'DFO' }),
+          trace({ id: 't5', number: 5, revelationTechnique: 'DFO' }),
+        ],
+      }),
+    );
+
+    expect(model.revelationTechniques).toEqual(['FINGERPRINT_POWDER', 'DFO']);
+  });
+
+  it('les sort dans l’ordre de la séquence de traitement, pas dans celui des traces', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({ id: 't1', number: 1, revelationTechnique: 'NINHYDRIN' }),
+          trace({ id: 't2', number: 2, revelationTechnique: 'DFO' }),
+          trace({
+            id: 't3',
+            number: 3,
+            revelationTechnique: 'FINGERPRINT_POWDER',
+          }),
+          trace({
+            id: 't4',
+            number: 4,
+            revelationTechnique: 'OPTICAL_PROCESS',
+          }),
+        ],
+      }),
+    );
+
+    expect(model.revelationTechniques).toEqual([
+      'OPTICAL_PROCESS',
+      'FINGERPRINT_POWDER',
+      'DFO',
+      'NINHYDRIN',
+    ]);
+  });
+
+  it('décrit aussi la technique d’une trace retirée, que la section 3 imprime encore', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            revelationTechnique: 'NINHYDRIN',
+            withdrawnAt: new Date('2026-08-12T10:00:00.000Z'),
+            withdrawalMotive: 'MISFILED',
+          }),
+        ],
+      }),
+    );
+
+    expect(model.revelationTechniques).toEqual(['NINHYDRIN']);
+  });
+
+  it('ne retient rien quand aucune trace ne porte de technique', () => {
+    const model = build(
+      caseData({
+        traces: [trace({ id: 't1', number: 1, revelationTechnique: null })],
+      }),
+    );
+
+    expect(model.revelationTechniques).toEqual([]);
+  });
+});
+
 describe('buildTechnicalReport — traces examinées', () => {
   it('regroupe les traces consécutives de même description', () => {
     const model = build(
