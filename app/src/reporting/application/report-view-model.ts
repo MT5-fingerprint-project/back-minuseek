@@ -165,6 +165,7 @@ export interface TechnicalReportViewModel {
   kind: 'TECHNICAL';
   header: ReportHeaderViewModel;
   caseHeader: ReportCaseHeaderViewModel;
+  revelationTechniques: string[];
   examinedTraces: ReportExaminedTraceViewModel[];
   exploitability: ReportExploitabilityViewModel[];
   referenceSubjects: ReportReferenceSubjectViewModel[];
