@@ -157,6 +157,44 @@ export interface ReportPreviousDocumentViewModel {
   issuedAt: Date;
 }
 
+export interface ReportTreatmentViewModel {
+  sentence: string;
+  appliedAt: Date;
+  actorDisplayName: string;
+  removedAt: Date | null;
+  hiddenAtEdition: boolean;
+}
+
+export interface ReportPieceIntegrityViewModel {
+  designation: string;
+  cote: string | null;
+  recordedSha256: string | null;
+  sealedAt: Date | null;
+  recordEntryNumber: number | null;
+  currentRowSha256: string | null;
+  divergesFromRecord: boolean;
+  servedFileIsDerived: boolean;
+  observedSha256: string | null;
+  observedMatchesRecord: boolean | null;
+  treatments: ReportTreatmentViewModel[];
+  lastActEntryNumber: number | null;
+  coveringAnchor: {
+    anchoredAt: Date;
+    authority: string;
+    entryNumber: number;
+  } | null;
+}
+
+export interface ReportIntegrityViewModel {
+  traces: ReportPieceIntegrityViewModel[];
+  referencePrints: ReportPieceIntegrityViewModel[];
+  lastAnchor: { anchoredAt: Date; entryNumber: number } | null;
+  recordVerifiedAtEdition: boolean;
+  firstBrokenEntryNumber: number | null;
+  anchorsFailed: number;
+  verificationUrl: string;
+}
+
 export interface ReportCountsViewModel {
   total: number;
   exploitable: number;
@@ -217,6 +255,7 @@ export interface TechnicalReportViewModel {
   notExaminedCotes: string[];
   imageTreatments: ReportImageTreatmentViewModel[];
   independentTimestampAt: Date | null;
+  integrity: ReportIntegrityViewModel;
   counts: ReportCountsViewModel;
   traces: ReportPieceViewModel[];
   referencePrints: ReportPieceViewModel[];

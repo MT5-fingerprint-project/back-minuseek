@@ -7,6 +7,7 @@ import {
 import { PreviousDocumentData } from '../../ports/report-numbering.reader';
 import { ReportSignerData } from '../../report-signer';
 import { ServiceLetterheadData } from '../../ports/service-letterhead.reader';
+import { ChainAttestation } from '../../ports/chain-attestation.port';
 import {
   AnchorData,
   AuditEventData,
@@ -35,6 +36,7 @@ import {
 import { buildCaseHeader } from './case-header';
 import { buildLetterhead, signatureCityOf } from './letterhead';
 import { treatmentsOf } from './image-treatments';
+import { buildIntegritySection } from './integrity-section.builder';
 import { buildJournalAnnex } from './journal-annex.builder';
 import { pieceDesignations } from './piece-designations';
 import {
@@ -68,6 +70,8 @@ export interface TechnicalReportInput {
   generatedAt: Date;
   generatedByDisplayName: string;
   journalDetail: JournalDetail;
+  attestation: ChainAttestation;
+  verificationUrl: string;
   images: Map<string, ReportImageViewModel | null>;
 }
 
@@ -244,6 +248,7 @@ export function buildTechnicalReport(
   );
   const workingTraces = orderedTraces.filter((trace) => !isWithdrawn(trace));
   const verdicts = verdictsByTraceId(data);
+  const designations = pieceDesignations(data);
   const exploitableTraces = workingTraces.filter(
     (trace) => trace.status === 'EXPLOITABLE',
   );
@@ -298,9 +303,18 @@ export function buildTechnicalReport(
       (print) => pieceViewModels.get(print.id) as ReportPieceViewModel,
     ),
     identityDemonstrations: buildDemonstrations(data, pieceViewModels),
+    integrity: buildIntegritySection({
+      traces: data.traces,
+      referencePrints: data.referencePrints,
+      designations: designations,
+      events: input.chainEvents,
+      anchors: input.anchors,
+      attestation: input.attestation,
+      verificationUrl: input.verificationUrl,
+    }),
     journal: buildJournalAnnex(
       input.chainEvents,
-      pieceDesignations(data),
+      designations,
       input.journalDetail,
     ),
   };

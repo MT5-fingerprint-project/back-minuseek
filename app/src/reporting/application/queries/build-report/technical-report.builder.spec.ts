@@ -9,11 +9,20 @@ import type {
 } from '../../ports/traceability-data.reader';
 import { CaseContributorData } from '../../ports/case-contributors.reader';
 import { PreviousDocumentData } from '../../ports/report-numbering.reader';
+import type { ChainAttestation } from '../../ports/chain-attestation.port';
 import type {
   JournalDetail,
   ReportImageViewModel,
 } from '../../report-view-model';
 import { ServiceLetterheadData } from '../../ports/service-letterhead.reader';
+
+const VERIFIED: ChainAttestation = {
+  ok: true,
+  eventsChecked: 12,
+  firstBrokenSeq: null,
+  anchorsVerified: 1,
+  anchorsFailed: 0,
+};
 import { buildTechnicalReport } from './technical-report.builder';
 
 const OPENED_AT = new Date('2026-08-01T09:00:00.000Z');
@@ -133,6 +142,7 @@ function build(
     previousDocument?: PreviousDocumentData | null;
     letterhead?: ServiceLetterheadData;
     journalDetail?: JournalDetail;
+    attestation?: ChainAttestation;
   } = {},
 ) {
   return buildTechnicalReport({
@@ -149,6 +159,8 @@ function build(
     generatedAt: GENERATED_AT,
     generatedByDisplayName: 'Alex Martin',
     journalDetail: extras.journalDetail ?? 'SUMMARY',
+    attestation: extras.attestation ?? VERIFIED,
+    verificationUrl: 'https://minuseek.fr/srpts-paris/verifier',
     images: new Map<string, ReportImageViewModel | null>(),
   });
 }
