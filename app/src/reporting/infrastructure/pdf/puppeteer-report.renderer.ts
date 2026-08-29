@@ -2,7 +2,10 @@ import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import puppeteer, { type Browser } from 'puppeteer';
 import type { ReportRendererPort } from '../../application/ports/report-renderer.port';
 import { ReportViewModel } from '../../application/report-view-model';
-import { renderTechnicalReportHtml } from './templates/technical-report.template';
+import {
+  renderTechnicalReportHtml,
+  reportFooterText,
+} from './templates/technical-report.template';
 import { renderTraceabilityReportHtml } from './templates/traceability-report.template';
 
 function toHtml(model: ReportViewModel): string {
@@ -11,12 +14,14 @@ function toHtml(model: ReportViewModel): string {
     : renderTraceabilityReportHtml(model);
 }
 
-const FOOTER_TEMPLATE = `
+function footerTemplate(reportNumber: string): string {
+  return `
   <div style="width:100%; margin:0 16mm; padding-top:4px; border-top:1px solid #000;
               font-family:'Times New Roman', Georgia, serif; font-size:8pt;
               font-style:italic; text-align:center; color:#111;">
-    Toute reproduction partielle du rapport et des annexes est interdite.
+    ${reportFooterText(reportNumber)}
   </div>`;
+}
 
 @Injectable()
 export class PuppeteerReportRenderer
@@ -35,7 +40,7 @@ export class PuppeteerReportRenderer
         preferCSSPageSize: true,
         displayHeaderFooter: true,
         headerTemplate: '<div></div>',
-        footerTemplate: FOOTER_TEMPLATE,
+        footerTemplate: footerTemplate(model.header.reportNumber),
       });
       return Buffer.from(pdf);
     } finally {

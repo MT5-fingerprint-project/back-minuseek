@@ -8,6 +8,8 @@ import type {
   AuditEventData,
 } from '../../ports/traceability-data.reader';
 import type { ReportImageViewModel } from '../../report-view-model';
+import { CaseContributorData } from '../../ports/case-contributors.reader';
+import { PreviousDocumentData } from '../../ports/report-numbering.reader';
 import { buildTechnicalReport } from './technical-report.builder';
 
 const OPENED_AT = new Date('2026-08-01T09:00:00.000Z');
@@ -101,24 +103,117 @@ function caseData(overrides: Partial<CaseReportData> = {}): CaseReportData {
   };
 }
 
+const SIGNER = {
+  id: 'user-aguilar',
+  grade: 'Technicien en Chef de Police Technique et Scientifique',
+  firstName: 'Sébastien',
+  lastName: 'Aguilar',
+  serviceNumber: '118 402',
+};
+
 function build(
   data: CaseReportData,
   extras: {
     chainEvents?: AuditEventData[];
     anchors?: AnchorData[];
+    contributors?: CaseContributorData[];
+    previousDocument?: PreviousDocumentData | null;
   } = {},
 ) {
   return buildTechnicalReport({
     data,
     chainEvents: extras.chainEvents ?? [],
     anchors: extras.anchors ?? [],
+    contributors: extras.contributors ?? [],
+    signer: SIGNER,
+    previousDocument: extras.previousDocument ?? null,
     reportId: 'report-1',
+    reportNumber: '3455-R1',
     chainHead: null,
     generatedAt: GENERATED_AT,
     generatedByDisplayName: 'Alex Martin',
     images: new Map<string, ReportImageViewModel | null>(),
   });
 }
+
+describe('buildTechnicalReport — signataire, concours et filiation', () => {
+  it('porte le numéro imprimé et le signataire choisi', () => {
+    const model = build(caseData());
+
+    expect(model.header.reportNumber).toBe('3455-R1');
+    expect(model.signer).toEqual({
+      grade: 'Technicien en Chef de Police Technique et Scientifique',
+      firstName: 'Sébastien',
+      lastName: 'Aguilar',
+      serviceNumber: '118 402',
+    });
+  });
+
+  it('ne nomme personne quand le seul auteur du dossier est le signataire', () => {
+    const model = build(caseData(), {
+      contributors: [
+        {
+          userId: 'user-aguilar',
+          grade: 'Technicien en Chef de Police Technique et Scientifique',
+          displayName: 'AGUILAR Sébastien',
+        },
+      ],
+    });
+
+    expect(model.contributors).toEqual([]);
+  });
+
+  it('nomme le signataire dès qu’un collègue a agi avec lui', () => {
+    const model = build(caseData(), {
+      contributors: [
+        {
+          userId: 'user-aguilar',
+          grade: 'Technicien en Chef de Police Technique et Scientifique',
+          displayName: 'AGUILAR Sébastien',
+        },
+        {
+          userId: 'user-guichard',
+          grade: 'Agent Spécialisé de Police Technique et Scientifique',
+          displayName: 'GUICHARD Lucile',
+        },
+      ],
+    });
+
+    expect(model.contributors.map((one) => one.displayName)).toEqual([
+      'AGUILAR Sébastien',
+      'GUICHARD Lucile',
+    ]);
+  });
+
+  it('nomme un auteur unique qui n’est pas le signataire', () => {
+    const model = build(caseData(), {
+      contributors: [
+        {
+          userId: 'user-guichard',
+          grade: 'Agent Spécialisé de Police Technique et Scientifique',
+          displayName: 'GUICHARD Lucile',
+        },
+      ],
+    });
+
+    expect(model.contributors).toHaveLength(1);
+  });
+
+  it('n’annonce aucun document antérieur sur un premier rapport', () => {
+    expect(build(caseData()).previousDocument).toBeNull();
+  });
+
+  it('reprend le document antérieur tel que la numérotation le donne', () => {
+    const previous = {
+      number: '3455-R1',
+      issuedAt: new Date('2026-03-18T10:00:00.000Z'),
+    };
+
+    expect(
+      build(caseData(), { previousDocument: previous }).previousDocument,
+    ).toEqual(previous);
+  });
+});
 
 describe('buildTechnicalReport — cotation', () => {
   it('imprime « / » pour une trace sans cote', () => {

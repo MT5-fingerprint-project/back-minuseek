@@ -27,3 +27,4 @@ On consigne ici les **décisions structurantes** du repo : choix techno, trade-o
 - [ADR-0014](0014-compte-de-service-et-utilisateur-courant.md) — Le compte du service naît avec le compte d'identité, et chaque requête porte son auteur
 - [ADR-0015](0015-etat-de-compte-projete-depuis-keycloak.md) — L'état d'un compte de service est décidé par Keycloak et projeté chez nous
 - [ADR-0016](0016-reglages-de-service-dans-la-base-du-tenant.md) — Les réglages d'un service vivent dans sa base, sur une ligne unique, et leur écriture est un acte
+- [ADR-0017](0017-numerotation-et-signataire-des-rapports.md) — Un rapport porte un numéro pris sur un compteur unique par dossier, et le nom de celui qui le signe

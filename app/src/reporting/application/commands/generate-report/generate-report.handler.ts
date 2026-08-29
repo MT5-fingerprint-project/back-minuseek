@@ -14,6 +14,10 @@ import {
   type ReportRepository,
 } from '../../../domain/report/repository/report.repository';
 import {
+  CASE_CONTRIBUTORS_READER,
+  type CaseContributorsReader,
+} from '../../ports/case-contributors.reader';
+import {
   CASE_REPORT_DATA_READER,
   type CaseReportData,
   type CaseReportDataReader,
@@ -27,6 +31,12 @@ import {
   CHAIN_HEAD_READER,
   type ChainHeadReader,
 } from '../../ports/chain-head.reader';
+import {
+  REPORT_NUMBERING_READER,
+  type PreviousDocumentData,
+  type ReportNumberingReader,
+} from '../../ports/report-numbering.reader';
+import { ReportSignerData } from '../../report-signer';
 import {
   REPORT_IMAGE_EMBEDDER,
   type ReportImageEmbedderPort,
@@ -66,6 +76,10 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     private readonly chainAttestation: ChainAttestationPort,
     @Inject(CHAIN_HEAD_READER)
     private readonly chainHead: ChainHeadReader,
+    @Inject(REPORT_NUMBERING_READER)
+    private readonly numbering: ReportNumberingReader,
+    @Inject(CASE_CONTRIBUTORS_READER)
+    private readonly contributors: CaseContributorsReader,
     @Inject(REPORT_IMAGE_EMBEDDER)
     private readonly imageEmbedder: ReportImageEmbedderPort,
     @Inject(REPORT_RENDERER)
@@ -84,11 +98,19 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
       throw new CaseNotFoundForReportError(command.caseId);
     }
 
+    // Le numéro est attribué avant le rendu : le document l'imprime.
+    const numbering = await this.numbering.read(command.caseId, command.type);
+    const sequence = numbering.lastSequence + 1;
+    const number = `${data.investigationCase.caseNumber}-R${sequence}`;
+
     const reportId = this.idGenerator.generate();
     const generatedAt = new Date();
     const chainHead = await this.chainHead.read();
     const model = await this.buildModel(command, data, {
       reportId,
+      reportNumber: number,
+      signer: command.signer,
+      previousDocument: numbering.previousOfType,
       chainHead,
       generatedAt,
     });
@@ -106,6 +128,9 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
           id: reportId,
           caseId: command.caseId,
           type: command.type,
+          sequence,
+          number,
+          signerUserId: command.signer.id,
           storagePath,
           sha256,
           generatedBy: command.actor.toPrimitives(),
@@ -134,12 +159,15 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     data: CaseReportData,
     seal: {
       reportId: string;
+      reportNumber: string;
+      signer: ReportSignerData;
+      previousDocument: PreviousDocumentData | null;
       chainHead: { seq: number; hash: string } | null;
       generatedAt: Date;
     },
   ): Promise<ReportViewModel> {
     if (command.type === 'TECHNICAL') {
-      const [images, chainEvents, anchors] = await Promise.all([
+      const [images, chainEvents, anchors, contributors] = await Promise.all([
         this.imagesOf(
           [...data.traces, ...data.referencePrints].filter(
             (piece) =>
@@ -148,12 +176,17 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
         ),
         this.traceabilityData.readCaseEvents(command.caseId),
         this.traceabilityData.readAnchors(),
+        this.contributors.read(command.caseId),
       ]);
       return buildTechnicalReport({
         data,
         chainEvents,
         anchors,
+        contributors,
+        signer: seal.signer,
+        previousDocument: seal.previousDocument,
         reportId: seal.reportId,
+        reportNumber: seal.reportNumber,
         chainHead: seal.chainHead,
         generatedAt: seal.generatedAt,
         generatedByDisplayName: command.actor.toPrimitives().displayName,
@@ -172,6 +205,7 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
       caseStatus: data.investigationCase.status,
       openedAt: data.investigationCase.createdAt,
       reportId: seal.reportId,
+      reportNumber: seal.reportNumber,
       chainHead: seal.chainHead,
       generatedAt: seal.generatedAt,
       generatedByDisplayName: command.actor.toPrimitives().displayName,

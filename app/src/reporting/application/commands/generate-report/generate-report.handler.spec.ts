@@ -23,6 +23,17 @@ import type {
   TraceabilityData,
   TraceabilityDataReader,
 } from '../../ports/traceability-data.reader';
+import type {
+  CaseContributorData,
+  CaseContributorsReader,
+} from '../../ports/case-contributors.reader';
+import type {
+  ReportNumberingData,
+  ReportNumberingReader,
+} from '../../ports/report-numbering.reader';
+import type { ReportSignerData } from '../../report-signer';
+import { ReportSequenceAlreadyTakenError } from '../../../domain/report/errors/report-sequence-already-taken.error';
+import { ReportTypeName } from '../../../domain/report/entity/report';
 import type { ReportImageEmbedderPort } from '../../ports/report-image-embedder.port';
 import type { ReportImageViewModel } from '../../report-view-model';
 import { GenerateReportCommand } from './generate-report.command';
@@ -34,6 +45,14 @@ const EXPERT = AuditActor.user({
   displayName: 'Alex Martin',
 });
 const CASE_ID = 'case-1';
+const SIGNER_ID = '3f2b1c40-0000-4000-8000-000000000001';
+const SIGNER: ReportSignerData = {
+  id: SIGNER_ID,
+  grade: 'Technicien en Chef de Police Technique et Scientifique',
+  firstName: 'Sébastien',
+  lastName: 'Aguilar',
+  serviceNumber: '118 402',
+};
 const TRACE_PATH = 'media/investigation-case/case-1/traces/trace-1.png';
 const REF_PATH = 'media/investigation-case/case-1/reference-prints/ref-1.jpg';
 
@@ -172,6 +191,43 @@ class FakeChainHeadReader implements ChainHeadReader {
   }
 }
 
+/**
+ * Le double numérote comme le lecteur Prisma : la plus grande séquence du
+ * dossier tous types confondus, et le dernier document du même type.
+ */
+class FakeReportNumberingReader implements ReportNumberingReader {
+  constructor(private readonly repository: InMemoryReportRepository) {}
+
+  read(caseId: string, type: ReportTypeName): Promise<ReportNumberingData> {
+    const ofCase = this.repository.store
+      .map((report) => report.toPrimitives())
+      .filter((report) => report.caseId === caseId);
+    const previous = ofCase
+      .filter((report) => report.type === type)
+      .sort((left, right) => right.sequence - left.sequence)[0];
+
+    return Promise.resolve({
+      lastSequence: ofCase.reduce(
+        (highest, report) => Math.max(highest, report.sequence),
+        0,
+      ),
+      previousOfType: previous
+        ? { number: previous.number, issuedAt: previous.createdAt }
+        : null,
+    });
+  }
+}
+
+class FakeCaseContributorsReader implements CaseContributorsReader {
+  contributors: CaseContributorData[] = [];
+  readFor: string[] = [];
+
+  read(caseId: string): Promise<CaseContributorData[]> {
+    this.readFor.push(caseId);
+    return Promise.resolve(this.contributors);
+  }
+}
+
 describe('GenerateReportHandler', () => {
   let handler: GenerateReportHandler;
   let caseData: FakeCaseDataReader;
@@ -181,6 +237,7 @@ describe('GenerateReportHandler', () => {
   let appender: InMemoryAuditTrailAppender;
   let traceability: FakeTraceabilityReader;
   let imageEmbedder: FakeImageEmbedder;
+  let contributors: FakeCaseContributorsReader;
 
   beforeEach(() => {
     caseData = new FakeCaseDataReader();
@@ -190,33 +247,43 @@ describe('GenerateReportHandler', () => {
     storage = new InMemoryReportStorageAdapter();
     appender = new InMemoryAuditTrailAppender();
     repository = new InMemoryReportRepository(appender);
+    contributors = new FakeCaseContributorsReader();
+    let issued = 0;
     handler = new GenerateReportHandler(
       caseData,
       traceability,
       new FakeAttestation(),
       new FakeChainHeadReader(),
+      new FakeReportNumberingReader(repository),
+      contributors,
       imageEmbedder,
       renderer,
       storage,
       repository,
-      { generate: () => 'report-1' },
+      { generate: () => `report-${++issued}` },
     );
   });
+
+  function generate(type: ReportTypeName = 'TECHNICAL') {
+    return handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, type, SIGNER),
+    );
+  }
 
   it('refuse de rapporter un dossier qui n existe pas', async () => {
     caseData.data = null;
 
     await expect(
-      handler.execute(new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL')),
+      handler.execute(
+        new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER),
+      ),
     ).rejects.toThrow(CASE_ID);
     expect(storage.files.size).toBe(0);
     expect(appender.events).toHaveLength(0);
   });
 
   it('scelle le rapport technique : stockage, persistance et maillon de chaîne', async () => {
-    const generated = await handler.execute(
-      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL'),
-    );
+    const generated = await generate();
 
     const pdf = Buffer.from('pdf:TECHNICAL');
     const expectedSha256 = createHash('sha256').update(pdf).digest('hex');
@@ -253,9 +320,7 @@ describe('GenerateReportHandler', () => {
       height: 1200,
     });
 
-    await handler.execute(
-      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL'),
-    );
+    await generate();
 
     const model = renderer.rendered[0];
     if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
@@ -268,9 +333,7 @@ describe('GenerateReportHandler', () => {
   });
 
   it('lit les maillons du dossier pour le journal du rapport technique', async () => {
-    await handler.execute(
-      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL'),
-    );
+    await generate();
 
     expect(traceability.caseEventsReadFor).toEqual([CASE_ID]);
     const model = renderer.rendered[0];
@@ -279,9 +342,7 @@ describe('GenerateReportHandler', () => {
   });
 
   it('rattache le document au maillon de chaîne du moment', async () => {
-    await handler.execute(
-      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL'),
-    );
+    await generate();
 
     expect(renderer.rendered[0].header).toMatchObject({
       reportId: 'report-1',
@@ -292,14 +353,111 @@ describe('GenerateReportHandler', () => {
   });
 
   it("produit l'annexe avec l'attestation du vérificateur et l'épine de hashes", async () => {
-    await handler.execute(
-      new GenerateReportCommand(EXPERT, CASE_ID, 'TRACEABILITY'),
-    );
+    await generate('TRACEABILITY');
 
     const model = renderer.rendered[0];
     if (model.kind !== 'TRACEABILITY') throw new Error('modèle inattendu');
     expect(model.attestation).toEqual(ATTESTATION);
     expect(model.hashSpine).toEqual([{ seq: 1, hash: 'b'.repeat(64) }]);
     expect(model.header.caseNumber).toBe('AFF-001');
+  });
+  it('numérote le premier rapport du dossier, puis le suivant', async () => {
+    await generate();
+    await generate();
+
+    expect(
+      repository.store.map((report) => report.toPrimitives().number),
+    ).toEqual(['AFF-001-R1', 'AFF-001-R2']);
+  });
+
+  it('imprime le numéro dans le modèle passé au rendu', async () => {
+    await generate();
+
+    expect(renderer.rendered[0].header.reportNumber).toBe('AFF-001-R1');
+  });
+
+  it('scelle le signataire choisi sur la ligne du rapport', async () => {
+    await generate();
+
+    expect(repository.store[0].toPrimitives()).toMatchObject({
+      sequence: 1,
+      number: 'AFF-001-R1',
+      signerUserId: SIGNER_ID,
+    });
+  });
+
+  it('n’annonce aucun document antérieur au premier rapport du dossier', async () => {
+    await generate();
+
+    const model = renderer.rendered[0];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.previousDocument).toBeNull();
+  });
+
+  it('fait succéder le second rapport au premier', async () => {
+    await generate();
+    await generate();
+
+    const model = renderer.rendered[1];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.previousDocument).toEqual({
+      number: 'AFF-001-R1',
+      issuedAt: repository.store[0].toPrimitives().createdAt,
+    });
+  });
+
+  it('une annexe éditée entre deux rapports consomme un numéro sans devenir leur antérieur', async () => {
+    await generate();
+    await generate('TRACEABILITY');
+    await generate();
+
+    expect(
+      repository.store.map((report) => report.toPrimitives().number),
+    ).toEqual(['AFF-001-R1', 'AFF-001-R2', 'AFF-001-R3']);
+    const model = renderer.rendered[2];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.previousDocument?.number).toBe('AFF-001-R1');
+  });
+
+  it('lit les auteurs du dossier pour la phrase « ont concouru »', async () => {
+    contributors.contributors = [
+      {
+        userId: 'user-guichard',
+        grade: 'Agent Spécialisé de Police Technique et Scientifique',
+        displayName: 'GUICHARD Lucile',
+      },
+    ];
+
+    await generate();
+
+    expect(contributors.readFor).toEqual([CASE_ID]);
+    const model = renderer.rendered[0];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.contributors).toHaveLength(1);
+  });
+  it('refuse deux rapports sur le même numéro : c’est la contrainte d’unicité qui tranche', async () => {
+    // Deux générations concurrentes lisent la même plus grande séquence : la
+    // seconde vise un numéro déjà pris et doit être renvoyée à l’appelant.
+    const stale: ReportNumberingReader = {
+      read: () => Promise.resolve({ lastSequence: 0, previousOfType: null }),
+    };
+    handler = new GenerateReportHandler(
+      caseData,
+      traceability,
+      new FakeAttestation(),
+      new FakeChainHeadReader(),
+      stale,
+      contributors,
+      imageEmbedder,
+      renderer,
+      storage,
+      repository,
+      { generate: () => `report-${repository.store.length + 1}` },
+    );
+
+    await generate();
+
+    await expect(generate()).rejects.toThrow(ReportSequenceAlreadyTakenError);
+    expect(repository.store).toHaveLength(1);
   });
 });

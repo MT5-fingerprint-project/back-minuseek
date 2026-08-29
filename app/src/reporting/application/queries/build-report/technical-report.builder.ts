@@ -1,13 +1,17 @@
+import { CaseContributorData } from '../../ports/case-contributors.reader';
 import {
   CaseReportData,
   PieceData,
   SubjectData,
 } from '../../ports/case-report-data.reader';
+import { PreviousDocumentData } from '../../ports/report-numbering.reader';
+import { ReportSignerData } from '../../report-signer';
 import {
   AnchorData,
   AuditEventData,
 } from '../../ports/traceability-data.reader';
 import {
+  ReportContributorViewModel,
   ReportCountsViewModel,
   ReportExaminedTraceViewModel,
   ReportExploitabilityViewModel,
@@ -51,6 +55,10 @@ export interface TechnicalReportInput {
   chainEvents: AuditEventData[];
   anchors: AnchorData[];
   reportId: string;
+  reportNumber: string;
+  signer: ReportSignerData;
+  contributors: CaseContributorData[];
+  previousDocument: PreviousDocumentData | null;
   chainHead: { seq: number; hash: string } | null;
   generatedAt: Date;
   generatedByDisplayName: string;
@@ -85,8 +93,6 @@ function buildExaminedTraces(
   }));
 }
 
-/** Les mêmes traces que la section 3, retirées comprises : une technique qui
- * paraît dans son tableau doit être décrite au-dessus. */
 function buildRevelationTechniques(traces: PieceData[]): string[] {
   const employed = new Set(traces.map((trace) => trace.revelationTechnique));
   return REVELATION_TECHNIQUE_SEQUENCE.filter((technique) =>
@@ -205,6 +211,19 @@ function lastAnchorAt(anchors: AnchorData[]): Date | null {
   );
 }
 
+function buildContributors(
+  contributors: CaseContributorData[],
+  signerUserId: string,
+): ReportContributorViewModel[] {
+  if (contributors.length === 1 && contributors[0].userId === signerUserId) {
+    return [];
+  }
+  return contributors.map((contributor) => ({
+    grade: contributor.grade,
+    displayName: contributor.displayName,
+  }));
+}
+
 export function buildTechnicalReport(
   input: TechnicalReportInput,
 ): TechnicalReportViewModel {
@@ -214,10 +233,6 @@ export function buildTechnicalReport(
   const pieceViewModels = new Map(
     allPieces.map((piece) => [piece.id, toPieceViewModel(piece, images)]),
   );
-
-  // Les sections 3 et 4 listent toutes les traces entrées au dossier, retirées
-  // comprises (règle posée par le ticket du retrait) ; les comptes, la section 6
-  // et les annexes ne parlent que du dossier de travail.
   const orderedTraces = [...data.traces].sort(
     (left, right) => (left.number ?? 0) - (right.number ?? 0),
   );
@@ -231,6 +246,7 @@ export function buildTechnicalReport(
     kind: 'TECHNICAL',
     header: {
       reportId: input.reportId,
+      reportNumber: input.reportNumber,
       chainHeadSeq: input.chainHead?.seq ?? null,
       chainHeadHash: input.chainHead?.hash ?? null,
       caseNumber,
@@ -242,6 +258,14 @@ export function buildTechnicalReport(
     },
     caseHeader: buildCaseHeader(data),
     revelationTechniques: buildRevelationTechniques(orderedTraces),
+    previousDocument: input.previousDocument,
+    signer: {
+      grade: input.signer.grade,
+      firstName: input.signer.firstName,
+      lastName: input.signer.lastName,
+      serviceNumber: input.signer.serviceNumber,
+    },
+    contributors: buildContributors(input.contributors, input.signer.id),
     examinedTraces: buildExaminedTraces(caseNumber, orderedTraces),
     exploitability: buildExploitability(caseNumber, orderedTraces, verdicts),
     referenceSubjects: buildReferenceSubjects(data),

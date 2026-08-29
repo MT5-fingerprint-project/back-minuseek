@@ -5,6 +5,7 @@ const MODEL: TraceabilityReportViewModel = {
   kind: 'TRACEABILITY',
   header: {
     reportId: 'report-2',
+    reportNumber: 'AFF-001-R2',
     chainHeadSeq: 7,
     chainHeadHash: 'c'.repeat(64),
     caseNumber: 'AFF-001',

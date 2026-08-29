@@ -8,6 +8,7 @@ export interface TraceabilityReportInput {
   caseStatus: string;
   openedAt: Date;
   reportId: string;
+  reportNumber: string;
   chainHead: { seq: number; hash: string } | null;
   generatedAt: Date;
   generatedByDisplayName: string;
@@ -22,6 +23,7 @@ export function buildTraceabilityReport(
     kind: 'TRACEABILITY',
     header: {
       reportId: input.reportId,
+      reportNumber: input.reportNumber,
       chainHeadSeq: input.chainHead?.seq ?? null,
       chainHeadHash: input.chainHead?.hash ?? null,
       caseNumber: input.caseNumber,

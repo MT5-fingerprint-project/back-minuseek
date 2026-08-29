@@ -41,6 +41,9 @@ export const REPORT_STYLES = `
   @media print {
     .pied { display: none; }
   }
+    
+  .sign { margin-top: 12mm; text-align: right; break-inside: avoid; }
+  .sign .vide { height: 18mm; }
 
   /* Annexe de traçabilité : document technique, pas pièce de procédure. */
   .facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5mm 6mm; margin-bottom: 4mm; }

@@ -4,6 +4,7 @@ import {
   AuditTrailPort,
 } from '../../../shared/domain/ports/audit-trail.port';
 import { Report } from '../../domain/report/entity/report';
+import { ReportSequenceAlreadyTakenError } from '../../domain/report/errors/report-sequence-already-taken.error';
 import type { ReportRepository } from '../../domain/report/repository/report.repository';
 
 export class InMemoryReportRepository implements ReportRepository {
@@ -14,6 +15,13 @@ export class InMemoryReportRepository implements ReportRepository {
   ) {}
 
   async save(report: Report, act: AuditEventDraft): Promise<void> {
+    const taken = this.store.some(
+      (stored) =>
+        stored.caseId === report.caseId && stored.sequence === report.sequence,
+    );
+    if (taken) {
+      throw new ReportSequenceAlreadyTakenError(report.caseId, report.sequence);
+    }
     this.store.push(report);
     await this.auditTrail.append(act);
   }

@@ -1,17 +1,30 @@
 import { REQUIRED_MINUTIAE } from '../../../../shared/domain/forensics/minutiae';
 import {
   ReportCaseHeaderViewModel,
+  ReportContributorViewModel,
   ReportJournalEntryViewModel,
   TechnicalReportViewModel,
 } from '../../../application/report-view-model';
 import { frenchCardinal } from '../french-numbers';
-import { formatDate, formatLongDay } from '../../../application/report-dates';
+import {
+  formatDate,
+  formatDay,
+  formatLongDay,
+} from '../../../application/report-dates';
 import { escapeHtml } from '../html';
 import { REPORT_STYLES } from './report-styles';
 import { REVELATION_TECHNIQUE_TEXTS } from './revelation-techniques';
 
-const FOOTER =
+export const FOOTER_NOTICE =
   'Toute reproduction partielle du rapport et des annexes est interdite.';
+
+export function reportFooterText(reportNumber: string): string {
+  return `${FOOTER_NOTICE} Rapport ${reportNumber}.`;
+}
+
+function withDefiniteArticle(grade: string): string {
+  return /^[aàâäeéèêëiîïoôöuùûüy]/i.test(grade) ? `l'${grade}` : `le ${grade}`;
+}
 const NOT_STATED = 'Non renseigné';
 
 function spelled(count: number): string {
@@ -44,7 +57,9 @@ function cotedLabel(cotes: string[]): string {
   return `coté${cotes.length > 1 ? 'es' : 'e'} ${joinCotes(cotes)}`;
 }
 
-function referencesSection(header: ReportCaseHeaderViewModel): string {
+function referencesSection(model: TechnicalReportViewModel): string {
+  const header = model.caseHeader;
+  const { previousDocument } = model;
   const requester = [header.requesterQuality, header.requesterName]
     .filter((part): part is string => part !== null)
     .map(escapeHtml)
@@ -69,7 +84,45 @@ function referencesSection(header: ReportCaseHeaderViewModel): string {
     <h2>Références</h2>
     ${request}
     <p class="champ"><span class="k">Procès-verbal n°</span> : ${escapeHtml(header.pvNumber)}</p>
-    <p class="champ"><span class="k">Dossier</span> : ${escapeHtml(header.caseNumber)}</p>`;
+    <p class="champ"><span class="k">Dossier</span> : ${escapeHtml(header.caseNumber)}</p>
+    <p class="champ"><span class="k">Rapport n°</span> : ${escapeHtml(model.header.reportNumber)}</p>
+    <p class="champ">${
+      previousDocument === null
+        ? 'Le présent rapport est le premier établi sur ce dossier.'
+        : `Le présent rapport succède au rapport ${escapeHtml(
+            previousDocument.number,
+          )}, établi le ${formatDay(previousDocument.issuedAt)}.`
+    }</p>`;
+}
+
+function contributorsSentence(
+  contributors: ReportContributorViewModel[],
+): string {
+  if (contributors.length === 0) {
+    return '';
+  }
+  const named = contributors
+    .map((contributor) =>
+      contributor.grade === null
+        ? escapeHtml(contributor.displayName)
+        : `${escapeHtml(withDefiniteArticle(contributor.grade))} ${escapeHtml(
+            contributor.displayName,
+          )}`,
+    )
+    .join(', ');
+  return `<p>Ont concouru à ces opérations : ${named}.</p>`;
+}
+
+function signatureSection(model: TechnicalReportViewModel): string {
+  const { signer } = model;
+  return `
+    <div class="sign">
+      Fait le ${formatDay(model.header.generatedAt)}<div class="vide"></div>
+      ${escapeHtml(signer.grade)}<br />
+      ${escapeHtml(signer.lastName.toLocaleUpperCase('fr'))} ${escapeHtml(
+        signer.firstName,
+      )} — Matricule ${escapeHtml(signer.serviceNumber)}
+    </div>`;
 }
 
 function offenceDate(header: ReportCaseHeaderViewModel): string | null {
@@ -512,7 +565,7 @@ export function renderTechnicalReportHtml(
     <h1>RAPPORT D'EXPLOITATION DE TRACES PAPILLAIRES</h1>
     <p class="subtitle">Examen dactyloscopique, comparaison et démonstration d'identité</p>
 
-    ${referencesSection(caseHeader)}
+    ${referencesSection(model)}
     ${offenceSection(caseHeader)}
     ${recipientSection(caseHeader)}
     ${summarySection()}
@@ -524,10 +577,12 @@ export function renderTechnicalReportHtml(
     ${comparisonsSection(model)}
     ${treatmentsSection(model)}
     ${conclusionSection(model)}
+    ${contributorsSentence(model.contributors)}
+    ${signatureSection(model)}
 
     ${journalSection(model)}
 
-    <div class="pied">${FOOTER}</div>
+    <div class="pied">${reportFooterText(model.header.reportNumber)}</div>
   </body>
 </html>`;
 }

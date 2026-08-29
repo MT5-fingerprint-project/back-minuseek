@@ -15,14 +15,27 @@ export class PrismaCaseReportsReader implements CaseReportsReader {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
 
+    const signers = await prisma.user.findMany({
+      where: { id: { in: [...new Set(rows.map((row) => row.signerUserId))] } },
+      include: { personalData: true },
+    });
+    const signerById = new Map(
+      signers.map((signer) => [
+        signer.id,
+        `${signer.grade} ${signer.personalData.lastName.toLocaleUpperCase('fr')} ${signer.personalData.firstName}`,
+      ]),
+    );
+
     return rows.map((row) => ({
       id: row.id,
       type: row.type,
+      number: row.number,
       sha256: row.sha256,
       createdAt: row.createdAt,
       generatedByDisplayName: (
         row.generatedBy as unknown as AuditActorPrimitives
       ).displayName,
+      signerDisplayName: signerById.get(row.signerUserId) ?? null,
     }));
   }
 }

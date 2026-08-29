@@ -8,6 +8,7 @@ function model(
     kind: 'TECHNICAL',
     header: {
       reportId: 'report-1',
+      reportNumber: '3455-R1',
       chainHeadSeq: 42,
       chainHeadHash: 'c'.repeat(64),
       caseNumber: '3455',
@@ -37,6 +38,14 @@ function model(
       },
     },
     revelationTechniques: ['FINGERPRINT_POWDER'],
+    previousDocument: null,
+    signer: {
+      grade: 'Technicien en Chef de Police Technique et Scientifique',
+      firstName: 'Sébastien',
+      lastName: 'Aguilar',
+      serviceNumber: '118 402',
+    },
+    contributors: [],
     examinedTraces: [
       {
         label: '3455-T1 et T2',
@@ -306,5 +315,102 @@ describe('renderTechnicalReportHtml — les conclusions', () => {
 
     expect(html).not.toContain('horodaté par un tiers');
     expect(html).toContain('Le détail acte par acte figure en Annexe C.');
+  });
+});
+
+describe('renderTechnicalReportHtml — numéro, filiation et signature', () => {
+  it('imprime le numéro du rapport dans le bloc Références', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html).toContain('Rapport n°</span> : 3455-R1');
+  });
+
+  it('dit qu’un rapport sans antérieur est le premier du dossier', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html).toContain(
+      'Le présent rapport est le premier établi sur ce dossier.',
+    );
+  });
+
+  it('annonce le document auquel il succède', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        previousDocument: {
+          number: '3455-R1',
+          issuedAt: new Date('2026-03-18T10:00:00.000Z'),
+        },
+      }),
+    );
+
+    expect(html).toContain(
+      'Le présent rapport succède au rapport 3455-R1, établi le 18/03/2026.',
+    );
+    expect(html).not.toContain(
+      'Le présent rapport est le premier établi sur ce dossier.',
+    );
+  });
+
+  it('imprime le grade, le nom et le matricule du signataire', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html).toContain(
+      'Technicien en Chef de Police Technique et Scientifique',
+    );
+    expect(html).toContain('AGUILAR Sébastien — Matricule 118 402');
+    expect(html).toContain('Fait le 19/08/2026');
+  });
+
+  it('porte le numéro du rapport en pied de page', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html).toContain(
+      'Toute reproduction partielle du rapport et des annexes est interdite. Rapport 3455-R1.',
+    );
+  });
+
+  it('n’imprime plus l’identifiant technique du rapport', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html).not.toContain('report-1');
+  });
+
+  it('ne nomme personne quand personne d’autre que le signataire n’a agi', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html).not.toContain('Ont concouru à ces opérations');
+  });
+
+  it('accorde l’article au grade : « le Technicien », « l’Agent »', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        contributors: [
+          {
+            grade: 'Technicien en Chef de Police Technique et Scientifique',
+            displayName: 'AGUILAR Sébastien',
+          },
+          {
+            grade: 'Agent Spécialisé de Police Technique et Scientifique',
+            displayName: 'GUICHARD Lucile',
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain(
+      'Ont concouru à ces opérations : le Technicien en Chef de Police Technique et Scientifique AGUILAR Sébastien, l&#39;Agent Spécialisé de Police Technique et Scientifique GUICHARD Lucile.',
+    );
+  });
+
+  it('nomme sans grade un auteur que l’annuaire ne connaît pas', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        contributors: [{ grade: null, displayName: 'Sébastien Aguilar' }],
+      }),
+    );
+
+    expect(html).toContain(
+      'Ont concouru à ces opérations : Sébastien Aguilar.',
+    );
   });
 });
