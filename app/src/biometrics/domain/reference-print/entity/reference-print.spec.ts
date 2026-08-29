@@ -1,5 +1,6 @@
 import { ReferencePrint } from './reference-print';
 import { FileDigest, InvalidFileDigestError } from '../../file-digest.vo';
+import { InvalidImageResolutionError } from '../../image-resolution.vo';
 import { FingerPosition } from '../value-objects/finger-position.vo';
 import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../withdrawal/errors/not-withdrawn.error';
@@ -99,6 +100,7 @@ describe('ReferencePrint', () => {
         withdrawnAt: null,
         withdrawalMotive: null,
         imageDestroyedAt: null,
+        resolutionDpi: null,
       });
 
       expect(rp.id).toBe('r-1');
@@ -119,6 +121,7 @@ describe('ReferencePrint', () => {
         withdrawnAt: null,
         withdrawalMotive: null,
         imageDestroyedAt: null,
+        resolutionDpi: null,
       });
 
       expect(rp.sha256).toBeNull();
@@ -136,6 +139,7 @@ describe('ReferencePrint', () => {
           withdrawnAt: null,
           withdrawalMotive: null,
           imageDestroyedAt: null,
+          resolutionDpi: null,
         }),
       ).toThrow(InvalidFileDigestError);
     });
@@ -160,9 +164,76 @@ describe('ReferencePrint', () => {
         withdrawnAt: null,
         withdrawalMotive: null,
         imageDestroyedAt: null,
+        resolutionDpi: null,
       });
     });
   });
+  describe('calibrate', () => {
+    it('starts uncalibrated', () => {
+      const rp = ReferencePrint.create({
+        id: 'r-1',
+        path: 'p',
+        caseId: 'c-1',
+        sha256: seal(),
+      });
+
+      expect(rp.resolutionDpi).toBeNull();
+    });
+
+    it('sets the resolution in points per inch of the source image', () => {
+      const rp = ReferencePrint.create({
+        id: 'r-1',
+        path: 'p',
+        caseId: 'c-1',
+        sha256: seal(),
+      });
+
+      rp.calibrate(1207.34);
+
+      expect(rp.resolutionDpi).toBe(1207.34);
+    });
+
+    it('replaces the previous value when recalibrated', () => {
+      const rp = ReferencePrint.create({
+        id: 'r-1',
+        path: 'p',
+        caseId: 'c-1',
+        sha256: seal(),
+      });
+      rp.calibrate(500);
+
+      rp.calibrate(600);
+
+      expect(rp.resolutionDpi).toBe(600);
+    });
+
+    it('refuses a resolution outside the accepted range', () => {
+      const rp = ReferencePrint.create({
+        id: 'r-1',
+        path: 'p',
+        caseId: 'c-1',
+        sha256: seal(),
+      });
+
+      expect(() => rp.calibrate(3)).toThrow(InvalidImageResolutionError);
+      expect(rp.resolutionDpi).toBeNull();
+    });
+
+    it('round-trips a calibrated resolution', () => {
+      const rp = ReferencePrint.create({
+        id: 'r-1',
+        path: 'p',
+        caseId: 'c-1',
+        sha256: seal(),
+      });
+      rp.calibrate(1207.34);
+
+      const rebuilt = ReferencePrint.reconstitute(rp.toPrimitives());
+
+      expect(rebuilt.resolutionDpi).toBe(1207.34);
+    });
+  });
+
   describe('withdrawal', () => {
     const withdrawnPrint = () => {
       const rp = ReferencePrint.create({
@@ -184,6 +255,7 @@ describe('ReferencePrint', () => {
         withdrawnAt: WITHDRAWN_AT,
         withdrawalMotive: 'WRONG_ATTRIBUTION',
         imageDestroyedAt: null,
+        resolutionDpi: null,
       });
     });
 
@@ -205,6 +277,7 @@ describe('ReferencePrint', () => {
         withdrawnAt: null,
         withdrawalMotive: null,
         imageDestroyedAt: null,
+        resolutionDpi: null,
       });
     });
 
@@ -230,6 +303,7 @@ describe('ReferencePrint', () => {
         withdrawnAt: WITHDRAWN_AT,
         withdrawalMotive: 'MISFILED',
         imageDestroyedAt: null,
+        resolutionDpi: null,
       });
 
       expect(rp.isWithdrawn).toBe(true);

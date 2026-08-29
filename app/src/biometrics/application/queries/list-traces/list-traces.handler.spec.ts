@@ -42,6 +42,7 @@ const traceRow = (overrides: Partial<TraceReadModel> = {}): TraceReadModel => ({
   captureQuality: null,
   withdrawnAt: null,
   withdrawalMotive: null,
+  resolutionDpi: null,
   ...overrides,
 });
 
@@ -124,6 +125,32 @@ describe('ListTracesHandler', () => {
       captureDeviceModel: null,
       captureQuality: null,
     });
+  });
+
+  it('exposes the calibrated resolution of a trace', async () => {
+    const reader = new InMemoryTraceReader([
+      traceRow({ resolutionDpi: 1207.34 }),
+    ]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0].resolutionDpi).toBe(1207.34);
+  });
+
+  it('leaves the resolution empty for an uncalibrated trace', async () => {
+    const reader = new InMemoryTraceReader([traceRow()]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0].resolutionDpi).toBeNull();
   });
 
   it('départage deux traces déposées dans la même seconde par leur identifiant', async () => {

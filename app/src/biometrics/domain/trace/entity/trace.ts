@@ -1,5 +1,6 @@
 import { assertCaseAcceptsWork } from '../../case-work-window';
 import { FileDigest } from '../../file-digest.vo';
+import { ImageResolution } from '../../image-resolution.vo';
 import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../withdrawal/errors/not-withdrawn.error';
 import { Withdrawal } from '../../withdrawal/withdrawal.vo';
@@ -28,6 +29,7 @@ export interface TracePrimitives {
   captureQuality: CaptureQualityProps | null;
   withdrawnAt: Date | null;
   withdrawalMotive: string | null;
+  resolutionDpi: number | null;
 }
 
 interface UploadTraceProps {
@@ -50,6 +52,7 @@ export class Trace {
     private readonly _captureMetadata: CaptureMetadata,
     private readonly _captureQuality: CaptureQuality | null,
     private _withdrawal: Withdrawal | null,
+    private _resolution: ImageResolution | null,
   ) {}
 
   static assertCaseCanReceiveTrace(
@@ -79,6 +82,7 @@ export class Trace {
       props.captureMetadata ?? CaptureMetadata.empty(),
       props.captureQuality ?? null,
       null,
+      null,
     );
   }
 
@@ -98,6 +102,7 @@ export class Trace {
     captureQuality: unknown;
     withdrawnAt: Date | null;
     withdrawalMotive: string | null;
+    resolutionDpi: number | null;
   }): Trace {
     return new Trace(
       payload.id,
@@ -116,7 +121,12 @@ export class Trace {
       }),
       CaptureQuality.fromPersistence(payload.captureQuality),
       Withdrawal.fromPersistence(payload.withdrawalMotive, payload.withdrawnAt),
+      ImageResolution.fromPersistence(payload.resolutionDpi),
     );
+  }
+
+  calibrate(resolutionDpi: number): void {
+    this._resolution = ImageResolution.of(resolutionDpi);
   }
 
   evaluate(score: ExploitabilityScore): void {
@@ -160,6 +170,7 @@ export class Trace {
       captureQuality: this._captureQuality?.toPrimitives() ?? null,
       withdrawnAt: this._withdrawal?.getAt() ?? null,
       withdrawalMotive: this._withdrawal?.getMotive() ?? null,
+      resolutionDpi: this._resolution?.getValue() ?? null,
     };
   }
 
@@ -201,5 +212,9 @@ export class Trace {
 
   get withdrawnAt(): Date | null {
     return this._withdrawal?.getAt() ?? null;
+  }
+
+  get resolutionDpi(): number | null {
+    return this._resolution?.getValue() ?? null;
   }
 }
