@@ -7,17 +7,18 @@ import {
 import { PreviousDocumentData } from '../../ports/report-numbering.reader';
 import { ReportSignerData } from '../../report-signer';
 import { ServiceLetterheadData } from '../../ports/service-letterhead.reader';
+import { ChainAttestation } from '../../ports/chain-attestation.port';
 import {
   AnchorData,
   AuditEventData,
 } from '../../ports/traceability-data.reader';
 import {
   ReportContributorViewModel,
+  JournalDetail,
   ReportCountsViewModel,
   ReportExaminedTraceViewModel,
   ReportExploitabilityViewModel,
   ReportIdentificationViewModel,
-  ReportImageTreatmentViewModel,
   ReportImageViewModel,
   ReportPieceViewModel,
   ReportReferenceSubjectViewModel,
@@ -31,10 +32,13 @@ import {
   subjectTypeLabel,
   traceOriginLabel,
 } from './action-labels';
+import { buildAnnexA } from './annex-a';
+import { buildAnnexB } from './annex-b';
 import { buildCaseHeader } from './case-header';
 import { buildLetterhead, signatureCityOf } from './letterhead';
-import { treatmentsOf } from './image-treatments';
-import { buildJournal } from './report-journal';
+import { buildIntegritySection } from './integrity-section.builder';
+import { buildJournalAnnex } from './journal-annex.builder';
+import { pieceDesignations } from './piece-designations';
 import {
   buildDemonstrations,
   isWithdrawn,
@@ -65,6 +69,9 @@ export interface TechnicalReportInput {
   chainHead: { seq: number; hash: string } | null;
   generatedAt: Date;
   generatedByDisplayName: string;
+  journalDetail: JournalDetail;
+  attestation: ChainAttestation;
+  verificationUrl: string;
   images: Map<string, ReportImageViewModel | null>;
 }
 
@@ -167,18 +174,6 @@ function buildIdentifications(
   });
 }
 
-function buildImageTreatments(
-  caseNumber: string,
-  traces: PieceData[],
-): ReportImageTreatmentViewModel[] {
-  return traces.map((trace) => ({
-    reference: traceReference(caseNumber, trace.number ?? 0),
-    cote: trace.cote ?? NOT_APPLICABLE,
-    sealedAt: trace.createdAt,
-    treatments: treatmentsOf(trace),
-  }));
-}
-
 function buildCounts(
   traces: PieceData[],
   verdicts: Map<string, TraceVerdict>,
@@ -241,6 +236,7 @@ export function buildTechnicalReport(
   );
   const workingTraces = orderedTraces.filter((trace) => !isWithdrawn(trace));
   const verdicts = verdictsByTraceId(data);
+  const designations = pieceDesignations(data);
   const exploitableTraces = workingTraces.filter(
     (trace) => trace.status === 'EXPLOITABLE',
   );
@@ -285,7 +281,6 @@ export function buildTechnicalReport(
     notExaminedCotes: cotesOf(
       exploitableTraces.filter((trace) => isNotExamined(trace, verdicts)),
     ),
-    imageTreatments: buildImageTreatments(caseNumber, workingTraces),
     independentTimestampAt: lastAnchorAt(input.anchors),
     counts: buildCounts(workingTraces, verdicts),
     traces: data.traces.map(
@@ -295,6 +290,22 @@ export function buildTechnicalReport(
       (print) => pieceViewModels.get(print.id) as ReportPieceViewModel,
     ),
     identityDemonstrations: buildDemonstrations(data, pieceViewModels),
-    journal: buildJournal(input.chainEvents),
+    annexA: buildAnnexA(caseNumber, orderedTraces, images),
+    annexB: buildAnnexB(caseNumber, data, images),
+    integrity: buildIntegritySection({
+      traces: data.traces,
+      referencePrints: data.referencePrints,
+      designations: designations,
+      events: input.chainEvents,
+      anchors: input.anchors,
+      attestation: input.attestation,
+      verificationUrl: input.verificationUrl,
+      images,
+    }),
+    journal: buildJournalAnnex(
+      input.chainEvents,
+      designations,
+      input.journalDetail,
+    ),
   };
 }

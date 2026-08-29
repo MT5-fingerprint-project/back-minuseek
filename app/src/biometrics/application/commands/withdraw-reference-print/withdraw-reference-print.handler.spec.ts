@@ -1,3 +1,4 @@
+import type { AuditLink } from '../../../../shared/domain/ports/audit-trail.port';
 import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixture';
 import { CaseNotOpenForWorkError } from '../../../domain/errors/case-not-open-for-work.error';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
@@ -24,7 +25,7 @@ class FailingReferencePrintRepository extends InMemoryReferencePrintRepository {
     super();
   }
 
-  save(): Promise<void> {
+  save(): Promise<AuditLink> {
     return Promise.reject(this.failure);
   }
 }

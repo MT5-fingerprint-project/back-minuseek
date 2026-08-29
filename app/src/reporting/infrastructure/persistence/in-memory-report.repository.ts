@@ -1,6 +1,7 @@
 import { InMemoryAuditTrailAppender } from '../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import {
   AuditEventDraft,
+  AuditLink,
   AuditTrailPort,
 } from '../../../shared/domain/ports/audit-trail.port';
 import { Report } from '../../domain/report/entity/report';
@@ -14,7 +15,7 @@ export class InMemoryReportRepository implements ReportRepository {
     readonly auditTrail: AuditTrailPort = new InMemoryAuditTrailAppender(),
   ) {}
 
-  async save(report: Report, act: AuditEventDraft): Promise<void> {
+  async save(report: Report, act: AuditEventDraft): Promise<AuditLink> {
     const taken = this.store.some(
       (stored) =>
         stored.caseId === report.caseId && stored.sequence === report.sequence,
@@ -23,7 +24,7 @@ export class InMemoryReportRepository implements ReportRepository {
       throw new ReportSequenceAlreadyTakenError(report.caseId, report.sequence);
     }
     this.store.push(report);
-    await this.auditTrail.append(act);
+    return this.auditTrail.append(act);
   }
 
   findById(id: string): Promise<Report | null> {

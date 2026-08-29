@@ -1,3 +1,4 @@
+import { InMemorySealRegistry } from '../../../../audit-trail/infrastructure/persistence/in-memory-seal-registry';
 import { createHash } from 'node:crypto';
 import { AuditActor } from '../../../../shared/domain/audit/audit-actor.vo';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
@@ -89,6 +90,7 @@ const CASE_DATA: CaseReportData = {
       id: 'trace-1',
       path: TRACE_PATH,
       sha256: 'a'.repeat(64),
+      displayableSha256: 'a'.repeat(64),
       createdAt: new Date('2026-08-01T10:00:00.000Z'),
       capturedAt: null,
       status: 'EXPLOITABLE',
@@ -112,6 +114,7 @@ const CASE_DATA: CaseReportData = {
       id: 'ref-1',
       path: REF_PATH,
       sha256: null,
+      displayableSha256: null,
       createdAt: new Date('2026-08-01T11:00:00.000Z'),
       capturedAt: null,
       status: null,
@@ -133,6 +136,7 @@ const CASE_DATA: CaseReportData = {
   comparisons: [],
   declaredHits: [],
   subjects: [],
+  minutiaPairs: [],
 };
 
 const TRACEABILITY_DATA: TraceabilityData = {
@@ -177,14 +181,19 @@ class FakeTraceabilityReader implements TraceabilityDataReader {
 
 class FakeImageEmbedder implements ReportImageEmbedderPort {
   readonly images = new Map<string, ReportImageViewModel>();
+  readonly embedded: string[] = [];
 
   embed(storedPath: string): Promise<ReportImageViewModel | null> {
+    this.embedded.push(storedPath);
     return Promise.resolve(this.images.get(storedPath) ?? null);
   }
 }
 
 class FakeAttestation implements ChainAttestationPort {
+  calls = 0;
+
   attest(): Promise<ChainAttestation> {
+    this.calls += 1;
     return Promise.resolve(ATTESTATION);
   }
 }
@@ -258,8 +267,11 @@ describe('GenerateReportHandler', () => {
   let imageEmbedder: FakeImageEmbedder;
   let contributors: FakeCaseContributorsReader;
   let letterhead: FakeServiceLetterheadReader;
+  let attestation: FakeAttestation;
+  let sealRegistry: InMemorySealRegistry;
 
   beforeEach(() => {
+    sealRegistry = new InMemorySealRegistry();
     caseData = new FakeCaseDataReader();
     traceability = new FakeTraceabilityReader();
     imageEmbedder = new FakeImageEmbedder();
@@ -270,19 +282,22 @@ describe('GenerateReportHandler', () => {
     contributors = new FakeCaseContributorsReader();
     letterhead = new FakeServiceLetterheadReader();
     let issued = 0;
+    attestation = new FakeAttestation();
     handler = new GenerateReportHandler(
       caseData,
       traceability,
-      new FakeAttestation(),
+      attestation,
       new FakeChainHeadReader(),
       new FakeReportNumberingReader(repository),
       contributors,
       letterhead,
+      { build: () => 'https://minuseek.fr/demo/verifier' },
       imageEmbedder,
       renderer,
       storage,
       repository,
       { generate: () => `report-${++issued}` },
+      sealRegistry,
     );
   });
 
@@ -340,6 +355,7 @@ describe('GenerateReportHandler', () => {
       dataUrl: 'data:image/png;base64,AAA',
       width: 800,
       height: 1200,
+      observedSha256: 'e'.repeat(64),
     });
 
     await generate();
@@ -350,6 +366,7 @@ describe('GenerateReportHandler', () => {
       dataUrl: 'data:image/png;base64,AAA',
       width: 800,
       height: 1200,
+      observedSha256: 'e'.repeat(64),
     });
     expect(model.referencePrints[0].image).toBeNull();
   });
@@ -360,7 +377,8 @@ describe('GenerateReportHandler', () => {
     expect(traceability.caseEventsReadFor).toEqual([CASE_ID]);
     const model = renderer.rendered[0];
     if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
-    expect(model.journal.chained).toEqual([]);
+    expect(model.journal.acts).toEqual([]);
+    expect(model.journal.detail).toBe('SUMMARY');
   });
 
   it('rattache le document au maillon de chaîne du moment', async () => {
@@ -471,11 +489,13 @@ describe('GenerateReportHandler', () => {
       stale,
       contributors,
       letterhead,
+      { build: () => 'https://minuseek.fr/demo/verifier' },
       imageEmbedder,
       renderer,
       storage,
       repository,
       { generate: () => `report-${repository.store.length + 1}` },
+      sealRegistry,
     );
 
     await generate();
@@ -494,5 +514,124 @@ describe('GenerateReportHandler', () => {
       renderer.rendered[0].header.letterhead,
     );
     expect(renderer.rendered[0].header.signatureCity).toBe('Paris');
+  });
+
+  it('édite l’annexe résumée quand la commande ne demande rien', async () => {
+    await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER),
+    );
+
+    const model = renderer.rendered[0];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.journal.detail).toBe('SUMMARY');
+    expect(repository.store[0].toPrimitives().journalDetail).toBe('SUMMARY');
+  });
+
+  it('édite le journal détaillé quand la commande le demande', async () => {
+    await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER, 'FULL'),
+    );
+
+    const model = renderer.rendered[0];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.journal.detail).toBe('FULL');
+  });
+
+  it('scelle la variante sur la ligne du rapport : chaque édition garde la sienne', async () => {
+    await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER, 'FULL'),
+    );
+
+    expect(repository.store[0].toPrimitives().journalDetail).toBe('FULL');
+  });
+
+  it('lit les ancres et l’attestation pour un rapport d’exploitation', async () => {
+    await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER),
+    );
+
+    expect(attestation.calls).toBe(1);
+    const model = renderer.rendered[0];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.integrity.recordVerifiedAtEdition).toBe(true);
+    expect(model.integrity.verificationUrl).toBe(
+      'https://minuseek.fr/demo/verifier',
+    );
+  });
+
+  it('décrit chaque pièce du dossier dans la section d’intégrité', async () => {
+    await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER),
+    );
+
+    const model = renderer.rendered[0];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.integrity.traces).toHaveLength(1);
+    expect(model.integrity.referencePrints).toHaveLength(1);
+  });
+
+  it('n’embarque pas l’image d’une trace inexploitable que personne n’a identifiée', async () => {
+    caseData.data = {
+      ...CASE_DATA,
+      traces: [
+        {
+          ...CASE_DATA.traces[0],
+          status: 'NOT_EXPLOITABLE',
+        },
+      ],
+    };
+    imageEmbedder.images.set(TRACE_PATH, {
+      dataUrl: 'data:image/png;base64,AAA',
+      width: 800,
+      height: 1200,
+      observedSha256: null,
+    });
+
+    await generate();
+
+    expect(imageEmbedder.embedded).toEqual([]);
+    const model = renderer.rendered[0];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.traces[0].image).toBeNull();
+  });
+
+  it('projette le scellé du rapport au registre public, avec sa nature', async () => {
+    const generated = await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER),
+    );
+
+    const link = appender.events.at(-1);
+    expect(sealRegistry.seals).toEqual([
+      {
+        tenantSlug: 'demo',
+        sha256: generated.sha256,
+        kind: 'REPORT',
+        chainSeq: link?.seq,
+        sealedAt: link?.occurredAt,
+        caseId: CASE_ID,
+        reportType: 'TECHNICAL',
+        anchoredAt: null,
+      },
+    ]);
+  });
+
+  it('distingue la nature du document projeté', async () => {
+    await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TRACEABILITY', SIGNER),
+    );
+
+    expect(sealRegistry.seals[0].reportType).toBe('TRACEABILITY');
+  });
+
+  it('ne perd pas un rapport scellé quand la projection échoue', async () => {
+    sealRegistry.failWith = new Error("base d'administration injoignable");
+
+    const generated = await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER),
+    );
+
+    expect(generated.id).toBe('report-1');
+    expect(repository.store).toHaveLength(1);
+    expect(appender.events).toHaveLength(1);
   });
 });

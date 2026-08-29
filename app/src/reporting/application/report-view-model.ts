@@ -47,6 +47,7 @@ export interface ReportImageViewModel {
   dataUrl: string;
   width: number | null;
   height: number | null;
+  observedSha256: string | null;
 }
 
 export interface ReportMinutiaViewModel {
@@ -133,11 +134,40 @@ export interface ReportIdentificationViewModel {
   lastName: string;
 }
 
-export interface ReportImageTreatmentViewModel {
+export interface ReportPlateViewModel {
   reference: string;
   cote: string;
+  location: string | null;
+  image: ReportImageViewModel | null;
   sealedAt: Date;
-  treatments: string;
+}
+
+export interface ReportDemonstrationMarkViewModel {
+  number: number;
+  x: number;
+  y: number;
+  radius: number;
+  label: string | null;
+}
+
+export interface ReportDemonstrationPlateViewModel {
+  image: ReportImageViewModel | null;
+  marks: ReportDemonstrationMarkViewModel[];
+}
+
+export interface ReportDemonstrationViewModel {
+  reference: string;
+  cote: string;
+  location: string | null;
+  subject: {
+    civility: string;
+    firstName: string;
+    lastName: string;
+  } | null;
+  position: string | null;
+  localisationPhoto: ReportImageViewModel | null;
+  trace: ReportDemonstrationPlateViewModel;
+  referencePrint: ReportDemonstrationPlateViewModel;
 }
 
 export interface ReportSignerViewModel {
@@ -157,6 +187,44 @@ export interface ReportPreviousDocumentViewModel {
   issuedAt: Date;
 }
 
+export interface ReportTreatmentViewModel {
+  sentence: string;
+  appliedAt: Date;
+  actorDisplayName: string;
+  removedAt: Date | null;
+  hiddenAtEdition: boolean;
+}
+
+export interface ReportPieceIntegrityViewModel {
+  designation: string;
+  cote: string | null;
+  recordedSha256: string | null;
+  sealedAt: Date | null;
+  recordEntryNumber: number | null;
+  currentRowSha256: string | null;
+  divergesFromRecord: boolean;
+  servedFileIsDerived: boolean;
+  observedSha256: string | null;
+  observedMatchesRecord: boolean | null;
+  treatments: ReportTreatmentViewModel[];
+  lastActEntryNumber: number | null;
+  coveringAnchor: {
+    anchoredAt: Date;
+    authority: string;
+    entryNumber: number;
+  } | null;
+}
+
+export interface ReportIntegrityViewModel {
+  traces: ReportPieceIntegrityViewModel[];
+  referencePrints: ReportPieceIntegrityViewModel[];
+  lastAnchor: { anchoredAt: Date; entryNumber: number } | null;
+  recordVerifiedAtEdition: boolean;
+  firstBrokenEntryNumber: number | null;
+  anchorsFailed: number;
+  verificationUrl: string;
+}
+
 export interface ReportCountsViewModel {
   total: number;
   exploitable: number;
@@ -166,17 +234,29 @@ export interface ReportCountsViewModel {
   notExamined: number;
 }
 
-export interface ReportJournalEntryViewModel {
-  label: string;
-  detail: string | null;
+export type JournalDetail = 'SUMMARY' | 'FULL';
+
+export interface ReportJournalActViewModel {
+  order: number;
   occurredAt: Date;
   actorDisplayName: string;
-  seq: number;
-  hash: string;
+  sentence: string;
+}
+
+export interface ReportJournalSummaryViewModel {
+  family: 'ADJUSTMENT' | 'MARK';
+  pieceDesignation: string;
+  count: number;
+  firstAt: Date;
+  lastAt: Date;
 }
 
 export interface ReportJournalViewModel {
-  chained: ReportJournalEntryViewModel[];
+  detail: JournalDetail;
+  acts: ReportJournalActViewModel[];
+  summaries: ReportJournalSummaryViewModel[];
+  actCountTotal: number;
+  actCountPrinted: number;
 }
 
 export interface ReportLayerViewModel {
@@ -203,12 +283,14 @@ export interface TechnicalReportViewModel {
   identifications: ReportIdentificationViewModel[];
   negativeCotes: string[];
   notExaminedCotes: string[];
-  imageTreatments: ReportImageTreatmentViewModel[];
   independentTimestampAt: Date | null;
+  integrity: ReportIntegrityViewModel;
   counts: ReportCountsViewModel;
   traces: ReportPieceViewModel[];
   referencePrints: ReportPieceViewModel[];
   identityDemonstrations: ReportIdentityDemonstrationViewModel[];
+  annexA: ReportPlateViewModel[];
+  annexB: ReportDemonstrationViewModel[];
   journal: ReportJournalViewModel;
 }
 

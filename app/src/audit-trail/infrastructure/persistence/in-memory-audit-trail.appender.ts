@@ -2,6 +2,7 @@ import { AuditEventType } from '../../../shared/domain/audit/audit-event-type.vo
 import { EvidenceClass } from '../../../shared/domain/audit/evidence-class.vo';
 import {
   AuditEventDraft,
+  AuditLink,
   AuditTrailPort,
 } from '../../../shared/domain/ports/audit-trail.port';
 import {
@@ -15,7 +16,7 @@ import { computeEventHash } from '../../domain/services/audit-event-hash';
 export class InMemoryAuditTrailAppender implements AuditTrailPort {
   readonly events: AuditEventPrimitives[] = [];
 
-  append(draft: AuditEventDraft): Promise<void> {
+  append(draft: AuditEventDraft): Promise<AuditLink> {
     const head = this.events.at(-1);
     const seq = head ? head.seq + 1n : GENESIS_SEQ;
     const prevHash = head ? head.hash : GENESIS_PREV_HASH;
@@ -45,6 +46,6 @@ export class InMemoryAuditTrailAppender implements AuditTrailPort {
       hash,
     });
     this.events.push(event.toPrimitives());
-    return Promise.resolve();
+    return Promise.resolve({ seq, occurredAt });
   }
 }

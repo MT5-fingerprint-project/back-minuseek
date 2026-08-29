@@ -30,7 +30,7 @@ describe('AuditEvent est append-only au niveau Postgres', () => {
     await appendEvent();
   });
 
-  function appendEvent(): Promise<void> {
+  function appendEvent(): Promise<unknown> {
     return harness.asTenant(() =>
       harness.runner.run(() =>
         harness.appender.append({

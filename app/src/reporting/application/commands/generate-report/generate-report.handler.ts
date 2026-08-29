@@ -1,4 +1,10 @@
 import { Inject, Logger } from '@nestjs/common';
+import type { AuditLink } from '../../../../shared/domain/ports/audit-trail.port';
+import { recordSealSafely } from '../../../../shared/application/record-seal-safely';
+import {
+  SEAL_REGISTRY,
+  type SealRegistryPort,
+} from '../../../../shared/domain/ports/seal-registry.port';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { createHash } from 'node:crypto';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
@@ -43,6 +49,10 @@ import {
   type ServiceLetterheadReader,
 } from '../../ports/service-letterhead.reader';
 import {
+  VERIFICATION_URL,
+  type VerificationUrlPort,
+} from '../../ports/verification-url.port';
+import {
   REPORT_IMAGE_EMBEDDER,
   type ReportImageEmbedderPort,
 } from '../../ports/report-image-embedder.port';
@@ -58,6 +68,7 @@ import {
   TRACEABILITY_DATA_READER,
   type TraceabilityDataReader,
 } from '../../ports/traceability-data.reader';
+import { printedPieces } from '../../queries/build-report/printed-pieces';
 import { buildTechnicalReport } from '../../queries/build-report/technical-report.builder';
 import { buildTraceabilityReport } from '../../queries/build-report/traceability-report.builder';
 import { ReportImageViewModel, ReportViewModel } from '../../report-view-model';
@@ -87,6 +98,8 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     private readonly contributors: CaseContributorsReader,
     @Inject(SERVICE_LETTERHEAD_READER)
     private readonly letterhead: ServiceLetterheadReader,
+    @Inject(VERIFICATION_URL)
+    private readonly verificationUrl: VerificationUrlPort,
     @Inject(REPORT_IMAGE_EMBEDDER)
     private readonly imageEmbedder: ReportImageEmbedderPort,
     @Inject(REPORT_RENDERER)
@@ -97,6 +110,8 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     private readonly repository: ReportRepository,
     @Inject(ID_GENERATOR)
     private readonly idGenerator: IdGenerator,
+    @Inject(SEAL_REGISTRY)
+    private readonly sealRegistry: SealRegistryPort,
   ) {}
 
   async execute(command: GenerateReportCommand): Promise<GeneratedReport> {
@@ -133,8 +148,9 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
       `reports/${command.caseId}/${reportId}.pdf`,
     );
 
+    let link: AuditLink;
     try {
-      await this.repository.save(
+      link = await this.repository.save(
         Report.seal({
           id: reportId,
           caseId: command.caseId,
@@ -142,6 +158,7 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
           sequence,
           number,
           signerUserId: command.signer.id,
+          journalDetail: command.journalDetail,
           storagePath,
           sha256,
           generatedBy: command.actor.toPrimitives(),
@@ -162,6 +179,19 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
       throw error;
     }
 
+    await recordSealSafely(
+      this.sealRegistry,
+      {
+        sha256,
+        kind: 'REPORT',
+        chainSeq: link.seq,
+        sealedAt: link.occurredAt,
+        caseId: command.caseId,
+        reportType: command.type,
+      },
+      this.logger,
+    );
+
     return { id: reportId, sha256 };
   }
 
@@ -179,17 +209,14 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     },
   ): Promise<ReportViewModel> {
     if (command.type === 'TECHNICAL') {
-      const [images, chainEvents, anchors, contributors] = await Promise.all([
-        this.imagesOf(
-          [...data.traces, ...data.referencePrints].filter(
-            (piece) =>
-              piece.withdrawnAt === null && piece.imageDestroyedAt === null,
-          ),
-        ),
-        this.traceabilityData.readCaseEvents(command.caseId),
-        this.traceabilityData.readAnchors(),
-        this.contributors.read(command.caseId),
-      ]);
+      const [images, chainEvents, anchors, contributors, attestation] =
+        await Promise.all([
+          this.imagesOf(printedPieces(data)),
+          this.traceabilityData.readCaseEvents(command.caseId),
+          this.traceabilityData.readAnchors(),
+          this.contributors.read(command.caseId),
+          this.chainAttestation.attest(),
+        ]);
       return buildTechnicalReport({
         data,
         letterhead: seal.letterhead,
@@ -203,6 +230,9 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
         chainHead: seal.chainHead,
         generatedAt: seal.generatedAt,
         generatedByDisplayName: command.actor.toPrimitives().displayName,
+        journalDetail: command.journalDetail,
+        attestation,
+        verificationUrl: this.verificationUrl.build(),
         images,
       });
     }

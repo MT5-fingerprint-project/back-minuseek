@@ -46,7 +46,10 @@ function build() {
   const auditTrail: AuditTrailPort = {
     append: (draft) => {
       appended.push(draft);
-      return Promise.resolve();
+      return Promise.resolve({
+        seq: BigInt(appended.length),
+        occurredAt: new Date('2026-08-01T09:00:00.000Z'),
+      });
     },
   };
 

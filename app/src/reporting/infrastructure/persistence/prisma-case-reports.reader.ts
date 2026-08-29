@@ -30,6 +30,7 @@ export class PrismaCaseReportsReader implements CaseReportsReader {
       id: row.id,
       type: row.type,
       number: row.number,
+      journalDetail: row.journalDetail,
       sha256: row.sha256,
       createdAt: row.createdAt,
       generatedByDisplayName: (

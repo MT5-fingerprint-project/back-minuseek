@@ -1,5 +1,8 @@
 import { AuditActor } from '../../../../shared/domain/audit/audit-actor.vo';
-import { ReportTypeName } from '../../../domain/report/entity/report';
+import {
+  JournalDetailName,
+  ReportTypeName,
+} from '../../../domain/report/entity/report';
 import { ReportSignerData } from '../../report-signer';
 
 export class GenerateReportCommand {
@@ -8,5 +11,6 @@ export class GenerateReportCommand {
     public readonly caseId: string,
     public readonly type: ReportTypeName,
     public readonly signer: ReportSignerData,
+    public readonly journalDetail: JournalDetailName = 'SUMMARY',
   ) {}
 }

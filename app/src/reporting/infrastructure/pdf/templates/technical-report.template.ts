@@ -2,17 +2,29 @@ import { REQUIRED_MINUTIAE } from '../../../../shared/domain/forensics/minutiae'
 import {
   ReportCaseHeaderViewModel,
   ReportContributorViewModel,
-  ReportJournalEntryViewModel,
+  ReportDemonstrationViewModel,
+  ReportIntegrityViewModel,
+  ReportJournalSummaryViewModel,
+  ReportJournalViewModel,
+  ReportPieceIntegrityViewModel,
+  ReportTreatmentViewModel,
   TechnicalReportViewModel,
 } from '../../../application/report-view-model';
+import {
+  journalRows,
+  JournalRow,
+} from '../../../application/queries/build-report/journal-annex.builder';
 import { frenchCardinal } from '../french-numbers';
 import {
-  formatDate,
   formatDay,
+  formatDayTime,
+  formatHourMinute,
   formatLongDay,
 } from '../../../application/report-dates';
 import { escapeHtml } from '../html';
+import { toRoman } from '../roman-numerals';
 import { renderLetterhead } from './letterhead-block';
+import { renderPlate } from './plate-block';
 import { REPORT_STYLES } from './report-styles';
 import { REVELATION_TECHNIQUE_TEXTS } from './revelation-techniques';
 
@@ -198,7 +210,15 @@ function recipientSection(header: ReportCaseHeaderViewModel): string {
     }`;
 }
 
-function summarySection(): string {
+function summarySection(model: TechnicalReportViewModel): string {
+  const annexes = [
+    model.annexA.length === 0
+      ? null
+      : 'Annexe A — Inventaire des traces papillaires exploitables',
+    model.annexB.length === 0 ? null : "Annexe B — Démonstrations d'identité",
+    'Annexe C — Journal des actes',
+  ].filter((line): line is string => line !== null);
+
   return `
     <h2>Sommaire</h2>
     <ul class="rec">
@@ -210,9 +230,140 @@ function summarySection(): string {
       <li>6. Traitements appliqués aux images et intégrité des pièces</li>
       <li>7. Conclusion</li>
     </ul>
-    <p class="champ" style="font-size:9.5pt">Annexe A — Planches des traces papillaires exploitables<br />
-    Annexe B — Démonstrations d'identité<br />
-    Annexe C — Journal des actes</p>`;
+    <p class="champ" style="font-size:9.5pt">${annexes.join('<br />')}</p>`;
+}
+
+function annexTitlePage(
+  title: string,
+  model: TechnicalReportViewModel,
+): string {
+  return `
+    <div class="annexe-titre">
+      <h2>${escapeHtml(title)}</h2>
+      <p class="champ">Dossier ${escapeHtml(
+        model.caseHeader.caseNumber,
+      )} — procès-verbal ${escapeHtml(model.caseHeader.pvNumber)}</p>
+    </div>`;
+}
+
+function annexASection(model: TechnicalReportViewModel): string {
+  if (model.annexA.length === 0) {
+    return '';
+  }
+  const plates = model.annexA
+    .map((plate, order) =>
+      renderPlate({
+        title: `Planche ${toRoman(order + 1)}`,
+        subtitle: null,
+        image: plate.image,
+        marks: [],
+        cote: plate.cote,
+        caption: `Trace papillaire cotée ${quoted(plate.cote)}, ${
+          plate.location === null
+            ? 'localisation non renseignée'
+            : `révélée ${plate.location}`
+        }.`,
+      }),
+    )
+    .join('');
+
+  return `
+    ${annexTitlePage(
+      'Annexe A — Inventaire des traces papillaires exploitables',
+      model,
+    )}
+    ${plates}`;
+}
+
+function demonstratedPerson(
+  demonstration: ReportDemonstrationViewModel,
+): string {
+  const { subject } = demonstration;
+  return subject === null
+    ? 'personne non renseignée au dossier'
+    : `${subject.civility} ${subject.lastName.toLocaleUpperCase('fr')} ${
+        subject.firstName
+      }`;
+}
+
+function demonstratedPosition(
+  demonstration: ReportDemonstrationViewModel,
+): string {
+  const { position } = demonstration;
+  return position === null
+    ? 'Position non renseignée'
+    : position.charAt(0).toLocaleUpperCase('fr') + position.slice(1);
+}
+
+function annexBSection(model: TechnicalReportViewModel): string {
+  if (model.annexB.length === 0) {
+    return '';
+  }
+
+  let rank = 0;
+  const plates = model.annexB
+    .map((demonstration) => {
+      const subtitle = `Démonstration d'identité — trace papillaire cotée ${quoted(
+        demonstration.cote,
+      )}`;
+      const marked = demonstration.trace.marks.length;
+      const pages: string[] = [];
+
+      if (demonstration.localisationPhoto !== null) {
+        pages.push(
+          renderPlate({
+            title: `Planche ${toRoman(++rank)}`,
+            subtitle,
+            image: demonstration.localisationPhoto,
+            marks: [],
+            cote: null,
+            caption: `Endroit où la trace papillaire cotée ${quoted(
+              demonstration.cote,
+            )} a été relevée.`,
+          }),
+        );
+      }
+
+      pages.push(
+        renderPlate({
+          title: `Planche ${toRoman(++rank)}`,
+          subtitle,
+          image: demonstration.trace.image,
+          marks: demonstration.trace.marks,
+          cote: demonstration.cote,
+          caption:
+            marked === 0
+              ? `Trace papillaire cotée ${quoted(demonstration.cote)}.`
+              : `Trace papillaire cotée ${quoted(
+                  demonstration.cote,
+                )}. ${spelled(marked)} minuties concordantes numérotées.`,
+        }),
+      );
+
+      const who = `${demonstratedPosition(demonstration)} de ${demonstratedPerson(
+        demonstration,
+      )}.`;
+      pages.push(
+        renderPlate({
+          title: `Planche ${toRoman(++rank)}`,
+          subtitle,
+          image: demonstration.referencePrint.image,
+          marks: demonstration.referencePrint.marks,
+          cote: null,
+          caption:
+            marked === 0
+              ? who
+              : `${who} Chaque numéro désigne le même détail que sur la planche précédente : l'appariement a été établi point par point par l'expert.`,
+        }),
+      );
+
+      return pages.join('');
+    })
+    .join('');
+
+  return `
+    ${annexTitlePage("Annexe B — Démonstrations d'identité", model)}
+    ${plates}`;
 }
 
 function objectSection(model: TechnicalReportViewModel): string {
@@ -418,41 +569,141 @@ function comparisonsSection(model: TechnicalReportViewModel): string {
     }`;
 }
 
-function treatmentsSection(model: TechnicalReportViewModel): string {
-  const { imageTreatments, independentTimestampAt } = model;
+const INTEGRITY_PREAMBLE = [
+  "Les images de ce dossier sont conservées dans l'état où elles ont été reçues. Au moment du dépôt, chaque fichier est enregistré sous une désignation qui lui est propre, et son empreinte numérique — le résultat d'un calcul portant sur l'intégralité de son contenu, selon la méthode publique dite SHA-256 — est inscrite au registre chronologique du laboratoire dans la même opération indivisible. Deux fichiers différents, ne serait-ce que d'un point, donnent deux empreintes différentes ; l'empreinte, elle, ne permet pas de reconstituer l'image.",
+  "Le logiciel ne comporte aucune fonction permettant de remplacer le fichier d'une pièce. L'enregistrement est refusé si la désignation est déjà occupée, et aucune commande de l'application ne modifie ni le fichier, ni l'empreinte inscrite. Une pièce peut être retirée du dossier, et ce retrait est lui-même inscrit au registre ; elle ne peut pas être échangée contre une autre.",
+  "Les traitements destinés à améliorer la lisibilité — luminosité, contraste, saturation, rotation, inversion, effet miroir — ne sont pas appliqués au fichier. Ils sont enregistrés comme des réglages, avec leur valeur, la date à laquelle ils ont été posés et le nom de l'agent qui les a posés, puis rejoués à l'écran par-dessus l'image reçue. Il en va de même des repères tracés par l'expert. L'affirmation selon laquelle ces opérations n'ont pas modifié le contenu de l'image d'origine n'est donc pas ici une déclaration de l'opérateur : elle se contrôle en recalculant l'empreinte numérique du fichier, qui doit rendre exactement la valeur imprimée ci-dessous.",
+  "Le registre chronologique est en écriture seule : la base de données refuse la modification comme la suppression d'une inscription déjà faite, et chaque inscription reprend l'empreinte de la précédente, de sorte qu'une inscription retouchée rendrait toutes les suivantes incohérentes. Les dates ci-dessous sont exprimées en temps universel (UTC).",
+];
+
+const INTEGRITY_SCOPE =
+  "Ce qui précède établit que les fichiers examinés sont ceux qui ont été reçus, et que les opérations énumérées sont celles qui ont été enregistrées, dans cet ordre et à ces dates. Cela n'établit ni la qualité de la prise de vue, ni l'origine de l'image avant son dépôt au laboratoire.";
+
+function integrityWarning(integrity: ReportIntegrityViewModel): string {
+  if (integrity.firstBrokenEntryNumber !== null) {
+    return `<p class="alerte">Une vérification du registre du laboratoire a été effectuée à l'édition du présent rapport et a relevé une anomalie à l'inscription n° ${integrity.firstBrokenEntryNumber}. Les affirmations du présent chapitre doivent être tenues pour non vérifiées jusqu'à examen.</p>`;
+  }
+  if (integrity.anchorsFailed > 0) {
+    return `<p class="alerte">Une vérification effectuée à l'édition du présent rapport n'a pas pu valider ${integrity.anchorsFailed} horodatage(s) extérieur(s). Les empreintes et l'enchaînement des inscriptions restent vérifiés ; les dates extérieures mentionnées ci-dessous, non.</p>`;
+  }
+  return '';
+}
+
+function treatmentLine(treatment: ReportTreatmentViewModel): string {
+  const parts = [
+    `${escapeHtml(treatment.sentence)}, posé le ${formatDayTime(
+      treatment.appliedAt,
+    )} par ${escapeHtml(treatment.actorDisplayName)}`,
+    treatment.removedAt === null
+      ? null
+      : `retiré le ${formatDayTime(treatment.removedAt)}`,
+    treatment.hiddenAtEdition
+      ? "masqué à la date d'édition du présent rapport"
+      : null,
+  ].filter((part): part is string => part !== null);
+  return parts.join(', ');
+}
+
+function treatmentsParagraph(piece: ReportPieceIntegrityViewModel): string {
+  if (piece.treatments.length === 0) {
+    return "<p>Aucun traitement n'a été appliqué à cette image.</p>";
+  }
+  return `<p>Traitements enregistrés : ${piece.treatments
+    .map(treatmentLine)
+    .join(
+      ' — ',
+    )}. Ces traitements sont des réglages d'affichage ; ils n'ont pas modifié le fichier scellé ci-dessus.</p>`;
+}
+
+function sealParagraph(piece: ReportPieceIntegrityViewModel): string {
+  if (piece.recordedSha256 === null) {
+    return '<p class="alerte">Aucune empreinte n\'a été inscrite au registre lors du dépôt de cette pièce. Le présent rapport ne peut donc pas établir que le fichier est resté identique depuis sa réception.</p>';
+  }
+  const divergence = piece.divergesFromRecord
+    ? '<p class="alerte">L\'empreinte figurant dans la fiche courante du dossier diffère de celle inscrite au registre lors du dépôt. C\'est la valeur du registre qui est imprimée ci-dessus et qui fait foi ; cette divergence doit être signalée au responsable du laboratoire.</p>'
+    : '';
+  const derived = piece.servedFileIsDerived
+    ? "<p class=\"alerte\">L'image reproduite dans le présent rapport n'est pas le fichier reçu : le fichier reçu était au format TIFF, et une version PNG en a été établie par conversion sans perte pour permettre son affichage. L'empreinte imprimée ci-dessus est celle du fichier reçu, qui est conservé. L'empreinte de la version PNG n'a pas été inscrite au registre : le contrôle décrit ci-dessus ne peut donc pas être effectué sur l'image reproduite.</p>"
+    : '';
+
+  return `
+      <p>Empreinte numérique du fichier reçu : <span class="hash">${escapeHtml(
+        piece.recordedSha256,
+      )}</span></p>
+      <p>Mise sous scellé le ${formatDayTime(piece.sealedAt)}, inscription n° ${
+        piece.recordEntryNumber
+      } du registre.</p>
+      ${divergence}
+      ${derived}`;
+}
+
+function anchorParagraph(
+  piece: ReportPieceIntegrityViewModel,
+  integrity: ReportIntegrityViewModel,
+): string {
+  if (piece.coveringAnchor !== null) {
+    return `<p>Horodatage par une autorité extérieure : le ${formatDayTime(
+      piece.coveringAnchor.anchoredAt,
+    )}, l'autorité d'horodatage ${escapeHtml(
+      piece.coveringAnchor.authority,
+    )} a daté un état du registre postérieur à ces opérations (inscription n° ${
+      piece.coveringAnchor.entryNumber
+    }). Cette date ne dépend pas de l'horloge du laboratoire.</p>`;
+  }
+  if (integrity.lastAnchor !== null) {
+    return `<p class="alerte">Aucun horodatage extérieur ne couvre encore ces opérations : le dernier horodatage obtenu, le ${formatDayTime(
+      integrity.lastAnchor.anchoredAt,
+    )}, porte sur un état du registre antérieur à la dernière opération inscrite sur cette pièce. Jusqu'au prochain horodatage, les dates ci-dessus ne sont attestées que par l'horloge du laboratoire.</p>`;
+  }
+  return '<p class="alerte">Aucun horodatage extérieur n\'a encore été obtenu pour le registre de ce laboratoire : les dates ci-dessus ne sont attestées que par l\'horloge du laboratoire.</p>';
+}
+
+function controlParagraph(piece: ReportPieceIntegrityViewModel): string {
+  if (piece.observedMatchesRecord === true) {
+    return "<p>Contrôle effectué à l'édition du présent rapport : le fichier conservé porte bien l'empreinte inscrite au registre.</p>";
+  }
+  if (piece.observedMatchesRecord === false) {
+    return "<p class=\"alerte\">Contrôle effectué à l'édition du présent rapport : le fichier conservé ne porte pas l'empreinte inscrite au registre lors du dépôt. Cette pièce doit être tenue pour altérée jusqu'à examen.</p>";
+  }
+  if (piece.servedFileIsDerived) {
+    return '';
+  }
+  return "<p class=\"alerte\">Le fichier n'a pas pu être relu à l'édition du présent rapport ; le contrôle n'a pas été effectué.</p>";
+}
+
+function pieceIntegrityBlock(
+  piece: ReportPieceIntegrityViewModel,
+  integrity: ReportIntegrityViewModel,
+): string {
+  return `
+    <div class="piece">
+      <h3>${escapeHtml(piece.designation)} — cote ${escapeHtml(
+        piece.cote ?? '/',
+      )}</h3>
+      ${sealParagraph(piece)}
+      ${treatmentsParagraph(piece)}
+      ${anchorParagraph(piece, integrity)}
+      ${controlParagraph(piece)}
+    </div>`;
+}
+
+function integritySection(model: TechnicalReportViewModel): string {
+  const { integrity } = model;
+  const pieces = [...integrity.traces, ...integrity.referencePrints];
+
   return `
     <h2>6. Traitements appliqués aux images et intégrité des pièces</h2>
-    <p>Les opérations effectuées sur les images ont eu pour seul but d'améliorer la lisibilité
-    des traces papillaires et n'ont en aucune façon modifié le contenu des images d'origine.
-    Chaque fichier a été scellé par une empreinte numérique au moment de son entrée au dossier ;
-    les traitements sont enregistrés séparément et n'ont jamais réécrit le fichier scellé.</p>
+    ${integrityWarning(integrity)}
+    ${INTEGRITY_PREAMBLE.map((paragraph) => `<p>${paragraph}</p>`).join('')}
     ${
-      imageTreatments.length === 0
+      pieces.length === 0
         ? '<p class="empty">Aucune image n\'est versée à ce dossier.</p>'
-        : `<table>
-          <tr>
-            <th style="width:24%">Trace n°</th><th style="width:8%">Cote</th>
-            <th style="width:18%">Scellée le</th><th>Traitements enregistrés</th>
-          </tr>
-          ${imageTreatments
-            .map(
-              (row) => `
-          <tr>
-            <td>${escapeHtml(row.reference)}</td>
-            <td>${escapeHtml(row.cote)}</td>
-            <td>${formatDate(row.sealedAt)}</td>
-            <td>${escapeHtml(row.treatments)}</td>
-          </tr>`,
-            )
-            .join('')}
-        </table>`
+        : pieces.map((piece) => pieceIntegrityBlock(piece, integrity)).join('')
     }
-    ${
-      independentTimestampAt === null
-        ? ''
-        : `<p>L'ensemble des actes consignés dans ce dossier a été horodaté par un tiers
-           indépendant le <b>${formatLongDay(independentTimestampAt)}</b>.</p>`
-    }
+    <p>${INTEGRITY_SCOPE}</p>
+    <p>Toute personne détenant l'un de ces fichiers peut contrôler elle-même, sans compte et sans solliciter le laboratoire, qu'il a bien été scellé et à quelle date : il suffit de le déposer sur ${escapeHtml(
+      integrity.verificationUrl,
+    )}. Lorsque le fichier déposé est un rapport, la page indique en outre si une version antérieure et si une version ultérieure de ce rapport ont été établies. Le calcul est effectué par le navigateur du lecteur, le fichier ne quitte pas son poste, et la page ne révèle ni le dossier, ni la procédure, ni l'identité des personnes concernées.</p>
     <p>Le détail acte par acte figure en Annexe C.</p>`;
 }
 
@@ -517,42 +768,93 @@ function conclusionSection(model: TechnicalReportViewModel): string {
     </ul>`;
 }
 
-function journalRows(entries: ReportJournalEntryViewModel[]): string {
-  return entries
-    .map(
-      (entry) => `
+function summarySentence(summary: ReportJournalSummaryViewModel): string {
+  const between = `entre ${formatHourMinute(summary.firstAt)} et ${formatHourMinute(
+    summary.lastAt,
+  )}`;
+  const what =
+    summary.family === 'ADJUSTMENT'
+      ? `${summary.count} réglage${summary.count > 1 ? 's' : ''} d'amélioration d'image sur`
+      : `${summary.count} minutie${summary.count > 1 ? 's' : ''} relevée${
+          summary.count > 1 ? 's' : ''
+        } sur`;
+  return `${what} ${escapeHtml(summary.pieceDesignation)}, ${between}`;
+}
+
+function journalRow(row: JournalRow, order: number): string {
+  const [at, author, sentence] =
+    row.kind === 'act'
+      ? [
+          row.act.occurredAt,
+          escapeHtml(row.act.actorDisplayName),
+          escapeHtml(row.act.sentence),
+        ]
+      : [row.summary.lastAt, '—', summarySentence(row.summary)];
+
+  return `
       <tr>
-        <td class="numeric">${entry.seq}</td>
-        <td>${escapeHtml(entry.label)}</td>
-        <td>${escapeHtml(entry.actorDisplayName)}</td>
-        <td>${formatDate(entry.occurredAt)}</td>
-        <td>${escapeHtml(entry.detail ?? '—')}</td>
-        <td class="hash">${escapeHtml(entry.hash.slice(0, 16))}</td>
-      </tr>`,
-    )
-    .join('');
+        <td class="numeric">${order}</td>
+        <td>${formatDayTime(at)}</td>
+        <td>${author}</td>
+        <td>${sentence}</td>
+      </tr>`;
+}
+
+function journalIntroduction(
+  journal: ReportJournalViewModel,
+  caseNumber: string,
+): string {
+  const always = `Chronologie des actes enregistrés sur le dossier ${escapeHtml(
+    caseNumber,
+  )}, dans l'ordre où ils ont été accomplis. Les dates et heures sont exprimées en temps universel (UTC). Les actes de saisie administrative — corrections d'en-tête, réglages du service — ne sont pas repris dans la présente chronologie.`;
+  const variant =
+    journal.detail === 'SUMMARY'
+      ? 'Les réglages destinés à améliorer la lisibilité des images, qui peuvent être nombreux et repris plusieurs fois sur une même image, sont résumés par une ligne par trace. Une version détaillée de la présente annexe, qui les énumère un par un, peut être éditée sur demande.'
+      : "Version détaillée : chaque réglage d'amélioration figure ci-dessous, un par un, sans regroupement.";
+  return `<p>${always}</p><p>${variant}</p>`;
+}
+
+function journalIntegrityLine(integrity: ReportIntegrityViewModel): string {
+  const verdict =
+    integrity.firstBrokenEntryNumber === null
+      ? "L'intégrité du registre a été vérifiée à l'édition du présent rapport : aucune anomalie relevée."
+      : `L'intégrité du registre a été vérifiée à l'édition du présent rapport : une anomalie a été relevée à l'inscription n° ${integrity.firstBrokenEntryNumber}.`;
+  const anchored =
+    integrity.lastAnchor === null
+      ? "Le registre de ce laboratoire n'a pas encore été horodaté par une autorité extérieure."
+      : `Le dernier horodatage extérieur du registre date du ${formatDayTime(
+          integrity.lastAnchor.anchoredAt,
+        )}.`;
+  return `<p class="note">${verdict} ${anchored}</p>`;
+}
+
+function journalFoot(journal: ReportJournalViewModel): string {
+  const total = `${journal.actCountTotal} inscription${
+    journal.actCountTotal > 1 ? 's' : ''
+  }`;
+  const printed = `${journal.actCountPrinted} ligne${
+    journal.actCountPrinted > 1 ? 's' : ''
+  }`;
+  return `<p class="note">Le registre de ce dossier porte ${total}, restituées ici en ${printed}.</p>`;
 }
 
 function journalSection(model: TechnicalReportViewModel): string {
   const { journal } = model;
+  const rows = journalRows(journal);
+
   return `
     <h2>Annexe C — Journal des actes</h2>
-    <p>
-      Cette section liste tous les actes connus de la plateforme sur ce dossier. Les actes
-      chaînés sont ceux dont la trace est scellée dans la chaîne d'audit : ils portent un
-      numéro de maillon et l'empreinte de ce maillon, et toute modification postérieure les
-      romprait. Les empreintes sont tronquées ici : l'annexe de traçabilité porte leur valeur
-      complète, ainsi que le payload intégral de chaque acte. Tous les horodatages sont
-      exprimés en temps universel (UTC).
-    </p>
+    ${journalIntroduction(journal, model.caseHeader.caseNumber)}
     ${
-      journal.chained.length === 0
-        ? '<p class="empty">Aucun acte chaîné pour ce dossier.</p>'
+      rows.length === 0
+        ? '<p class="empty">Aucun acte enregistré sur ce dossier.</p>'
         : `<table>
-            <tr><th>Maillon</th><th>Acte</th><th>Auteur</th><th>Horodatage serveur (UTC)</th><th>Détail</th><th>Empreinte (début)</th></tr>
-            ${journalRows(journal.chained)}
+            <tr><th>N°</th><th>Date et heure</th><th>Auteur</th><th>Acte</th></tr>
+            ${rows.map((row, order) => journalRow(row, order + 1)).join('')}
           </table>`
-    }`;
+    }
+    ${journalFoot(journal)}
+    ${journalIntegrityLine(model.integrity)}`;
 }
 
 export function renderTechnicalReportHtml(
@@ -576,17 +878,20 @@ export function renderTechnicalReportHtml(
     ${referencesSection(model)}
     ${offenceSection(caseHeader)}
     ${recipientSection(caseHeader)}
-    ${summarySection()}
+    ${summarySection(model)}
 
     ${objectSection(model)}
     ${methodsSection(model)}
     ${examinedTracesSection(model)}
     ${exploitabilitySection(model)}
     ${comparisonsSection(model)}
-    ${treatmentsSection(model)}
+    ${integritySection(model)}
     ${conclusionSection(model)}
     ${contributorsSentence(model.contributors)}
     ${signatureSection(model)}
+
+    ${annexASection(model)}
+    ${annexBSection(model)}
 
     ${journalSection(model)}
 

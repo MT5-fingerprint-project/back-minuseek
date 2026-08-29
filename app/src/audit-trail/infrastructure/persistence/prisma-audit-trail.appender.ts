@@ -4,6 +4,7 @@ import { AuditEventType } from '../../../shared/domain/audit/audit-event-type.vo
 import { EvidenceClass } from '../../../shared/domain/audit/evidence-class.vo';
 import {
   AuditEventDraft,
+  AuditLink,
   AuditTrailPort,
 } from '../../../shared/domain/ports/audit-trail.port';
 import {
@@ -27,7 +28,7 @@ export class PrismaAuditTrailAppender implements AuditTrailPort {
     private readonly idGenerator: IdGenerator,
   ) {}
 
-  async append(draft: AuditEventDraft): Promise<void> {
+  async append(draft: AuditEventDraft): Promise<AuditLink> {
     const transaction = this.transactionContext.getCurrentTransaction();
     if (!transaction) {
       throw new AuditAppendOutsideTransactionError(draft.eventType);
@@ -88,5 +89,7 @@ export class PrismaAuditTrailAppender implements AuditTrailPort {
         hash: primitives.hash,
       },
     });
+
+    return { seq, occurredAt };
   }
 }

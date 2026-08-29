@@ -20,6 +20,7 @@ describe('ReferencePrint', () => {
         path: 'media/case-1/referencePrints/r-1.png',
         caseId: 'case-1',
         sha256: seal(),
+        displayableSha256: seal(),
       });
 
       expect(rp.id).toBe('r-1');
@@ -35,6 +36,7 @@ describe('ReferencePrint', () => {
         path: 'p',
         caseId: 'case-1',
         sha256: seal(),
+        displayableSha256: seal(),
         subjectId: 'subject-1',
         position: FingerPosition.from('RIGHT_THUMB'),
       });
@@ -49,6 +51,7 @@ describe('ReferencePrint', () => {
         path: 'p',
         caseId: 'c-1',
         sha256: seal(),
+        displayableSha256: seal(),
       });
 
       expect(rp.sha256).toBe(CLEAN_PRINT_SHA256);
@@ -61,6 +64,7 @@ describe('ReferencePrint', () => {
           path: 'p',
           caseId: 'c-1',
           sha256: seal(),
+          displayableSha256: seal(),
         }),
       ).toThrow();
     });
@@ -72,6 +76,7 @@ describe('ReferencePrint', () => {
           path: '',
           caseId: 'c-1',
           sha256: seal(),
+          displayableSha256: seal(),
         }),
       ).toThrow();
     });
@@ -83,6 +88,7 @@ describe('ReferencePrint', () => {
           path: 'p',
           caseId: '',
           sha256: seal(),
+          displayableSha256: seal(),
         }),
       ).toThrow();
     });
@@ -95,6 +101,7 @@ describe('ReferencePrint', () => {
         path: 'media/case-1/referencePrints/r-1.png',
         caseId: 'case-1',
         sha256: CLEAN_PRINT_SHA256,
+        displayableSha256: CLEAN_PRINT_SHA256,
         subjectId: 'subject-1',
         position: 'LEFT_PALM',
         withdrawnAt: null,
@@ -116,6 +123,7 @@ describe('ReferencePrint', () => {
         path: 'p',
         caseId: 'case-1',
         sha256: null,
+        displayableSha256: null,
         subjectId: null,
         position: null,
         withdrawnAt: null,
@@ -134,6 +142,7 @@ describe('ReferencePrint', () => {
           path: 'p',
           caseId: 'case-1',
           sha256: 'not-a-hash',
+          displayableSha256: 'not-a-hash',
           subjectId: null,
           position: null,
           withdrawnAt: null,
@@ -152,6 +161,7 @@ describe('ReferencePrint', () => {
         path: 'p',
         caseId: 'c-1',
         sha256: seal(),
+        displayableSha256: seal(),
       });
 
       expect(rp.toPrimitives()).toEqual({
@@ -159,6 +169,7 @@ describe('ReferencePrint', () => {
         path: 'p',
         caseId: 'c-1',
         sha256: CLEAN_PRINT_SHA256,
+        displayableSha256: CLEAN_PRINT_SHA256,
         subjectId: null,
         position: null,
         withdrawnAt: null,
@@ -241,6 +252,7 @@ describe('ReferencePrint', () => {
         path: 'media/case-1/referencePrints/r-1.png',
         caseId: 'case-1',
         sha256: seal(),
+        displayableSha256: seal(),
       });
       rp.withdraw('WRONG_ATTRIBUTION', WITHDRAWN_AT);
       return rp;
@@ -287,6 +299,7 @@ describe('ReferencePrint', () => {
         path: 'p',
         caseId: 'case-1',
         sha256: seal(),
+        displayableSha256: seal(),
       });
 
       expect(() => rp.restore()).toThrow(NotWithdrawnError);
@@ -298,6 +311,7 @@ describe('ReferencePrint', () => {
         path: 'p',
         caseId: 'case-1',
         sha256: null,
+        displayableSha256: null,
         subjectId: null,
         position: null,
         withdrawnAt: WITHDRAWN_AT,

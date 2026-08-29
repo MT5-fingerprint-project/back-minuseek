@@ -5,13 +5,18 @@ import { AuditActorPrimitives } from '../../../shared/domain/audit/audit-actor.v
 import {
   AUDIT_TRAIL,
   AuditEventDraft,
+  AuditLink,
   AuditTrailPort,
 } from '../../../shared/domain/ports/audit-trail.port';
 import {
   TRANSACTION_RUNNER,
   TransactionRunner,
 } from '../../../shared/domain/ports/transaction-runner';
-import { Report, ReportTypeName } from '../../domain/report/entity/report';
+import {
+  JournalDetailName,
+  Report,
+  ReportTypeName,
+} from '../../domain/report/entity/report';
 import { ReportSequenceAlreadyTakenError } from '../../domain/report/errors/report-sequence-already-taken.error';
 import type { ReportRepository } from '../../domain/report/repository/report.repository';
 
@@ -22,6 +27,7 @@ interface ReportRow {
   sequence: number;
   number: string;
   signerUserId: string;
+  journalDetail: string;
   storagePath: string;
   sha256: string;
   generatedBy: unknown;
@@ -36,6 +42,7 @@ function toReport(row: ReportRow): Report {
     sequence: row.sequence,
     number: row.number,
     signerUserId: row.signerUserId,
+    journalDetail: row.journalDetail as JournalDetailName,
     storagePath: row.storagePath,
     sha256: row.sha256,
     generatedBy: row.generatedBy as AuditActorPrimitives,
@@ -62,10 +69,10 @@ export class PrismaReportRepository implements ReportRepository {
     private readonly auditTrail: AuditTrailPort,
   ) {}
 
-  async save(report: Report, act: AuditEventDraft): Promise<void> {
+  async save(report: Report, act: AuditEventDraft): Promise<AuditLink> {
     const primitives = report.toPrimitives();
     try {
-      await this.transactionRunner.run(async () => {
+      return await this.transactionRunner.run(async () => {
         const prisma = await this.tenantConnection.getCurrentClient();
         await prisma.report.create({
           data: {
@@ -75,6 +82,7 @@ export class PrismaReportRepository implements ReportRepository {
             sequence: primitives.sequence,
             number: primitives.number,
             signerUserId: primitives.signerUserId,
+            journalDetail: primitives.journalDetail,
             storagePath: primitives.storagePath,
             sha256: primitives.sha256,
             generatedBy:
@@ -82,7 +90,7 @@ export class PrismaReportRepository implements ReportRepository {
             createdAt: primitives.createdAt,
           },
         });
-        await this.auditTrail.append(act);
+        return this.auditTrail.append(act);
       });
     } catch (error) {
       if (isSequenceCollision(error)) {

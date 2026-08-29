@@ -7,10 +7,22 @@ import type {
   AnchorData,
   AuditEventData,
 } from '../../ports/traceability-data.reader';
-import type { ReportImageViewModel } from '../../report-view-model';
 import { CaseContributorData } from '../../ports/case-contributors.reader';
 import { PreviousDocumentData } from '../../ports/report-numbering.reader';
+import type { ChainAttestation } from '../../ports/chain-attestation.port';
+import type {
+  JournalDetail,
+  ReportImageViewModel,
+} from '../../report-view-model';
 import { ServiceLetterheadData } from '../../ports/service-letterhead.reader';
+
+const VERIFIED: ChainAttestation = {
+  ok: true,
+  eventsChecked: 12,
+  firstBrokenSeq: null,
+  anchorsVerified: 1,
+  anchorsFailed: 0,
+};
 import { buildTechnicalReport } from './technical-report.builder';
 
 const OPENED_AT = new Date('2026-08-01T09:00:00.000Z');
@@ -21,6 +33,7 @@ function trace(overrides: Partial<PieceData> & { id: string }): PieceData {
   return {
     path: `media/case-1/traces/${overrides.id}.png`,
     sha256: 'a'.repeat(64),
+    displayableSha256: 'a'.repeat(64),
     createdAt: OPENED_AT,
     capturedAt: null,
     status: 'EXPLOITABLE',
@@ -100,6 +113,7 @@ function caseData(overrides: Partial<CaseReportData> = {}): CaseReportData {
     comparisons: [],
     declaredHits: [],
     subjects: [],
+    minutiaPairs: [],
     ...overrides,
   };
 }
@@ -129,6 +143,8 @@ function build(
     contributors?: CaseContributorData[];
     previousDocument?: PreviousDocumentData | null;
     letterhead?: ServiceLetterheadData;
+    journalDetail?: JournalDetail;
+    attestation?: ChainAttestation;
   } = {},
 ) {
   return buildTechnicalReport({
@@ -144,6 +160,9 @@ function build(
     chainHead: null,
     generatedAt: GENERATED_AT,
     generatedByDisplayName: 'Alex Martin',
+    journalDetail: extras.journalDetail ?? 'SUMMARY',
+    attestation: extras.attestation ?? VERIFIED,
+    verificationUrl: 'https://minuseek.fr/srpts-paris/verifier',
     images: new Map<string, ReportImageViewModel | null>(),
   });
 }
@@ -172,6 +191,84 @@ describe('buildTechnicalReport — en-tête du service', () => {
 
     expect(model.header.letterhead).toBeNull();
     expect(model.header.signatureCity).toBeNull();
+  });
+});
+
+describe('buildTechnicalReport — annexe A', () => {
+  it('ne retient que les traces exploitables, dans l’ordre des traces', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({ id: 't2', number: 2, cote: 'B' }),
+          trace({
+            id: 't3',
+            number: 3,
+            status: 'NOT_EXPLOITABLE',
+            cote: null,
+          }),
+          trace({ id: 't1', number: 1, cote: 'A' }),
+        ],
+      }),
+    );
+
+    expect(model.annexA.map((plate) => plate.reference)).toEqual([
+      '3455-T1',
+      '3455-T2',
+    ]);
+    expect(model.annexA.map((plate) => plate.cote)).toEqual(['A', 'B']);
+  });
+
+  it('écarte une trace déclarée inexploitable, même si une cote lui traîne', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({ id: 't1', number: 1, status: 'NOT_EXPLOITABLE', cote: 'A' }),
+        ],
+      }),
+    );
+
+    expect(model.annexA).toEqual([]);
+  });
+
+  it('écarte une trace retirée du dossier', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            withdrawnAt: new Date('2026-08-12T10:00:00.000Z'),
+            withdrawalMotive: 'MISFILED',
+          }),
+        ],
+      }),
+    );
+
+    expect(model.annexA).toEqual([]);
+  });
+
+  it('porte la localisation et la date de mise sous scellé de chaque planche', () => {
+    const model = build(
+      caseData({ traces: [trace({ id: 't1', number: 1, cote: 'A' })] }),
+    );
+
+    expect(model.annexA[0]).toMatchObject({
+      location: 'Sur la porte-fenêtre du séjour',
+      sealedAt: OPENED_AT,
+      image: null,
+    });
+  });
+
+  it('n’a pas d’annexe A sur un dossier sans trace exploitable', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({ id: 't1', number: 1, status: 'NOT_EXPLOITABLE', cote: null }),
+        ],
+      }),
+    );
+
+    expect(model.annexA).toEqual([]);
   });
 });
 
@@ -384,104 +481,6 @@ describe('buildTechnicalReport — discrimination', () => {
       "Retirée du dossier le 12 août 2026 — doublon d'une pièce déjà versée",
     );
     expect(model.counts.total).toBe(0);
-  });
-});
-
-describe('buildTechnicalReport — réglages en clair', () => {
-  it('traduit chaque calque de filtre, dans l’ordre des calques', () => {
-    const model = build(
-      caseData({
-        traces: [
-          trace({
-            id: 't1',
-            number: 1,
-            layers: [
-              {
-                name: 'Inversion',
-                type: 'FILTER',
-                zIndex: 1,
-                isVisible: true,
-                settings: { filterKey: 'inversion', value: 1 },
-              },
-              {
-                name: 'Saturation',
-                type: 'FILTER',
-                zIndex: 2,
-                isVisible: true,
-                settings: { filterKey: 'saturation', value: -40 },
-              },
-              {
-                name: 'Rotation',
-                type: 'FILTER',
-                zIndex: 3,
-                isVisible: true,
-                settings: { filterKey: 'rotation', value: 12 },
-              },
-            ],
-          }),
-        ],
-      }),
-    );
-
-    expect(model.imageTreatments[0].treatments).toBe(
-      'Inversion, saturation −40 %, rotation 12°',
-    );
-  });
-
-  it('écrit « Aucun » quand la trace ne porte aucun filtre', () => {
-    const model = build(
-      caseData({
-        traces: [
-          trace({
-            id: 't1',
-            number: 1,
-            layers: [
-              {
-                name: 'Minutie',
-                type: 'ANNOTATION',
-                zIndex: 1,
-                isVisible: true,
-                settings: { type: 'minutia', x: 10, y: 20 },
-              },
-            ],
-          }),
-        ],
-      }),
-    );
-
-    expect(model.imageTreatments[0].treatments).toBe('Aucun');
-  });
-
-  it('passe sous silence un calque dont le réglage n’a pas de valeur chiffrée', () => {
-    const model = build(
-      caseData({
-        traces: [
-          trace({
-            id: 't1',
-            number: 1,
-            layers: [
-              {
-                name: 'Luminosité',
-                type: 'FILTER',
-                zIndex: 1,
-                isVisible: true,
-                settings: { filterKey: 'brightness' },
-              },
-              {
-                name: 'Contraste',
-                type: 'FILTER',
-                zIndex: 2,
-                isVisible: true,
-                settings: { filterKey: 'contrast', value: 15 },
-              },
-            ],
-          }),
-        ],
-      }),
-    );
-
-    expect(model.imageTreatments[0].treatments).toBe('Contraste +15 %');
-    expect(model.imageTreatments[0].treatments).not.toContain('NaN');
   });
 });
 

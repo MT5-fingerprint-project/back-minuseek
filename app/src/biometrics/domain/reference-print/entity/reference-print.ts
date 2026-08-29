@@ -11,6 +11,7 @@ export interface ReferencePrintPrimitives {
   path: string;
   caseId: string;
   sha256: string | null;
+  displayableSha256?: string | null;
   subjectId: string | null;
   position: string | null;
   withdrawnAt: Date | null;
@@ -24,6 +25,7 @@ interface CreateReferencePrintProps {
   path: string;
   caseId: string;
   sha256: FileDigest;
+  displayableSha256?: FileDigest;
   subjectId?: string | null;
   position?: FingerPosition | null;
 }
@@ -34,6 +36,7 @@ export class ReferencePrint {
     private readonly _path: string,
     private readonly _caseId: string,
     private readonly _sha256: FileDigest | null,
+    private readonly _displayableSha256: FileDigest | null,
     private readonly _subjectId: string | null,
     private readonly _position: FingerPosition | null,
     private _withdrawal: Withdrawal | null,
@@ -56,6 +59,7 @@ export class ReferencePrint {
       props.path,
       props.caseId,
       props.sha256,
+      props.displayableSha256 ?? props.sha256,
       props.subjectId ?? null,
       props.position ?? null,
       null,
@@ -70,6 +74,9 @@ export class ReferencePrint {
       primitives.path,
       primitives.caseId,
       primitives.sha256 === null ? null : FileDigest.from(primitives.sha256),
+      primitives.displayableSha256
+        ? FileDigest.from(primitives.displayableSha256)
+        : null,
       primitives.subjectId,
       primitives.position ? FingerPosition.from(primitives.position) : null,
       Withdrawal.fromPersistence(
@@ -115,6 +122,7 @@ export class ReferencePrint {
       path: this._path,
       caseId: this._caseId,
       sha256: this._sha256?.getValue() ?? null,
+      displayableSha256: this._displayableSha256?.getValue() ?? null,
       subjectId: this._subjectId,
       position: this._position ? this._position.getValue() : null,
       withdrawnAt: this._withdrawal?.getAt() ?? null,
@@ -138,6 +146,10 @@ export class ReferencePrint {
 
   get sha256(): string | null {
     return this._sha256?.getValue() ?? null;
+  }
+
+  get displayableSha256(): string | null {
+    return this._displayableSha256?.getValue() ?? null;
   }
 
   get subjectId(): string | null {

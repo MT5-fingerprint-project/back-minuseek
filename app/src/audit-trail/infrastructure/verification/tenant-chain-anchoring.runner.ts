@@ -4,6 +4,7 @@ import { TenantContextService } from '../../../tenancy/application/tenant-contex
 import { TenantRegistryService } from '../../../tenancy/application/tenant-registry.service';
 import { AnchorChainCommand } from '../../application/commands/anchor-chain/anchor-chain.command';
 import type { AnchoringOutcome } from '../../application/commands/anchor-chain/anchor-chain.handler';
+import { AdminSealRegistry } from '../persistence/admin-seal-registry';
 
 export interface TenantAnchoring {
   tenant: string;
@@ -20,6 +21,7 @@ export class TenantChainAnchoringRunner {
     private readonly tenantRegistry: TenantRegistryService,
     private readonly tenantContext: TenantContextService,
     private readonly commandBus: CommandBus,
+    private readonly sealRegistry: AdminSealRegistry,
   ) {}
 
   async anchor(tenantSlug?: string): Promise<TenantAnchoring[]> {
@@ -54,14 +56,22 @@ export class TenantChainAnchoringRunner {
           new AnchorChainCommand(),
         ),
       );
-      return outcome.status === 'anchored'
-        ? {
-            tenant: slug,
-            status: 'anchored',
-            headSeq: outcome.headSeq,
-            genTime: outcome.genTime,
-          }
-        : { tenant: slug, status: 'skipped', reason: outcome.reason };
+      if (outcome.status !== 'anchored') {
+        return { tenant: slug, status: 'skipped', reason: outcome.reason };
+      }
+
+      await this.sealRegistry.markAnchored(
+        slug,
+        BigInt(outcome.headSeq),
+        outcome.genTime,
+      );
+
+      return {
+        tenant: slug,
+        status: 'anchored',
+        headSeq: outcome.headSeq,
+        genTime: outcome.genTime,
+      };
     } catch (error) {
       return {
         tenant: slug,

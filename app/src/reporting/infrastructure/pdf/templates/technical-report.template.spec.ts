@@ -1,5 +1,31 @@
-import { TechnicalReportViewModel } from '../../../application/report-view-model';
+import {
+  ReportDemonstrationViewModel,
+  TechnicalReportViewModel,
+} from '../../../application/report-view-model';
 import { renderTechnicalReportHtml } from './technical-report.template';
+
+const IMAGE = {
+  dataUrl: 'data:image/png;base64,AAA',
+  width: 800,
+  height: 1200,
+  observedSha256: null,
+};
+
+function demonstration(
+  overrides: Partial<ReportDemonstrationViewModel> = {},
+): ReportDemonstrationViewModel {
+  return {
+    reference: '3455-T2',
+    cote: 'B',
+    location: 'sur la porte-fenêtre du séjour',
+    subject: { civility: 'Madame', firstName: 'Hélène', lastName: 'Berger' },
+    position: 'index droit',
+    localisationPhoto: null,
+    trace: { image: IMAGE, marks: [] },
+    referencePrint: { image: IMAGE, marks: [] },
+    ...overrides,
+  };
+}
 
 function model(
   overrides: Partial<TechnicalReportViewModel> = {},
@@ -99,14 +125,6 @@ function model(
     ],
     negativeCotes: [],
     notExaminedCotes: ['B'],
-    imageTreatments: [
-      {
-        reference: '3455-T1',
-        cote: 'A',
-        sealedAt: new Date('2026-03-14T16:42:00.000Z'),
-        treatments: 'Luminosité +20 %, contraste +15 %',
-      },
-    ],
     independentTimestampAt: new Date('2026-03-15T03:00:00.000Z'),
     counts: {
       total: 2,
@@ -119,7 +137,24 @@ function model(
     traces: [],
     referencePrints: [],
     identityDemonstrations: [],
-    journal: { chained: [] },
+    annexA: [],
+    annexB: [],
+    integrity: {
+      traces: [],
+      referencePrints: [],
+      lastAnchor: null,
+      recordVerifiedAtEdition: true,
+      firstBrokenEntryNumber: null,
+      anchorsFailed: 0,
+      verificationUrl: 'https://minuseek.fr/srpts-paris/verifier',
+    },
+    journal: {
+      detail: 'SUMMARY',
+      acts: [],
+      summaries: [],
+      actCountTotal: 0,
+      actCountPrinted: 0,
+    },
     ...overrides,
   };
 }
@@ -156,10 +191,23 @@ describe('renderTechnicalReportHtml — structure', () => {
   });
 
   it('annonce les trois annexes et garde le journal en annexe C', () => {
-    const html = renderTechnicalReportHtml(model());
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [demonstration()],
+        annexA: [
+          {
+            reference: '3455-T1',
+            cote: 'A',
+            location: null,
+            image: null,
+            sealedAt: new Date('2026-08-16T17:03:00.000Z'),
+          },
+        ],
+      }),
+    );
 
     expect(html).toContain(
-      'Annexe A — Planches des traces papillaires exploitables',
+      'Annexe A — Inventaire des traces papillaires exploitables',
     );
     expect(html).toContain("Annexe B — Démonstrations d'identité");
     expect(html).toContain('Annexe C — Journal des actes');
@@ -316,12 +364,9 @@ describe('renderTechnicalReportHtml — les conclusions', () => {
     );
   });
 
-  it('n’affirme pas d’horodatage indépendant quand il n’y en a pas', () => {
-    const html = renderTechnicalReportHtml(
-      model({ independentTimestampAt: null }),
-    );
+  it('renvoie le lecteur à l’annexe C pour le détail acte par acte', () => {
+    const html = renderTechnicalReportHtml(model());
 
-    expect(html).not.toContain('horodaté par un tiers');
     expect(html).toContain('Le détail acte par acte figure en Annexe C.');
   });
 });
@@ -474,5 +519,714 @@ describe('renderTechnicalReportHtml — en-tête du service', () => {
     expect(html).toContain('S.R.P.T.S. de Paris');
     expect(html).not.toContain('<b></b>');
     expect(html).not.toContain('undefined');
+  });
+});
+
+const JOURNAL_ACT = {
+  order: 1,
+  occurredAt: new Date('2026-03-16T16:00:00.000Z'),
+  actorDisplayName: 'Sébastien Aguilar',
+  sentence: 'Dépôt de la trace 3455-T2 cotée « B » et mise sous scellé',
+};
+
+describe('renderTechnicalReportHtml — annexe C', () => {
+  function journal(overrides: Record<string, unknown> = {}) {
+    return model({
+      journal: {
+        detail: 'SUMMARY',
+        acts: [JOURNAL_ACT],
+        summaries: [],
+        actCountTotal: 1,
+        actCountPrinted: 1,
+        ...overrides,
+      },
+    } as never);
+  }
+
+  it('titre l’annexe et annonce le filtrage des saisies administratives', () => {
+    const html = renderTechnicalReportHtml(journal());
+
+    expect(html).toContain('Annexe C — Journal des actes');
+    expect(html).toContain(
+      "Chronologie des actes enregistrés sur le dossier 3455, dans l'ordre où ils ont été accomplis.",
+    );
+    expect(html).toContain(
+      "Les actes de saisie administrative — corrections d'en-tête, réglages du service — ne sont pas repris dans la présente chronologie.",
+    );
+  });
+
+  it('annonce le regroupement en variante résumée', () => {
+    const html = renderTechnicalReportHtml(journal());
+
+    expect(html).toContain(
+      'sont résumés par une ligne par trace. Une version détaillée de la présente annexe, qui les énumère un par un, peut être éditée sur demande.',
+    );
+    expect(html).not.toContain('Version détaillée :');
+  });
+
+  it('annonce l’énumération en variante détaillée, sans prétendre tout imprimer', () => {
+    const html = renderTechnicalReportHtml(journal({ detail: 'FULL' }));
+
+    expect(html).toContain(
+      "Version détaillée : chaque réglage d'amélioration figure ci-dessous, un par un, sans regroupement.",
+    );
+    expect(html).not.toContain(
+      'tous les actes enregistrés figurent ci-dessous',
+    );
+  });
+
+  it('imprime la phrase de l’acte, son heure et son auteur', () => {
+    const html = renderTechnicalReportHtml(journal());
+
+    expect(html).toContain(
+      'Dépôt de la trace 3455-T2 cotée « B » et mise sous scellé',
+    );
+    expect(html).toContain('16/03/2026 à 16 h 00');
+    expect(html).toContain('Sébastien Aguilar');
+  });
+
+  it('résume les réglages d’une trace en une ligne bornée dans le temps', () => {
+    const html = renderTechnicalReportHtml(
+      journal({
+        acts: [],
+        summaries: [
+          {
+            family: 'ADJUSTMENT',
+            pieceDesignation: 'la trace 3455-T2 cotée « B »',
+            count: 13,
+            firstAt: new Date('2026-03-16T17:03:00.000Z'),
+            lastAt: new Date('2026-03-16T17:41:00.000Z'),
+          },
+        ],
+        actCountTotal: 13,
+        actCountPrinted: 1,
+      }),
+    );
+
+    expect(html).toContain(
+      "13 réglages d'amélioration d'image sur la trace 3455-T2 cotée « B », entre 17 h 03 et 17 h 41",
+    );
+  });
+
+  it('accorde la ligne de synthèse au singulier', () => {
+    const html = renderTechnicalReportHtml(
+      journal({
+        acts: [],
+        summaries: [
+          {
+            family: 'ADJUSTMENT',
+            pieceDesignation: 'la trace 3455-T2 cotée « B »',
+            count: 1,
+            firstAt: new Date('2026-03-16T17:03:00.000Z'),
+            lastAt: new Date('2026-03-16T17:03:00.000Z'),
+          },
+        ],
+        actCountTotal: 1,
+        actCountPrinted: 1,
+      }),
+    );
+
+    expect(html).toContain("1 réglage d'amélioration d'image sur");
+  });
+
+  it('résume les minuties relevées sur une trace', () => {
+    const html = renderTechnicalReportHtml(
+      journal({
+        acts: [],
+        summaries: [
+          {
+            family: 'MARK',
+            pieceDesignation: 'la trace 3455-T2 cotée « B »',
+            count: 12,
+            firstAt: new Date('2026-03-16T17:12:00.000Z'),
+            lastAt: new Date('2026-03-16T17:19:00.000Z'),
+          },
+        ],
+        actCountTotal: 12,
+        actCountPrinted: 1,
+      }),
+    );
+
+    expect(html).toContain(
+      '12 minuties relevées sur la trace 3455-T2 cotée « B », entre 17 h 12 et 17 h 19',
+    );
+  });
+
+  it('dit l’écart entre ce que le registre porte et ce que l’annexe affiche', () => {
+    const html = renderTechnicalReportHtml(
+      journal({ actCountTotal: 120, actCountPrinted: 40 }),
+    );
+
+    expect(html).toContain(
+      'Le registre de ce dossier porte 120 inscriptions, restituées ici en 40 lignes.',
+    );
+    expect(html).not.toContain('en détaille');
+  });
+
+  it('ne sort ni empreinte, ni numéro d’inscription, ni nom technique d’événement', () => {
+    const html = renderTechnicalReportHtml(journal());
+
+    expect(html).not.toContain('LAYER_');
+    expect(html).not.toContain('filterKey');
+    expect(html).not.toContain('engineVersion');
+    expect(html).not.toContain('matchThreshold');
+    expect(html).not.toContain('prevHash');
+    expect(html).not.toContain('sha256');
+    expect(html).not.toContain('Maillon');
+    expect(html).not.toContain('Empreinte (début)');
+  });
+
+  it('ne comporte que quatre colonnes', () => {
+    const html = renderTechnicalReportHtml(journal());
+
+    expect(html).toContain(
+      '<tr><th>N°</th><th>Date et heure</th><th>Auteur</th><th>Acte</th></tr>',
+    );
+  });
+});
+
+const SEALED = 'a'.repeat(64);
+
+const PIECE_INTEGRITY = {
+  designation: 'la trace 3455-T2 cotée « B »',
+  cote: 'B',
+  recordedSha256: SEALED,
+  sealedAt: new Date('2026-03-16T17:03:00.000Z'),
+  recordEntryNumber: 12,
+  currentRowSha256: SEALED,
+  divergesFromRecord: false,
+  servedFileIsDerived: false,
+  observedSha256: SEALED,
+  observedMatchesRecord: true,
+  treatments: [
+    {
+      sentence: 'Luminosité portée à +20 %',
+      appliedAt: new Date('2026-03-16T17:10:00.000Z'),
+      actorDisplayName: 'Sébastien Aguilar',
+      removedAt: null,
+      hiddenAtEdition: false,
+    },
+  ],
+  lastActEntryNumber: 30,
+  coveringAnchor: {
+    anchoredAt: new Date('2026-03-17T02:00:00.000Z'),
+    authority: 'https://freetsa.org/tsr',
+    entryNumber: 40,
+  },
+};
+
+function withIntegrity(overrides: Record<string, unknown> = {}) {
+  return model({
+    integrity: {
+      traces: [PIECE_INTEGRITY],
+      referencePrints: [],
+      lastAnchor: {
+        anchoredAt: new Date('2026-03-17T02:00:00.000Z'),
+        entryNumber: 40,
+      },
+      recordVerifiedAtEdition: true,
+      firstBrokenEntryNumber: null,
+      anchorsFailed: 0,
+      verificationUrl: 'https://minuseek.fr/srpts-paris/verifier',
+      ...overrides,
+    },
+  });
+}
+
+describe('renderTechnicalReportHtml — section 6', () => {
+  it('imprime le préambule d’intégrité', () => {
+    const html = renderTechnicalReportHtml(withIntegrity());
+
+    expect(html).toContain('selon la méthode publique dite SHA-256');
+    expect(html).toContain(
+      "Le logiciel ne comporte aucune fonction permettant de remplacer le fichier d'une pièce.",
+    );
+    expect(html).toContain('Le registre chronologique est en écriture seule');
+  });
+
+  it('imprime l’empreinte du registre et sa date de mise sous scellé', () => {
+    const html = renderTechnicalReportHtml(withIntegrity());
+
+    expect(html).toContain(`<span class="hash">${SEALED}</span>`);
+    expect(html).toContain(
+      'Mise sous scellé le 16/03/2026 à 17 h 03, inscription n° 12 du registre.',
+    );
+  });
+
+  it('imprime celle du registre, pas celle de la fiche, quand elles divergent', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        traces: [
+          {
+            ...PIECE_INTEGRITY,
+            currentRowSha256: 'b'.repeat(64),
+            divergesFromRecord: true,
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain(`<span class="hash">${SEALED}</span>`);
+    expect(html).not.toContain('b'.repeat(64));
+    expect(html).toContain(
+      'cette divergence doit être signalée au responsable du laboratoire',
+    );
+  });
+
+  it('dit qu’une pièce sans inscription de dépôt n’est pas attestée', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        traces: [
+          {
+            ...PIECE_INTEGRITY,
+            recordedSha256: null,
+            sealedAt: null,
+            recordEntryNumber: null,
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain(
+      "Aucune empreinte n'a été inscrite au registre lors du dépôt de cette pièce.",
+    );
+  });
+
+  it('décrit les traitements en français, avec leur date et leur auteur', () => {
+    const html = renderTechnicalReportHtml(withIntegrity());
+
+    expect(html).toContain(
+      'Luminosité portée à +20 %, posé le 16/03/2026 à 17 h 10 par Sébastien Aguilar',
+    );
+    expect(html).toContain(
+      "Ces traitements sont des réglages d'affichage ; ils n'ont pas modifié le fichier scellé ci-dessus.",
+    );
+  });
+
+  it('le dit quand aucun traitement n’a été appliqué', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({ traces: [{ ...PIECE_INTEGRITY, treatments: [] }] }),
+    );
+
+    expect(html).toContain("Aucun traitement n'a été appliqué à cette image.");
+  });
+
+  it('nomme l’autorité et la date de l’ancre couvrante', () => {
+    const html = renderTechnicalReportHtml(withIntegrity());
+
+    expect(html).toContain(
+      "l'autorité d'horodatage https://freetsa.org/tsr a daté un état du registre postérieur à ces opérations (inscription n° 40)",
+    );
+  });
+
+  it('imprime la mention dégradée quand aucune ancre ne couvre les actes', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        traces: [{ ...PIECE_INTEGRITY, coveringAnchor: null }],
+        lastAnchor: {
+          anchoredAt: new Date('2026-03-16T10:00:00.000Z'),
+          entryNumber: 10,
+        },
+      }),
+    );
+
+    expect(html).toContain(
+      'Aucun horodatage extérieur ne couvre encore ces opérations',
+    );
+  });
+
+  it('imprime la mention dégradée quand le laboratoire n’a jamais été horodaté', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        traces: [{ ...PIECE_INTEGRITY, coveringAnchor: null }],
+        lastAnchor: null,
+      }),
+    );
+
+    expect(html).toContain(
+      "Aucun horodatage extérieur n'a encore été obtenu pour le registre de ce laboratoire",
+    );
+  });
+
+  it('affirme le contrôle quand le fichier porte bien l’empreinte inscrite', () => {
+    const html = renderTechnicalReportHtml(withIntegrity());
+
+    expect(html).toContain(
+      "le fichier conservé porte bien l'empreinte inscrite au registre",
+    );
+  });
+
+  it('dénonce une pièce dont le fichier ne porte plus l’empreinte inscrite', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        traces: [{ ...PIECE_INTEGRITY, observedMatchesRecord: false }],
+      }),
+    );
+
+    expect(html).toContain(
+      "Cette pièce doit être tenue pour altérée jusqu'à examen.",
+    );
+  });
+
+  it('dit qu’un fichier illisible à l’édition n’a pas été contrôlé', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        traces: [
+          {
+            ...PIECE_INTEGRITY,
+            observedSha256: null,
+            observedMatchesRecord: null,
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain(
+      "Le fichier n'a pas pu être relu à l'édition du présent rapport ; le contrôle n'a pas été effectué.",
+    );
+  });
+
+  it('n’affirme aucun contrôle sur un fichier dérivé, et dit pourquoi', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        traces: [
+          {
+            ...PIECE_INTEGRITY,
+            servedFileIsDerived: true,
+            observedMatchesRecord: null,
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain(
+      "L'image reproduite dans le présent rapport n'est pas le fichier reçu",
+    );
+    expect(html).not.toContain("le contrôle n'a pas été effectué.");
+  });
+
+  it('imprime l’encadré d’anomalie quand le registre n’est pas vérifié', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        recordVerifiedAtEdition: false,
+        firstBrokenEntryNumber: 17,
+      }),
+    );
+
+    expect(html).toContain("a relevé une anomalie à l'inscription n° 17");
+  });
+
+  it('imprime l’encadré des horodatages quand seuls ceux-ci sont en cause', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({ recordVerifiedAtEdition: false, anchorsFailed: 2 }),
+    );
+
+    expect(html).toContain("n'a pas pu valider 2 horodatage(s) extérieur(s)");
+  });
+
+  it('imprime l’adresse de vérification et ce qu’elle signale', () => {
+    const html = renderTechnicalReportHtml(withIntegrity());
+
+    expect(html).toContain('https://minuseek.fr/srpts-paris/verifier');
+    expect(html).toContain(
+      'la page indique en outre si une version antérieure et si une version ultérieure de ce rapport ont été établies',
+    );
+    expect(html).toContain('le fichier ne quitte pas son poste');
+  });
+
+  it('borne la portée de ce que la section établit', () => {
+    const html = renderTechnicalReportHtml(withIntegrity());
+
+    expect(html).toContain(
+      "Cela n'établit ni la qualité de la prise de vue, ni l'origine de l'image avant son dépôt au laboratoire.",
+    );
+  });
+
+  it('ne sort ni nom de champ, ni chemin de stockage, ni vocabulaire d’ingénieur', () => {
+    const html = renderTechnicalReportHtml(withIntegrity());
+
+    expect(html).not.toContain('payload');
+    expect(html).not.toContain('storagePath');
+    expect(html).not.toContain('fingerprintId');
+    expect(html).not.toContain('filterKey');
+    expect(html).not.toContain('prevHash');
+    expect(html.toLowerCase()).not.toContain('maillon');
+    expect(html).not.toContain('media/');
+  });
+
+  it('écrit en annexe C que le registre a été vérifié à l’édition', () => {
+    const html = renderTechnicalReportHtml(withIntegrity());
+
+    expect(html).toContain(
+      "L'intégrité du registre a été vérifiée à l'édition du présent rapport : aucune anomalie relevée.",
+    );
+    expect(html).toContain(
+      'Le dernier horodatage extérieur du registre date du 17/03/2026 à 02 h 00.',
+    );
+  });
+
+  it('écrit en annexe C l’anomalie relevée, plutôt qu’un blanc-seing', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        recordVerifiedAtEdition: false,
+        firstBrokenEntryNumber: 17,
+      }),
+    );
+
+    expect(html).toContain("une anomalie a été relevée à l'inscription n° 17.");
+    expect(html).not.toContain('aucune anomalie relevée.');
+  });
+});
+
+const PLATE = {
+  reference: '3455-T1',
+  cote: 'A',
+  location: 'sur la face extérieure de la porte-fenêtre du séjour',
+  image: {
+    dataUrl: 'data:image/png;base64,AAA',
+    width: 800,
+    height: 1200,
+    observedSha256: null,
+  },
+  sealedAt: new Date('2026-08-16T17:03:00.000Z'),
+};
+
+describe('renderTechnicalReportHtml — annexe A', () => {
+  it('ouvre l’annexe par sa page de titre, dossier et procès-verbal', () => {
+    const html = renderTechnicalReportHtml(model({ annexA: [PLATE] }));
+
+    expect(html).toContain(
+      'Annexe A — Inventaire des traces papillaires exploitables',
+    );
+    expect(html).toContain('Dossier 3455 — procès-verbal PV-2026-001');
+  });
+
+  it('numérote les planches en chiffres romains', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexA: [PLATE, { ...PLATE, reference: '3455-T2', cote: 'B' }] }),
+    );
+
+    expect(html).toContain('Planche I');
+    expect(html).toContain('Planche II');
+  });
+
+  it('imprime la cote dans l’encadré de chaque planche', () => {
+    const html = renderTechnicalReportHtml(model({ annexA: [PLATE] }));
+
+    expect(html).toContain('<span class="planche-cote">A</span>');
+  });
+
+  it('légende la planche avec sa cote et l’endroit du relevé', () => {
+    const html = renderTechnicalReportHtml(model({ annexA: [PLATE] }));
+
+    expect(html).toContain(
+      'Trace papillaire cotée « A », révélée sur la face extérieure de la porte-fenêtre du séjour.',
+    );
+  });
+
+  it('le dit plutôt que de laisser un blanc quand la localisation manque', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexA: [{ ...PLATE, location: null }] }),
+    );
+
+    expect(html).toContain(
+      'Trace papillaire cotée « A », localisation non renseignée.',
+    );
+  });
+
+  it('écrit le repli plutôt que de laisser un cadre vide quand l’image est illisible', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexA: [{ ...PLATE, image: null }] }),
+    );
+
+    expect(html).toContain(
+      "L'image n'a pas pu être relue à l'édition du présent rapport.",
+    );
+    expect(html).not.toContain('<img');
+  });
+
+  it('n’imprime aucune annexe A, ni son renvoi au sommaire, sans trace exploitable', () => {
+    const html = renderTechnicalReportHtml(model({ annexA: [] }));
+
+    expect(html).not.toContain(
+      'Annexe A — Inventaire des traces papillaires exploitables',
+    );
+    expect(html).not.toContain('class="planche"');
+    expect(html).toContain('Annexe C — Journal des actes');
+  });
+});
+
+const MARKED = [
+  { number: 1, x: 120, y: 340, radius: 6, label: 'bifurcation' },
+  { number: 2, x: 220, y: 440, radius: 6, label: 'arrêt de ligne' },
+];
+
+function outsideSvg(html: string): string {
+  return html.replace(/<svg[\s\S]*?<\/svg>/g, '');
+}
+
+describe('renderTechnicalReportHtml — annexe B', () => {
+  it('ouvre l’annexe par sa page de titre', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexB: [demonstration()] }),
+    );
+
+    expect(html).toContain('Annexe B — Démonstrations d&#39;identité');
+    expect(html).toContain('Dossier 3455 — procès-verbal PV-2026-001');
+  });
+
+  it('rappelle en sous-titre de quelle trace la démonstration parle', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexB: [demonstration()] }),
+    );
+
+    expect(html).toContain(
+      'Démonstration d&#39;identité — trace papillaire cotée « B »',
+    );
+  });
+
+  it('commence par la planche de la trace quand aucune photographie de localisation n’a été versée', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexB: [demonstration()] }),
+    );
+
+    expect(html.indexOf('Planche I')).toBeLessThan(html.indexOf('Planche II'));
+    expect(html).not.toContain('Planche III');
+    expect(html).not.toContain('photographie de localisation');
+  });
+
+  it('numérote les planches en continu d’une démonstration à la suivante', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration(),
+          demonstration({ reference: '3455-T5', cote: 'E' }),
+        ],
+      }),
+    );
+
+    expect(html).toContain('Planche III');
+    expect(html).toContain('Planche IV');
+    expect(html).not.toContain('Planche V<');
+  });
+
+  it('intercale la planche de localisation quand la photographie existe', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [demonstration({ localisationPhoto: IMAGE })],
+      }),
+    );
+
+    expect(html).toContain(
+      'Endroit où la trace papillaire cotée « B » a été relevée.',
+    );
+    expect(html).toContain('Planche III');
+  });
+
+  it('porte les mêmes numéros et les mêmes noms de points sur les deux planches', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+        ],
+      }),
+    );
+
+    const names = html.match(/1 — bifurcation, 2 — arrêt de ligne/g) ?? [];
+    expect(names).toHaveLength(2);
+    expect(html).toContain('DEUX (2) minuties concordantes numérotées');
+  });
+
+  it('dit que l’appariement a été établi point par point', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toContain(
+      'Index droit de Madame BERGER Hélène. Chaque numéro désigne le même détail que sur la planche précédente : l&#39;appariement a été établi point par point par l&#39;expert.',
+    );
+  });
+
+  it('ne promet aucune numérotation quand aucune paire n’est enregistrée', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexB: [demonstration()] }),
+    );
+
+    expect(html).toContain('Trace papillaire cotée « B ».');
+    expect(html).not.toContain('minuties concordantes numérotées');
+    expect(html).not.toContain('point par point');
+  });
+
+  it('n’imprime aucune coordonnée hors du dessin', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+        ],
+      }),
+    );
+
+    const printed = outsideSvg(html);
+    expect(printed).not.toContain('120');
+    expect(printed).not.toContain('340');
+    expect(printed).not.toContain('<pre');
+  });
+
+  it('écrit le repli quand les dimensions natives de l’image sont illisibles', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            trace: {
+              image: {
+                dataUrl: 'data:image/tiff;base64,AAA',
+                width: null,
+                height: null,
+                observedSha256: null,
+              },
+              marks: MARKED,
+            },
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toContain(
+      "Les dimensions natives de cette image n'ont pas pu être lues",
+    );
+    expect(html).toContain('<img src="data:image/tiff;base64,AAA"');
+  });
+
+  it('écrit le repli quand l’image n’a pas pu être relue', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [demonstration({ trace: { image: null, marks: MARKED } })],
+      }),
+    );
+
+    expect(html).toContain(
+      "L'image n'a pas pu être relue à l'édition du présent rapport.",
+    );
+  });
+
+  it('n’imprime aucune annexe B, ni son renvoi au sommaire, sans identification', () => {
+    const html = renderTechnicalReportHtml(model({ annexB: [] }));
+
+    expect(html).not.toContain('Annexe B — Démonstrations d&#39;identité');
+    expect(html).not.toContain("Annexe B — Démonstrations d'identité");
+    expect(html).not.toContain('class="planche"');
   });
 });

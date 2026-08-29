@@ -74,6 +74,29 @@ describe('ReportsController — on ne signe que pour soi', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(dispatched).toEqual([]);
   });
+});
+
+describe('ReportsController — génération', () => {
+  it('résout une demande sans préférence en annexe résumée', async () => {
+    const { controller, dispatched } = build();
+
+    await controller.generate('case-1', { type: 'TECHNICAL' }, JETON, AGUILAR);
+
+    expect(dispatched[0].journalDetail).toBe('SUMMARY');
+  });
+
+  it('transmet le journal détaillé quand il est demandé', async () => {
+    const { controller, dispatched } = build();
+
+    await controller.generate(
+      'case-1',
+      { type: 'TECHNICAL', journalDetail: 'FULL' },
+      JETON,
+      AGUILAR,
+    );
+
+    expect(dispatched[0].journalDetail).toBe('FULL');
+  });
 
   it('transmet le dossier et le type demandés', async () => {
     const { controller, dispatched } = build();
