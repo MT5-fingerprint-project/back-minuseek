@@ -65,13 +65,19 @@ export class ReportsController {
         GenerateReportCommand,
         GeneratedReport
       >(
-        new GenerateReportCommand(toAuditActor(user), caseId, dto.type, {
-          id: signer.id,
-          grade: signer.grade,
-          firstName: signer.firstName,
-          lastName: signer.lastName,
-          serviceNumber: signer.serviceNumber,
-        }),
+        new GenerateReportCommand(
+          toAuditActor(user),
+          caseId,
+          dto.type,
+          {
+            id: signer.id,
+            grade: signer.grade,
+            firstName: signer.firstName,
+            lastName: signer.lastName,
+            serviceNumber: signer.serviceNumber,
+          },
+          dto.journalDetail ?? 'SUMMARY',
+        ),
       );
     } catch (e) {
       if (e instanceof CaseNotFoundForReportError)

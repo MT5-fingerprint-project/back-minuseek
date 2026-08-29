@@ -11,7 +11,11 @@ import {
   TRANSACTION_RUNNER,
   TransactionRunner,
 } from '../../../shared/domain/ports/transaction-runner';
-import { Report, ReportTypeName } from '../../domain/report/entity/report';
+import {
+  JournalDetailName,
+  Report,
+  ReportTypeName,
+} from '../../domain/report/entity/report';
 import { ReportSequenceAlreadyTakenError } from '../../domain/report/errors/report-sequence-already-taken.error';
 import type { ReportRepository } from '../../domain/report/repository/report.repository';
 
@@ -22,6 +26,7 @@ interface ReportRow {
   sequence: number;
   number: string;
   signerUserId: string;
+  journalDetail: string;
   storagePath: string;
   sha256: string;
   generatedBy: unknown;
@@ -36,6 +41,7 @@ function toReport(row: ReportRow): Report {
     sequence: row.sequence,
     number: row.number,
     signerUserId: row.signerUserId,
+    journalDetail: row.journalDetail as JournalDetailName,
     storagePath: row.storagePath,
     sha256: row.sha256,
     generatedBy: row.generatedBy as AuditActorPrimitives,
@@ -75,6 +81,7 @@ export class PrismaReportRepository implements ReportRepository {
             sequence: primitives.sequence,
             number: primitives.number,
             signerUserId: primitives.signerUserId,
+            journalDetail: primitives.journalDetail,
             storagePath: primitives.storagePath,
             sha256: primitives.sha256,
             generatedBy:

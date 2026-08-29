@@ -142,6 +142,7 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
           sequence,
           number,
           signerUserId: command.signer.id,
+          journalDetail: command.journalDetail,
           storagePath,
           sha256,
           generatedBy: command.actor.toPrimitives(),
@@ -203,7 +204,7 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
         chainHead: seal.chainHead,
         generatedAt: seal.generatedAt,
         generatedByDisplayName: command.actor.toPrimitives().displayName,
-        journalDetail: 'SUMMARY',
+        journalDetail: command.journalDetail,
         images,
       });
     }
