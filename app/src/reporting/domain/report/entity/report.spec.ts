@@ -5,12 +5,16 @@ import { Report } from './report';
 const GENERATED_BY = AuditActor.system('reporting').toPrimitives();
 const SEALED_AT = new Date('2026-08-19T08:00:00.000Z');
 const SHA256 = 'a'.repeat(64);
+const SIGNER_ID = '3f2b1c40-0000-4000-8000-000000000001';
 
 function sealProps(overrides: Partial<Parameters<typeof Report.seal>[0]> = {}) {
   return {
     id: 'report-1',
     caseId: 'case-1',
     type: 'TECHNICAL' as const,
+    sequence: 1,
+    number: '3455-R1',
+    signerUserId: SIGNER_ID,
     storagePath: 'media/reports/case-1/report-1.pdf',
     sha256: SHA256,
     generatedBy: GENERATED_BY,
@@ -27,6 +31,9 @@ describe('Report', () => {
       id: 'report-1',
       caseId: 'case-1',
       type: 'TECHNICAL',
+      sequence: 1,
+      number: '3455-R1',
+      signerUserId: SIGNER_ID,
       storagePath: 'media/reports/case-1/report-1.pdf',
       sha256: SHA256,
       generatedBy: GENERATED_BY,
@@ -52,10 +59,36 @@ describe('Report', () => {
     );
   });
 
+  it('refuse un numéro vide : le document imprime ce texte, il ne peut pas être blanc', () => {
+    expect(() => Report.seal(sealProps({ number: '  ' }))).toThrow(
+      InvalidReportError,
+    );
+  });
+
+  it('refuse un signataire vide : personne ne signerait le document', () => {
+    expect(() => Report.seal(sealProps({ signerUserId: '' }))).toThrow(
+      InvalidReportError,
+    );
+  });
+
+  it.each([0, -1, 1.5])('refuse une séquence qui vaut %p', (sequence) => {
+    expect(() => Report.seal(sealProps({ sequence }))).toThrow(
+      InvalidReportError,
+    );
+  });
+
+  it('accepte la première séquence du dossier', () => {
+    expect(Report.seal(sealProps({ sequence: 1 })).number).toBe('3455-R1');
+  });
+
   it('se reconstitue depuis ses primitives', () => {
-    const report = Report.reconstitute(sealProps());
+    const report = Report.reconstitute(
+      sealProps({ sequence: 4, number: '3455-R4' }),
+    );
 
     expect(report.sha256).toBe(SHA256);
     expect(report.storagePath).toBe('media/reports/case-1/report-1.pdf');
+    expect(report.sequence).toBe(4);
+    expect(report.number).toBe('3455-R4');
   });
 });
