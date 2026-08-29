@@ -15,6 +15,7 @@ function sealProps(overrides: Partial<Parameters<typeof Report.seal>[0]> = {}) {
     sequence: 1,
     number: '3455-R1',
     signerUserId: SIGNER_ID,
+    journalDetail: 'SUMMARY' as const,
     storagePath: 'media/reports/case-1/report-1.pdf',
     sha256: SHA256,
     generatedBy: GENERATED_BY,
@@ -34,6 +35,7 @@ describe('Report', () => {
       sequence: 1,
       number: '3455-R1',
       signerUserId: SIGNER_ID,
+      journalDetail: 'SUMMARY',
       storagePath: 'media/reports/case-1/report-1.pdf',
       sha256: SHA256,
       generatedBy: GENERATED_BY,
@@ -79,6 +81,12 @@ describe('Report', () => {
 
   it('accepte la première séquence du dossier', () => {
     expect(Report.seal(sealProps({ sequence: 1 })).number).toBe('3455-R1');
+  });
+
+  it('scelle la variante de journal demandée : elle ne se rejoue pas', () => {
+    const report = Report.seal(sealProps({ journalDetail: 'FULL' }));
+
+    expect(report.toPrimitives().journalDetail).toBe('FULL');
   });
 
   it('se reconstitue depuis ses primitives', () => {

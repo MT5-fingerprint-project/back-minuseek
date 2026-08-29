@@ -2,6 +2,7 @@ import { AuditActorPrimitives } from '../../../../shared/domain/audit/audit-acto
 import { InvalidReportError } from '../errors/invalid-report.error';
 
 export type ReportTypeName = 'TECHNICAL' | 'TRACEABILITY';
+export type JournalDetailName = 'SUMMARY' | 'FULL';
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 
@@ -12,6 +13,7 @@ export interface ReportPrimitives {
   sequence: number;
   number: string;
   signerUserId: string;
+  journalDetail: JournalDetailName;
   storagePath: string;
   sha256: string;
   generatedBy: AuditActorPrimitives;
@@ -33,6 +35,7 @@ export class Report {
     private readonly _sequence: number,
     private readonly _number: string,
     private readonly _signerUserId: string,
+    private readonly _journalDetail: JournalDetailName,
     private readonly _storagePath: string,
     private readonly _sha256: string,
     private readonly _generatedBy: AuditActorPrimitives,
@@ -66,6 +69,7 @@ export class Report {
       props.sequence,
       props.number,
       props.signerUserId,
+      props.journalDetail,
       props.storagePath,
       props.sha256,
       props.generatedBy,
@@ -109,6 +113,7 @@ export class Report {
       sequence: this._sequence,
       number: this._number,
       signerUserId: this._signerUserId,
+      journalDetail: this._journalDetail,
       storagePath: this._storagePath,
       sha256: this._sha256,
       generatedBy: this._generatedBy,

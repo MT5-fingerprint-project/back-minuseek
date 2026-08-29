@@ -496,4 +496,33 @@ describe('GenerateReportHandler', () => {
     );
     expect(renderer.rendered[0].header.signatureCity).toBe('Paris');
   });
+
+  it('édite l’annexe résumée quand la commande ne demande rien', async () => {
+    await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER),
+    );
+
+    const model = renderer.rendered[0];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.journal.detail).toBe('SUMMARY');
+    expect(repository.store[0].toPrimitives().journalDetail).toBe('SUMMARY');
+  });
+
+  it('édite le journal détaillé quand la commande le demande', async () => {
+    await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER, 'FULL'),
+    );
+
+    const model = renderer.rendered[0];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.journal.detail).toBe('FULL');
+  });
+
+  it('scelle la variante sur la ligne du rapport : chaque édition garde la sienne', async () => {
+    await handler.execute(
+      new GenerateReportCommand(EXPERT, CASE_ID, 'TECHNICAL', SIGNER, 'FULL'),
+    );
+
+    expect(repository.store[0].toPrimitives().journalDetail).toBe('FULL');
+  });
 });
