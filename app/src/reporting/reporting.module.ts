@@ -12,6 +12,7 @@ import { REPORT_RENDERER } from './application/ports/report-renderer.port';
 import { REPORT_STORAGE } from './application/ports/report-storage.port';
 import { SERVICE_LETTERHEAD_READER } from './application/ports/service-letterhead.reader';
 import { TRACEABILITY_DATA_READER } from './application/ports/traceability-data.reader';
+import { VERIFICATION_URL } from './application/ports/verification-url.port';
 import { GetReportDownloadUrlHandler } from './application/queries/get-report-download-url/get-report-download-url.handler';
 import { CASE_REPORTS_READER } from './application/queries/list-case-reports/case-reports.reader';
 import { ListCaseReportsHandler } from './application/queries/list-case-reports/list-case-reports.handler';
@@ -21,6 +22,7 @@ import { QueryBusServiceLetterheadAdapter } from './infrastructure/organization/
 import { ReportsController } from './infrastructure/http/reports.controller';
 import { PuppeteerReportRenderer } from './infrastructure/pdf/puppeteer-report.renderer';
 import { StorageReportImageEmbedder } from './infrastructure/pdf/storage-report-image.embedder';
+import { FrontOriginVerificationUrl } from './infrastructure/pdf/verification-url';
 import { PrismaCaseContributorsReader } from './infrastructure/persistence/prisma-case-contributors.reader';
 import { PrismaCaseReportDataReader } from './infrastructure/persistence/prisma-case-report-data.reader';
 import { PrismaCaseReportsReader } from './infrastructure/persistence/prisma-case-reports.reader';
@@ -58,6 +60,7 @@ const DEFAULT_SIGNED_URL_TTL_SECONDS = 900;
       provide: SERVICE_LETTERHEAD_READER,
       useClass: QueryBusServiceLetterheadAdapter,
     },
+    { provide: VERIFICATION_URL, useClass: FrontOriginVerificationUrl },
     { provide: REPORT_IMAGE_EMBEDDER, useClass: StorageReportImageEmbedder },
     { provide: REPORT_RENDERER, useClass: PuppeteerReportRenderer },
     {
