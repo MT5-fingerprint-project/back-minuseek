@@ -36,6 +36,7 @@ export class PrismaReferencePrintRepository implements ReferencePrintRepository 
         path: p.path,
         caseId: p.caseId,
         sha256: p.sha256,
+        displayableSha256: p.displayableSha256 ?? null,
         subjectId: p.subjectId,
         position: p.position as PrismaFingerPosition | null,
         withdrawnAt: p.withdrawnAt,

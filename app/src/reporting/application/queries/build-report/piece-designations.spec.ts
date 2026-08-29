@@ -11,6 +11,7 @@ function piece(overrides: Partial<PieceData> & { id: string }): PieceData {
   return {
     path: `media/case-1/${overrides.id}.png`,
     sha256: null,
+    displayableSha256: null,
     createdAt: AT,
     capturedAt: null,
     status: 'EXPLOITABLE',

@@ -75,9 +75,8 @@ export class UploadTraceHandler implements ICommandHandler<
         : CaptureQuality.of(cmd.captureQuality);
 
     const id = this.idGenerator.generate();
-    const sha256 = FileDigest.ofBuffer(cmd.fileBuffer);
     const mimeType = detectImageMimeType(cmd.fileBuffer);
-    const storedPath = await storeDisplayableImage(
+    const stored = await storeDisplayableImage(
       this.storage,
       this.converter,
       cmd.fileBuffer,
@@ -86,9 +85,10 @@ export class UploadTraceHandler implements ICommandHandler<
 
     const trace = Trace.upload({
       id,
-      path: storedPath,
+      path: stored.path,
       caseId: cmd.caseId,
-      sha256,
+      sha256: FileDigest.from(stored.receivedSha256),
+      displayableSha256: FileDigest.from(stored.displayableSha256),
       captureMetadata,
       captureQuality,
     });
@@ -102,15 +102,16 @@ export class UploadTraceHandler implements ICommandHandler<
         caseId: cmd.caseId,
         traceId: id,
         payload: {
-          fileSha256: sha256.getValue(),
-          storagePath: storedPath,
+          fileSha256: stored.receivedSha256,
+          displayableFileSha256: stored.displayableSha256,
+          storagePath: stored.path,
           sizeBytes: cmd.fileBuffer.length,
           mimeType,
         },
       });
     } catch (error) {
-      await this.discardStoredFile(storedPath);
-      const archived = archivedOriginalPath(storedPath);
+      await this.discardStoredFile(stored.path);
+      const archived = archivedOriginalPath(stored.path);
       if (archived) {
         await this.discardStoredFile(archived);
       }
@@ -120,7 +121,7 @@ export class UploadTraceHandler implements ICommandHandler<
     await recordSealSafely(
       this.sealRegistry,
       {
-        sha256: sha256.getValue(),
+        sha256: stored.receivedSha256,
         kind: 'TRACE',
         chainSeq: link.seq,
         sealedAt: link.occurredAt,
@@ -129,8 +130,8 @@ export class UploadTraceHandler implements ICommandHandler<
       this.logger,
     );
 
-    const url = await this.storage.getUrl(storedPath);
-    return { id, path: storedPath, url };
+    const url = await this.storage.getUrl(stored.path);
+    return { id, path: stored.path, url };
   }
 
   private async discardStoredFile(storedPath: string): Promise<void> {

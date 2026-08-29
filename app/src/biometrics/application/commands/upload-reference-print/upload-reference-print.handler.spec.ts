@@ -23,6 +23,8 @@ const TIFF_MAGIC = Buffer.from([0x49, 0x49, 0x2a, 0x00]);
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 const CLEAN_PRINT_SHA256 =
   '752db2b96d9b71f1ae7650aa5b47c569e71473045fad4f54e9290035075d1e66';
+const DISPLAYED_PNG_SHA256 =
+  '1ec55214849d21d75c878fce5c5f24d6b1d758d9af41e63573a0244478f8cfd9';
 const STORED_PATH =
   'media/investigation-case/case-9/reference-prints/ref-456.png';
 const MARIE = { id: 'marie', role: UserRoleEnum.OPERATOR };
@@ -227,10 +229,12 @@ describe('UploadReferencePrintHandler', () => {
     expect(event.payload).toEqual({
       referencePrintId: 'ref-456',
       fileSha256: CLEAN_PRINT_SHA256,
+      displayableFileSha256: DISPLAYED_PNG_SHA256,
       storagePath: STORED_PATH,
       sizeBytes: 15,
       mimeType: 'image/tiff',
     });
+    expect(event.payload.displayableFileSha256).not.toBe(CLEAN_PRINT_SHA256);
   });
 
   it('deletes the stored PNG and the archived original, then rethrows when the save fails', async () => {
@@ -265,5 +269,13 @@ describe('UploadReferencePrintHandler', () => {
         command(),
       ),
     ).rejects.toBe(failure);
+  });
+  it('scelle les deux fichiers d’un dépôt TIFF : celui reçu et celui servi', async () => {
+    await handler.execute(command());
+
+    const print = await repo.findById('ref-456');
+    expect(print?.sha256).toBe(CLEAN_PRINT_SHA256);
+    expect(print?.displayableSha256).toBe(DISPLAYED_PNG_SHA256);
+    expect(print?.displayableSha256).not.toBe(print?.sha256);
   });
 });

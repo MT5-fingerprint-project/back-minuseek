@@ -14,6 +14,7 @@ interface PieceRow {
   id: string;
   path: string;
   sha256: string | null;
+  displayableSha256?: string | null;
   createdAt: Date;
   capturedAt?: Date | null;
   status?: string | null;
@@ -70,6 +71,7 @@ function toPiece(
     id: row.id,
     path: row.path,
     sha256: row.sha256,
+    displayableSha256: row.displayableSha256 ?? null,
     createdAt: row.createdAt,
     capturedAt: row.capturedAt ?? null,
     status: row.status ?? null,
