@@ -32,6 +32,8 @@ import {
   subjectTypeLabel,
   traceOriginLabel,
 } from './action-labels';
+import { buildAnnexA } from './annex-a';
+import { buildAnnexB } from './annex-b';
 import { buildCaseHeader } from './case-header';
 import { buildLetterhead, signatureCityOf } from './letterhead';
 import { buildIntegritySection } from './integrity-section.builder';
@@ -288,6 +290,8 @@ export function buildTechnicalReport(
       (print) => pieceViewModels.get(print.id) as ReportPieceViewModel,
     ),
     identityDemonstrations: buildDemonstrations(data, pieceViewModels),
+    annexA: buildAnnexA(caseNumber, orderedTraces, images),
+    annexB: buildAnnexB(caseNumber, data, images),
     integrity: buildIntegritySection({
       traces: data.traces,
       referencePrints: data.referencePrints,

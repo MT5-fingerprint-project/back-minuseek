@@ -2,6 +2,7 @@ import { REQUIRED_MINUTIAE } from '../../../../shared/domain/forensics/minutiae'
 import {
   ReportCaseHeaderViewModel,
   ReportContributorViewModel,
+  ReportDemonstrationViewModel,
   ReportIntegrityViewModel,
   ReportJournalSummaryViewModel,
   ReportJournalViewModel,
@@ -21,7 +22,9 @@ import {
   formatLongDay,
 } from '../../../application/report-dates';
 import { escapeHtml } from '../html';
+import { toRoman } from '../roman-numerals';
 import { renderLetterhead } from './letterhead-block';
+import { renderPlate } from './plate-block';
 import { REPORT_STYLES } from './report-styles';
 import { REVELATION_TECHNIQUE_TEXTS } from './revelation-techniques';
 
@@ -207,7 +210,15 @@ function recipientSection(header: ReportCaseHeaderViewModel): string {
     }`;
 }
 
-function summarySection(): string {
+function summarySection(model: TechnicalReportViewModel): string {
+  const annexes = [
+    model.annexA.length === 0
+      ? null
+      : 'Annexe A — Inventaire des traces papillaires exploitables',
+    model.annexB.length === 0 ? null : "Annexe B — Démonstrations d'identité",
+    'Annexe C — Journal des actes',
+  ].filter((line): line is string => line !== null);
+
   return `
     <h2>Sommaire</h2>
     <ul class="rec">
@@ -219,9 +230,140 @@ function summarySection(): string {
       <li>6. Traitements appliqués aux images et intégrité des pièces</li>
       <li>7. Conclusion</li>
     </ul>
-    <p class="champ" style="font-size:9.5pt">Annexe A — Planches des traces papillaires exploitables<br />
-    Annexe B — Démonstrations d'identité<br />
-    Annexe C — Journal des actes</p>`;
+    <p class="champ" style="font-size:9.5pt">${annexes.join('<br />')}</p>`;
+}
+
+function annexTitlePage(
+  title: string,
+  model: TechnicalReportViewModel,
+): string {
+  return `
+    <div class="annexe-titre">
+      <h2>${escapeHtml(title)}</h2>
+      <p class="champ">Dossier ${escapeHtml(
+        model.caseHeader.caseNumber,
+      )} — procès-verbal ${escapeHtml(model.caseHeader.pvNumber)}</p>
+    </div>`;
+}
+
+function annexASection(model: TechnicalReportViewModel): string {
+  if (model.annexA.length === 0) {
+    return '';
+  }
+  const plates = model.annexA
+    .map((plate, order) =>
+      renderPlate({
+        title: `Planche ${toRoman(order + 1)}`,
+        subtitle: null,
+        image: plate.image,
+        marks: [],
+        cote: plate.cote,
+        caption: `Trace papillaire cotée ${quoted(plate.cote)}, ${
+          plate.location === null
+            ? 'localisation non renseignée'
+            : `révélée ${plate.location}`
+        }.`,
+      }),
+    )
+    .join('');
+
+  return `
+    ${annexTitlePage(
+      'Annexe A — Inventaire des traces papillaires exploitables',
+      model,
+    )}
+    ${plates}`;
+}
+
+function demonstratedPerson(
+  demonstration: ReportDemonstrationViewModel,
+): string {
+  const { subject } = demonstration;
+  return subject === null
+    ? 'personne non renseignée au dossier'
+    : `${subject.civility} ${subject.lastName.toLocaleUpperCase('fr')} ${
+        subject.firstName
+      }`;
+}
+
+function demonstratedPosition(
+  demonstration: ReportDemonstrationViewModel,
+): string {
+  const { position } = demonstration;
+  return position === null
+    ? 'Position non renseignée'
+    : position.charAt(0).toLocaleUpperCase('fr') + position.slice(1);
+}
+
+function annexBSection(model: TechnicalReportViewModel): string {
+  if (model.annexB.length === 0) {
+    return '';
+  }
+
+  let rank = 0;
+  const plates = model.annexB
+    .map((demonstration) => {
+      const subtitle = `Démonstration d'identité — trace papillaire cotée ${quoted(
+        demonstration.cote,
+      )}`;
+      const marked = demonstration.trace.marks.length;
+      const pages: string[] = [];
+
+      if (demonstration.localisationPhoto !== null) {
+        pages.push(
+          renderPlate({
+            title: `Planche ${toRoman(++rank)}`,
+            subtitle,
+            image: demonstration.localisationPhoto,
+            marks: [],
+            cote: null,
+            caption: `Endroit où la trace papillaire cotée ${quoted(
+              demonstration.cote,
+            )} a été relevée.`,
+          }),
+        );
+      }
+
+      pages.push(
+        renderPlate({
+          title: `Planche ${toRoman(++rank)}`,
+          subtitle,
+          image: demonstration.trace.image,
+          marks: demonstration.trace.marks,
+          cote: demonstration.cote,
+          caption:
+            marked === 0
+              ? `Trace papillaire cotée ${quoted(demonstration.cote)}.`
+              : `Trace papillaire cotée ${quoted(
+                  demonstration.cote,
+                )}. ${spelled(marked)} minuties concordantes numérotées.`,
+        }),
+      );
+
+      const who = `${demonstratedPosition(demonstration)} de ${demonstratedPerson(
+        demonstration,
+      )}.`;
+      pages.push(
+        renderPlate({
+          title: `Planche ${toRoman(++rank)}`,
+          subtitle,
+          image: demonstration.referencePrint.image,
+          marks: demonstration.referencePrint.marks,
+          cote: null,
+          caption:
+            marked === 0
+              ? who
+              : `${who} Chaque numéro désigne le même détail que sur la planche précédente : l'appariement a été établi point par point par l'expert.`,
+        }),
+      );
+
+      return pages.join('');
+    })
+    .join('');
+
+  return `
+    ${annexTitlePage("Annexe B — Démonstrations d'identité", model)}
+    ${plates}`;
 }
 
 function objectSection(model: TechnicalReportViewModel): string {
@@ -736,7 +878,7 @@ export function renderTechnicalReportHtml(
     ${referencesSection(model)}
     ${offenceSection(caseHeader)}
     ${recipientSection(caseHeader)}
-    ${summarySection()}
+    ${summarySection(model)}
 
     ${objectSection(model)}
     ${methodsSection(model)}
@@ -747,6 +889,9 @@ export function renderTechnicalReportHtml(
     ${conclusionSection(model)}
     ${contributorsSentence(model.contributors)}
     ${signatureSection(model)}
+
+    ${annexASection(model)}
+    ${annexBSection(model)}
 
     ${journalSection(model)}
 

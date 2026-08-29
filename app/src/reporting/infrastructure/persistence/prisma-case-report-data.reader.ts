@@ -56,16 +56,10 @@ function toMinutia(settings: Record<string, unknown>): MinutiaData | null {
     radius: numberOrNull(settings.radius),
     angleDeg: numberOrNull(settings.angleDeg),
     color: typeof settings.color === 'string' ? settings.color : null,
+    typeLabel: null,
   };
 }
 
-/**
- * Les champs à `null` ci-dessous n'ont pas encore de colonne : le rapport les
- * imprime dès que le ticket qui les crée est fusionné, et c'est le seul endroit
- * à reprendre. `number` — L4-1a ; `origin`, `location`, `revelationTechnique` —
- * L4-2a ; `cote` — L7-1a, via `assignCotes` sur les traces du dossier ;
- * `notIdentifiedAt` — L7-1c.
- */
 function toPiece(
   row: PieceRow,
   layers: LayerData[],
@@ -238,6 +232,7 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
           : null,
         withdrawnAt: hit.withdrawnAt,
       })),
+      minutiaPairs: [],
       subjects: subjects.map((subject) => ({
         id: subject.id,
         firstName: subject.firstName,

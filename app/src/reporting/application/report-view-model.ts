@@ -134,6 +134,42 @@ export interface ReportIdentificationViewModel {
   lastName: string;
 }
 
+export interface ReportPlateViewModel {
+  reference: string;
+  cote: string;
+  location: string | null;
+  image: ReportImageViewModel | null;
+  sealedAt: Date;
+}
+
+export interface ReportDemonstrationMarkViewModel {
+  number: number;
+  x: number;
+  y: number;
+  radius: number;
+  label: string | null;
+}
+
+export interface ReportDemonstrationPlateViewModel {
+  image: ReportImageViewModel | null;
+  marks: ReportDemonstrationMarkViewModel[];
+}
+
+export interface ReportDemonstrationViewModel {
+  reference: string;
+  cote: string;
+  location: string | null;
+  subject: {
+    civility: string;
+    firstName: string;
+    lastName: string;
+  } | null;
+  position: string | null;
+  localisationPhoto: ReportImageViewModel | null;
+  trace: ReportDemonstrationPlateViewModel;
+  referencePrint: ReportDemonstrationPlateViewModel;
+}
+
 export interface ReportSignerViewModel {
   grade: string;
   firstName: string;
@@ -253,6 +289,8 @@ export interface TechnicalReportViewModel {
   traces: ReportPieceViewModel[];
   referencePrints: ReportPieceViewModel[];
   identityDemonstrations: ReportIdentityDemonstrationViewModel[];
+  annexA: ReportPlateViewModel[];
+  annexB: ReportDemonstrationViewModel[];
   journal: ReportJournalViewModel;
 }
 

@@ -112,6 +112,7 @@ function caseData(overrides: Partial<CaseReportData> = {}): CaseReportData {
     comparisons: [],
     declaredHits: [],
     subjects: [],
+    minutiaPairs: [],
     ...overrides,
   };
 }
@@ -189,6 +190,84 @@ describe('buildTechnicalReport — en-tête du service', () => {
 
     expect(model.header.letterhead).toBeNull();
     expect(model.header.signatureCity).toBeNull();
+  });
+});
+
+describe('buildTechnicalReport — annexe A', () => {
+  it('ne retient que les traces exploitables, dans l’ordre des traces', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({ id: 't2', number: 2, cote: 'B' }),
+          trace({
+            id: 't3',
+            number: 3,
+            status: 'NOT_EXPLOITABLE',
+            cote: null,
+          }),
+          trace({ id: 't1', number: 1, cote: 'A' }),
+        ],
+      }),
+    );
+
+    expect(model.annexA.map((plate) => plate.reference)).toEqual([
+      '3455-T1',
+      '3455-T2',
+    ]);
+    expect(model.annexA.map((plate) => plate.cote)).toEqual(['A', 'B']);
+  });
+
+  it('écarte une trace déclarée inexploitable, même si une cote lui traîne', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({ id: 't1', number: 1, status: 'NOT_EXPLOITABLE', cote: 'A' }),
+        ],
+      }),
+    );
+
+    expect(model.annexA).toEqual([]);
+  });
+
+  it('écarte une trace retirée du dossier', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            withdrawnAt: new Date('2026-08-12T10:00:00.000Z'),
+            withdrawalMotive: 'MISFILED',
+          }),
+        ],
+      }),
+    );
+
+    expect(model.annexA).toEqual([]);
+  });
+
+  it('porte la localisation et la date de mise sous scellé de chaque planche', () => {
+    const model = build(
+      caseData({ traces: [trace({ id: 't1', number: 1, cote: 'A' })] }),
+    );
+
+    expect(model.annexA[0]).toMatchObject({
+      location: 'Sur la porte-fenêtre du séjour',
+      sealedAt: OPENED_AT,
+      image: null,
+    });
+  });
+
+  it('n’a pas d’annexe A sur un dossier sans trace exploitable', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({ id: 't1', number: 1, status: 'NOT_EXPLOITABLE', cote: null }),
+        ],
+      }),
+    );
+
+    expect(model.annexA).toEqual([]);
   });
 });
 
