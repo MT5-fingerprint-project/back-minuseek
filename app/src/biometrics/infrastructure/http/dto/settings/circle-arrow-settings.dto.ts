@@ -1,25 +1,26 @@
-import { Equals, IsHexColor, IsNumber, IsPositive } from 'class-validator';
+import { Equals, IsHexColor, IsInt, IsPositive } from 'class-validator';
+import { AnnotationSettingsDto } from './annotation-settings.dto';
 
-export class CircleArrowSettingsDto {
+export class CircleArrowSettingsDto extends AnnotationSettingsDto {
   @Equals('circleArrow')
   type: 'circleArrow';
 
-  @IsNumber()
+  @IsInt()
   x: number;
 
-  @IsNumber()
+  @IsInt()
   y: number;
 
-  @IsNumber()
+  @IsInt()
   @IsPositive()
   radius: number;
 
   @IsHexColor()
   color: string;
 
-  @IsNumber()
+  @IsInt()
   arrowEndX: number;
 
-  @IsNumber()
+  @IsInt()
   arrowEndY: number;
 }

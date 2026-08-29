@@ -8,7 +8,20 @@ export const REQUIRED_MINUTIAE = 12;
 export const MINUTIA_SETTINGS_TYPES = [
   'circle',
   'circleArrow',
-  'minutiae',
+  'minutia',
 ] as const;
 
 export type MinutiaSettingsType = (typeof MINUTIA_SETTINGS_TYPES)[number];
+
+/**
+ * Type du point caractéristique posé par l'outil point-flèche. `UNDETERMINED`
+ * est une valeur à part entière (défaut), pas une absence de type.
+ */
+export enum MinutiaTypeEnum {
+  RIDGE_ENDING = 'RIDGE_ENDING',
+  BIFURCATION = 'BIFURCATION',
+  TRIFURCATION = 'TRIFURCATION',
+  ISLAND = 'ISLAND',
+  ENCLOSURE = 'ENCLOSURE',
+  UNDETERMINED = 'UNDETERMINED',
+}

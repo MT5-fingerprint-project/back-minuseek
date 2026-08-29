@@ -13,7 +13,7 @@ const AT = new Date('2026-08-01T09:00:00.000Z');
 
 function minutia(overrides: Partial<MinutiaData> = {}): MinutiaData {
   return {
-    kind: 'minutiae',
+    kind: 'minutia',
     x: 10,
     y: 20,
     radius: 6,

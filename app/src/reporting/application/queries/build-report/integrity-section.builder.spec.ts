@@ -234,7 +234,7 @@ describe('buildIntegritySection — les traitements', () => {
           type: 'ANNOTATION',
           zIndex: 2,
           isVisible: true,
-          settings: { type: 'minutiae', x: 10, y: 20 },
+          settings: { type: 'minutia', x: 10, y: 20 },
         }),
       ],
     }).traces;

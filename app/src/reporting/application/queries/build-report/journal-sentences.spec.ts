@@ -243,7 +243,7 @@ describe('journalSentence — les réglages et les repères', () => {
         type: 'ANNOTATION',
         zIndex: 1,
         isVisible: true,
-        settings: { type: 'minutiae', x: 10, y: 20 },
+        settings: { type: 'minutia', x: 10, y: 20 },
       }),
     ).toBe(`${expected} la trace 3455-T7 cotée « B »`);
   });
@@ -257,7 +257,7 @@ describe('journalSentence — les réglages et les repères', () => {
         type: 'ANNOTATION',
         zIndex: 1,
         isVisible: true,
-        settings: { type: 'minutiae', x: 10, y: 20 },
+        settings: { type: 'minutia', x: 10, y: 20 },
       }),
     ).toBe('Minutie retirée de la trace 3455-T7 cotée « B »');
   });
