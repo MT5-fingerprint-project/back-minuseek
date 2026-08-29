@@ -17,17 +17,22 @@ describe('ListCaseReportsHandler', () => {
         caseId: 'case-1',
         id: 'report-1',
         type: 'TECHNICAL',
+        number: '3455-R1',
         sha256: 'a'.repeat(64),
         createdAt: new Date('2026-08-19T08:00:00.000Z'),
         generatedByDisplayName: 'Alex Martin',
+        signerDisplayName:
+          'Technicien en Chef de Police Technique et Scientifique AGUILAR Sébastien',
       },
       {
         caseId: 'case-2',
         id: 'report-2',
         type: 'TRACEABILITY',
+        number: '3456-R1',
         sha256: 'b'.repeat(64),
         createdAt: new Date('2026-08-19T09:00:00.000Z'),
         generatedByDisplayName: 'Alex Martin',
+        signerDisplayName: null,
       },
     );
 
@@ -37,9 +42,12 @@ describe('ListCaseReportsHandler', () => {
       {
         id: 'report-1',
         type: 'TECHNICAL',
+        number: '3455-R1',
         sha256: 'a'.repeat(64),
         createdAt: new Date('2026-08-19T08:00:00.000Z'),
         generatedByDisplayName: 'Alex Martin',
+        signerDisplayName:
+          'Technicien en Chef de Police Technique et Scientifique AGUILAR Sébastien',
       },
     ]);
   });

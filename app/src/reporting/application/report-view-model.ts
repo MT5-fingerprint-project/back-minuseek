@@ -1,7 +1,6 @@
 export interface ReportHeaderViewModel {
   reportId: string;
-  /** Tête de chaîne au moment du rendu : le document ne peut pas porter son
-   * propre sha256, il porte donc le maillon auquel il se rattache. */
+  reportNumber: string;
   chainHeadSeq: number | null;
   chainHeadHash: string | null;
   caseNumber: string;
@@ -131,6 +130,23 @@ export interface ReportImageTreatmentViewModel {
   treatments: string;
 }
 
+export interface ReportSignerViewModel {
+  grade: string;
+  firstName: string;
+  lastName: string;
+  serviceNumber: string;
+}
+
+export interface ReportContributorViewModel {
+  grade: string | null;
+  displayName: string;
+}
+
+export interface ReportPreviousDocumentViewModel {
+  number: string;
+  issuedAt: Date;
+}
+
 export interface ReportCountsViewModel {
   total: number;
   exploitable: number;
@@ -166,6 +182,9 @@ export interface TechnicalReportViewModel {
   header: ReportHeaderViewModel;
   caseHeader: ReportCaseHeaderViewModel;
   revelationTechniques: string[];
+  previousDocument: ReportPreviousDocumentViewModel | null;
+  signer: ReportSignerViewModel;
+  contributors: ReportContributorViewModel[];
   examinedTraces: ReportExaminedTraceViewModel[];
   exploitability: ReportExploitabilityViewModel[];
   referenceSubjects: ReportReferenceSubjectViewModel[];
