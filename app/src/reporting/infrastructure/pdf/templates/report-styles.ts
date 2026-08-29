@@ -51,6 +51,13 @@ export const REPORT_STYLES = `
   .sign { margin-top: 12mm; text-align: right; break-inside: avoid; }
   .sign .vide { height: 18mm; }
 
+     mention dégradée se voit sans être lue. */
+  .piece { break-inside: avoid; margin-bottom: 5mm; }
+  .alerte {
+    border: 0.4mm solid #111; padding: 2mm 3mm; margin: 3px 0 6px;
+    background: #f4f2ee;
+  }
+
   /* Annexe de traçabilité : document technique, pas pièce de procédure. */
   .facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5mm 6mm; margin-bottom: 4mm; }
   .fact-label { color: #55606f; }

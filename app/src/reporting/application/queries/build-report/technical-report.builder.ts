@@ -19,7 +19,6 @@ import {
   ReportExaminedTraceViewModel,
   ReportExploitabilityViewModel,
   ReportIdentificationViewModel,
-  ReportImageTreatmentViewModel,
   ReportImageViewModel,
   ReportPieceViewModel,
   ReportReferenceSubjectViewModel,
@@ -35,7 +34,6 @@ import {
 } from './action-labels';
 import { buildCaseHeader } from './case-header';
 import { buildLetterhead, signatureCityOf } from './letterhead';
-import { treatmentsOf } from './image-treatments';
 import { buildIntegritySection } from './integrity-section.builder';
 import { buildJournalAnnex } from './journal-annex.builder';
 import { pieceDesignations } from './piece-designations';
@@ -174,18 +172,6 @@ function buildIdentifications(
   });
 }
 
-function buildImageTreatments(
-  caseNumber: string,
-  traces: PieceData[],
-): ReportImageTreatmentViewModel[] {
-  return traces.map((trace) => ({
-    reference: traceReference(caseNumber, trace.number ?? 0),
-    cote: trace.cote ?? NOT_APPLICABLE,
-    sealedAt: trace.createdAt,
-    treatments: treatmentsOf(trace),
-  }));
-}
-
 function buildCounts(
   traces: PieceData[],
   verdicts: Map<string, TraceVerdict>,
@@ -293,7 +279,6 @@ export function buildTechnicalReport(
     notExaminedCotes: cotesOf(
       exploitableTraces.filter((trace) => isNotExamined(trace, verdicts)),
     ),
-    imageTreatments: buildImageTreatments(caseNumber, workingTraces),
     independentTimestampAt: lastAnchorAt(input.anchors),
     counts: buildCounts(workingTraces, verdicts),
     traces: data.traces.map(
@@ -311,6 +296,7 @@ export function buildTechnicalReport(
       anchors: input.anchors,
       attestation: input.attestation,
       verificationUrl: input.verificationUrl,
+      images,
     }),
     journal: buildJournalAnnex(
       input.chainEvents,

@@ -11,6 +11,22 @@ import {
 } from './integrity-section.builder';
 import { PieceDesignation } from './piece-designations';
 
+function read(observedSha256: string | null) {
+  return new Map([
+    [
+      TRACE_PATH,
+      observedSha256 === null
+        ? null
+        : {
+            dataUrl: 'data:image/png;base64,AAA',
+            width: 800,
+            height: 1200,
+            observedSha256,
+          },
+    ],
+  ]);
+}
+
 const AT = new Date('2026-03-16T17:03:00.000Z');
 const SEAL = 'a'.repeat(64);
 const OTHER_SEAL = 'b'.repeat(64);
@@ -131,6 +147,7 @@ function build(overrides: Partial<IntegritySectionInput> = {}) {
     anchors: [],
     attestation: VERIFIED,
     verificationUrl: 'https://minuseek.fr/srpts-paris/verifier',
+    images: new Map(),
     ...overrides,
   });
 }
@@ -406,5 +423,47 @@ describe('buildIntegritySection — l’attestation', () => {
     expect(build().verificationUrl).toBe(
       'https://minuseek.fr/srpts-paris/verifier',
     );
+  });
+});
+
+describe('buildIntegritySection — le contrôle à l’édition', () => {
+  it('confirme que le fichier conservé porte l’empreinte du registre', () => {
+    const [piece] = build({ events: [deposit(5)], images: read(SEAL) }).traces;
+
+    expect(piece.observedSha256).toBe(SEAL);
+    expect(piece.observedMatchesRecord).toBe(true);
+  });
+
+  it('dénonce un fichier qui ne porte plus l’empreinte inscrite', () => {
+    const [piece] = build({
+      events: [deposit(5)],
+      images: read(OTHER_SEAL),
+    }).traces;
+
+    expect(piece.observedMatchesRecord).toBe(false);
+  });
+
+  it('n’affirme aucun contrôle sur un fichier qui n’a pas pu être relu', () => {
+    const [piece] = build({ events: [deposit(5)], images: read(null) }).traces;
+
+    expect(piece.observedSha256).toBeNull();
+    expect(piece.observedMatchesRecord).toBeNull();
+  });
+
+  it('n’affirme aucun contrôle sur un fichier dérivé, même relu', () => {
+    const [piece] = build({
+      events: [deposit(5, { mimeType: 'image/tiff' })],
+      images: read(OTHER_SEAL),
+    }).traces;
+
+    expect(piece.servedFileIsDerived).toBe(true);
+    expect(piece.observedSha256).toBe(OTHER_SEAL);
+    expect(piece.observedMatchesRecord).toBeNull();
+  });
+
+  it('n’affirme aucun contrôle quand le registre ne porte pas d’empreinte', () => {
+    const [piece] = build({ images: read(SEAL) }).traces;
+
+    expect(piece.observedMatchesRecord).toBeNull();
   });
 });

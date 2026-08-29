@@ -2,8 +2,11 @@ import { REQUIRED_MINUTIAE } from '../../../../shared/domain/forensics/minutiae'
 import {
   ReportCaseHeaderViewModel,
   ReportContributorViewModel,
+  ReportIntegrityViewModel,
   ReportJournalSummaryViewModel,
   ReportJournalViewModel,
+  ReportPieceIntegrityViewModel,
+  ReportTreatmentViewModel,
   TechnicalReportViewModel,
 } from '../../../application/report-view-model';
 import {
@@ -12,7 +15,6 @@ import {
 } from '../../../application/queries/build-report/journal-annex.builder';
 import { frenchCardinal } from '../french-numbers';
 import {
-  formatDate,
   formatDay,
   formatDayTime,
   formatHourMinute,
@@ -425,41 +427,141 @@ function comparisonsSection(model: TechnicalReportViewModel): string {
     }`;
 }
 
-function treatmentsSection(model: TechnicalReportViewModel): string {
-  const { imageTreatments, independentTimestampAt } = model;
+const INTEGRITY_PREAMBLE = [
+  "Les images de ce dossier sont conservées dans l'état où elles ont été reçues. Au moment du dépôt, chaque fichier est enregistré sous une désignation qui lui est propre, et son empreinte numérique — le résultat d'un calcul portant sur l'intégralité de son contenu, selon la méthode publique dite SHA-256 — est inscrite au registre chronologique du laboratoire dans la même opération indivisible. Deux fichiers différents, ne serait-ce que d'un point, donnent deux empreintes différentes ; l'empreinte, elle, ne permet pas de reconstituer l'image.",
+  "Le logiciel ne comporte aucune fonction permettant de remplacer le fichier d'une pièce. L'enregistrement est refusé si la désignation est déjà occupée, et aucune commande de l'application ne modifie ni le fichier, ni l'empreinte inscrite. Une pièce peut être retirée du dossier, et ce retrait est lui-même inscrit au registre ; elle ne peut pas être échangée contre une autre.",
+  "Les traitements destinés à améliorer la lisibilité — luminosité, contraste, saturation, rotation, inversion, effet miroir — ne sont pas appliqués au fichier. Ils sont enregistrés comme des réglages, avec leur valeur, la date à laquelle ils ont été posés et le nom de l'agent qui les a posés, puis rejoués à l'écran par-dessus l'image reçue. Il en va de même des repères tracés par l'expert. L'affirmation selon laquelle ces opérations n'ont pas modifié le contenu de l'image d'origine n'est donc pas ici une déclaration de l'opérateur : elle se contrôle en recalculant l'empreinte numérique du fichier, qui doit rendre exactement la valeur imprimée ci-dessous.",
+  "Le registre chronologique est en écriture seule : la base de données refuse la modification comme la suppression d'une inscription déjà faite, et chaque inscription reprend l'empreinte de la précédente, de sorte qu'une inscription retouchée rendrait toutes les suivantes incohérentes. Les dates ci-dessous sont exprimées en temps universel (UTC).",
+];
+
+const INTEGRITY_SCOPE =
+  "Ce qui précède établit que les fichiers examinés sont ceux qui ont été reçus, et que les opérations énumérées sont celles qui ont été enregistrées, dans cet ordre et à ces dates. Cela n'établit ni la qualité de la prise de vue, ni l'origine de l'image avant son dépôt au laboratoire.";
+
+function integrityWarning(integrity: ReportIntegrityViewModel): string {
+  if (integrity.firstBrokenEntryNumber !== null) {
+    return `<p class="alerte">Une vérification du registre du laboratoire a été effectuée à l'édition du présent rapport et a relevé une anomalie à l'inscription n° ${integrity.firstBrokenEntryNumber}. Les affirmations du présent chapitre doivent être tenues pour non vérifiées jusqu'à examen.</p>`;
+  }
+  if (integrity.anchorsFailed > 0) {
+    return `<p class="alerte">Une vérification effectuée à l'édition du présent rapport n'a pas pu valider ${integrity.anchorsFailed} horodatage(s) extérieur(s). Les empreintes et l'enchaînement des inscriptions restent vérifiés ; les dates extérieures mentionnées ci-dessous, non.</p>`;
+  }
+  return '';
+}
+
+function treatmentLine(treatment: ReportTreatmentViewModel): string {
+  const parts = [
+    `${escapeHtml(treatment.sentence)}, posé le ${formatDayTime(
+      treatment.appliedAt,
+    )} par ${escapeHtml(treatment.actorDisplayName)}`,
+    treatment.removedAt === null
+      ? null
+      : `retiré le ${formatDayTime(treatment.removedAt)}`,
+    treatment.hiddenAtEdition
+      ? "masqué à la date d'édition du présent rapport"
+      : null,
+  ].filter((part): part is string => part !== null);
+  return parts.join(', ');
+}
+
+function treatmentsParagraph(piece: ReportPieceIntegrityViewModel): string {
+  if (piece.treatments.length === 0) {
+    return "<p>Aucun traitement n'a été appliqué à cette image.</p>";
+  }
+  return `<p>Traitements enregistrés : ${piece.treatments
+    .map(treatmentLine)
+    .join(
+      ' — ',
+    )}. Ces traitements sont des réglages d'affichage ; ils n'ont pas modifié le fichier scellé ci-dessus.</p>`;
+}
+
+function sealParagraph(piece: ReportPieceIntegrityViewModel): string {
+  if (piece.recordedSha256 === null) {
+    return '<p class="alerte">Aucune empreinte n\'a été inscrite au registre lors du dépôt de cette pièce. Le présent rapport ne peut donc pas établir que le fichier est resté identique depuis sa réception.</p>';
+  }
+  const divergence = piece.divergesFromRecord
+    ? '<p class="alerte">L\'empreinte figurant dans la fiche courante du dossier diffère de celle inscrite au registre lors du dépôt. C\'est la valeur du registre qui est imprimée ci-dessus et qui fait foi ; cette divergence doit être signalée au responsable du laboratoire.</p>'
+    : '';
+  const derived = piece.servedFileIsDerived
+    ? "<p class=\"alerte\">L'image reproduite dans le présent rapport n'est pas le fichier reçu : le fichier reçu était au format TIFF, et une version PNG en a été établie par conversion sans perte pour permettre son affichage. L'empreinte imprimée ci-dessus est celle du fichier reçu, qui est conservé. L'empreinte de la version PNG n'a pas été inscrite au registre : le contrôle décrit ci-dessus ne peut donc pas être effectué sur l'image reproduite.</p>"
+    : '';
+
+  return `
+      <p>Empreinte numérique du fichier reçu : <span class="hash">${escapeHtml(
+        piece.recordedSha256,
+      )}</span></p>
+      <p>Mise sous scellé le ${formatDayTime(piece.sealedAt)}, inscription n° ${
+        piece.recordEntryNumber
+      } du registre.</p>
+      ${divergence}
+      ${derived}`;
+}
+
+function anchorParagraph(
+  piece: ReportPieceIntegrityViewModel,
+  integrity: ReportIntegrityViewModel,
+): string {
+  if (piece.coveringAnchor !== null) {
+    return `<p>Horodatage par une autorité extérieure : le ${formatDayTime(
+      piece.coveringAnchor.anchoredAt,
+    )}, l'autorité d'horodatage ${escapeHtml(
+      piece.coveringAnchor.authority,
+    )} a daté un état du registre postérieur à ces opérations (inscription n° ${
+      piece.coveringAnchor.entryNumber
+    }). Cette date ne dépend pas de l'horloge du laboratoire.</p>`;
+  }
+  if (integrity.lastAnchor !== null) {
+    return `<p class="alerte">Aucun horodatage extérieur ne couvre encore ces opérations : le dernier horodatage obtenu, le ${formatDayTime(
+      integrity.lastAnchor.anchoredAt,
+    )}, porte sur un état du registre antérieur à la dernière opération inscrite sur cette pièce. Jusqu'au prochain horodatage, les dates ci-dessus ne sont attestées que par l'horloge du laboratoire.</p>`;
+  }
+  return '<p class="alerte">Aucun horodatage extérieur n\'a encore été obtenu pour le registre de ce laboratoire : les dates ci-dessus ne sont attestées que par l\'horloge du laboratoire.</p>';
+}
+
+function controlParagraph(piece: ReportPieceIntegrityViewModel): string {
+  if (piece.observedMatchesRecord === true) {
+    return "<p>Contrôle effectué à l'édition du présent rapport : le fichier conservé porte bien l'empreinte inscrite au registre.</p>";
+  }
+  if (piece.observedMatchesRecord === false) {
+    return "<p class=\"alerte\">Contrôle effectué à l'édition du présent rapport : le fichier conservé ne porte pas l'empreinte inscrite au registre lors du dépôt. Cette pièce doit être tenue pour altérée jusqu'à examen.</p>";
+  }
+  if (piece.servedFileIsDerived) {
+    return '';
+  }
+  return "<p class=\"alerte\">Le fichier n'a pas pu être relu à l'édition du présent rapport ; le contrôle n'a pas été effectué.</p>";
+}
+
+function pieceIntegrityBlock(
+  piece: ReportPieceIntegrityViewModel,
+  integrity: ReportIntegrityViewModel,
+): string {
+  return `
+    <div class="piece">
+      <h3>${escapeHtml(piece.designation)} — cote ${escapeHtml(
+        piece.cote ?? '/',
+      )}</h3>
+      ${sealParagraph(piece)}
+      ${treatmentsParagraph(piece)}
+      ${anchorParagraph(piece, integrity)}
+      ${controlParagraph(piece)}
+    </div>`;
+}
+
+function integritySection(model: TechnicalReportViewModel): string {
+  const { integrity } = model;
+  const pieces = [...integrity.traces, ...integrity.referencePrints];
+
   return `
     <h2>6. Traitements appliqués aux images et intégrité des pièces</h2>
-    <p>Les opérations effectuées sur les images ont eu pour seul but d'améliorer la lisibilité
-    des traces papillaires et n'ont en aucune façon modifié le contenu des images d'origine.
-    Chaque fichier a été scellé par une empreinte numérique au moment de son entrée au dossier ;
-    les traitements sont enregistrés séparément et n'ont jamais réécrit le fichier scellé.</p>
+    ${integrityWarning(integrity)}
+    ${INTEGRITY_PREAMBLE.map((paragraph) => `<p>${paragraph}</p>`).join('')}
     ${
-      imageTreatments.length === 0
+      pieces.length === 0
         ? '<p class="empty">Aucune image n\'est versée à ce dossier.</p>'
-        : `<table>
-          <tr>
-            <th style="width:24%">Trace n°</th><th style="width:8%">Cote</th>
-            <th style="width:18%">Scellée le</th><th>Traitements enregistrés</th>
-          </tr>
-          ${imageTreatments
-            .map(
-              (row) => `
-          <tr>
-            <td>${escapeHtml(row.reference)}</td>
-            <td>${escapeHtml(row.cote)}</td>
-            <td>${formatDate(row.sealedAt)}</td>
-            <td>${escapeHtml(row.treatments)}</td>
-          </tr>`,
-            )
-            .join('')}
-        </table>`
+        : pieces.map((piece) => pieceIntegrityBlock(piece, integrity)).join('')
     }
-    ${
-      independentTimestampAt === null
-        ? ''
-        : `<p>L'ensemble des actes consignés dans ce dossier a été horodaté par un tiers
-           indépendant le <b>${formatLongDay(independentTimestampAt)}</b>.</p>`
-    }
+    <p>${INTEGRITY_SCOPE}</p>
+    <p>Toute personne détenant l'un de ces fichiers peut contrôler elle-même, sans compte et sans solliciter le laboratoire, qu'il a bien été scellé et à quelle date : il suffit de le déposer sur ${escapeHtml(
+      integrity.verificationUrl,
+    )}. Lorsque le fichier déposé est un rapport, la page indique en outre si une version antérieure et si une version ultérieure de ce rapport ont été établies. Le calcul est effectué par le navigateur du lecteur, le fichier ne quitte pas son poste, et la page ne révèle ni le dossier, ni la procédure, ni l'identité des personnes concernées.</p>
     <p>Le détail acte par acte figure en Annexe C.</p>`;
 }
 
@@ -570,6 +672,20 @@ function journalIntroduction(
   return `<p>${always}</p><p>${variant}</p>`;
 }
 
+function journalIntegrityLine(integrity: ReportIntegrityViewModel): string {
+  const verdict =
+    integrity.firstBrokenEntryNumber === null
+      ? "L'intégrité du registre a été vérifiée à l'édition du présent rapport : aucune anomalie relevée."
+      : `L'intégrité du registre a été vérifiée à l'édition du présent rapport : une anomalie a été relevée à l'inscription n° ${integrity.firstBrokenEntryNumber}.`;
+  const anchored =
+    integrity.lastAnchor === null
+      ? "Le registre de ce laboratoire n'a pas encore été horodaté par une autorité extérieure."
+      : `Le dernier horodatage extérieur du registre date du ${formatDayTime(
+          integrity.lastAnchor.anchoredAt,
+        )}.`;
+  return `<p class="note">${verdict} ${anchored}</p>`;
+}
+
 function journalFoot(journal: ReportJournalViewModel): string {
   const total = `${journal.actCountTotal} inscription${
     journal.actCountTotal > 1 ? 's' : ''
@@ -595,7 +711,8 @@ function journalSection(model: TechnicalReportViewModel): string {
             ${rows.map((row, order) => journalRow(row, order + 1)).join('')}
           </table>`
     }
-    ${journalFoot(journal)}`;
+    ${journalFoot(journal)}
+    ${journalIntegrityLine(model.integrity)}`;
 }
 
 export function renderTechnicalReportHtml(
@@ -626,7 +743,7 @@ export function renderTechnicalReportHtml(
     ${examinedTracesSection(model)}
     ${exploitabilitySection(model)}
     ${comparisonsSection(model)}
-    ${treatmentsSection(model)}
+    ${integritySection(model)}
     ${conclusionSection(model)}
     ${contributorsSentence(model.contributors)}
     ${signatureSection(model)}
