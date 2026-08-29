@@ -15,4 +15,5 @@ export interface ReferencePrintReadModel {
   withdrawnAt: Date | null;
   withdrawalMotive: string | null;
   imageDestroyedAt: Date | null;
+  resolutionDpi: number | null;
 }

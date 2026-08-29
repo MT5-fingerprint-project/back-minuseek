@@ -16,4 +16,5 @@ export interface TraceReadModel {
   captureQuality: CaptureQualityProps | null;
   withdrawnAt: Date | null;
   withdrawalMotive: string | null;
+  resolutionDpi: number | null;
 }

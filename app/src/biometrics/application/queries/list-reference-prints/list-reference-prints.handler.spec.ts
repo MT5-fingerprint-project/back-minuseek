@@ -43,6 +43,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawnAt: null,
         withdrawalMotive: null,
         imageDestroyedAt: null,
+        resolutionDpi: null,
       },
     ]);
     const handler = new ListReferencePrintsHandler(
@@ -60,6 +61,62 @@ describe('ListReferencePrintsHandler', () => {
     );
   });
 
+  it('exposes the calibrated resolution of a reference print', async () => {
+    const reader = new InMemoryReferencePrintReader([
+      {
+        id: 'ref-1',
+        path: 'media/investigation-case/case-9/reference-prints/ref-1.png',
+        caseId: 'case-9',
+        subjectId: null,
+        position: null,
+        createdAt: new Date('2026-07-01T00:00:00.000Z'),
+        matchings: [],
+        withdrawnAt: null,
+        withdrawalMotive: null,
+        imageDestroyedAt: null,
+        resolutionDpi: 1207.34,
+      },
+    ]);
+    const handler = new ListReferencePrintsHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(
+      new ListReferencePrintsQuery('case-9'),
+    );
+
+    expect(data[0].resolutionDpi).toBe(1207.34);
+  });
+
+  it('leaves the resolution empty for an uncalibrated reference print', async () => {
+    const reader = new InMemoryReferencePrintReader([
+      {
+        id: 'ref-1',
+        path: 'media/investigation-case/case-9/reference-prints/ref-1.png',
+        caseId: 'case-9',
+        subjectId: null,
+        position: null,
+        createdAt: new Date('2026-07-01T00:00:00.000Z'),
+        matchings: [],
+        withdrawnAt: null,
+        withdrawalMotive: null,
+        imageDestroyedAt: null,
+        resolutionDpi: null,
+      },
+    ]);
+    const handler = new ListReferencePrintsHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(
+      new ListReferencePrintsQuery('case-9'),
+    );
+
+    expect(data[0].resolutionDpi).toBeNull();
+  });
+
   it('départage deux empreintes versées dans la même seconde par leur identifiant', async () => {
     const versedAt = new Date('2026-07-01T00:00:00.000Z');
     const referencePrint = (id: string): ReferencePrintReadModel => ({
@@ -73,6 +130,7 @@ describe('ListReferencePrintsHandler', () => {
       withdrawnAt: null,
       withdrawalMotive: null,
       imageDestroyedAt: null,
+      resolutionDpi: null,
     });
     const reader = new InMemoryReferencePrintReader([
       referencePrint('ref-a'),
@@ -103,6 +161,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawnAt: null,
         withdrawalMotive: null,
         imageDestroyedAt: null,
+        resolutionDpi: null,
       },
       {
         id: 'ref-2',
@@ -115,6 +174,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawnAt: new Date('2026-08-12T09:00:00.000Z'),
         withdrawalMotive: 'WRONG_ATTRIBUTION',
         imageDestroyedAt: null,
+        resolutionDpi: null,
       },
     ]);
     const handler = new ListReferencePrintsHandler(
@@ -143,6 +203,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawnAt: null,
         withdrawalMotive: null,
         imageDestroyedAt: new Date('2026-09-01T09:00:00.000Z'),
+        resolutionDpi: null,
       },
     ]);
     const handler = new ListReferencePrintsHandler(
