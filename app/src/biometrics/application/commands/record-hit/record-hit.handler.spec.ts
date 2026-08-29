@@ -38,7 +38,7 @@ describe('RecordHitHandler', () => {
   const seedMinutiae = (
     fingerprintId: string,
     count: number,
-    settingsType: 'circle' | 'circleArrow' = 'circle',
+    settingsType: 'circle' | 'circleArrow' | 'minutia' = 'circle',
   ): void => {
     for (let i = 0; i < count; i++) {
       layerRepo.seed(
@@ -119,6 +119,25 @@ describe('RecordHitHandler', () => {
     expect(persisted).toHaveLength(1);
     expect(persisted[0].referencePrintId).toBe('ref-1');
     expect(persisted[0].toPrimitives().declaredByUserId).toBe('user-1');
+  });
+
+  it('counts the minutia annotation family towards the 12 required', async () => {
+    seedTraceAndReference();
+    seedMinutiae('trace-1', REQUIRED_MINUTIAE, 'minutia');
+    seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'minutia');
+
+    await handler.execute(
+      new RecordHitCommand(
+        EXPERT_ACTOR,
+        'case-1',
+        'trace-1',
+        'ref-1',
+        'user-1',
+      ),
+    );
+
+    const persisted = await hitRepo.findByTraceId('trace-1');
+    expect(persisted).toHaveLength(1);
   });
 
   it('rejects when the trace has fewer than 12 minutiae', async () => {

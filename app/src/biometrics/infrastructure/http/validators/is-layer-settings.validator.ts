@@ -8,7 +8,12 @@ import {
 import { CircleSettingsDto } from '../dto/settings/circle-settings.dto';
 import { CircleArrowSettingsDto } from '../dto/settings/circle-arrow-settings.dto';
 import { PencilSettingsDto } from '../dto/settings/pencil-settings.dto';
+import { MinutiaSettingsDto } from '../dto/settings/minutia-settings.dto';
 import { FilterSettingsDto } from '../dto/settings/filter-settings.dto';
+import {
+  ANNOTATION_FRAME,
+  ANNOTATION_SCHEMA_VERSION,
+} from '../dto/settings/annotation-settings.dto';
 
 type SettingsDto = ClassConstructor<object>;
 
@@ -16,6 +21,7 @@ const ANNOTATION_DTOS: Record<string, SettingsDto> = {
   circle: CircleSettingsDto,
   circleArrow: CircleArrowSettingsDto,
   pencil: PencilSettingsDto,
+  minutia: MinutiaSettingsDto,
 };
 
 /**
@@ -73,7 +79,11 @@ export function IsLayerSettings(options?: ValidationOptions) {
           const layerType = (args.object as { type?: unknown }).type;
           const suffix =
             typeof layerType === 'string' ? ` for a ${layerType} layer` : '';
-          return `settings is not a valid payload${suffix}`;
+          return (
+            `settings is not a valid payload${suffix}: annotation coordinates ` +
+            `must be integers in the "${ANNOTATION_FRAME}" frame ` +
+            `(schemaVersion ${ANNOTATION_SCHEMA_VERSION})`
+          );
         },
       },
     });

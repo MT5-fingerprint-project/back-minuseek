@@ -1,16 +1,17 @@
-import { Equals, IsHexColor, IsNumber, IsPositive } from 'class-validator';
+import { Equals, IsHexColor, IsInt, IsPositive } from 'class-validator';
+import { AnnotationSettingsDto } from './annotation-settings.dto';
 
-export class CircleSettingsDto {
+export class CircleSettingsDto extends AnnotationSettingsDto {
   @Equals('circle')
   type: 'circle';
 
-  @IsNumber()
+  @IsInt()
   x: number;
 
-  @IsNumber()
+  @IsInt()
   y: number;
 
-  @IsNumber()
+  @IsInt()
   @IsPositive()
   radius: number;
 

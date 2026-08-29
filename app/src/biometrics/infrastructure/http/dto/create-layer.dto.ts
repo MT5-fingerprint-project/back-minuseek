@@ -40,7 +40,10 @@ export class CreateLayerDto {
   zIndex: number;
 
   @ApiProperty({
-    description: 'Configuration flexible du calque (filtres ou annotations)',
+    description:
+      'Configuration flexible du calque (filtres ou annotations). Une annotation ' +
+      'porte des coordonnées entières exprimées dans le repère "source-pixels" ' +
+      '(pixels de l’image telle que déposée) et une version de schéma (frame, schemaVersion).',
   })
   @IsObject()
   @IsLayerSettings()

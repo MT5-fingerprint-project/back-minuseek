@@ -3,23 +3,24 @@ import {
   Equals,
   IsArray,
   IsHexColor,
-  IsNumber,
+  IsInt,
   IsPositive,
 } from 'class-validator';
+import { AnnotationSettingsDto } from './annotation-settings.dto';
 
-export class PencilSettingsDto {
+export class PencilSettingsDto extends AnnotationSettingsDto {
   @Equals('pencil')
   type: 'pencil';
 
   @IsArray()
   @ArrayMinSize(4) // au moins 2 points (x,y x2) pour former un trait
-  @IsNumber({}, { each: true })
+  @IsInt({ each: true })
   points: number[];
 
   @IsHexColor()
   color: string;
 
-  @IsNumber()
+  @IsInt()
   @IsPositive()
   strokeWidth: number;
 }
