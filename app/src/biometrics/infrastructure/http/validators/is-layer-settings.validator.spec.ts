@@ -89,6 +89,11 @@ describe('IsLayerSettings (CreateLayerDto)', () => {
     ['circle', validCircle, 'ANNOTATION'],
     ['circleArrow', validArrow, 'ANNOTATION'],
     ['pencil', validPencil, 'ANNOTATION'],
+    [
+      'pencil avec une épaisseur de trait flottante',
+      { ...validPencil, strokeWidth: 1.5 },
+      'ANNOTATION',
+    ],
     ['minutia', validMinutia, 'ANNOTATION'],
     [
       'minutia avec angle à la borne basse (0)',

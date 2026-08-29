@@ -4,6 +4,7 @@ import {
   IsArray,
   IsHexColor,
   IsInt,
+  IsNumber,
   IsPositive,
 } from 'class-validator';
 import { AnnotationSettingsDto } from './annotation-settings.dto';
@@ -20,7 +21,9 @@ export class PencilSettingsDto extends AnnotationSettingsDto {
   @IsHexColor()
   color: string;
 
-  @IsInt()
+  // Reste flottant (contrairement aux coordonnées) : l'arrondir épaissirait
+  // visiblement le trait à l'écran (ex. 1.5 -> 2px), cf. contrat front L5-7.
+  @IsNumber()
   @IsPositive()
   strokeWidth: number;
 }
