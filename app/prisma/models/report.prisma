@@ -1,12 +1,16 @@
 model Report {
-  id          String     @id @db.Uuid
-  caseId      String     @db.Uuid
-  type        ReportType
-  storagePath String
-  sha256      String     @db.Char(64)
-  generatedBy Json
-  createdAt   DateTime   @default(now())
+  id           String     @id @db.Uuid
+  caseId       String     @db.Uuid
+  type         ReportType
+  sequence     Int
+  number       String
+  signerUserId String     @db.Uuid
+  storagePath  String
+  sha256       String     @db.Char(64)
+  generatedBy  Json
+  createdAt    DateTime   @default(now())
 
+  @@unique([caseId, sequence])
   @@index([caseId])
 }
 
