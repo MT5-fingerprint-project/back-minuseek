@@ -17,5 +17,31 @@ model Tenant {
     createdAt             DateTime @default(now()) @map("created_at")
     updatedAt             DateTime @updatedAt @map("updated_at")
 
+    seals SealRegistry[]
+
     @@map("tenant")
+}
+
+model SealRegistry {
+    id         String    @id @default(uuid()) @db.Uuid
+    tenantSlug String    @map("tenant_slug")
+    tenant     Tenant    @relation(fields: [tenantSlug], references: [slug], onDelete: Cascade)
+    sha256     String    @db.Char(64)
+    kind       SealKind
+    chainSeq   BigInt    @map("chain_seq")
+    sealedAt   DateTime  @map("sealed_at")
+    anchoredAt DateTime? @map("anchored_at")
+    caseId     String?   @map("case_id") @db.Uuid
+    reportType String?   @map("report_type")
+    createdAt  DateTime  @default(now()) @map("created_at")
+
+    @@unique([tenantSlug, sha256])
+    @@index([tenantSlug, caseId])
+    @@map("seal_registry")
+}
+
+enum SealKind {
+    TRACE
+    REFERENCE_PRINT
+    REPORT
 }

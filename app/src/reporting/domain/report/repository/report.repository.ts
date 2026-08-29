@@ -1,8 +1,11 @@
-import { AuditEventDraft } from '../../../../shared/domain/ports/audit-trail.port';
+import {
+  AuditEventDraft,
+  AuditLink,
+} from '../../../../shared/domain/ports/audit-trail.port';
 import { Report } from '../entity/report';
 
 export interface ReportRepository {
-  save(report: Report, act: AuditEventDraft): Promise<void>;
+  save(report: Report, act: AuditEventDraft): Promise<AuditLink>;
   findById(id: string): Promise<Report | null>;
 }
 

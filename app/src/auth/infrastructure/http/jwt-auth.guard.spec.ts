@@ -1,5 +1,11 @@
-import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { PUBLIC_ROUTE_KEY } from './public-route.decorator';
 import {
   TenantHeaderMissingError,
   TenantIssuerMismatchError,
@@ -7,7 +13,7 @@ import {
 } from './tenant-resolution.errors';
 
 describe('JwtAuthGuard.handleRequest', () => {
-  const guard = new JwtAuthGuard();
+  const guard = new JwtAuthGuard(new Reflector());
 
   it('renvoie le user quand la validation a réussi', () => {
     const user = { sub: 'user-1' };
@@ -48,5 +54,46 @@ describe('JwtAuthGuard.handleRequest', () => {
     expect(() => guard.handleRequest(null, false, undefined)).toThrow(
       UnauthorizedException,
     );
+  });
+});
+
+describe('JwtAuthGuard.canActivate', () => {
+  function context(): ExecutionContext {
+    return {
+      getHandler: () => () => undefined,
+      getClass: () => class {},
+      switchToHttp: () => ({
+        getRequest: () => ({ headers: {}, url: '/api/investigation-cases' }),
+        getResponse: () => ({
+          setHeader: () => undefined,
+          end: () => undefined,
+        }),
+      }),
+    } as unknown as ExecutionContext;
+  }
+
+  function reflectorSaying(isPublic: boolean): Reflector {
+    return {
+      getAllAndOverride: () => isPublic,
+    } as unknown as Reflector;
+  }
+
+  it('laisse passer une route explicitement publique, sans jeton', () => {
+    const guard = new JwtAuthGuard(reflectorSaying(true));
+
+    expect(guard.canActivate(context())).toBe(true);
+  });
+
+  it('exige un jeton partout ailleurs : la dérogation ne fuit pas', async () => {
+    const asked: unknown[] = [];
+    const guard = new JwtAuthGuard({
+      getAllAndOverride: (key: unknown) => {
+        asked.push(key);
+        return false;
+      },
+    } as unknown as Reflector);
+
+    await expect(guard.canActivate(context())).rejects.toThrow(Error);
+    expect(asked).toEqual([PUBLIC_ROUTE_KEY]);
   });
 });

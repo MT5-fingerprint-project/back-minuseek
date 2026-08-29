@@ -1,4 +1,10 @@
 import { Inject, Logger } from '@nestjs/common';
+import type { AuditLink } from '../../../../shared/domain/ports/audit-trail.port';
+import { recordSealSafely } from '../../../../shared/application/record-seal-safely';
+import {
+  SEAL_REGISTRY,
+  type SealRegistryPort,
+} from '../../../../shared/domain/ports/seal-registry.port';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { FileDigest } from '../../../domain/file-digest.vo';
 import { Trace } from '../../../domain/trace/entity/trace';
@@ -50,6 +56,8 @@ export class UploadTraceHandler implements ICommandHandler<
     @Inject(IMAGE_CONVERTER)
     private readonly converter: ImageConverterPort,
     private readonly caseAccess: CaseAccessService,
+    @Inject(SEAL_REGISTRY)
+    private readonly sealRegistry: SealRegistryPort,
   ) {}
 
   async execute(
@@ -67,9 +75,8 @@ export class UploadTraceHandler implements ICommandHandler<
         : CaptureQuality.of(cmd.captureQuality);
 
     const id = this.idGenerator.generate();
-    const sha256 = FileDigest.ofBuffer(cmd.fileBuffer);
     const mimeType = detectImageMimeType(cmd.fileBuffer);
-    const storedPath = await storeDisplayableImage(
+    const stored = await storeDisplayableImage(
       this.storage,
       this.converter,
       cmd.fileBuffer,
@@ -78,38 +85,53 @@ export class UploadTraceHandler implements ICommandHandler<
 
     const trace = Trace.upload({
       id,
-      path: storedPath,
+      path: stored.path,
       caseId: cmd.caseId,
-      sha256,
+      sha256: FileDigest.from(stored.receivedSha256),
+      displayableSha256: FileDigest.from(stored.displayableSha256),
       captureMetadata,
       captureQuality,
     });
 
+    let link: AuditLink;
     try {
-      await this.repo.save(trace, {
+      link = await this.repo.save(trace, {
         eventType: AuditEventTypeEnum.TRACE_UPLOADED,
         evidenceClass: EvidenceClassEnum.OBSERVED,
         actor: cmd.actor,
         caseId: cmd.caseId,
         traceId: id,
         payload: {
-          fileSha256: sha256.getValue(),
-          storagePath: storedPath,
+          fileSha256: stored.receivedSha256,
+          displayableFileSha256: stored.displayableSha256,
+          storagePath: stored.path,
           sizeBytes: cmd.fileBuffer.length,
           mimeType,
         },
       });
     } catch (error) {
-      await this.discardStoredFile(storedPath);
-      const archived = archivedOriginalPath(storedPath);
+      await this.discardStoredFile(stored.path);
+      const archived = archivedOriginalPath(stored.path);
       if (archived) {
         await this.discardStoredFile(archived);
       }
       throw error;
     }
 
-    const url = await this.storage.getUrl(storedPath);
-    return { id, path: storedPath, url };
+    await recordSealSafely(
+      this.sealRegistry,
+      {
+        sha256: stored.receivedSha256,
+        kind: 'TRACE',
+        chainSeq: link.seq,
+        sealedAt: link.occurredAt,
+        caseId: cmd.caseId,
+      },
+      this.logger,
+    );
+
+    const url = await this.storage.getUrl(stored.path);
+    return { id, path: stored.path, url };
   }
 
   private async discardStoredFile(storedPath: string): Promise<void> {

@@ -53,6 +53,7 @@ export interface PieceData {
   id: string;
   path: string;
   sha256: string | null;
+  displayableSha256: string | null;
   createdAt: Date;
   capturedAt: Date | null;
   status: string | null;

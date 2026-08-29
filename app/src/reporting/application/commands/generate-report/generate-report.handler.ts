@@ -1,4 +1,10 @@
 import { Inject, Logger } from '@nestjs/common';
+import type { AuditLink } from '../../../../shared/domain/ports/audit-trail.port';
+import { recordSealSafely } from '../../../../shared/application/record-seal-safely';
+import {
+  SEAL_REGISTRY,
+  type SealRegistryPort,
+} from '../../../../shared/domain/ports/seal-registry.port';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { createHash } from 'node:crypto';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
@@ -104,6 +110,8 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     private readonly repository: ReportRepository,
     @Inject(ID_GENERATOR)
     private readonly idGenerator: IdGenerator,
+    @Inject(SEAL_REGISTRY)
+    private readonly sealRegistry: SealRegistryPort,
   ) {}
 
   async execute(command: GenerateReportCommand): Promise<GeneratedReport> {
@@ -140,8 +148,9 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
       `reports/${command.caseId}/${reportId}.pdf`,
     );
 
+    let link: AuditLink;
     try {
-      await this.repository.save(
+      link = await this.repository.save(
         Report.seal({
           id: reportId,
           caseId: command.caseId,
@@ -169,6 +178,19 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
       );
       throw error;
     }
+
+    await recordSealSafely(
+      this.sealRegistry,
+      {
+        sha256,
+        kind: 'REPORT',
+        chainSeq: link.seq,
+        sealedAt: link.occurredAt,
+        caseId: command.caseId,
+        reportType: command.type,
+      },
+      this.logger,
+    );
 
     return { id: reportId, sha256 };
   }

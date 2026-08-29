@@ -52,6 +52,7 @@ function trace(overrides: Partial<PieceData> = {}): PieceData {
     id: 'trace-2',
     path: TRACE_PATH,
     sha256: SEAL,
+    displayableSha256: null,
     createdAt: AT,
     capturedAt: null,
     status: 'EXPLOITABLE',

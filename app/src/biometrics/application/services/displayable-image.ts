@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { ImageConverterPort } from '../ports/image-converter.port';
 import { ImageStoragePort } from '../ports/image-storage.port';
 
@@ -41,8 +42,17 @@ export function detectImageMimeType(fileBuffer: Buffer): string {
   return MIME_BY_EXTENSION[detectImageExtension(fileBuffer)];
 }
 
+export interface StoredImage {
+  path: string;
+  receivedSha256: string;
+  displayableSha256: string;
+}
+
+function digestOf(bytes: Buffer): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
 /**
- * Stocke l'image affichable et retourne son chemin (celui persisté en base).
  * Un TIFF est converti en PNG (lossless) pour l'affichage navigateur ;
  * l'original est archivé sous `<id>_original.tif`.
  */
@@ -51,15 +61,22 @@ export async function storeDisplayableImage(
   converter: ImageConverterPort,
   fileBuffer: Buffer,
   pathWithoutExtension: string,
-): Promise<string> {
+): Promise<StoredImage> {
   const extension = detectImageExtension(fileBuffer);
+  const receivedSha256 = digestOf(fileBuffer);
+
   if (extension !== '.tif') {
-    return storage.save(fileBuffer, `${pathWithoutExtension}${extension}`);
+    const path = await storage.save(
+      fileBuffer,
+      `${pathWithoutExtension}${extension}`,
+    );
+    return { path, receivedSha256, displayableSha256: receivedSha256 };
   }
 
   const png = await converter.tiffToPng(fileBuffer);
   await storage.save(fileBuffer, `${pathWithoutExtension}_original.tif`);
-  return storage.save(png, `${pathWithoutExtension}.png`);
+  const path = await storage.save(png, `${pathWithoutExtension}.png`);
+  return { path, receivedSha256, displayableSha256: digestOf(png) };
 }
 
 /**

@@ -33,6 +33,7 @@ function trace(overrides: Partial<PieceData> & { id: string }): PieceData {
   return {
     path: `media/case-1/traces/${overrides.id}.png`,
     sha256: 'a'.repeat(64),
+    displayableSha256: 'a'.repeat(64),
     createdAt: OPENED_AT,
     capturedAt: null,
     status: 'EXPLOITABLE',
