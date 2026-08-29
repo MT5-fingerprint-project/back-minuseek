@@ -5,6 +5,8 @@ import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructu
 import { Layer } from '../../../domain/layer/entity/layer';
 import { LayerNotFoundError } from '../../../domain/layer/errors/layer-not-found.error';
 import { FingerprintNotFoundError } from '../../../domain/fingerprint-not-found.error';
+import { ExpertAdjustmentOutsideExpertiseError } from '../../../domain/errors/expert-adjustment-outside-expertise.error';
+import { InMemoryCaseExpertiseAdapter } from '../../../infrastructure/persistence/in-memory-case-expertise.adapter';
 import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryFingerprintLocatorAdapter } from '../../../infrastructure/persistence/in-memory-fingerprint-locator.adapter';
 import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-memory-layer.repository';
@@ -29,6 +31,7 @@ describe('UpdateLayerHandler', () => {
 
   let handler: UpdateLayerHandler;
   let caseStatus: InMemoryCaseStatusAdapter;
+  let caseExpertise: InMemoryCaseExpertiseAdapter;
   let repo: InMemoryLayerRepository;
   let fingerprintLocator: InMemoryFingerprintLocatorAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
@@ -51,8 +54,82 @@ describe('UpdateLayerHandler', () => {
     fingerprintLocator = new InMemoryFingerprintLocatorAdapter();
     caseStatus = new InMemoryCaseStatusAdapter();
     caseStatus.set('case-9', 'OPEN');
-    handler = new UpdateLayerHandler(repo, fingerprintLocator, caseStatus);
+    caseExpertise = new InMemoryCaseExpertiseAdapter();
+    handler = new UpdateLayerHandler(
+      repo,
+      fingerprintLocator,
+      caseStatus,
+      caseExpertise,
+    );
     fingerprintLocator.setTrace('fp-1', 'case-9');
+  });
+
+  it("refuse de basculer un calque ordinaire sur un réglage d'expert hors expertise", async () => {
+    existingLayer();
+
+    await expect(
+      handler.execute(
+        new UpdateLayerCommand(
+          EXPERT_ACTOR,
+          'layer-1',
+          undefined,
+          undefined,
+          undefined,
+          { filterKey: 'channelRed', value: 1 },
+        ),
+      ),
+    ).rejects.toThrow(ExpertAdjustmentOutsideExpertiseError);
+    const untouched = await repo.findById('layer-1');
+    expect(untouched?.toPrimitives().settings).toEqual(initialSettings);
+    expect(auditTrail.events).toEqual([]);
+  });
+
+  it("laisse masquer un calque d'expert déjà posé sur un dossier ordinaire", async () => {
+    repo.seed(
+      Layer.create({
+        id: 'layer-expert',
+        fingerprintId: 'fp-1',
+        name: 'Point noir',
+        type: 'FILTER',
+        zIndex: 0,
+        settings: { filterKey: 'levelsBlack', value: 30 },
+      }),
+    );
+
+    await handler.execute(
+      new UpdateLayerCommand(
+        EXPERT_ACTOR,
+        'layer-expert',
+        undefined,
+        undefined,
+        false,
+      ),
+    );
+
+    const updated = await repo.findById('layer-expert');
+    expect(updated?.toPrimitives().isVisible).toBe(false);
+  });
+
+  it('accepte le même basculement sur un dossier déclaré en expertise', async () => {
+    existingLayer();
+    caseExpertise.declare('case-9');
+
+    await handler.execute(
+      new UpdateLayerCommand(
+        EXPERT_ACTOR,
+        'layer-1',
+        undefined,
+        undefined,
+        undefined,
+        { filterKey: 'channelRed', value: 1 },
+      ),
+    );
+
+    const updated = await repo.findById('layer-1');
+    expect(updated?.toPrimitives().settings).toEqual({
+      filterKey: 'channelRed',
+      value: 1,
+    });
   });
 
   it('met à jour les settings (déplacement du cercle) du calque existant', async () => {

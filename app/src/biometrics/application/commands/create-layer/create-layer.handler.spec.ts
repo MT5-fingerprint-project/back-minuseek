@@ -3,6 +3,8 @@ import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { FingerprintNotFoundError } from '../../../domain/fingerprint-not-found.error';
+import { ExpertAdjustmentOutsideExpertiseError } from '../../../domain/errors/expert-adjustment-outside-expertise.error';
+import { InMemoryCaseExpertiseAdapter } from '../../../infrastructure/persistence/in-memory-case-expertise.adapter';
 import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryFingerprintLocatorAdapter } from '../../../infrastructure/persistence/in-memory-fingerprint-locator.adapter';
 import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-memory-layer.repository';
@@ -20,6 +22,7 @@ describe('CreateLayerHandler', () => {
 
   let handler: CreateLayerHandler;
   let caseStatus: InMemoryCaseStatusAdapter;
+  let caseExpertise: InMemoryCaseExpertiseAdapter;
   let repo: InMemoryLayerRepository;
   let fingerprintLocator: InMemoryFingerprintLocatorAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
@@ -41,7 +44,71 @@ describe('CreateLayerHandler', () => {
     fingerprintLocator = new InMemoryFingerprintLocatorAdapter();
     caseStatus = new InMemoryCaseStatusAdapter();
     caseStatus.set('case-9', 'OPEN');
-    handler = new CreateLayerHandler(repo, fingerprintLocator, caseStatus);
+    caseExpertise = new InMemoryCaseExpertiseAdapter();
+    handler = new CreateLayerHandler(
+      repo,
+      fingerprintLocator,
+      caseStatus,
+      caseExpertise,
+    );
+  });
+
+  it("refuse un réglage d'expert sur un dossier qui n'est pas en expertise", async () => {
+    fingerprintLocator.setTrace('fp-1', 'case-9');
+
+    await expect(
+      handler.execute(
+        new CreateLayerCommand(
+          EXPERT_ACTOR,
+          'layer-expert',
+          'fp-1',
+          'Point noir',
+          'FILTER',
+          0,
+          { filterKey: 'levelsBlack', value: 30 },
+        ),
+      ),
+    ).rejects.toThrow(ExpertAdjustmentOutsideExpertiseError);
+    expect(await repo.findById('layer-expert')).toBeNull();
+    expect(auditTrail.events).toEqual([]);
+  });
+
+  it('accepte le même réglage sur un dossier déclaré en expertise', async () => {
+    fingerprintLocator.setTrace('fp-1', 'case-9');
+    caseExpertise.declare('case-9');
+
+    await handler.execute(
+      new CreateLayerCommand(
+        EXPERT_ACTOR,
+        'layer-expert',
+        'fp-1',
+        'Point noir',
+        'FILTER',
+        0,
+        { filterKey: 'levelsBlack', value: 30 },
+      ),
+    );
+
+    expect(await repo.findById('layer-expert')).not.toBeNull();
+    expect(auditTrail.events).toHaveLength(1);
+  });
+
+  it('laisse créer un des six réglages ordinaires hors expertise', async () => {
+    fingerprintLocator.setTrace('fp-1', 'case-9');
+
+    await handler.execute(
+      new CreateLayerCommand(
+        EXPERT_ACTOR,
+        'layer-contraste',
+        'fp-1',
+        'Contraste',
+        'FILTER',
+        0,
+        { filterKey: 'contrast', value: 30 },
+      ),
+    );
+
+    expect(await repo.findById('layer-contraste')).not.toBeNull();
   });
 
   it('persiste un calque ANNOTATION visible par défaut en conservant ses settings', async () => {
