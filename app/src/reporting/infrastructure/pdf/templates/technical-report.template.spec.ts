@@ -119,7 +119,13 @@ function model(
     traces: [],
     referencePrints: [],
     identityDemonstrations: [],
-    journal: { chained: [] },
+    journal: {
+      detail: 'SUMMARY',
+      acts: [],
+      summaries: [],
+      actCountTotal: 0,
+      actCountPrinted: 0,
+    },
     ...overrides,
   };
 }
@@ -474,5 +480,168 @@ describe('renderTechnicalReportHtml — en-tête du service', () => {
     expect(html).toContain('S.R.P.T.S. de Paris');
     expect(html).not.toContain('<b></b>');
     expect(html).not.toContain('undefined');
+  });
+});
+
+const JOURNAL_ACT = {
+  order: 1,
+  occurredAt: new Date('2026-03-16T16:00:00.000Z'),
+  actorDisplayName: 'Sébastien Aguilar',
+  sentence: 'Dépôt de la trace 3455-T2 cotée « B » et mise sous scellé',
+};
+
+describe('renderTechnicalReportHtml — annexe C', () => {
+  function journal(overrides: Record<string, unknown> = {}) {
+    return model({
+      journal: {
+        detail: 'SUMMARY',
+        acts: [JOURNAL_ACT],
+        summaries: [],
+        actCountTotal: 1,
+        actCountPrinted: 1,
+        ...overrides,
+      },
+    } as never);
+  }
+
+  it('titre l’annexe et annonce le filtrage des saisies administratives', () => {
+    const html = renderTechnicalReportHtml(journal());
+
+    expect(html).toContain('Annexe C — Journal des actes');
+    expect(html).toContain(
+      "Chronologie des actes enregistrés sur le dossier 3455, dans l'ordre où ils ont été accomplis.",
+    );
+    expect(html).toContain(
+      "Les actes de saisie administrative — corrections d'en-tête, réglages du service — ne sont pas repris dans la présente chronologie.",
+    );
+  });
+
+  it('annonce le regroupement en variante résumée', () => {
+    const html = renderTechnicalReportHtml(journal());
+
+    expect(html).toContain(
+      'sont résumés par une ligne par trace. Une version détaillée de la présente annexe, qui les énumère un par un, peut être éditée sur demande.',
+    );
+    expect(html).not.toContain('Version détaillée :');
+  });
+
+  it('annonce l’énumération en variante détaillée, sans prétendre tout imprimer', () => {
+    const html = renderTechnicalReportHtml(journal({ detail: 'FULL' }));
+
+    expect(html).toContain(
+      "Version détaillée : chaque réglage d'amélioration figure ci-dessous, un par un, sans regroupement.",
+    );
+    expect(html).not.toContain(
+      'tous les actes enregistrés figurent ci-dessous',
+    );
+  });
+
+  it('imprime la phrase de l’acte, son heure et son auteur', () => {
+    const html = renderTechnicalReportHtml(journal());
+
+    expect(html).toContain(
+      'Dépôt de la trace 3455-T2 cotée « B » et mise sous scellé',
+    );
+    expect(html).toContain('16/03/2026 à 16 h 00');
+    expect(html).toContain('Sébastien Aguilar');
+  });
+
+  it('résume les réglages d’une trace en une ligne bornée dans le temps', () => {
+    const html = renderTechnicalReportHtml(
+      journal({
+        acts: [],
+        summaries: [
+          {
+            family: 'ADJUSTMENT',
+            pieceDesignation: 'la trace 3455-T2 cotée « B »',
+            count: 13,
+            firstAt: new Date('2026-03-16T17:03:00.000Z'),
+            lastAt: new Date('2026-03-16T17:41:00.000Z'),
+          },
+        ],
+        actCountTotal: 13,
+        actCountPrinted: 1,
+      }),
+    );
+
+    expect(html).toContain(
+      "13 réglages d'amélioration d'image sur la trace 3455-T2 cotée « B », entre 17 h 03 et 17 h 41",
+    );
+  });
+
+  it('accorde la ligne de synthèse au singulier', () => {
+    const html = renderTechnicalReportHtml(
+      journal({
+        acts: [],
+        summaries: [
+          {
+            family: 'ADJUSTMENT',
+            pieceDesignation: 'la trace 3455-T2 cotée « B »',
+            count: 1,
+            firstAt: new Date('2026-03-16T17:03:00.000Z'),
+            lastAt: new Date('2026-03-16T17:03:00.000Z'),
+          },
+        ],
+        actCountTotal: 1,
+        actCountPrinted: 1,
+      }),
+    );
+
+    expect(html).toContain("1 réglage d'amélioration d'image sur");
+  });
+
+  it('résume les minuties relevées sur une trace', () => {
+    const html = renderTechnicalReportHtml(
+      journal({
+        acts: [],
+        summaries: [
+          {
+            family: 'MARK',
+            pieceDesignation: 'la trace 3455-T2 cotée « B »',
+            count: 12,
+            firstAt: new Date('2026-03-16T17:12:00.000Z'),
+            lastAt: new Date('2026-03-16T17:19:00.000Z'),
+          },
+        ],
+        actCountTotal: 12,
+        actCountPrinted: 1,
+      }),
+    );
+
+    expect(html).toContain(
+      '12 minuties relevées sur la trace 3455-T2 cotée « B », entre 17 h 12 et 17 h 19',
+    );
+  });
+
+  it('dit l’écart entre ce que le registre porte et ce que l’annexe affiche', () => {
+    const html = renderTechnicalReportHtml(
+      journal({ actCountTotal: 120, actCountPrinted: 40 }),
+    );
+
+    expect(html).toContain(
+      'Le registre de ce dossier porte 120 inscriptions, restituées ici en 40 lignes.',
+    );
+    expect(html).not.toContain('en détaille');
+  });
+
+  it('ne sort ni empreinte, ni numéro d’inscription, ni nom technique d’événement', () => {
+    const html = renderTechnicalReportHtml(journal());
+
+    expect(html).not.toContain('LAYER_');
+    expect(html).not.toContain('filterKey');
+    expect(html).not.toContain('engineVersion');
+    expect(html).not.toContain('matchThreshold');
+    expect(html).not.toContain('prevHash');
+    expect(html).not.toContain('sha256');
+    expect(html).not.toContain('Maillon');
+    expect(html).not.toContain('Empreinte (début)');
+  });
+
+  it('ne comporte que quatre colonnes', () => {
+    const html = renderTechnicalReportHtml(journal());
+
+    expect(html).toContain(
+      '<tr><th>N°</th><th>Date et heure</th><th>Auteur</th><th>Acte</th></tr>',
+    );
   });
 });

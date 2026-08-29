@@ -33,6 +33,19 @@ export function formatDay(value: Date | null): string {
   return `${pad(value.getUTCDate())}/${pad(value.getUTCMonth() + 1)}/${value.getUTCFullYear()}`;
 }
 
+export function formatHourMinute(value: Date): string {
+  return `${pad(value.getUTCHours())} h ${pad(value.getUTCMinutes())}`;
+}
+
+export function formatDayTime(value: Date | null): string {
+  if (!value) {
+    return '—';
+  }
+  return `${formatDay(value)} à ${pad(value.getUTCHours())} h ${pad(
+    value.getUTCMinutes(),
+  )}`;
+}
+
 export function formatLongDay(value: Date | null): string {
   if (!value) {
     return '—';

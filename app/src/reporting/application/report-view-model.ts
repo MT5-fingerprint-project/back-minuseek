@@ -166,17 +166,29 @@ export interface ReportCountsViewModel {
   notExamined: number;
 }
 
-export interface ReportJournalEntryViewModel {
-  label: string;
-  detail: string | null;
+export type JournalDetail = 'SUMMARY' | 'FULL';
+
+export interface ReportJournalActViewModel {
+  order: number;
   occurredAt: Date;
   actorDisplayName: string;
-  seq: number;
-  hash: string;
+  sentence: string;
+}
+
+export interface ReportJournalSummaryViewModel {
+  family: 'ADJUSTMENT' | 'MARK';
+  pieceDesignation: string;
+  count: number;
+  firstAt: Date;
+  lastAt: Date;
 }
 
 export interface ReportJournalViewModel {
-  chained: ReportJournalEntryViewModel[];
+  detail: JournalDetail;
+  acts: ReportJournalActViewModel[];
+  summaries: ReportJournalSummaryViewModel[];
+  actCountTotal: number;
+  actCountPrinted: number;
 }
 
 export interface ReportLayerViewModel {

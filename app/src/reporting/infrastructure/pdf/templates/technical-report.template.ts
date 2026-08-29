@@ -2,13 +2,20 @@ import { REQUIRED_MINUTIAE } from '../../../../shared/domain/forensics/minutiae'
 import {
   ReportCaseHeaderViewModel,
   ReportContributorViewModel,
-  ReportJournalEntryViewModel,
+  ReportJournalSummaryViewModel,
+  ReportJournalViewModel,
   TechnicalReportViewModel,
 } from '../../../application/report-view-model';
+import {
+  journalRows,
+  JournalRow,
+} from '../../../application/queries/build-report/journal-annex.builder';
 import { frenchCardinal } from '../french-numbers';
 import {
   formatDate,
   formatDay,
+  formatDayTime,
+  formatHourMinute,
   formatLongDay,
 } from '../../../application/report-dates';
 import { escapeHtml } from '../html';
@@ -517,42 +524,78 @@ function conclusionSection(model: TechnicalReportViewModel): string {
     </ul>`;
 }
 
-function journalRows(entries: ReportJournalEntryViewModel[]): string {
-  return entries
-    .map(
-      (entry) => `
+function summarySentence(summary: ReportJournalSummaryViewModel): string {
+  const between = `entre ${formatHourMinute(summary.firstAt)} et ${formatHourMinute(
+    summary.lastAt,
+  )}`;
+  const what =
+    summary.family === 'ADJUSTMENT'
+      ? `${summary.count} réglage${summary.count > 1 ? 's' : ''} d'amélioration d'image sur`
+      : `${summary.count} minutie${summary.count > 1 ? 's' : ''} relevée${
+          summary.count > 1 ? 's' : ''
+        } sur`;
+  return `${what} ${escapeHtml(summary.pieceDesignation)}, ${between}`;
+}
+
+function journalRow(row: JournalRow, order: number): string {
+  const [at, author, sentence] =
+    row.kind === 'act'
+      ? [
+          row.act.occurredAt,
+          escapeHtml(row.act.actorDisplayName),
+          escapeHtml(row.act.sentence),
+        ]
+      : [row.summary.lastAt, '—', summarySentence(row.summary)];
+
+  return `
       <tr>
-        <td class="numeric">${entry.seq}</td>
-        <td>${escapeHtml(entry.label)}</td>
-        <td>${escapeHtml(entry.actorDisplayName)}</td>
-        <td>${formatDate(entry.occurredAt)}</td>
-        <td>${escapeHtml(entry.detail ?? '—')}</td>
-        <td class="hash">${escapeHtml(entry.hash.slice(0, 16))}</td>
-      </tr>`,
-    )
-    .join('');
+        <td class="numeric">${order}</td>
+        <td>${formatDayTime(at)}</td>
+        <td>${author}</td>
+        <td>${sentence}</td>
+      </tr>`;
+}
+
+function journalIntroduction(
+  journal: ReportJournalViewModel,
+  caseNumber: string,
+): string {
+  const always = `Chronologie des actes enregistrés sur le dossier ${escapeHtml(
+    caseNumber,
+  )}, dans l'ordre où ils ont été accomplis. Les dates et heures sont exprimées en temps universel (UTC). Les actes de saisie administrative — corrections d'en-tête, réglages du service — ne sont pas repris dans la présente chronologie.`;
+  const variant =
+    journal.detail === 'SUMMARY'
+      ? 'Les réglages destinés à améliorer la lisibilité des images, qui peuvent être nombreux et repris plusieurs fois sur une même image, sont résumés par une ligne par trace. Une version détaillée de la présente annexe, qui les énumère un par un, peut être éditée sur demande.'
+      : "Version détaillée : chaque réglage d'amélioration figure ci-dessous, un par un, sans regroupement.";
+  return `<p>${always}</p><p>${variant}</p>`;
+}
+
+function journalFoot(journal: ReportJournalViewModel): string {
+  const total = `${journal.actCountTotal} inscription${
+    journal.actCountTotal > 1 ? 's' : ''
+  }`;
+  const printed = `${journal.actCountPrinted} ligne${
+    journal.actCountPrinted > 1 ? 's' : ''
+  }`;
+  return `<p class="note">Le registre de ce dossier porte ${total}, restituées ici en ${printed}.</p>`;
 }
 
 function journalSection(model: TechnicalReportViewModel): string {
   const { journal } = model;
+  const rows = journalRows(journal);
+
   return `
     <h2>Annexe C — Journal des actes</h2>
-    <p>
-      Cette section liste tous les actes connus de la plateforme sur ce dossier. Les actes
-      chaînés sont ceux dont la trace est scellée dans la chaîne d'audit : ils portent un
-      numéro de maillon et l'empreinte de ce maillon, et toute modification postérieure les
-      romprait. Les empreintes sont tronquées ici : l'annexe de traçabilité porte leur valeur
-      complète, ainsi que le payload intégral de chaque acte. Tous les horodatages sont
-      exprimés en temps universel (UTC).
-    </p>
+    ${journalIntroduction(journal, model.caseHeader.caseNumber)}
     ${
-      journal.chained.length === 0
-        ? '<p class="empty">Aucun acte chaîné pour ce dossier.</p>'
+      rows.length === 0
+        ? '<p class="empty">Aucun acte enregistré sur ce dossier.</p>'
         : `<table>
-            <tr><th>Maillon</th><th>Acte</th><th>Auteur</th><th>Horodatage serveur (UTC)</th><th>Détail</th><th>Empreinte (début)</th></tr>
-            ${journalRows(journal.chained)}
+            <tr><th>N°</th><th>Date et heure</th><th>Auteur</th><th>Acte</th></tr>
+            ${rows.map((row, order) => journalRow(row, order + 1)).join('')}
           </table>`
-    }`;
+    }
+    ${journalFoot(journal)}`;
 }
 
 export function renderTechnicalReportHtml(

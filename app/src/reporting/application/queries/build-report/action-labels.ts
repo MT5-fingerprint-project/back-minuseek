@@ -1,32 +1,3 @@
-const ACTION_LABELS: Record<string, string> = {
-  TENANT_PROVISIONED: 'Laboratoire créé',
-  CASE_OPENED: 'Dossier ouvert',
-  CASE_STATUS_CHANGED: 'Statut du dossier modifié',
-  CASE_OPERATOR_CHANGED: 'Dossier confié à un autre opérateur',
-  CASE_UPDATED: 'Informations du dossier corrigées',
-  TRACE_UPLOADED: 'Trace déposée et mise sous scellé',
-  TRACE_QUALIFIED: 'Trace qualifiée',
-  TRACE_DELETED: 'Trace retirée du dossier',
-  REFERENCE_PRINT_UPLOADED:
-    'Empreinte de référence déposée et mise sous scellé',
-  REFERENCE_PRINT_DELETED: 'Empreinte de référence retirée du dossier',
-  TRACE_RESTORED: 'Trace rétablie au dossier',
-  REFERENCE_PRINT_RESTORED: 'Empreinte de référence rétablie au dossier',
-  REFERENCE_PRINT_IMAGE_DESTROYED:
-    'Empreinte de familier détruite à la clôture du dossier',
-  LAYER_CREATED: "Calque d'amélioration ajouté",
-  LAYER_UPDATED: "Calque d'amélioration modifié",
-  LAYER_DELETED: "Calque d'amélioration supprimé",
-  COMPARISON_EXECUTED: 'Comparaison exécutée',
-  HIT_RECORDED: 'Correspondance déclarée par un expert',
-  HIT_REMOVED: 'Identification retirée par un expert',
-  REPORT_GENERATED: 'Rapport généré et scellé',
-  CHAIN_ANCHORED: "Chaîne d'audit horodatée par une autorité externe",
-  SERVICE_HEADER_SAVED: 'En-tête du service enregistré',
-  TRACE_CALIBRATED: 'Résolution de la trace calibrée',
-  REFERENCE_PRINT_CALIBRATED: "Résolution de l'empreinte de référence calibrée",
-};
-
 const POSITION_LABELS: Record<string, string> = {
   RIGHT_THUMB: 'pouce droit',
   RIGHT_INDEX: 'index droit',
@@ -86,10 +57,6 @@ const SEX_LABELS: Record<string, string> = {
   FEMALE: 'féminin',
 };
 
-export function actionLabel(eventType: string): string {
-  return ACTION_LABELS[eventType] ?? eventType;
-}
-
 export function positionLabel(position: string | null): string | null {
   return position ? (POSITION_LABELS[position] ?? position) : null;
 }
@@ -135,52 +102,26 @@ export function positionWithArticle(position: string | null): string | null {
     : `au ${label}`;
 }
 
-const SCALAR_KEYS_BY_TYPE: Record<string, string[]> = {
-  CASE_OPENED: ['caseNumber', 'pvNumber'],
-  CASE_STATUS_CHANGED: ['previousStatus', 'newStatus', 'reason'],
-  TRACE_UPLOADED: ['traceId', 'sha256'],
-  REFERENCE_PRINT_UPLOADED: ['referencePrintId', 'sha256'],
-  TRACE_DELETED: ['traceId', 'motive'],
-  REFERENCE_PRINT_DELETED: ['referencePrintId', 'motive'],
-  TRACE_RESTORED: ['withdrawnAt'],
-  REFERENCE_PRINT_RESTORED: ['withdrawnAt'],
-  REFERENCE_PRINT_IMAGE_DESTROYED: ['referencePrintId', 'fileSha256'],
-  LAYER_CREATED: ['name', 'type', 'zIndex'],
-  LAYER_UPDATED: ['name', 'type', 'zIndex'],
-  LAYER_DELETED: ['name', 'type'],
-  COMPARISON_EXECUTED: ['score', 'hit', 'matchThreshold', 'engineVersion'],
-  HIT_RECORDED: [
-    'score',
-    'traceMinutiae',
-    'referenceMinutiae',
-    'requiredMinutiae',
-  ],
-  HIT_REMOVED: ['traceId', 'referencePrintId'],
-  REPORT_GENERATED: ['type', 'sha256'],
-  CHAIN_ANCHORED: ['headSeq', 'tsaUrl'],
-  TRACE_CALIBRATED: ['resolutionDpi', 'previousResolutionDpi'],
-  REFERENCE_PRINT_CALIBRATED: [
-    'referencePrintId',
-    'resolutionDpi',
-    'previousResolutionDpi',
-  ],
-};
-
-function isScalar(value: unknown): boolean {
-  return (
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean'
-  );
+export function positionOf(position: string | null): string | null {
+  const label = positionLabel(position);
+  if (label === null) {
+    return null;
+  }
+  if (/^[aeiouyéèêà]/i.test(label)) {
+    return `de l'${label}`;
+  }
+  return position !== null && FEMININE_POSITIONS.has(position)
+    ? `de la ${label}`
+    : `du ${label}`;
 }
 
-export function describeAction(
-  eventType: string,
-  payload: Record<string, unknown>,
-): string | null {
-  const keys = SCALAR_KEYS_BY_TYPE[eventType] ?? Object.keys(payload);
-  const parts = keys
-    .filter((key) => key in payload && isScalar(payload[key]))
-    .map((key) => `${key} ${String(payload[key])}`);
-  return parts.length > 0 ? parts.join(', ') : null;
+const CASE_STATUS_LABELS: Record<string, string> = {
+  OPEN: 'ouvert',
+  IN_PROGRESS: 'en cours',
+  UNDER_REVIEW: 'en vérification',
+  CLOSED: 'clos',
+};
+
+export function caseStatusLabel(status: string): string {
+  return CASE_STATUS_LABELS[status] ?? status;
 }
