@@ -203,6 +203,7 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
         chainHead: seal.chainHead,
         generatedAt: seal.generatedAt,
         generatedByDisplayName: command.actor.toPrimitives().displayName,
+        journalDetail: 'SUMMARY',
         images,
       });
     }

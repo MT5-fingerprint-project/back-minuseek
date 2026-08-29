@@ -13,6 +13,7 @@ import {
 } from '../../ports/traceability-data.reader';
 import {
   ReportContributorViewModel,
+  JournalDetail,
   ReportCountsViewModel,
   ReportExaminedTraceViewModel,
   ReportExploitabilityViewModel,
@@ -34,7 +35,8 @@ import {
 import { buildCaseHeader } from './case-header';
 import { buildLetterhead, signatureCityOf } from './letterhead';
 import { treatmentsOf } from './image-treatments';
-import { buildJournal } from './report-journal';
+import { buildJournalAnnex } from './journal-annex.builder';
+import { pieceDesignations } from './piece-designations';
 import {
   buildDemonstrations,
   isWithdrawn,
@@ -65,6 +67,7 @@ export interface TechnicalReportInput {
   chainHead: { seq: number; hash: string } | null;
   generatedAt: Date;
   generatedByDisplayName: string;
+  journalDetail: JournalDetail;
   images: Map<string, ReportImageViewModel | null>;
 }
 
@@ -295,6 +298,10 @@ export function buildTechnicalReport(
       (print) => pieceViewModels.get(print.id) as ReportPieceViewModel,
     ),
     identityDemonstrations: buildDemonstrations(data, pieceViewModels),
-    journal: buildJournal(input.chainEvents),
+    journal: buildJournalAnnex(
+      input.chainEvents,
+      pieceDesignations(data),
+      input.journalDetail,
+    ),
   };
 }

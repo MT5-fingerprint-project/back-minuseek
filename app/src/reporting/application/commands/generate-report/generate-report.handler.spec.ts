@@ -360,7 +360,8 @@ describe('GenerateReportHandler', () => {
     expect(traceability.caseEventsReadFor).toEqual([CASE_ID]);
     const model = renderer.rendered[0];
     if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
-    expect(model.journal.chained).toEqual([]);
+    expect(model.journal.acts).toEqual([]);
+    expect(model.journal.detail).toBe('SUMMARY');
   });
 
   it('rattache le document au maillon de chaîne du moment', async () => {

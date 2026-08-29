@@ -22,6 +22,7 @@ export class PrismaTraceabilityDataReader implements TraceabilityDataReader {
     return events.map((event) => ({
       seq: Number(event.seq),
       eventType: event.eventType,
+      traceId: event.traceId,
       evidenceClass: event.evidenceClass,
       actorDisplayName: (event.actor as unknown as AuditActorPrimitives)
         .displayName,

@@ -7,9 +7,12 @@ import type {
   AnchorData,
   AuditEventData,
 } from '../../ports/traceability-data.reader';
-import type { ReportImageViewModel } from '../../report-view-model';
 import { CaseContributorData } from '../../ports/case-contributors.reader';
 import { PreviousDocumentData } from '../../ports/report-numbering.reader';
+import type {
+  JournalDetail,
+  ReportImageViewModel,
+} from '../../report-view-model';
 import { ServiceLetterheadData } from '../../ports/service-letterhead.reader';
 import { buildTechnicalReport } from './technical-report.builder';
 
@@ -129,6 +132,7 @@ function build(
     contributors?: CaseContributorData[];
     previousDocument?: PreviousDocumentData | null;
     letterhead?: ServiceLetterheadData;
+    journalDetail?: JournalDetail;
   } = {},
 ) {
   return buildTechnicalReport({
@@ -144,6 +148,7 @@ function build(
     chainHead: null,
     generatedAt: GENERATED_AT,
     generatedByDisplayName: 'Alex Martin',
+    journalDetail: extras.journalDetail ?? 'SUMMARY',
     images: new Map<string, ReportImageViewModel | null>(),
   });
 }

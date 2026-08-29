@@ -1,6 +1,7 @@
 export interface AuditEventData {
   seq: number;
   eventType: string;
+  traceId: string | null;
   evidenceClass: string;
   actorDisplayName: string;
   occurredAt: Date;
