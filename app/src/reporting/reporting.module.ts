@@ -2,10 +2,12 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { AuditTrailModule } from '../audit-trail/audit-trail.module';
 import { GenerateReportHandler } from './application/commands/generate-report/generate-report.handler';
+import { CASE_CONTRIBUTORS_READER } from './application/ports/case-contributors.reader';
 import { CASE_REPORT_DATA_READER } from './application/ports/case-report-data.reader';
 import { CHAIN_ATTESTATION } from './application/ports/chain-attestation.port';
 import { CHAIN_HEAD_READER } from './application/ports/chain-head.reader';
 import { REPORT_IMAGE_EMBEDDER } from './application/ports/report-image-embedder.port';
+import { REPORT_NUMBERING_READER } from './application/ports/report-numbering.reader';
 import { REPORT_RENDERER } from './application/ports/report-renderer.port';
 import { REPORT_STORAGE } from './application/ports/report-storage.port';
 import { TRACEABILITY_DATA_READER } from './application/ports/traceability-data.reader';
@@ -17,9 +19,11 @@ import { QueryBusChainAttestationAdapter } from './infrastructure/audit/query-bu
 import { ReportsController } from './infrastructure/http/reports.controller';
 import { PuppeteerReportRenderer } from './infrastructure/pdf/puppeteer-report.renderer';
 import { StorageReportImageEmbedder } from './infrastructure/pdf/storage-report-image.embedder';
+import { PrismaCaseContributorsReader } from './infrastructure/persistence/prisma-case-contributors.reader';
 import { PrismaCaseReportDataReader } from './infrastructure/persistence/prisma-case-report-data.reader';
 import { PrismaCaseReportsReader } from './infrastructure/persistence/prisma-case-reports.reader';
 import { PrismaChainHeadReader } from './infrastructure/persistence/prisma-chain-head.reader';
+import { PrismaReportNumberingReader } from './infrastructure/persistence/prisma-report-numbering.reader';
 import { PrismaReportRepository } from './infrastructure/persistence/prisma-report.repository';
 import { PrismaTraceabilityDataReader } from './infrastructure/persistence/prisma-traceability-data.reader';
 import { GcsReportStorageAdapter } from './infrastructure/storage/gcs-report-storage.adapter';
@@ -42,6 +46,11 @@ const DEFAULT_SIGNED_URL_TTL_SECONDS = 900;
       useClass: PrismaTraceabilityDataReader,
     },
     { provide: CHAIN_HEAD_READER, useClass: PrismaChainHeadReader },
+    { provide: REPORT_NUMBERING_READER, useClass: PrismaReportNumberingReader },
+    {
+      provide: CASE_CONTRIBUTORS_READER,
+      useClass: PrismaCaseContributorsReader,
+    },
     { provide: CHAIN_ATTESTATION, useClass: QueryBusChainAttestationAdapter },
     { provide: REPORT_IMAGE_EMBEDDER, useClass: StorageReportImageEmbedder },
     { provide: REPORT_RENDERER, useClass: PuppeteerReportRenderer },

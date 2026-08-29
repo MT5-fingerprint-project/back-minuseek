@@ -12,12 +12,16 @@ import {
   TransactionRunner,
 } from '../../../shared/domain/ports/transaction-runner';
 import { Report, ReportTypeName } from '../../domain/report/entity/report';
+import { ReportSequenceAlreadyTakenError } from '../../domain/report/errors/report-sequence-already-taken.error';
 import type { ReportRepository } from '../../domain/report/repository/report.repository';
 
 interface ReportRow {
   id: string;
   caseId: string;
   type: string;
+  sequence: number;
+  number: string;
+  signerUserId: string;
   storagePath: string;
   sha256: string;
   generatedBy: unknown;
@@ -29,11 +33,23 @@ function toReport(row: ReportRow): Report {
     id: row.id,
     caseId: row.caseId,
     type: row.type as ReportTypeName,
+    sequence: row.sequence,
+    number: row.number,
+    signerUserId: row.signerUserId,
     storagePath: row.storagePath,
     sha256: row.sha256,
     generatedBy: row.generatedBy as AuditActorPrimitives,
     createdAt: row.createdAt,
   });
+}
+
+function isSequenceCollision(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  );
 }
 
 @Injectable()
@@ -47,23 +63,36 @@ export class PrismaReportRepository implements ReportRepository {
   ) {}
 
   async save(report: Report, act: AuditEventDraft): Promise<void> {
-    await this.transactionRunner.run(async () => {
-      const prisma = await this.tenantConnection.getCurrentClient();
-      const primitives = report.toPrimitives();
-      await prisma.report.create({
-        data: {
-          id: primitives.id,
-          caseId: primitives.caseId,
-          type: primitives.type,
-          storagePath: primitives.storagePath,
-          sha256: primitives.sha256,
-          generatedBy:
-            primitives.generatedBy as unknown as Prisma.InputJsonValue,
-          createdAt: primitives.createdAt,
-        },
+    const primitives = report.toPrimitives();
+    try {
+      await this.transactionRunner.run(async () => {
+        const prisma = await this.tenantConnection.getCurrentClient();
+        await prisma.report.create({
+          data: {
+            id: primitives.id,
+            caseId: primitives.caseId,
+            type: primitives.type,
+            sequence: primitives.sequence,
+            number: primitives.number,
+            signerUserId: primitives.signerUserId,
+            storagePath: primitives.storagePath,
+            sha256: primitives.sha256,
+            generatedBy:
+              primitives.generatedBy as unknown as Prisma.InputJsonValue,
+            createdAt: primitives.createdAt,
+          },
+        });
+        await this.auditTrail.append(act);
       });
-      await this.auditTrail.append(act);
-    });
+    } catch (error) {
+      if (isSequenceCollision(error)) {
+        throw new ReportSequenceAlreadyTakenError(
+          primitives.caseId,
+          primitives.sequence,
+        );
+      }
+      throw error;
+    }
   }
 
   async findById(id: string): Promise<Report | null> {

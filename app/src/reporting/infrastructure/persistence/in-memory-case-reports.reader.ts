@@ -7,9 +7,11 @@ function toReadModel(stored: StoredCaseReport): CaseReportReadModel {
   return {
     id: stored.id,
     type: stored.type,
+    number: stored.number,
     sha256: stored.sha256,
     createdAt: stored.createdAt,
     generatedByDisplayName: stored.generatedByDisplayName,
+    signerDisplayName: stored.signerDisplayName,
   };
 }
 

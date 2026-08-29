@@ -120,7 +120,7 @@ export function renderTraceabilityReportHtml(
     ${hashSpineBlock(model)}
 
     <p class="seal">
-      Annexe ${escapeHtml(header.reportId)}, éditée par ${escapeHtml(header.generatedByDisplayName)}.
+      Annexe ${escapeHtml(header.reportNumber)}, éditée par ${escapeHtml(header.generatedByDisplayName)}.
       L'empreinte SHA-256 de ce document est scellée dans la chaîne au moment de
       sa génération (événement REPORT_GENERATED) : elle ne peut pas figurer dans
       le document qu'elle scelle.
