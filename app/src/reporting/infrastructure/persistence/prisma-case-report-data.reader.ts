@@ -25,6 +25,7 @@ interface PieceRow {
   position?: string | null;
   withdrawnAt: Date | null;
   withdrawalMotive?: string | null;
+  withdrawalMotiveDetail?: string | null;
   imageDestroyedAt?: Date | null;
   origin?: string | null;
   location?: string | null;
@@ -99,6 +100,7 @@ function toPiece(
     minutiae,
     withdrawnAt: row.withdrawnAt,
     withdrawalMotive: row.withdrawalMotive ?? null,
+    withdrawalMotiveDetail: row.withdrawalMotiveDetail ?? null,
     imageDestroyedAt: row.imageDestroyedAt ?? null,
     number,
     origin: row.origin ?? null,

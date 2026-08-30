@@ -6,5 +6,6 @@ export class RemoveLocationPhotoCommand {
     public readonly actor: AuditActor,
     public readonly traceId: string,
     public readonly motive: WithdrawalMotiveEnum,
+    public readonly motiveDetail: string | null = null,
   ) {}
 }

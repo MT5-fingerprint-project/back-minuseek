@@ -106,6 +106,7 @@ describe('ReferencePrint', () => {
         position: 'LEFT_PALM',
         withdrawnAt: null,
         withdrawalMotive: null,
+        withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
       });
@@ -128,6 +129,7 @@ describe('ReferencePrint', () => {
         position: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
       });
@@ -147,6 +149,7 @@ describe('ReferencePrint', () => {
           position: null,
           withdrawnAt: null,
           withdrawalMotive: null,
+          withdrawalMotiveDetail: null,
           imageDestroyedAt: null,
           resolutionDpi: null,
         }),
@@ -174,6 +177,7 @@ describe('ReferencePrint', () => {
         position: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
       });
@@ -266,6 +270,7 @@ describe('ReferencePrint', () => {
       expect(rp.toPrimitives()).toMatchObject({
         withdrawnAt: WITHDRAWN_AT,
         withdrawalMotive: 'WRONG_ATTRIBUTION',
+        withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
       });
@@ -288,6 +293,7 @@ describe('ReferencePrint', () => {
       expect(rp.toPrimitives()).toMatchObject({
         withdrawnAt: null,
         withdrawalMotive: null,
+        withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
       });
@@ -316,6 +322,7 @@ describe('ReferencePrint', () => {
         position: null,
         withdrawnAt: WITHDRAWN_AT,
         withdrawalMotive: 'MISFILED',
+        withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
       });

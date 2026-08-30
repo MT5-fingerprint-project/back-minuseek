@@ -30,7 +30,10 @@ function withdrawalOf(piece: PieceData): ReportWithdrawalViewModel | null {
     ? null
     : {
         at: piece.withdrawnAt,
-        motiveLabel: withdrawalMotiveLabel(piece.withdrawalMotive),
+        motiveLabel: withdrawalMotiveLabel(
+          piece.withdrawalMotive,
+          piece.withdrawalMotiveDetail,
+        ),
       };
 }
 

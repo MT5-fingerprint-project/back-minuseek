@@ -62,6 +62,7 @@ import { TraceNotFoundError } from '../../domain/trace/errors/trace-not-found.er
 import { LocationPhotoAlreadyAttachedError } from '../../domain/trace-location-photo/errors/location-photo-already-attached.error';
 import { TraceLocationPhotoNotFoundError } from '../../domain/trace-location-photo/errors/trace-location-photo-not-found.error';
 import { InvalidTraceLocationError } from '../../domain/trace/errors/invalid-trace-location.error';
+import { InvalidWithdrawalDetailError } from '../../domain/withdrawal/withdrawal.vo';
 import { CaseUnavailableForTraceError } from '../../domain/trace/errors/case-unavailable-for-trace.error';
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
 import { InsufficientMinutiaeError } from '../../domain/hit/errors/insufficient-minutiae.error';
@@ -204,7 +205,11 @@ export class BiometricsController {
   @HttpCode(204)
   @ApiOperation({ summary: 'Retirer une trace du dossier' })
   @ApiResponse({ status: 204, description: 'Trace retirée du dossier' })
-  @ApiResponse({ status: 400, description: 'Motif absent ou hors liste' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Motif absent ou hors liste, ou précision manquante avec OTHER',
+  })
   @ApiResponse({ status: 404, description: 'Trace non trouvée' })
   @ApiResponse({ status: 409, description: 'Trace déjà retirée' })
   async withdrawTrace(
@@ -214,9 +219,16 @@ export class BiometricsController {
   ) {
     try {
       await this.commandBus.execute(
-        new WithdrawTraceCommand(toAuditActor(user), id, dto.motive),
+        new WithdrawTraceCommand(
+          toAuditActor(user),
+          id,
+          dto.motive,
+          dto.motiveDetail ?? null,
+        ),
       );
     } catch (e) {
+      if (e instanceof InvalidWithdrawalDetailError)
+        throw new BadRequestException(e.message);
       if (e instanceof CaseNotOpenForWorkError)
         throw new ConflictException(e.message);
       if (e instanceof ReferencePrintImageDestroyedError)
@@ -237,7 +249,11 @@ export class BiometricsController {
     status: 204,
     description: 'Empreinte de référence retirée du dossier',
   })
-  @ApiResponse({ status: 400, description: 'Motif absent ou hors liste' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Motif absent ou hors liste, ou précision manquante avec OTHER',
+  })
   @ApiResponse({
     status: 404,
     description: 'Empreinte de référence non trouvée',
@@ -250,9 +266,16 @@ export class BiometricsController {
   ) {
     try {
       await this.commandBus.execute(
-        new WithdrawReferencePrintCommand(toAuditActor(user), id, dto.motive),
+        new WithdrawReferencePrintCommand(
+          toAuditActor(user),
+          id,
+          dto.motive,
+          dto.motiveDetail ?? null,
+        ),
       );
     } catch (e) {
+      if (e instanceof InvalidWithdrawalDetailError)
+        throw new BadRequestException(e.message);
       if (e instanceof CaseNotOpenForWorkError)
         throw new ConflictException(e.message);
       if (e instanceof ReferencePrintImageDestroyedError)
@@ -635,7 +658,11 @@ export class BiometricsController {
     summary: "Retirer la photographie de localisation d'une trace",
   })
   @ApiResponse({ status: 204, description: 'Photographie retirée du dossier' })
-  @ApiResponse({ status: 400, description: 'Motif absent ou hors liste' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Motif absent ou hors liste, ou précision manquante avec OTHER',
+  })
   @ApiResponse({
     status: 404,
     description: 'Trace non trouvée, ou aucune photographie rattachée',
@@ -648,9 +675,16 @@ export class BiometricsController {
   ): Promise<void> {
     try {
       await this.commandBus.execute(
-        new RemoveLocationPhotoCommand(toAuditActor(user), id, dto.motive),
+        new RemoveLocationPhotoCommand(
+          toAuditActor(user),
+          id,
+          dto.motive,
+          dto.motiveDetail ?? null,
+        ),
       );
     } catch (e) {
+      if (e instanceof InvalidWithdrawalDetailError)
+        throw new BadRequestException(e.message);
       if (e instanceof CaseNotOpenForWorkError)
         throw new ConflictException(e.message);
       if (

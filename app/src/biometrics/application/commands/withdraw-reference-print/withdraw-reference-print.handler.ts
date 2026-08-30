@@ -34,7 +34,7 @@ export class WithdrawReferencePrintHandler implements ICommandHandler<
       await this.caseStatus.findStatus(referencePrint.caseId),
     );
 
-    referencePrint.withdraw(cmd.motive, new Date());
+    referencePrint.withdraw(cmd.motive, new Date(), cmd.motiveDetail);
 
     await this.repo.save(referencePrint, {
       eventType: AuditEventTypeEnum.REFERENCE_PRINT_DELETED,
@@ -46,6 +46,7 @@ export class WithdrawReferencePrintHandler implements ICommandHandler<
         storagePath: referencePrint.path,
         fileSha256: referencePrint.sha256,
         motive: cmd.motive,
+        motiveDetail: referencePrint.withdrawalMotiveDetail,
       },
     });
   }

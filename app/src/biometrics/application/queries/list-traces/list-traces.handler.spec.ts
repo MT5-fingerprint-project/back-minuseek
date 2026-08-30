@@ -27,6 +27,7 @@ const traceRow = (
   captureQuality: null,
   withdrawnAt: null,
   withdrawalMotive: null,
+  withdrawalMotiveDetail: null,
   resolutionDpi: null,
   origin: null,
   location: null,
@@ -226,6 +227,7 @@ describe('ListTracesHandler', () => {
         id: 'trace-2',
         withdrawnAt: new Date('2026-08-12T09:00:00.000Z'),
         withdrawalMotive: 'DUPLICATE',
+        withdrawalMotiveDetail: null,
       }),
     ]);
     const handler = new ListTracesHandler(

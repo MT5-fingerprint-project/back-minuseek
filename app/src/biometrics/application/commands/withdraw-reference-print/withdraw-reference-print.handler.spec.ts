@@ -99,6 +99,7 @@ describe('WithdrawReferencePrintHandler', () => {
       storagePath: STORED_PATH,
       fileSha256: ANY_SEAL.getValue(),
       motive: 'WRONG_ATTRIBUTION',
+      motiveDetail: null,
     });
   });
 

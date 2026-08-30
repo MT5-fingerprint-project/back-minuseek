@@ -7,6 +7,7 @@ import { ANY_SEAL } from '../../../domain/file-digest.fixture';
 import { Trace } from '../../../domain/trace/entity/trace';
 import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found.error';
 import { AlreadyWithdrawnError } from '../../../domain/withdrawal/errors/already-withdrawn.error';
+import { InvalidWithdrawalDetailError } from '../../../domain/withdrawal/withdrawal.vo';
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
 import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
@@ -119,7 +120,54 @@ describe('WithdrawTraceHandler', () => {
       storagePath: STORED_PATH,
       fileSha256: ANY_SEAL.getValue(),
       motive: 'MISFILED',
+      motiveDetail: null,
     });
+  });
+
+  it("inscrit la phrase de l'opérateur quand le motif est OTHER", async () => {
+    await handler.execute(
+      new WithdrawTraceCommand(
+        EXPERT_ACTOR,
+        'trace-1',
+        'OTHER',
+        '  relevé sur un support qui ne relève pas de cette affaire  ',
+      ),
+    );
+
+    const [event] = auditTrail.events;
+    expect(event.payload.motive).toBe('OTHER');
+    expect(event.payload.motiveDetail).toBe(
+      'relevé sur un support qui ne relève pas de cette affaire',
+    );
+    const trace = await repo.findById('trace-1');
+    expect(trace?.withdrawalMotiveDetail).toBe(
+      'relevé sur un support qui ne relève pas de cette affaire',
+    );
+  });
+
+  it('refuse une précision sans le motif OTHER, sans rien inscrire', async () => {
+    await expect(
+      handler.execute(
+        new WithdrawTraceCommand(
+          EXPERT_ACTOR,
+          'trace-1',
+          'DUPLICATE',
+          'une phrase de trop',
+        ),
+      ),
+    ).rejects.toBeInstanceOf(InvalidWithdrawalDetailError);
+
+    expect(auditTrail.events).toHaveLength(0);
+  });
+
+  it('refuse le motif OTHER sans précision, sans rien inscrire', async () => {
+    await expect(
+      handler.execute(
+        new WithdrawTraceCommand(EXPERT_ACTOR, 'trace-1', 'OTHER', '   '),
+      ),
+    ).rejects.toBeInstanceOf(InvalidWithdrawalDetailError);
+
+    expect(auditTrail.events).toHaveLength(0);
   });
 
   it('inscrit le retrait de la photographie de localisation avec celui de sa trace', async () => {
@@ -143,6 +191,7 @@ describe('WithdrawTraceHandler', () => {
       storagePath: PHOTO_PATH,
       fileSha256: PHOTO_SEAL.getValue(),
       motive: 'MISFILED',
+      motiveDetail: null,
     });
     expect(storage.getSaved(PHOTO_KEY)).toBeDefined();
   });

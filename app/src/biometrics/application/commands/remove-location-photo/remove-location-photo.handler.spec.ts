@@ -9,7 +9,10 @@ import { Trace } from '../../../domain/trace/entity/trace';
 import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found.error';
 import { TraceLocationPhoto } from '../../../domain/trace-location-photo/entity/trace-location-photo';
 import { TraceLocationPhotoNotFoundError } from '../../../domain/trace-location-photo/errors/trace-location-photo-not-found.error';
-import { WithdrawalMotiveEnum } from '../../../domain/withdrawal/withdrawal.vo';
+import {
+  InvalidWithdrawalDetailError,
+  WithdrawalMotiveEnum,
+} from '../../../domain/withdrawal/withdrawal.vo';
 import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryTraceLocationPhotoRepository } from '../../../infrastructure/persistence/in-memory-trace-location-photo.repository';
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
@@ -99,7 +102,40 @@ describe('RemoveLocationPhotoHandler', () => {
       storagePath: PHOTO_PATH,
       fileSha256: PHOTO_SEAL.getValue(),
       motive: 'MISFILED',
+      motiveDetail: null,
     });
+  });
+
+  it("inscrit la phrase de l'opérateur quand le motif est OTHER", async () => {
+    await handler.execute(
+      new RemoveLocationPhotoCommand(
+        EXPERT_ACTOR,
+        'trace-1',
+        WithdrawalMotiveEnum.OTHER,
+        '  le cliché ne montre pas le support  ',
+      ),
+    );
+
+    const [event] = auditTrail.events;
+    expect(event.payload.motive).toBe('OTHER');
+    expect(event.payload.motiveDetail).toBe(
+      'le cliché ne montre pas le support',
+    );
+  });
+
+  it('refuse le motif OTHER sans précision, sans rien inscrire', async () => {
+    await expect(
+      handler.execute(
+        new RemoveLocationPhotoCommand(
+          EXPERT_ACTOR,
+          'trace-1',
+          WithdrawalMotiveEnum.OTHER,
+        ),
+      ),
+    ).rejects.toBeInstanceOf(InvalidWithdrawalDetailError);
+
+    expect(auditTrail.events).toHaveLength(0);
+    expect(await locationPhotos.findByTraceId('trace-1')).not.toBeNull();
   });
 
   it('refuse une trace qui ne porte aucune photographie, sans rien inscrire', async () => {

@@ -62,6 +62,7 @@ function trace(overrides: Partial<PieceData> = {}): PieceData {
     minutiae: [],
     withdrawnAt: null,
     withdrawalMotive: null,
+    withdrawalMotiveDetail: null,
     imageDestroyedAt: null,
     number: 2,
     origin: null,

@@ -48,7 +48,7 @@ export class WithdrawTraceHandler implements ICommandHandler<
 
     const locationPhoto = await this.locationPhotos.findByTraceId(trace.id);
 
-    trace.withdraw(cmd.motive, new Date());
+    trace.withdraw(cmd.motive, new Date(), cmd.motiveDetail);
 
     await this.transactions.run(async () => {
       // L'objet stocké n'est jamais détruit : l'empreinte inscrite au journal
@@ -64,6 +64,7 @@ export class WithdrawTraceHandler implements ICommandHandler<
           storagePath: trace.path,
           fileSha256: trace.sha256,
           motive: cmd.motive,
+          motiveDetail: trace.withdrawalMotiveDetail,
         },
       });
 
@@ -81,6 +82,7 @@ export class WithdrawTraceHandler implements ICommandHandler<
             storagePath: locationPhoto.path,
             fileSha256: locationPhoto.sha256,
             motive: cmd.motive,
+            motiveDetail: trace.withdrawalMotiveDetail,
           },
         });
       }
