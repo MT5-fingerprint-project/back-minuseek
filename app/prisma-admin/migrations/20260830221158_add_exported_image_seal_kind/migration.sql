@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "SealKind" ADD VALUE 'EXPORTED_IMAGE';

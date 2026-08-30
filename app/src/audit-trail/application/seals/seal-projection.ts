@@ -35,6 +35,10 @@ export const SEALING_EVENTS: Record<
     kind: 'REPORT',
     digestKey: 'sha256',
   },
+  [AuditEventTypeEnum.EXPORTED_IMAGE_DEPOSITED]: {
+    kind: 'EXPORTED_IMAGE',
+    digestKey: 'fileSha256',
+  },
 };
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
