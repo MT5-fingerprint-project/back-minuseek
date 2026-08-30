@@ -3,6 +3,7 @@ import {
   ConflictException,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   NotFoundException,
@@ -21,6 +22,7 @@ import { ListLayersQuery } from '../../application/queries/list-layers/list-laye
 import { LayerNotFoundError } from '../../domain/layer/errors/layer-not-found.error';
 import { FingerprintNotFoundError } from '../../domain/fingerprint-not-found.error';
 import { CaseNotOpenForWorkError } from '../../domain/errors/case-not-open-for-work.error';
+import { ExpertAdjustmentOutsideExpertiseError } from '../../domain/errors/expert-adjustment-outside-expertise.error';
 import { CreateLayerDto } from './dto/create-layer.dto';
 import { UpdateLayerDto } from './dto/update-layer.dto';
 import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
@@ -52,6 +54,10 @@ export class LayersController {
   @ApiOperation({ summary: 'Créer un calque' })
   @ApiResponse({ status: 201, description: 'Calque créé' })
   @ApiResponse({ status: 400, description: 'Payload invalide' })
+  @ApiResponse({
+    status: 403,
+    description: "Réglage d'expert sur un dossier qui n'est pas en expertise",
+  })
   @ApiResponse({ status: 404, description: 'Trace ou empreinte non trouvée' })
   @ApiResponse({ status: 409, description: 'Affaire close' })
   async createLayer(
@@ -73,6 +79,8 @@ export class LayersController {
     } catch (e) {
       if (e instanceof CaseNotOpenForWorkError)
         throw new ConflictException(e.message);
+      if (e instanceof ExpertAdjustmentOutsideExpertiseError)
+        throw new ForbiddenException(e.message);
       if (e instanceof FingerprintNotFoundError)
         throw new NotFoundException(e.message);
       throw e;
@@ -83,6 +91,10 @@ export class LayersController {
   @CaseScoped()
   @ApiOperation({ summary: 'Mettre à jour un calque' })
   @ApiResponse({ status: 200, description: 'Calque mis à jour' })
+  @ApiResponse({
+    status: 403,
+    description: "Réglage d'expert sur un dossier qui n'est pas en expertise",
+  })
   @ApiResponse({ status: 404, description: 'Calque non trouvé' })
   @ApiResponse({ status: 409, description: 'Affaire close' })
   async updateLayer(
@@ -104,6 +116,8 @@ export class LayersController {
     } catch (e) {
       if (e instanceof CaseNotOpenForWorkError)
         throw new ConflictException(e.message);
+      if (e instanceof ExpertAdjustmentOutsideExpertiseError)
+        throw new ForbiddenException(e.message);
       if (
         e instanceof LayerNotFoundError ||
         e instanceof FingerprintNotFoundError
