@@ -97,6 +97,12 @@ const ROUTES_GARDEES: Route[] = [
     dispatches: 2,
   },
   {
+    label: 'PATCH /investigation-cases/:id/expertise',
+    method: 'patch',
+    url: `/investigation-cases/${AFFAIRE}/expertise`,
+    body: { sealCount: 2 },
+  },
+  {
     label: 'GET /investigation-cases/:caseId/audit-events',
     method: 'get',
     url: `/investigation-cases/${AFFAIRE}/audit-events`,

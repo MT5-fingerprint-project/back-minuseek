@@ -108,6 +108,7 @@ function caseData(overrides: Partial<CaseReportData> = {}): CaseReportData {
         attentionName: null,
       },
     },
+    expertise: null,
     traces: [],
     referencePrints: [],
     comparisons: [],
@@ -768,6 +769,64 @@ describe('buildTechnicalReport — traces examinées', () => {
       origin: 'Non renseignée',
       location: 'Non renseignée',
       revelationTechnique: 'Non renseignée',
+    });
+  });
+});
+
+describe('buildTechnicalReport — saisine', () => {
+  it("ne compose aucune saisine sur un dossier qui n'est pas en expertise", () => {
+    expect(build(caseData()).saisine).toBeNull();
+  });
+
+  it('reprend les termes de la commission et le serment archivé', () => {
+    const swornAt = new Date('2026-03-06T09:00:00.000Z');
+    const ordinanceDate = new Date('2026-03-04T00:00:00.000Z');
+
+    const model = build(
+      caseData({
+        expertise: {
+          expert: {
+            firstName: 'Julien',
+            lastName: 'Marchand',
+            grade: 'Brigadier-chef',
+            serviceNumber: 'PTS-0042',
+            role: 'OPERATOR',
+          },
+          oathStatement: 'Je soussigné Julien Marchand, prête serment.',
+          courtReference: 'Tribunal judiciaire de Paris',
+          swornAt,
+          magistrateName: 'Claire Rousseau',
+          magistrateTitle: "Juge d'instruction",
+          ordinanceDate,
+          missionObject: 'exploitation des traces papillaires',
+          sealCount: 2,
+          prorogationDeadline: null,
+          prorogationOrdinanceDate: null,
+          biologicalPrecautions: true,
+          assistants: [{ name: 'Paul Ferrand', task: 'ouverture du véhicule' }],
+        },
+      }),
+    );
+
+    expect(model.saisine).toEqual({
+      expert: {
+        displayName: 'Julien Marchand',
+        grade: 'Brigadier-chef',
+        serviceNumber: 'PTS-0042',
+        role: 'OPERATOR',
+      },
+      oathStatement: 'Je soussigné Julien Marchand, prête serment.',
+      courtReference: 'Tribunal judiciaire de Paris',
+      swornAt,
+      magistrateName: 'Claire Rousseau',
+      magistrateTitle: "Juge d'instruction",
+      ordinanceDate,
+      missionObject: 'exploitation des traces papillaires',
+      sealCount: 2,
+      prorogationDeadline: null,
+      prorogationOrdinanceDate: null,
+      biologicalPrecautions: true,
+      assistants: [{ name: 'Paul Ferrand', task: 'ouverture du véhicule' }],
     });
   });
 });

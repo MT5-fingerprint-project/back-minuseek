@@ -17,6 +17,8 @@ import {
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CaseAlreadyUnderExpertiseError } from '../../domain/case-expertise/errors/case-already-under-expertise.error';
+import { CaseNotUnderExpertiseError } from '../../domain/case-expertise/errors/case-not-under-expertise.error';
+import { InvalidSaisineError } from '../../domain/case-expertise/errors/invalid-saisine.error';
 import { InvalidCaseExpertiseError } from '../../domain/case-expertise/errors/invalid-case-expertise.error';
 import { CaseClosedError } from '../../domain/investigation-case/errors/case-closed.error';
 import { CaseNumberAlreadyExistsError } from '../../domain/investigation-case/errors/case-number-already-exists.error';
@@ -26,11 +28,13 @@ import { OperatorChangeNotAllowedError } from '../../domain/investigation-case/e
 import { DisabledOperatorError } from '../../domain/investigation-case/errors/disabled-operator.error';
 import { UnknownOperatorError } from '../../domain/investigation-case/errors/unknown-operator.error';
 import { DeclareCaseExpertiseCommand } from '../../application/commands/declare-case-expertise/declare-case-expertise.command';
+import { UpdateCaseSaisineCommand } from '../../application/commands/update-case-saisine/update-case-saisine.command';
 import { OpenInvestigationCaseCommand } from '../../application/commands/open-investigation-case/open-investigation-case.command';
 import { UpdateInvestigationCaseCommand } from '../../application/commands/update-investigation-case/update-investigation-case.command';
 import { CloseInvestigationCaseCommand } from '../../application/commands/close-investigation-case/close-investigation-case.command';
 import { ReopenInvestigationCaseCommand } from '../../application/commands/reopen-investigation-case/reopen-investigation-case.command';
 import { DeclareCaseExpertiseDto } from './dto/declare-case-expertise.dto';
+import { UpdateCaseSaisineDto } from './dto/update-case-saisine.dto';
 import { OpenInvestigationCaseDto } from './dto/open-investigation-case.dto';
 import { UpdateInvestigationCaseDto } from './dto/update-investigation-case.dto';
 import { ReopenInvestigationCaseDto } from './dto/reopen-investigation-case.dto';
@@ -270,6 +274,67 @@ export class InvestigationController {
       if (e instanceof CaseAlreadyUnderExpertiseError)
         throw new ConflictException(e.message);
       if (e instanceof InvalidCaseExpertiseError)
+        throw new BadRequestException(e.message);
+      throw e;
+    }
+  }
+
+  @Patch(':id/expertise')
+  @CaseScoped()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Compléter la saisine du dossier en expertise' })
+  @ApiResponse({ status: 204, description: 'Saisine enregistrée' })
+  @ApiResponse({
+    status: 400,
+    description: 'Nombre de scellés invalide, ou prorogation mal datée',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Affaire non trouvée, ou pas déclarée en expertise',
+  })
+  async updateSaisine(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCaseSaisineDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentServiceUser() requester?: UserReadModel,
+  ): Promise<void> {
+    if (!requester) throw new NotFoundException(NO_SERVICE_ACCOUNT_MESSAGE);
+
+    try {
+      await this.commandBus.execute<UpdateCaseSaisineCommand, void>(
+        new UpdateCaseSaisineCommand(toAuditActor(user), requester.id, id, {
+          ...(dto.magistrateName !== undefined && {
+            magistrateName: dto.magistrateName,
+          }),
+          ...(dto.magistrateTitle !== undefined && {
+            magistrateTitle: dto.magistrateTitle,
+          }),
+          ...(dto.ordinanceDate !== undefined && {
+            ordinanceDate: new Date(dto.ordinanceDate),
+          }),
+          ...(dto.missionObject !== undefined && {
+            missionObject: dto.missionObject,
+          }),
+          ...(dto.sealCount !== undefined && { sealCount: dto.sealCount }),
+          ...(dto.prorogationDeadline !== undefined && {
+            prorogationDeadline: new Date(dto.prorogationDeadline),
+          }),
+          ...(dto.prorogationOrdinanceDate !== undefined && {
+            prorogationOrdinanceDate: new Date(dto.prorogationOrdinanceDate),
+          }),
+          ...(dto.biologicalPrecautions !== undefined && {
+            biologicalPrecautions: dto.biologicalPrecautions,
+          }),
+          ...(dto.assistants !== undefined && { assistants: dto.assistants }),
+        }),
+      );
+    } catch (e) {
+      if (
+        e instanceof CaseNotFoundError ||
+        e instanceof CaseNotUnderExpertiseError
+      )
+        throw new NotFoundException(e.message);
+      if (e instanceof InvalidSaisineError)
         throw new BadRequestException(e.message);
       throw e;
     }

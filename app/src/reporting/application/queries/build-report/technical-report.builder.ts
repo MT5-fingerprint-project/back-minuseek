@@ -1,6 +1,7 @@
 import { CaseContributorData } from '../../ports/case-contributors.reader';
 import {
   CaseReportData,
+  ExpertiseData,
   PieceData,
   SubjectData,
 } from '../../ports/case-report-data.reader';
@@ -22,6 +23,7 @@ import {
   ReportImageViewModel,
   ReportPieceViewModel,
   ReportReferenceSubjectViewModel,
+  ReportSaisineViewModel,
   TechnicalReportViewModel,
 } from '../../report-view-model';
 import {
@@ -222,6 +224,34 @@ function buildContributors(
   }));
 }
 
+function toSaisine(
+  expertise: ExpertiseData | null,
+): ReportSaisineViewModel | null {
+  if (!expertise) return null;
+  return {
+    expert: expertise.expert
+      ? {
+          displayName: `${expertise.expert.firstName} ${expertise.expert.lastName}`,
+          grade: expertise.expert.grade,
+          serviceNumber: expertise.expert.serviceNumber,
+          role: expertise.expert.role,
+        }
+      : null,
+    oathStatement: expertise.oathStatement,
+    courtReference: expertise.courtReference,
+    swornAt: expertise.swornAt,
+    magistrateName: expertise.magistrateName,
+    magistrateTitle: expertise.magistrateTitle,
+    ordinanceDate: expertise.ordinanceDate,
+    missionObject: expertise.missionObject,
+    sealCount: expertise.sealCount,
+    prorogationDeadline: expertise.prorogationDeadline,
+    prorogationOrdinanceDate: expertise.prorogationOrdinanceDate,
+    biologicalPrecautions: expertise.biologicalPrecautions,
+    assistants: expertise.assistants.map((assistant) => ({ ...assistant })),
+  };
+}
+
 export function buildTechnicalReport(
   input: TechnicalReportInput,
 ): TechnicalReportViewModel {
@@ -258,6 +288,7 @@ export function buildTechnicalReport(
       signatureCity: signatureCityOf(input.letterhead),
     },
     caseHeader: buildCaseHeader(data),
+    saisine: toSaisine(data.expertise),
     revelationTechniques: buildRevelationTechniques(orderedTraces),
     previousDocument: input.previousDocument,
     signer: {

@@ -108,6 +108,7 @@ function caseData(overrides: Partial<CaseReportData> = {}): CaseReportData {
         attentionName: null,
       },
     },
+    expertise: null,
     traces: [],
     referencePrints: [],
     comparisons: [],

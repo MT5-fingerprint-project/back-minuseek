@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { InvestigationController } from './infrastructure/http/investigation.controller';
 import { DeclareCaseExpertiseHandler } from './application/commands/declare-case-expertise/declare-case-expertise.handler';
+import { UpdateCaseSaisineHandler } from './application/commands/update-case-saisine/update-case-saisine.handler';
 import { OpenInvestigationCaseHandler } from './application/commands/open-investigation-case/open-investigation-case.handler';
 import { UpdateInvestigationCaseHandler } from './application/commands/update-investigation-case/update-investigation-case.handler';
 import { CloseInvestigationCaseHandler } from './application/commands/close-investigation-case/close-investigation-case.handler';
@@ -26,6 +27,7 @@ import { BiometricsModule } from '../biometrics/biometrics.module';
   providers: [
     OpenInvestigationCaseHandler,
     DeclareCaseExpertiseHandler,
+    UpdateCaseSaisineHandler,
     UpdateInvestigationCaseHandler,
     CloseInvestigationCaseHandler,
     ReopenInvestigationCaseHandler,

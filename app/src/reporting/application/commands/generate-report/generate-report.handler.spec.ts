@@ -85,6 +85,7 @@ const CASE_DATA: CaseReportData = {
       attentionName: null,
     },
   },
+  expertise: null,
   traces: [
     {
       id: 'trace-1',

@@ -31,6 +31,13 @@ export class InMemoryCaseExpertiseRepository implements CaseExpertiseRepository 
     }
   }
 
+  findByCaseId(caseId: string): Promise<CaseExpertise | null> {
+    const primitives = this.store.get(caseId);
+    return Promise.resolve(
+      primitives ? CaseExpertise.reconstitute(primitives) : null,
+    );
+  }
+
   existsForCase(caseId: string): Promise<boolean> {
     return Promise.resolve(this.store.has(caseId));
   }
