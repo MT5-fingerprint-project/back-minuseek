@@ -3,6 +3,8 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { UploadReferencePrintHandler } from './application/commands/upload-reference-print/upload-reference-print.handler';
 import { UploadTraceHandler } from './application/commands/upload-trace/upload-trace.handler';
 import { WithdrawTraceHandler } from './application/commands/withdraw-trace/withdraw-trace.handler';
+import { AttachLocationPhotoHandler } from './application/commands/attach-location-photo/attach-location-photo.handler';
+import { RemoveLocationPhotoHandler } from './application/commands/remove-location-photo/remove-location-photo.handler';
 import { CalibrateTraceHandler } from './application/commands/calibrate-trace/calibrate-trace.handler';
 import { DescribeTraceHandler } from './application/commands/describe-trace/describe-trace.handler';
 import { CalibrateReferencePrintHandler } from './application/commands/calibrate-reference-print/calibrate-reference-print.handler';
@@ -74,6 +76,8 @@ import { AccessModule } from '../access/access.module';
     UploadReferencePrintHandler,
     WithdrawTraceHandler,
     WithdrawReferencePrintHandler,
+    AttachLocationPhotoHandler,
+    RemoveLocationPhotoHandler,
     CalibrateTraceHandler,
     CalibrateReferencePrintHandler,
     DescribeTraceHandler,
