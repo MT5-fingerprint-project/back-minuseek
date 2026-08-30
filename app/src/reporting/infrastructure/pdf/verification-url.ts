@@ -29,6 +29,6 @@ export class FrontOriginVerificationUrl implements VerificationUrlPort {
     if (!slug) {
       throw new MissingTenantForVerificationUrlError();
     }
-    return `${origin}/${slug}/verifier`;
+    return `${origin}/${slug}/verification`;
   }
 }

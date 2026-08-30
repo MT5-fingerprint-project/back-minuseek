@@ -8,9 +8,11 @@ import {
 } from '../../../domain/trace/entity/trace';
 import { InvalidTraceLocationError } from '../../../domain/trace/errors/invalid-trace-location.error';
 import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found.error';
+import { CaseNotOpenForWorkError } from '../../../domain/errors/case-not-open-for-work.error';
 import { InvalidRevelationTechniqueError } from '../../../domain/trace/value-objects/revelation-technique.vo';
 import { ExploitabilityScore } from '../../../domain/trace/value-objects/exploitability-score.vo';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
+import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
 import { DescribeTraceCommand } from './describe-trace.command';
 import { DescribeTraceHandler } from './describe-trace.handler';
@@ -21,6 +23,7 @@ const LOCATION = "Sur l'extérieur de la porte d'entrée de l'appartement";
 describe('DescribeTraceHandler', () => {
   let handler: DescribeTraceHandler;
   let repo: InMemoryTraceRepository;
+  let caseStatus: InMemoryCaseStatusAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
 
   const seededTrace = () =>
@@ -51,7 +54,9 @@ describe('DescribeTraceHandler', () => {
   beforeEach(() => {
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryTraceRepository(auditTrail);
-    handler = new DescribeTraceHandler(repo);
+    caseStatus = new InMemoryCaseStatusAdapter();
+    caseStatus.set('case-1', 'OPEN');
+    handler = new DescribeTraceHandler(repo, caseStatus);
     repo.seed(seededTrace());
   });
 
@@ -146,6 +151,17 @@ describe('DescribeTraceHandler', () => {
     ).rejects.toBeInstanceOf(InvalidTraceLocationError);
 
     expect(auditTrail.events).toHaveLength(0);
+  });
+
+  it('refuses to describe a trace of a closed case and chains nothing', async () => {
+    caseStatus.set('case-1', 'CLOSED');
+
+    await expect(handler.execute(describeTrace())).rejects.toBeInstanceOf(
+      CaseNotOpenForWorkError,
+    );
+
+    expect(auditTrail.events).toHaveLength(0);
+    expect((await repo.findById('trace-1'))?.location).toBeNull();
   });
 
   it('refuses a revelation technique outside the vocabulary and chains nothing', async () => {

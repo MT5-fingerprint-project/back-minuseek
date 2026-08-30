@@ -51,7 +51,7 @@ Contraintes qui forcent les décisions :
    le **maillon de chaîne auquel il se rattache** (`seq` + `hash` de la tête au moment du rendu) ; le
    sha256 du PDF est scellé dans la chaîne par l'événement `REPORT_GENERATED` et rendu par la route de
    téléchargement, à côté de l'URL signée. Le destinataire hache le fichier qu'il a en main et compare.
-   Le QR code arrive avec la page publique de vérification (Lot 8) : il pointera `/verifier`, sans
+   Le QR code arrive avec la page publique de vérification (Lot 8) : il pointera `/verification`, sans
    paramètre — un rendu en deux passes pour y encoder le hash coûterait un pipeline pour un gain nul.
 
 6. **Annexe recalculable par extrait : épine de hashes complète.** L'annexe porte la suite

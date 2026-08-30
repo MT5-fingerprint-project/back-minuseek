@@ -164,7 +164,7 @@ function build(
     generatedByDisplayName: 'Alex Martin',
     journalDetail: extras.journalDetail ?? 'SUMMARY',
     attestation: extras.attestation ?? VERIFIED,
-    verificationUrl: 'https://minuseek.fr/srpts-paris/verifier',
+    verificationUrl: 'https://minuseek.fr/srpts-paris/verification',
     images: new Map<string, ReportImageViewModel | null>(),
   });
 }

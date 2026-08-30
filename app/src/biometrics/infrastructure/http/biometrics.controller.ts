@@ -342,6 +342,7 @@ export class BiometricsController {
       'Origine ou technique hors vocabulaire, localisation vide ou de plus de 300 caractères',
   })
   @ApiResponse({ status: 404, description: 'Trace non trouvée' })
+  @ApiResponse({ status: 409, description: 'Dossier clos' })
   async describeTrace(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: DescribeTraceDto,
@@ -358,7 +359,11 @@ export class BiometricsController {
         ),
       );
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (e instanceof TraceNotFoundError)
+        throw new NotFoundException(e.message);
+      if (e instanceof CaseUnavailableForTraceError)
         throw new NotFoundException(e.message);
       if (e instanceof InvalidTraceLocationError)
         throw new BadRequestException(e.message);

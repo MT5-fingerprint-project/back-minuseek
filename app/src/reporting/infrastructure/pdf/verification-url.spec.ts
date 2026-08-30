@@ -25,13 +25,13 @@ function inTenant(slug: string, origin = 'https://minuseek.fr'): string {
 describe('FrontOriginVerificationUrl', () => {
   it('assemble l’origine du front, le laboratoire courant et la page', () => {
     expect(inTenant('srpts-paris')).toBe(
-      'https://minuseek.fr/srpts-paris/verifier',
+      'https://minuseek.fr/srpts-paris/verification',
     );
   });
 
   it('ne double pas la barre oblique quand l’origine en porte une', () => {
     expect(inTenant('demo', 'http://localhost:5173/')).toBe(
-      'http://localhost:5173/demo/verifier',
+      'http://localhost:5173/demo/verification',
     );
   });
 

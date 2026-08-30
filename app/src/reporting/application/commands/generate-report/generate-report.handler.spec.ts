@@ -293,7 +293,7 @@ describe('GenerateReportHandler', () => {
       new FakeReportNumberingReader(repository),
       contributors,
       letterhead,
-      { build: () => 'https://minuseek.fr/demo/verifier' },
+      { build: () => 'https://minuseek.fr/demo/verification' },
       imageEmbedder,
       renderer,
       storage,
@@ -491,7 +491,7 @@ describe('GenerateReportHandler', () => {
       stale,
       contributors,
       letterhead,
-      { build: () => 'https://minuseek.fr/demo/verifier' },
+      { build: () => 'https://minuseek.fr/demo/verification' },
       imageEmbedder,
       renderer,
       storage,
@@ -557,7 +557,7 @@ describe('GenerateReportHandler', () => {
     if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
     expect(model.integrity.recordVerifiedAtEdition).toBe(true);
     expect(model.integrity.verificationUrl).toBe(
-      'https://minuseek.fr/demo/verifier',
+      'https://minuseek.fr/demo/verification',
     );
   });
 
