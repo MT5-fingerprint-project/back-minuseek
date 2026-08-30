@@ -28,6 +28,10 @@ export class InMemoryCaseVerificationRepository implements CaseVerificationRepos
     }
   }
 
+  findById(id: string): Promise<CaseVerification | null> {
+    return Promise.resolve(this.store.get(id) ?? null);
+  }
+
   hasPendingFor(caseId: string, verifierUserId: string): Promise<boolean> {
     for (const verification of this.store.values()) {
       if (

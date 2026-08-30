@@ -467,4 +467,70 @@ describe('journalSentence — la vérification', () => {
       'Vérification du dossier confiée à un second regard',
     );
   });
+
+  it('dit la conclusion du vérificateur et la pièce qu’il identifie', () => {
+    expect(
+      say(
+        AuditEventTypeEnum.VERIFICATION_CONCLUSION_STATED,
+        {
+          traceId: 'trace-7',
+          exploitability: 'EXPLOITABLE',
+          identifiedReferencePrintId: 'ref-1',
+        },
+        'trace-7',
+      ),
+    ).toBe(
+      'Le vérificateur déclare la trace 3455-T7 exploitable et identifiée à ' +
+        "l'empreinte de l'index droit de Madame BERGER Hélène",
+    );
+  });
+
+  it('dit la conclusion sans identification', () => {
+    expect(
+      say(
+        AuditEventTypeEnum.VERIFICATION_CONCLUSION_STATED,
+        { traceId: 'trace-7', exploitability: 'EXPLOITABLE' },
+        'trace-7',
+      ),
+    ).toBe(
+      'Le vérificateur déclare la trace 3455-T7 exploitable, sans identification',
+    );
+  });
+
+  it('dit la trace que le vérificateur juge inexploitable', () => {
+    expect(
+      say(
+        AuditEventTypeEnum.VERIFICATION_CONCLUSION_STATED,
+        { traceId: 'trace-7', exploitability: 'NOT_EXPLOITABLE' },
+        'trace-7',
+      ),
+    ).toBe('Le vérificateur déclare la trace 3455-T7 inexploitable');
+  });
+
+  it('dit la concordance à la clôture de la mission', () => {
+    expect(
+      say(AuditEventTypeEnum.CASE_VERIFICATION_COMPLETED, {
+        verdict: 'CONCORDANT',
+        discordantTraceCount: 0,
+      }),
+    ).toBe('Vérification close : les conclusions concordent');
+  });
+
+  it('compte les traces qui divergent à la clôture de la mission', () => {
+    expect(
+      say(AuditEventTypeEnum.CASE_VERIFICATION_COMPLETED, {
+        verdict: 'DISCORDANT',
+        discordantTraceCount: 2,
+      }),
+    ).toBe('Vérification close : les conclusions divergent sur 2 traces');
+  });
+
+  it('accorde le singulier sur une seule trace divergente', () => {
+    expect(
+      say(AuditEventTypeEnum.CASE_VERIFICATION_COMPLETED, {
+        verdict: 'DISCORDANT',
+        discordantTraceCount: 1,
+      }),
+    ).toBe('Vérification close : les conclusions divergent sur 1 trace');
+  });
 });

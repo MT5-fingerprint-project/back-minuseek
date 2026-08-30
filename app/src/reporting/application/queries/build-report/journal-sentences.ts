@@ -225,6 +225,30 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
       ? 'Vérification du dossier confiée à un second regard'
       : `Vérification du dossier confiée à ${name}`;
   },
+  [AuditEventTypeEnum.VERIFICATION_CONCLUSION_STATED]: (event, named) => {
+    const designation = trace(event, named).bare;
+    const exploitable = text(event, 'exploitability');
+    if (exploitable === 'NOT_EXPLOITABLE') {
+      return `Le vérificateur déclare ${designation} inexploitable`;
+    }
+    const identified = text(event, 'identifiedReferencePrintId');
+    return identified === null
+      ? `Le vérificateur déclare ${designation} exploitable, sans identification`
+      : `Le vérificateur déclare ${designation} exploitable et identifiée à ${
+          designationOf(named, identified, UNNAMED_PRINT_FALLBACK).full
+        }`;
+  },
+  [AuditEventTypeEnum.CASE_VERIFICATION_COMPLETED]: (event) => {
+    const verdict = text(event, 'verdict');
+    if (verdict === 'CONCORDANT') {
+      return 'Vérification close : les conclusions concordent';
+    }
+    const diverging = count(event, 'discordantTraceCount');
+    const opening = 'Vérification close : les conclusions divergent';
+    return diverging === null || diverging === 0
+      ? opening
+      : `${opening} sur ${diverging} trace${diverging > 1 ? 's' : ''}`;
+  },
 };
 
 export function journalSentence(

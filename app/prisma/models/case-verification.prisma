@@ -16,3 +16,25 @@ enum VerificationStatus {
   CONCORDANT
   DISCORDANT
 }
+
+model VerificationDecision {
+  id                         String                     @id @db.Uuid
+  verificationId             String                     @db.Uuid
+  traceId                    String                     @db.Uuid
+  exploitability             VerificationExploitability
+  identifiedReferencePrintId String?                    @db.Uuid
+  outcome                    DecisionOutcome?
+  statedAt                   DateTime                   @default(now())
+
+  @@unique([verificationId, traceId])
+}
+
+enum VerificationExploitability {
+  EXPLOITABLE
+  NOT_EXPLOITABLE
+}
+
+enum DecisionOutcome {
+  CONCORDANT
+  DISCORDANT
+}
