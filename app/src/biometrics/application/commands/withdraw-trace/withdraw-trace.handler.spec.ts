@@ -11,6 +11,10 @@ import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
 import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
+import { InMemoryTraceLocationPhotoRepository } from '../../../infrastructure/persistence/in-memory-trace-location-photo.repository';
+import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
+import { FileDigest } from '../../../domain/file-digest.vo';
+import { TraceLocationPhoto } from '../../../domain/trace-location-photo/entity/trace-location-photo';
 import { TraceRepository } from '../../../domain/trace/repository/trace.repository';
 import { WithdrawTraceCommand } from './withdraw-trace.command';
 import { WithdrawTraceHandler } from './withdraw-trace.handler';
@@ -18,6 +22,9 @@ import { WithdrawTraceHandler } from './withdraw-trace.handler';
 const STORED_KEY = 'investigation-case/case-1/traces/trace-1.png';
 const ARCHIVED_KEY = 'investigation-case/case-1/traces/trace-1_original.tif';
 const STORED_PATH = `media/${STORED_KEY}`;
+const PHOTO_KEY = 'investigation-case/case-1/location-photos/photo-1.png';
+const PHOTO_PATH = `media/${PHOTO_KEY}`;
+const PHOTO_SEAL = FileDigest.ofBuffer(Buffer.from('location-photo'));
 
 class FailingTraceRepository extends InMemoryTraceRepository {
   constructor(private readonly failure: Error) {
@@ -35,9 +42,24 @@ describe('WithdrawTraceHandler', () => {
   let storage: InMemoryImageStorageAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
   let caseStatus: InMemoryCaseStatusAdapter;
+  let locationPhotos: InMemoryTraceLocationPhotoRepository;
 
   const buildHandler = (traceRepo: TraceRepository) =>
-    new WithdrawTraceHandler(traceRepo, caseStatus);
+    new WithdrawTraceHandler(
+      traceRepo,
+      caseStatus,
+      locationPhotos,
+      new InMemoryTransactionRunner(),
+    );
+
+  const seededLocationPhoto = () =>
+    TraceLocationPhoto.attach({
+      id: 'photo-1',
+      traceId: 'trace-1',
+      caseId: 'case-1',
+      path: PHOTO_PATH,
+      sha256: PHOTO_SEAL,
+    });
 
   const seededTrace = () =>
     Trace.upload({
@@ -54,6 +76,7 @@ describe('WithdrawTraceHandler', () => {
     storage = new InMemoryImageStorageAdapter();
     caseStatus = new InMemoryCaseStatusAdapter();
     caseStatus.set('case-1', 'OPEN');
+    locationPhotos = new InMemoryTraceLocationPhotoRepository(auditTrail);
     handler = buildHandler(repo);
 
     repo.seed(seededTrace());
@@ -97,6 +120,39 @@ describe('WithdrawTraceHandler', () => {
       fileSha256: ANY_SEAL.getValue(),
       motive: 'MISFILED',
     });
+  });
+
+  it('inscrit le retrait de la photographie de localisation avec celui de sa trace', async () => {
+    locationPhotos.seed(seededLocationPhoto());
+    await storage.save(Buffer.from('location-photo'), PHOTO_KEY);
+
+    await handler.execute(
+      new WithdrawTraceCommand(EXPERT_ACTOR, 'trace-1', 'MISFILED'),
+    );
+
+    expect(auditTrail.events.map((event) => event.eventType)).toEqual([
+      AuditEventTypeEnum.TRACE_DELETED,
+      AuditEventTypeEnum.LOCATION_PHOTO_DELETED,
+    ]);
+    const [, photoEvent] = auditTrail.events;
+    expect(photoEvent.evidenceClass).toBe(EvidenceClassEnum.OBSERVED);
+    expect(photoEvent.caseId).toBe('case-1');
+    expect(photoEvent.traceId).toBe('trace-1');
+    expect(photoEvent.payload).toEqual({
+      locationPhotoId: 'photo-1',
+      storagePath: PHOTO_PATH,
+      fileSha256: PHOTO_SEAL.getValue(),
+      motive: 'MISFILED',
+    });
+    expect(storage.getSaved(PHOTO_KEY)).toBeDefined();
+  });
+
+  it("n'inscrit qu'un acte quand la trace ne porte aucune photographie", async () => {
+    await handler.execute(
+      new WithdrawTraceCommand(EXPERT_ACTOR, 'trace-1', 'DUPLICATE'),
+    );
+
+    expect(auditTrail.events).toHaveLength(1);
   });
 
   it('refuses to withdraw the same trace twice', async () => {
