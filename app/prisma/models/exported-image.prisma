@@ -1,0 +1,16 @@
+model ExportedImage {
+  id            String              @id @db.Uuid
+  caseId        String              @db.Uuid
+  sourcePieceId String              @db.Uuid
+  sourceKind    ExportedImageKind
+  path          String
+  sha256        String              @db.Char(64)
+  createdAt     DateTime            @default(now())
+
+  @@index([sourcePieceId])
+}
+
+enum ExportedImageKind {
+  TRACE
+  REFERENCE_PRINT
+}

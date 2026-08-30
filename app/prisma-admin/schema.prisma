@@ -44,4 +44,5 @@ enum SealKind {
     TRACE
     REFERENCE_PRINT
     REPORT
+    EXPORTED_IMAGE
 }

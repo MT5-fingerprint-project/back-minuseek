@@ -35,7 +35,6 @@ export function printedPieces(data: CaseReportData): PieceData[] {
   ];
 }
 
-
 export function printedImagePaths(data: CaseReportData): string[] {
   const identified = identifiedPieceIds(data);
   const locationPhotos = data.traces.flatMap((trace) =>
