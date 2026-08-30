@@ -9,5 +9,6 @@ export class UpdateLayerCommand {
     public readonly zIndex?: number,
     public readonly isVisible?: boolean,
     public readonly settings?: LayerSettings,
+    public readonly verifierUserId: string | null = null,
   ) {}
 }

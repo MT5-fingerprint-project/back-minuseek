@@ -6,6 +6,7 @@ import { UserRoleEnum } from '../../../../identity-access/domain/user/value-obje
 import { CaseVerification } from '../../../domain/case-verification/entity/case-verification';
 import { CaseVerificationNotAllowedError } from '../../../domain/case-verification/errors/case-verification-not-allowed.error';
 import { SelfVerificationError } from '../../../domain/case-verification/errors/self-verification.error';
+import { ServiceManagerAsVerifierError } from '../../../domain/case-verification/errors/service-manager-as-verifier.error';
 import { VerificationAlreadyPendingError } from '../../../domain/case-verification/errors/verification-already-pending.error';
 import { VerificationStatusEnum } from '../../../domain/case-verification/value-objects/verification-status.vo';
 import { InvestigationCase } from '../../../domain/investigation-case/entity/investigation-case';
@@ -61,14 +62,23 @@ describe('RequestCaseVerificationHandler', () => {
         {
           id: LUCIE,
           disabled: false,
+          role: UserRoleEnum.OPERATOR,
           firstName: 'Lucie',
           lastName: 'Bernard',
         },
         {
           id: 'user-parti',
           disabled: true,
+          role: UserRoleEnum.OPERATOR,
           firstName: 'Paul',
           lastName: 'Renaud',
+        },
+        {
+          id: CHEF,
+          disabled: false,
+          role: UserRoleEnum.ADMIN,
+          firstName: 'Nadia',
+          lastName: 'Petit',
         },
       ]),
       { generate: () => 'verification-1' },
@@ -291,5 +301,20 @@ describe('RequestCaseVerificationHandler', () => {
     );
 
     expect(verifications.store.size).toBe(2);
+  });
+
+  it('refuse de confier la vérification à un responsable de service', async () => {
+    await expect(
+      handler.execute(
+        new RequestCaseVerificationCommand(
+          EXPERT_ACTOR,
+          titulaire,
+          CASE_ID,
+          CHEF,
+        ),
+      ),
+    ).rejects.toBeInstanceOf(ServiceManagerAsVerifierError);
+    expect(verifications.store.size).toBe(0);
+    expect(auditTrail.events).toHaveLength(0);
   });
 });

@@ -1,6 +1,7 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { Inject } from '@nestjs/common';
 import { DeleteLayerCommand } from './delete-layer.command';
+import { LayerNotAuthoredByVerifierError } from '../../../domain/layer/errors/layer-not-authored-by-verifier.error';
 import { LayerNotFoundError } from '../../../domain/layer/errors/layer-not-found.error';
 import { layerAuditPayload } from '../../../domain/layer/layer-audit-payload';
 import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
@@ -30,6 +31,12 @@ export class DeleteLayerHandler implements ICommandHandler<DeleteLayerCommand> {
   async execute(command: DeleteLayerCommand): Promise<void> {
     const layer = await this.repository.findById(command.id);
     if (!layer) throw new LayerNotFoundError(command.id);
+    if (
+      command.verifierUserId !== null &&
+      layer.createdByUserId !== command.verifierUserId
+    ) {
+      throw new LayerNotAuthoredByVerifierError(command.id);
+    }
 
     const location = await this.fingerprintLocator.locate(layer.fingerprintId);
     if (!location) throw new FingerprintNotFoundError(layer.fingerprintId);

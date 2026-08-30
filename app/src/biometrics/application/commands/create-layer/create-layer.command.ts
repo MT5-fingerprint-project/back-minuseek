@@ -13,5 +13,6 @@ export class CreateLayerCommand {
     public readonly type: LayerType,
     public readonly zIndex: number,
     public readonly settings: LayerSettings,
+    public readonly createdByUserId: string | null,
   ) {}
 }

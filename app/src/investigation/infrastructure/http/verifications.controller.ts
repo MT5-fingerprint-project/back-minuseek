@@ -15,7 +15,6 @@ import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   CaseAdministration,
-  CaseScoped,
   NoCaseScope,
 } from '../../../access/infrastructure/http/case-scope.decorator';
 import { UserReadModel } from '../../../identity-access/application/queries/get-user-by-provider-id/user-read-model';
@@ -29,6 +28,7 @@ import { ListCaseVerificationsQuery } from '../../application/queries/list-case-
 import { ListMyVerificationsQuery } from '../../application/queries/list-my-verifications/list-my-verifications.query';
 import { CaseVerificationNotAllowedError } from '../../domain/case-verification/errors/case-verification-not-allowed.error';
 import { SelfVerificationError } from '../../domain/case-verification/errors/self-verification.error';
+import { ServiceManagerAsVerifierError } from '../../domain/case-verification/errors/service-manager-as-verifier.error';
 import { VerificationAlreadyPendingError } from '../../domain/case-verification/errors/verification-already-pending.error';
 import { CaseClosedError } from '../../domain/investigation-case/errors/case-closed.error';
 import { CaseNotFoundError } from '../../domain/investigation-case/errors/case-not-found.error';
@@ -94,6 +94,8 @@ export class VerificationsController {
         throw new ForbiddenException(e.message);
       if (e instanceof SelfVerificationError)
         throw new BadRequestException(e.message);
+      if (e instanceof ServiceManagerAsVerifierError)
+        throw new BadRequestException(e.message);
       if (e instanceof UnknownOperatorError)
         throw new BadRequestException(e.message);
       if (e instanceof DisabledOperatorError)
@@ -106,7 +108,7 @@ export class VerificationsController {
   }
 
   @Get('investigation-cases/:id/verifications')
-  @CaseScoped()
+  @CaseAdministration()
   @ApiOperation({ summary: "Lister les vérifications d'une affaire" })
   @ApiResponse({
     status: 200,

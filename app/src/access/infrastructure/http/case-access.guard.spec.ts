@@ -12,8 +12,8 @@ import type { UserReadModel } from '../../../identity-access/application/queries
 import { UserRoleEnum } from '../../../identity-access/domain/user/value-objects/user-role.vo';
 import { TenantContextService } from '../../../tenancy/application/tenant-context.service';
 import type {
+  CaseAccessGrant,
   CaseAccessReader,
-  CaseTitle,
 } from '../../application/case-access.reader';
 import { CaseAccessService } from '../../application/case-access.service';
 import { InMemoryCaseAccessReader } from '../persistence/in-memory-case-access.reader';
@@ -139,7 +139,7 @@ const NADIA: UserReadModel = {
 };
 
 class UnreachableCaseAccessReader implements CaseAccessReader {
-  findTitle(): Promise<CaseTitle | null> {
+  findGrant(): Promise<CaseAccessGrant | null> {
     return Promise.reject(new Error('base injoignable'));
   }
 
@@ -253,6 +253,7 @@ describe('CaseAccessGuard — une route marquée', () => {
     expect(request.caseAccess).toEqual({
       caseId: AFFAIRE,
       title: 'CASE_OPERATOR',
+      verificationInProgress: false,
     });
   });
 
@@ -264,6 +265,7 @@ describe('CaseAccessGuard — une route marquée', () => {
     expect(request.caseAccess).toEqual({
       caseId: AFFAIRE,
       title: 'SERVICE_MANAGER',
+      verificationInProgress: false,
     });
   });
 
@@ -323,6 +325,7 @@ describe("CaseAccessGuard — la source de l'identifiant suit la méthode", () =
     expect(request.caseAccess).toEqual({
       caseId: AFFAIRE,
       title: 'CASE_OPERATOR',
+      verificationInProgress: false,
     });
   });
 
@@ -357,6 +360,7 @@ describe("CaseAccessGuard — la source de l'identifiant suit la méthode", () =
     expect(request.caseAccess).toEqual({
       caseId: AFFAIRE,
       title: 'CASE_OPERATOR',
+      verificationInProgress: false,
     });
   });
 });
@@ -448,6 +452,7 @@ describe("CaseAccessGuard — une route d'administration de l'affaire", () => {
     expect(request.caseAccess).toEqual({
       caseId: AFFAIRE,
       title: 'CASE_OPERATOR',
+      verificationInProgress: false,
     });
   });
 
@@ -513,6 +518,7 @@ describe('CaseAccessGuard — le vérificateur dont la mission est close', () =>
     expect(request.caseAccess).toEqual({
       caseId: AFFAIRE,
       title: 'CASE_VERIFIER',
+      verificationInProgress: false,
     });
   });
 

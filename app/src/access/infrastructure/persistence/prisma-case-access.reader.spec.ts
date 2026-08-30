@@ -99,13 +99,16 @@ describe('PrismaCaseAccessReader', () => {
   it("reconnaît l'opérateur d'une affaire", async () => {
     const { reader } = build([{ id: 'case-1', operatorUserId: MARIE }]);
 
-    expect(await reader.findTitle(MARIE, 'case-1')).toBe('CASE_OPERATOR');
+    expect(await reader.findGrant(MARIE, 'case-1')).toEqual({
+      title: 'CASE_OPERATOR',
+      verificationInProgress: false,
+    });
   });
 
   it("ne reconnaît pas un compte qui n'est pas l'opérateur de l'affaire", async () => {
     const { reader } = build([{ id: 'case-1', operatorUserId: MARIE }]);
 
-    expect(await reader.findTitle(PIERRE, 'case-1')).toBeNull();
+    expect(await reader.findGrant(PIERRE, 'case-1')).toBeNull();
   });
 
   it("ne reconnaît pas un opérateur sur l'affaire d'un autre", async () => {
@@ -114,13 +117,13 @@ describe('PrismaCaseAccessReader', () => {
       { id: 'case-2', operatorUserId: PIERRE },
     ]);
 
-    expect(await reader.findTitle(MARIE, 'case-2')).toBeNull();
+    expect(await reader.findGrant(MARIE, 'case-2')).toBeNull();
   });
 
   it('ne reconnaît personne sur une affaire sans opérateur', async () => {
     const { reader } = build([{ id: 'case-1', operatorUserId: null }]);
 
-    expect(await reader.findTitle(MARIE, 'case-1')).toBeNull();
+    expect(await reader.findGrant(MARIE, 'case-1')).toBeNull();
   });
 
   it("liste les affaires dont un compte est l'opérateur", async () => {
@@ -145,7 +148,10 @@ describe('PrismaCaseAccessReader', () => {
       [{ caseId: 'case-1', verifierUserId: PIERRE, status: 'PENDING' }],
     );
 
-    expect(await reader.findTitle(PIERRE, 'case-1')).toBe('CASE_VERIFIER');
+    expect(await reader.findGrant(PIERRE, 'case-1')).toEqual({
+      title: 'CASE_VERIFIER',
+      verificationInProgress: true,
+    });
   });
 
   it('laisse relire le dossier au vérificateur dont la mission est close', async () => {
@@ -154,7 +160,25 @@ describe('PrismaCaseAccessReader', () => {
       [{ caseId: 'case-1', verifierUserId: PIERRE, status: 'CONCORDANT' }],
     );
 
-    expect(await reader.findTitle(PIERRE, 'case-1')).toBe('CASE_VERIFIER');
+    expect(await reader.findGrant(PIERRE, 'case-1')).toEqual({
+      title: 'CASE_VERIFIER',
+      verificationInProgress: false,
+    });
+  });
+
+  it("reste en aveugle tant qu'une mission de la personne est en cours", async () => {
+    const { reader } = build(
+      [{ id: 'case-1', operatorUserId: MARIE }],
+      [
+        { caseId: 'case-1', verifierUserId: PIERRE, status: 'DISCORDANT' },
+        { caseId: 'case-1', verifierUserId: PIERRE, status: 'PENDING' },
+      ],
+    );
+
+    expect(await reader.findGrant(PIERRE, 'case-1')).toEqual({
+      title: 'CASE_VERIFIER',
+      verificationInProgress: true,
+    });
   });
 
   it("ne reconnaît personne sur une affaire qu'il n'a jamais vérifiée", async () => {
@@ -163,7 +187,7 @@ describe('PrismaCaseAccessReader', () => {
       [{ caseId: 'case-2', verifierUserId: PIERRE, status: 'PENDING' }],
     );
 
-    expect(await reader.findTitle(PIERRE, 'case-1')).toBeNull();
+    expect(await reader.findGrant(PIERRE, 'case-1')).toBeNull();
   });
 
   it("garde son titre d'opérateur à qui vérifie aussi une autre affaire", async () => {
@@ -172,7 +196,10 @@ describe('PrismaCaseAccessReader', () => {
       [{ caseId: 'case-2', verifierUserId: MARIE, status: 'PENDING' }],
     );
 
-    expect(await reader.findTitle(MARIE, 'case-1')).toBe('CASE_OPERATOR');
+    expect(await reader.findGrant(MARIE, 'case-1')).toEqual({
+      title: 'CASE_OPERATOR',
+      verificationInProgress: false,
+    });
   });
 
   it('ajoute les affaires à vérifier à celles dont on est opérateur', async () => {
@@ -213,7 +240,7 @@ describe('PrismaCaseAccessReader', () => {
       { id: 'case-1', operatorUserId: MARIE },
     ]);
 
-    await reader.findTitle(MARIE, 'case-1');
+    await reader.findGrant(MARIE, 'case-1');
     await reader.findCaseIdsOf(MARIE);
 
     expect(openedClients).toEqual(['current', 'current']);

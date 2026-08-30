@@ -1,29 +1,41 @@
 import { Injectable } from '@nestjs/common';
 import type { PrismaClient } from '../../../../generated/prisma/client';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
+import { VerificationStatus } from '../../../../generated/prisma/enums';
 import type {
+  CaseAccessGrant,
   CaseAccessReader,
   CaseResourceKind,
-  CaseTitle,
 } from '../../application/case-access.reader';
 
 @Injectable()
 export class PrismaCaseAccessReader implements CaseAccessReader {
   constructor(private readonly tenantConnection: TenantConnectionService) {}
 
-  async findTitle(userId: string, caseId: string): Promise<CaseTitle | null> {
+  async findGrant(
+    userId: string,
+    caseId: string,
+  ): Promise<CaseAccessGrant | null> {
     const prisma = await this.tenantConnection.getCurrentClient();
     const ownCase = await prisma.investigationCase.findFirst({
       where: { id: caseId, operatorUserId: userId },
       select: { id: true },
     });
-    if (ownCase) return 'CASE_OPERATOR';
+    if (ownCase) {
+      return { title: 'CASE_OPERATOR', verificationInProgress: false };
+    }
 
-    const mission = await prisma.caseVerification.findFirst({
+    const missions = await prisma.caseVerification.findMany({
       where: { caseId, verifierUserId: userId },
-      select: { id: true },
+      select: { status: true },
     });
-    return mission ? 'CASE_VERIFIER' : null;
+    if (missions.length === 0) return null;
+    return {
+      title: 'CASE_VERIFIER',
+      verificationInProgress: missions.some(
+        (mission) => mission.status === VerificationStatus.PENDING,
+      ),
+    };
   }
 
   async findCaseIdsOf(userId: string): Promise<string[]> {

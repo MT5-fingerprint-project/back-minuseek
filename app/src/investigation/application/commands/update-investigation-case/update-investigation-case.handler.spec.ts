@@ -27,10 +27,34 @@ const PARTI = 'user-parti';
 const PV = 'PV-2024-001';
 
 const COMPTES_DU_SERVICE = [
-  { id: MARIE, disabled: false, firstName: 'Marie', lastName: 'Curie' },
-  { id: PIERRE, disabled: false, firstName: 'Pierre', lastName: 'Martin' },
-  { id: CHEF, disabled: false, firstName: 'Solène', lastName: 'Roy' },
-  { id: PARTI, disabled: true, firstName: 'Luc', lastName: 'Bonnet' },
+  {
+    id: MARIE,
+    disabled: false,
+    role: UserRoleEnum.OPERATOR,
+    firstName: 'Marie',
+    lastName: 'Curie',
+  },
+  {
+    id: PIERRE,
+    disabled: false,
+    role: UserRoleEnum.OPERATOR,
+    firstName: 'Pierre',
+    lastName: 'Martin',
+  },
+  {
+    id: CHEF,
+    disabled: false,
+    role: UserRoleEnum.ADMIN,
+    firstName: 'Solène',
+    lastName: 'Roy',
+  },
+  {
+    id: PARTI,
+    disabled: true,
+    role: UserRoleEnum.OPERATOR,
+    firstName: 'Luc',
+    lastName: 'Bonnet',
+  },
 ];
 
 const operator = (id: string) => ({ id, role: UserRoleEnum.OPERATOR });

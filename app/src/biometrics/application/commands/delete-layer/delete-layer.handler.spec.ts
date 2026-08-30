@@ -9,6 +9,7 @@ import { InMemoryFingerprintLocatorAdapter } from '../../../infrastructure/persi
 import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-memory-layer.repository';
 import { DeleteLayerCommand } from './delete-layer.command';
 import { DeleteLayerHandler } from './delete-layer.handler';
+import { LayerNotAuthoredByVerifierError } from '../../../domain/layer/errors/layer-not-authored-by-verifier.error';
 
 describe('DeleteLayerHandler', () => {
   const settings = {
@@ -34,6 +35,7 @@ describe('DeleteLayerHandler', () => {
         type: 'ANNOTATION',
         zIndex: 0,
         settings,
+        createdByUserId: 'user-marie',
       }),
     );
 
@@ -75,6 +77,7 @@ describe('DeleteLayerHandler', () => {
       zIndex: 0,
       isVisible: true,
       settings,
+      createdByUserId: 'user-marie',
     });
   });
 
@@ -83,5 +86,17 @@ describe('DeleteLayerHandler', () => {
       handler.execute(new DeleteLayerCommand(EXPERT_ACTOR, 'missing')),
     ).rejects.toBeInstanceOf(LayerNotFoundError);
     expect(auditTrail.events).toHaveLength(0);
+  });
+
+  it("refuse au vérificateur de supprimer un calque qui n'est pas le sien", async () => {
+    existingLayer();
+
+    await expect(
+      handler.execute(
+        new DeleteLayerCommand(EXPERT_ACTOR, 'layer-1', 'user-lucie'),
+      ),
+    ).rejects.toBeInstanceOf(LayerNotAuthoredByVerifierError);
+    expect(await repo.findById('layer-1')).not.toBeNull();
+    expect(auditTrail.events).toEqual([]);
   });
 });

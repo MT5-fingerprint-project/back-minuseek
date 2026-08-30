@@ -15,8 +15,13 @@ export interface CaseScopeTarget {
   id: string;
 }
 
+export interface CaseAccessGrant {
+  title: CaseTitle;
+  verificationInProgress: boolean;
+}
+
 export interface CaseAccessReader {
-  findTitle(userId: string, caseId: string): Promise<CaseTitle | null>;
+  findGrant(userId: string, caseId: string): Promise<CaseAccessGrant | null>;
   findCaseIdsOf(userId: string): Promise<string[]>;
   findCaseIdOfResource(
     kind: CaseResourceKind,

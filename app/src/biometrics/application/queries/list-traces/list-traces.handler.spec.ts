@@ -193,4 +193,55 @@ describe('ListTracesHandler', () => {
     expect(data[0].withdrawalMotive).toBe('DUPLICATE');
     expect(data[0].url).toBeDefined();
   });
+
+  it("hides the operator's exploitability declaration from a verifier in mission", async () => {
+    const reader = new InMemoryTraceReader([
+      traceRow({ status: 'EXPLOITABLE' }),
+    ]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(
+      new ListTracesQuery('case-9', false, 'user-lucie'),
+    );
+
+    expect(data[0].status).toBeNull();
+  });
+
+  it('leaves the rest of the trace visible to a verifier in mission', async () => {
+    const reader = new InMemoryTraceReader([
+      traceRow({ status: 'EXPLOITABLE', score: 42, captureWidth: 3024 }),
+    ]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(
+      new ListTracesQuery('case-9', false, 'user-lucie'),
+    );
+
+    expect(data[0]).toMatchObject({
+      id: 'trace-1',
+      score: 42,
+      captureWidth: 3024,
+      url: '/media/investigation-case/case-9/traces/trace-1.png',
+    });
+  });
+
+  it('keeps the declaration for the case operator', async () => {
+    const reader = new InMemoryTraceReader([
+      traceRow({ status: 'EXPLOITABLE' }),
+    ]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0].status).toBe('EXPLOITABLE');
+  });
 });

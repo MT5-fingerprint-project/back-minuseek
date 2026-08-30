@@ -10,6 +10,7 @@ import { InMemoryFingerprintLocatorAdapter } from '../../../infrastructure/persi
 import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-memory-layer.repository';
 import { CreateLayerCommand } from './create-layer.command';
 import { CreateLayerHandler } from './create-layer.handler';
+import { LayerAlreadyExistsError } from '../../../domain/layer/errors/layer-already-exists.error';
 
 describe('CreateLayerHandler', () => {
   const settings = {
@@ -27,7 +28,10 @@ describe('CreateLayerHandler', () => {
   let fingerprintLocator: InMemoryFingerprintLocatorAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
 
-  const command = (fingerprintId = 'fp-1') =>
+  const command = (
+    fingerprintId = 'fp-1',
+    createdByUserId: string | null = 'user-marie',
+  ) =>
     new CreateLayerCommand(
       EXPERT_ACTOR,
       'layer-1',
@@ -36,6 +40,7 @@ describe('CreateLayerHandler', () => {
       'ANNOTATION',
       0,
       settings,
+      createdByUserId,
     );
 
   beforeEach(() => {
@@ -66,6 +71,7 @@ describe('CreateLayerHandler', () => {
           'FILTER',
           0,
           { filterKey: 'levelsBlack', value: 30 },
+          'user-marie',
         ),
       ),
     ).rejects.toThrow(ExpertAdjustmentOutsideExpertiseError);
@@ -86,6 +92,7 @@ describe('CreateLayerHandler', () => {
         'FILTER',
         0,
         { filterKey: 'levelsBlack', value: 30 },
+        'user-marie',
       ),
     );
 
@@ -105,6 +112,7 @@ describe('CreateLayerHandler', () => {
         'FILTER',
         0,
         { filterKey: 'contrast', value: 30 },
+        'user-marie',
       ),
     );
 
@@ -126,7 +134,18 @@ describe('CreateLayerHandler', () => {
       zIndex: 0,
       isVisible: true,
       settings,
+      createdByUserId: 'user-marie',
     });
+  });
+
+  it("laisse le calque sans auteur quand le jeton n'a pas de compte dans le service", async () => {
+    fingerprintLocator.setTrace('fp-1', 'case-9');
+
+    await handler.execute(command('fp-1', null));
+
+    expect(
+      (await repo.findById('layer-1'))?.toPrimitives().createdByUserId,
+    ).toBeNull();
   });
 
   it('chaîne un LAYER_CREATED avec le snapshot complet du calque', async () => {
@@ -149,6 +168,7 @@ describe('CreateLayerHandler', () => {
       zIndex: 0,
       isVisible: true,
       settings,
+      createdByUserId: 'user-marie',
     });
   });
 
@@ -167,6 +187,20 @@ describe('CreateLayerHandler', () => {
       handler.execute(command('fp-inconnue')),
     ).rejects.toBeInstanceOf(FingerprintNotFoundError);
     expect(await repo.findById('layer-1')).toBeNull();
+    expect(auditTrail.events).toHaveLength(0);
+  });
+
+  it("refuse une création qui écraserait un calque existant, et n'inscrit rien", async () => {
+    fingerprintLocator.setTrace('fp-1', 'case-9');
+    await handler.execute(command());
+    auditTrail.events.length = 0;
+
+    await expect(
+      handler.execute(command('fp-1', 'user-lucie')),
+    ).rejects.toBeInstanceOf(LayerAlreadyExistsError);
+    expect(
+      (await repo.findById('layer-1'))?.toPrimitives().createdByUserId,
+    ).toBe('user-marie');
     expect(auditTrail.events).toHaveLength(0);
   });
 });

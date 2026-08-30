@@ -69,9 +69,11 @@ import { ListReferencePrintsDto } from './dto/list-reference-prints.dto';
 import { CompareTraceDto } from './dto/compare-trace.dto';
 import { RecordHitDto } from './dto/record-hit.dto';
 import {
+  CaseAdministration,
   CaseScopeCheckedInHandler,
   CaseScoped,
 } from '../../../access/infrastructure/http/case-scope.decorator';
+import { BlindVerifierId } from '../../../access/infrastructure/http/blind-verifier.decorator';
 import { UserRoleEnum } from '../../../identity-access/domain/user/value-objects/user-role.vo';
 import type { CaseRequester } from '../../../access/application/case-access.service';
 import { CaseAccessDeniedError } from '../../../access/application/case-access-denied.error';
@@ -117,9 +119,16 @@ export class BiometricsController {
   @ApiOperation({ summary: "Lister les traces d'un dossier" })
   @ApiResponse({ status: 200, description: 'Liste des traces du dossier' })
   @ApiResponse({ status: 400, description: 'caseId manquant ou invalide' })
-  listTraces(@Query() dto: ListTracesDto) {
+  listTraces(
+    @Query() dto: ListTracesDto,
+    @BlindVerifierId() blindVerifierUserId: string | null,
+  ) {
     return this.queryBus.execute(
-      new ListTracesQuery(dto.caseId, dto.withdrawn === 'true'),
+      new ListTracesQuery(
+        dto.caseId,
+        dto.withdrawn === 'true',
+        blindVerifierUserId,
+      ),
     );
   }
 
@@ -138,7 +147,7 @@ export class BiometricsController {
   }
 
   @Post('traces/:id/withdraw')
-  @CaseScoped()
+  @CaseAdministration()
   @HttpCode(204)
   @ApiOperation({ summary: 'Retirer une trace du dossier' })
   @ApiResponse({ status: 204, description: 'Trace retirée du dossier' })
@@ -168,7 +177,7 @@ export class BiometricsController {
   }
 
   @Post('reference-prints/:id/withdraw')
-  @CaseScoped()
+  @CaseAdministration()
   @HttpCode(204)
   @ApiOperation({ summary: 'Retirer une empreinte de référence du dossier' })
   @ApiResponse({
@@ -204,7 +213,7 @@ export class BiometricsController {
   }
 
   @Post('traces/:id/restore')
-  @CaseScoped()
+  @CaseAdministration()
   @HttpCode(204)
   @ApiOperation({ summary: 'Rétablir une trace retirée du dossier' })
   @ApiResponse({ status: 204, description: 'Trace rétablie au dossier' })
@@ -232,7 +241,7 @@ export class BiometricsController {
   }
 
   @Post('reference-prints/:id/restore')
-  @CaseScoped()
+  @CaseAdministration()
   @HttpCode(204)
   @ApiOperation({
     summary: 'Rétablir une empreinte de référence retirée du dossier',
@@ -268,7 +277,7 @@ export class BiometricsController {
   }
 
   @Patch('traces/:id/calibration')
-  @CaseScoped()
+  @CaseAdministration()
   @HttpCode(204)
   @ApiOperation({ summary: 'Calibrer la résolution de la trace' })
   @ApiResponse({ status: 204, description: 'Résolution enregistrée' })
@@ -296,7 +305,7 @@ export class BiometricsController {
   }
 
   @Patch('reference-prints/:id/calibration')
-  @CaseScoped()
+  @CaseAdministration()
   @HttpCode(204)
   @ApiOperation({
     summary: "Calibrer la résolution de l'empreinte de référence",
@@ -539,7 +548,7 @@ export class BiometricsController {
   }
 
   @Post('traces/:id/hit')
-  @CaseScoped()
+  @CaseAdministration()
   @ApiOperation({
     summary:
       'Déclarer un hit : cette empreinte de référence correspond à cette trace',
@@ -591,7 +600,7 @@ export class BiometricsController {
   }
 
   @Delete('traces/:id/hit/:referencePrintId')
-  @CaseScoped()
+  @CaseAdministration()
   @HttpCode(204)
   @ApiOperation({ summary: 'Retirer un hit précédemment déclaré' })
   @ApiResponse({ status: 204, description: 'Hit retiré' })
@@ -641,7 +650,10 @@ export class BiometricsController {
   })
   listHits(
     @Param('id', ParseUUIDPipe) traceId: string,
+    @BlindVerifierId() blindVerifierUserId: string | null,
   ): Promise<{ referencePrintIds: string[] }> {
-    return this.queryBus.execute(new ListHitsQuery(traceId));
+    return this.queryBus.execute(
+      new ListHitsQuery(traceId, blindVerifierUserId),
+    );
   }
 }

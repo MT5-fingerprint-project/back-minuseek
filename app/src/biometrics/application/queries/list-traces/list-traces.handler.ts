@@ -8,7 +8,10 @@ import { TraceReadModel } from './trace-read-model';
 import { TRACE_READER, TraceReader } from './trace.reader';
 import { ListTracesQuery } from './list-traces.query';
 
-type TraceView = TraceReadModel & { url: string };
+type TraceView = Omit<TraceReadModel, 'status'> & {
+  url: string;
+  status: string | null;
+};
 
 @QueryHandler(ListTracesQuery)
 export class ListTracesHandler implements IQueryHandler<ListTracesQuery> {
@@ -24,9 +27,11 @@ export class ListTracesHandler implements IQueryHandler<ListTracesQuery> {
       query.caseId,
       query.withdrawn,
     );
+    const blind = query.blindVerifierUserId !== null;
     const data = await Promise.all(
       traces.map(async (trace) => ({
         ...trace,
+        status: blind ? null : trace.status,
         url: await this.storage.getUrl(trace.path),
       })),
     );

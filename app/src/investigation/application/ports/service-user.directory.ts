@@ -3,6 +3,7 @@ export const SERVICE_USER_DIRECTORY = 'ServiceUserDirectory';
 export interface DesignatableServiceUser {
   id: string;
   disabled: boolean;
+  role: string;
   firstName: string;
   lastName: string;
 }

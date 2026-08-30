@@ -8,13 +8,17 @@ import type { HitReader } from '../../application/queries/list-hits/hit.reader';
 export class PrismaHitReader implements HitReader {
   constructor(private readonly tenantConnection: TenantConnectionService) {}
 
-  async findByTraceId(traceId: string): Promise<HitReadModel[]> {
+  async findByTraceId(
+    traceId: string,
+    declaredBy?: string | null,
+  ): Promise<HitReadModel[]> {
     const prisma = await this.tenantConnection.getCurrentClient();
     // Une identification suit ses deux pièces : retirer l'empreinte la fait
     // disparaître du comparateur, sans marquer la ligne `Hit` elle-même.
     return prisma.hit.findMany({
       where: {
         traceId,
+        ...(declaredBy == null ? {} : { declaredByUserId: declaredBy }),
         ...NOT_WITHDRAWN,
         trace: NOT_WITHDRAWN,
         referencePrint: NOT_WITHDRAWN,

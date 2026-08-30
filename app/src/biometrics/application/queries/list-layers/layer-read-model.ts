@@ -11,4 +11,5 @@ export interface LayerReadModel {
   zIndex: number;
   isVisible: boolean;
   settings: LayerSettings;
+  createdByUserId: string | null;
 }

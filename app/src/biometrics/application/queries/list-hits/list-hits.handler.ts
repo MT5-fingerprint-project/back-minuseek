@@ -13,7 +13,10 @@ export class ListHitsHandler implements IQueryHandler<ListHitsQuery> {
   async execute(
     query: ListHitsQuery,
   ): Promise<{ referencePrintIds: string[] }> {
-    const hits = await this.reader.findByTraceId(query.traceId);
+    const hits = await this.reader.findByTraceId(
+      query.traceId,
+      query.blindVerifierUserId,
+    );
     return { referencePrintIds: hits.map((hit) => hit.referencePrintId) };
   }
 }

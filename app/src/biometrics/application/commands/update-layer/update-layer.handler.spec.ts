@@ -12,6 +12,7 @@ import { InMemoryFingerprintLocatorAdapter } from '../../../infrastructure/persi
 import { InMemoryLayerRepository } from '../../../infrastructure/persistence/in-memory-layer.repository';
 import { UpdateLayerCommand } from './update-layer.command';
 import { UpdateLayerHandler } from './update-layer.handler';
+import { LayerNotAuthoredByVerifierError } from '../../../domain/layer/errors/layer-not-authored-by-verifier.error';
 
 describe('UpdateLayerHandler', () => {
   const initialSettings = {
@@ -45,6 +46,7 @@ describe('UpdateLayerHandler', () => {
         type: 'ANNOTATION',
         zIndex: 0,
         settings: initialSettings,
+        createdByUserId: 'user-marie',
       }),
     );
 
@@ -93,6 +95,7 @@ describe('UpdateLayerHandler', () => {
         type: 'FILTER',
         zIndex: 0,
         settings: { filterKey: 'levelsBlack', value: 30 },
+        createdByUserId: 'user-marie',
       }),
     );
 
@@ -179,6 +182,7 @@ describe('UpdateLayerHandler', () => {
       zIndex: 0,
       isVisible: false,
       settings: movedSettings,
+      createdByUserId: 'user-marie',
     });
   });
 
@@ -198,6 +202,7 @@ describe('UpdateLayerHandler', () => {
         type: 'ANNOTATION',
         zIndex: 0,
         settings: initialSettings,
+        createdByUserId: 'user-marie',
       }),
     );
 
@@ -207,5 +212,69 @@ describe('UpdateLayerHandler', () => {
       ),
     ).rejects.toBeInstanceOf(FingerprintNotFoundError);
     expect(auditTrail.events).toHaveLength(0);
+  });
+
+  it("refuse au vérificateur de modifier un calque qui n'est pas le sien", async () => {
+    fingerprintLocator.setTrace('fp-1', 'case-9');
+    repo.seed(
+      Layer.create({
+        id: 'layer-du-titulaire',
+        fingerprintId: 'fp-1',
+        name: 'Point',
+        type: 'ANNOTATION',
+        zIndex: 0,
+        settings: initialSettings,
+        createdByUserId: 'user-marie',
+      }),
+    );
+
+    await expect(
+      handler.execute(
+        new UpdateLayerCommand(
+          EXPERT_ACTOR,
+          'layer-du-titulaire',
+          'Renommé',
+          undefined,
+          undefined,
+          undefined,
+          'user-lucie',
+        ),
+      ),
+    ).rejects.toBeInstanceOf(LayerNotAuthoredByVerifierError);
+    expect(
+      (await repo.findById('layer-du-titulaire'))?.toPrimitives().name,
+    ).toBe('Point');
+    expect(auditTrail.events).toEqual([]);
+  });
+
+  it('laisse le vérificateur modifier son propre calque', async () => {
+    fingerprintLocator.setTrace('fp-1', 'case-9');
+    repo.seed(
+      Layer.create({
+        id: 'layer-du-verificateur',
+        fingerprintId: 'fp-1',
+        name: 'Point',
+        type: 'ANNOTATION',
+        zIndex: 0,
+        settings: initialSettings,
+        createdByUserId: 'user-lucie',
+      }),
+    );
+
+    await handler.execute(
+      new UpdateLayerCommand(
+        EXPERT_ACTOR,
+        'layer-du-verificateur',
+        'Renommé',
+        undefined,
+        undefined,
+        undefined,
+        'user-lucie',
+      ),
+    );
+
+    expect(
+      (await repo.findById('layer-du-verificateur'))?.toPrimitives().name,
+    ).toBe('Renommé');
   });
 });

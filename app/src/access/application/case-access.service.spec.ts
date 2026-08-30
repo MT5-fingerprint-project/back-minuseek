@@ -85,7 +85,7 @@ describe("CaseAccessService — l'accès à une affaire", () => {
 
   it('refuse un appelant sans compte dans le service, sans interroger le port', async () => {
     const port = new InMemoryCaseAccessReader(FIXTURE);
-    const titres = jest.spyOn(port, 'findTitle');
+    const titres = jest.spyOn(port, 'findGrant');
 
     await expect(
       new CaseAccessService(port).assertAccessToCase(null, DOSSIER_DE_MARIE),
@@ -133,6 +133,7 @@ describe("CaseAccessService — la remontée d'une ressource à son affaire", ()
     ).resolves.toEqual({
       caseId: DOSSIER_DE_MARIE,
       title: 'CASE_OPERATOR',
+      verificationInProgress: false,
     });
   });
 
@@ -145,6 +146,7 @@ describe("CaseAccessService — la remontée d'une ressource à son affaire", ()
     ).resolves.toEqual({
       caseId: DOSSIER_DE_MARIE,
       title: 'CASE_OPERATOR',
+      verificationInProgress: false,
     });
   });
 
@@ -156,6 +158,7 @@ describe("CaseAccessService — la remontée d'une ressource à son affaire", ()
       ).resolves.toEqual({
         caseId: DOSSIER_DE_MARIE,
         title: 'CASE_OPERATOR',
+        verificationInProgress: false,
       });
     },
   );

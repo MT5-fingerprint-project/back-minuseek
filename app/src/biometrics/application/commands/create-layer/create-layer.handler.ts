@@ -6,6 +6,7 @@ import { layerAuditPayload } from '../../../domain/layer/layer-audit-payload';
 import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
 import { assertExpertAdjustmentAllowed } from '../../../domain/expert-adjustment';
 import { FingerprintNotFoundError } from '../../../domain/fingerprint-not-found.error';
+import { LayerAlreadyExistsError } from '../../../domain/layer/errors/layer-already-exists.error';
 import {
   LAYER_REPOSITORY,
   type LayerRepository,
@@ -39,6 +40,8 @@ export class CreateLayerHandler implements ICommandHandler<CreateLayerCommand> {
       command.fingerprintId,
     );
     if (!location) throw new FingerprintNotFoundError(command.fingerprintId);
+    const existing = await this.repository.findById(command.id);
+    if (existing) throw new LayerAlreadyExistsError(command.id);
     assertCaseAcceptsWork(
       location.caseId,
       await this.caseStatus.findStatus(location.caseId),
@@ -56,6 +59,7 @@ export class CreateLayerHandler implements ICommandHandler<CreateLayerCommand> {
       type: command.type,
       zIndex: command.zIndex,
       settings: command.settings,
+      createdByUserId: command.createdByUserId,
     });
     await this.repository.save(layer, {
       eventType: AuditEventTypeEnum.LAYER_CREATED,
