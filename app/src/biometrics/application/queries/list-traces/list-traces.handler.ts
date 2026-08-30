@@ -4,14 +4,9 @@ import {
   IMAGE_STORAGE,
   ImageStoragePort,
 } from '../../ports/image-storage.port';
-import { TraceReadModel } from './trace-read-model';
+import { TraceView } from './trace-read-model';
 import { TRACE_READER, TraceReader } from './trace.reader';
 import { ListTracesQuery } from './list-traces.query';
-
-type TraceView = Omit<TraceReadModel, 'status'> & {
-  url: string;
-  status: string | null;
-};
 
 @QueryHandler(ListTracesQuery)
 export class ListTracesHandler implements IQueryHandler<ListTracesQuery> {
@@ -32,6 +27,7 @@ export class ListTracesHandler implements IQueryHandler<ListTracesQuery> {
       traces.map(async (trace) => ({
         ...trace,
         status: blind ? null : trace.status,
+        identified: blind ? null : trace.identified,
         url: await this.storage.getUrl(trace.path),
       })),
     );

@@ -30,6 +30,14 @@ import {
 } from '../../ports/image-converter.port';
 import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
 import {
+  TRACE_NUMBER_ALLOCATOR,
+  TraceNumberAllocatorPort,
+} from '../../ports/trace-number-allocator.port';
+import {
+  TRANSACTION_RUNNER,
+  TransactionRunner,
+} from '../../../../shared/domain/ports/transaction-runner';
+import {
   archivedOriginalPath,
   detectImageMimeType,
   storeDisplayableImage,
@@ -58,6 +66,10 @@ export class UploadTraceHandler implements ICommandHandler<
     private readonly caseAccess: CaseAccessService,
     @Inject(SEAL_REGISTRY)
     private readonly sealRegistry: SealRegistryPort,
+    @Inject(TRACE_NUMBER_ALLOCATOR)
+    private readonly traceNumbers: TraceNumberAllocatorPort,
+    @Inject(TRANSACTION_RUNNER)
+    private readonly transactions: TransactionRunner,
   ) {}
 
   async execute(
@@ -83,31 +95,35 @@ export class UploadTraceHandler implements ICommandHandler<
       `investigation-case/${cmd.caseId}/traces/${id}`,
     );
 
-    const trace = Trace.upload({
-      id,
-      path: stored.path,
-      caseId: cmd.caseId,
-      sha256: FileDigest.from(stored.receivedSha256),
-      displayableSha256: FileDigest.from(stored.displayableSha256),
-      captureMetadata,
-      captureQuality,
-    });
-
     let link: AuditLink;
     try {
-      link = await this.repo.save(trace, {
-        eventType: AuditEventTypeEnum.TRACE_UPLOADED,
-        evidenceClass: EvidenceClassEnum.OBSERVED,
-        actor: cmd.actor,
-        caseId: cmd.caseId,
-        traceId: id,
-        payload: {
-          fileSha256: stored.receivedSha256,
-          displayableFileSha256: stored.displayableSha256,
-          storagePath: stored.path,
-          sizeBytes: cmd.fileBuffer.length,
-          mimeType,
-        },
+      link = await this.transactions.run(async () => {
+        const number = await this.traceNumbers.allocate(cmd.caseId);
+        const trace = Trace.upload({
+          id,
+          number,
+          path: stored.path,
+          caseId: cmd.caseId,
+          sha256: FileDigest.from(stored.receivedSha256),
+          displayableSha256: FileDigest.from(stored.displayableSha256),
+          captureMetadata,
+          captureQuality,
+        });
+        return this.repo.save(trace, {
+          eventType: AuditEventTypeEnum.TRACE_UPLOADED,
+          evidenceClass: EvidenceClassEnum.OBSERVED,
+          actor: cmd.actor,
+          caseId: cmd.caseId,
+          traceId: id,
+          payload: {
+            number,
+            fileSha256: stored.receivedSha256,
+            displayableFileSha256: stored.displayableSha256,
+            storagePath: stored.path,
+            sizeBytes: cmd.fileBuffer.length,
+            mimeType,
+          },
+        });
       });
     } catch (error) {
       await this.discardStoredFile(stored.path);

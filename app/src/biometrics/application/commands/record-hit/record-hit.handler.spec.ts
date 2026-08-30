@@ -86,6 +86,7 @@ describe('RecordHitHandler', () => {
     traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
+        number: 1,
         path: 'media/trace-1.png',
         caseId: 'case-1',
         sha256: ANY_SEAL,
@@ -196,6 +197,7 @@ describe('RecordHitHandler', () => {
     traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
+        number: 1,
         path: 'media/trace-1.png',
         caseId: 'other-case',
         sha256: ANY_SEAL,
@@ -213,6 +215,7 @@ describe('RecordHitHandler', () => {
     traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
+        number: 1,
         path: 'media/trace-1.png',
         caseId: 'case-1',
         sha256: ANY_SEAL,
@@ -301,6 +304,7 @@ describe('RecordHitHandler', () => {
     seedMinutiae('ref-1', REQUIRED_MINUTIAE, 'circleArrow');
     const trace = Trace.upload({
       id: 'trace-1',
+      number: 1,
       path: 'media/trace-1.png',
       caseId: 'case-1',
       sha256: ANY_SEAL,

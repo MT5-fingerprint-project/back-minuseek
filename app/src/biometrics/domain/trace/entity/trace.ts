@@ -15,6 +15,7 @@ import { TraceStatus, TraceStatusEnum } from '../value-objects/trace-status.vo';
 
 export interface TracePrimitives {
   id: string;
+  number: number;
   path: string;
   status: TraceStatusEnum;
   score: number | null;
@@ -35,6 +36,7 @@ export interface TracePrimitives {
 
 interface UploadTraceProps {
   id: string;
+  number: number;
   path: string;
   caseId: string;
   sha256: FileDigest;
@@ -46,6 +48,7 @@ interface UploadTraceProps {
 export class Trace {
   private constructor(
     private readonly _id: string,
+    private readonly _number: number,
     private readonly _path: string,
     private _status: TraceStatus,
     private _score: ExploitabilityScore | null,
@@ -75,8 +78,12 @@ export class Trace {
     if (!props.caseId) {
       throw new Error('Trace caseId is required');
     }
+    if (!Number.isInteger(props.number) || props.number < 1) {
+      throw new Error('Trace number must be a positive integer');
+    }
     return new Trace(
       props.id,
+      props.number,
       props.path,
       TraceStatus.received(),
       null,
@@ -92,6 +99,7 @@ export class Trace {
 
   static reconstitute(payload: {
     id: string;
+    number: number;
     path: string;
     status: string;
     score: number | null;
@@ -111,6 +119,7 @@ export class Trace {
   }): Trace {
     return new Trace(
       payload.id,
+      payload.number,
       payload.path,
       TraceStatus.from(payload.status),
       payload.score === null ? null : ExploitabilityScore.of(payload.score),
@@ -164,6 +173,7 @@ export class Trace {
   toPrimitives(): TracePrimitives {
     return {
       id: this._id,
+      number: this._number,
       path: this._path,
       status: this._status.getValue(),
       score: this._score?.getValue() ?? null,
@@ -185,6 +195,10 @@ export class Trace {
 
   get id(): string {
     return this._id;
+  }
+
+  get number(): number {
+    return this._number;
   }
 
   get path(): string {

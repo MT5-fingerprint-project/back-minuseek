@@ -4,6 +4,7 @@ import {
   NOT_WITHDRAWN,
   WITHDRAWN_ONLY,
 } from '../../../shared/infrastructure/persistence/withdrawal';
+import { traceReference } from '../../../shared/domain/forensics/trace-reference';
 import { CaptureQualityProps } from '../../domain/trace/value-objects/capture-quality.vo';
 import { TraceReadModel } from '../../application/queries/list-traces/trace-read-model';
 import type { TraceReader } from '../../application/queries/list-traces/trace.reader';
@@ -17,15 +18,29 @@ export class PrismaTraceReader implements TraceReader {
     withdrawn = false,
   ): Promise<TraceReadModel[]> {
     const prisma = await this.tenantConnection.getCurrentClient();
+    const investigationCase = await prisma.investigationCase.findUnique({
+      where: { id: caseId },
+      select: { caseNumber: true },
+    });
+    if (!investigationCase) {
+      return [];
+    }
     const rows = await prisma.trace.findMany({
       where: { caseId, ...(withdrawn ? WITHDRAWN_ONLY : NOT_WITHDRAWN) },
-      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+      orderBy: { number: 'asc' },
+      include: {
+        hits: {
+          where: { ...NOT_WITHDRAWN, referencePrint: NOT_WITHDRAWN },
+          select: { id: true },
+          take: 1,
+        },
+      },
     });
-    // Prisma rend la colonne `Json?` non typée : seul le domaine y écrit, via
-    // `CaptureQuality.toPrimitives()`.
-    return rows.map((row) => ({
+    return rows.map(({ hits, ...row }) => ({
       ...row,
       captureQuality: row.captureQuality as CaptureQualityProps | null,
+      reference: traceReference(investigationCase.caseNumber, row.number),
+      identified: hits.length > 0,
     }));
   }
 }

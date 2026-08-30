@@ -2,10 +2,13 @@ import { CaptureQualityProps } from '../../../domain/trace/value-objects/capture
 
 export interface TraceReadModel {
   id: string;
+  number: number;
+  reference: string;
   path: string;
   status: string;
   score: number | null;
   caseId: string;
+  identified: boolean;
   createdAt: Date;
   captureWidth: number | null;
   captureHeight: number | null;
@@ -18,3 +21,9 @@ export interface TraceReadModel {
   withdrawalMotive: string | null;
   resolutionDpi: number | null;
 }
+
+export type TraceView = Omit<TraceReadModel, 'status' | 'identified'> & {
+  url: string;
+  status: string | null;
+  identified: boolean | null;
+};

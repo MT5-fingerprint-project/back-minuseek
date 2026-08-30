@@ -12,6 +12,9 @@ import { CaptureQualityProps } from '../../../domain/trace/value-objects/capture
 import { InvalidCaptureQualityError } from '../../../domain/trace/errors/invalid-capture-quality.error';
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
 import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
+import { InMemoryTraceNumberAllocatorAdapter } from '../../../infrastructure/persistence/in-memory-trace-number-allocator.adapter';
+import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
+import { TransactionRunner } from '../../../../shared/domain/ports/transaction-runner';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
 import { InMemoryImageConverter } from '../../../infrastructure/conversion/in-memory-image-converter.adapter';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
@@ -43,6 +46,25 @@ class FailingTraceRepository extends InMemoryTraceRepository {
   }
 }
 
+class RollingBackTransactionRunner implements TransactionRunner {
+  constructor(
+    private readonly allocator: InMemoryTraceNumberAllocatorAdapter,
+  ) {}
+
+  async run<T>(work: () => Promise<T>): Promise<T> {
+    const snapshot = new Map(this.allocator.counters);
+    try {
+      return await work();
+    } catch (error) {
+      this.allocator.counters.clear();
+      for (const [caseId, allocated] of snapshot) {
+        this.allocator.counters.set(caseId, allocated);
+      }
+      throw error;
+    }
+  }
+}
+
 describe('UploadTraceHandler', () => {
   let handler: UploadTraceHandler;
   let repo: InMemoryTraceRepository;
@@ -51,8 +73,12 @@ describe('UploadTraceHandler', () => {
   let auditTrail: InMemoryAuditTrailAppender;
   let idGenerator: IdGenerator;
   let sealRegistry: InMemorySealRegistry;
+  let traceNumbers: InMemoryTraceNumberAllocatorAdapter;
 
-  const buildHandler = (traceRepo: TraceRepository) =>
+  const buildHandler = (
+    traceRepo: TraceRepository,
+    transactions: TransactionRunner = new InMemoryTransactionRunner(),
+  ) =>
     new UploadTraceHandler(
       traceRepo,
       storage,
@@ -65,6 +91,8 @@ describe('UploadTraceHandler', () => {
         }),
       ),
       sealRegistry,
+      traceNumbers,
+      transactions,
     );
 
   beforeEach(() => {
@@ -74,6 +102,7 @@ describe('UploadTraceHandler', () => {
     storage = new InMemoryImageStorageAdapter();
     caseStatus = new InMemoryCaseStatusAdapter();
     idGenerator = { generate: jest.fn().mockReturnValue('trace-123') };
+    traceNumbers = new InMemoryTraceNumberAllocatorAdapter();
     handler = buildHandler(repo);
   });
 
@@ -283,12 +312,60 @@ describe('UploadTraceHandler', () => {
     expect(event.caseId).toBe('case-9');
     expect(event.traceId).toBe('trace-123');
     expect(event.payload).toEqual({
+      number: 1,
       fileSha256: TEST_IMAGE_SHA256,
       displayableFileSha256: TEST_IMAGE_SHA256,
       storagePath: STORED_PATH,
       sizeBytes: 14,
       mimeType: 'image/png',
     });
+  });
+
+  it("numérote les dépôts successifs d'une affaire dans l'ordre", async () => {
+    caseStatus.set('case-9', 'OPEN');
+    idGenerator.generate = jest
+      .fn()
+      .mockReturnValueOnce('trace-1')
+      .mockReturnValueOnce('trace-2')
+      .mockReturnValueOnce('trace-3');
+
+    await handler.execute(command());
+    await handler.execute(command());
+    await handler.execute(command());
+
+    expect((await repo.findById('trace-1'))?.number).toBe(1);
+    expect((await repo.findById('trace-2'))?.number).toBe(2);
+    expect((await repo.findById('trace-3'))?.number).toBe(3);
+  });
+
+  it('compte séparément les traces de deux affaires', async () => {
+    caseStatus.set('case-9', 'OPEN');
+    caseStatus.set('case-8', 'OPEN');
+    idGenerator.generate = jest
+      .fn()
+      .mockReturnValueOnce('trace-9a')
+      .mockReturnValueOnce('trace-8a');
+
+    await handler.execute(command());
+    await handler.execute(
+      new UploadTraceCommand(EXPERT_ACTOR, NADIA, pngBuffer, 'case-8'),
+    );
+
+    expect((await repo.findById('trace-9a'))?.number).toBe(1);
+    expect((await repo.findById('trace-8a'))?.number).toBe(1);
+  });
+
+  it("n'avance pas le compteur quand le dépôt échoue", async () => {
+    caseStatus.set('case-9', 'OPEN');
+    const failing = buildHandler(
+      new FailingTraceRepository(new Error('rollback')),
+      new RollingBackTransactionRunner(traceNumbers),
+    );
+
+    await expect(failing.execute(command())).rejects.toThrow('rollback');
+    await handler.execute(command());
+
+    expect((await repo.findById('trace-123'))?.number).toBe(1);
   });
 
   it('deletes the stored file and rethrows when the save fails', async () => {
