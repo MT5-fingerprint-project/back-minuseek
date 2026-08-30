@@ -6,6 +6,7 @@ import type {
   CaseReportDataReader,
   ExpertData,
   LayerData,
+  LocationPhotoData,
   MinutiaData,
   PieceData,
   VerificationReportData,
@@ -25,6 +26,10 @@ interface PieceRow {
   withdrawnAt: Date | null;
   withdrawalMotive?: string | null;
   imageDestroyedAt?: Date | null;
+  origin?: string | null;
+  location?: string | null;
+  revelationTechnique?: string | null;
+  locationPhoto?: { path: string; sha256: string; createdAt: Date } | null;
 }
 
 interface LayerRow {
@@ -63,6 +68,17 @@ function toMinutia(settings: Record<string, unknown>): MinutiaData | null {
   };
 }
 
+function toLocationPhoto(row: PieceRow): LocationPhotoData | null {
+  if (!row.locationPhoto) {
+    return null;
+  }
+  return {
+    path: row.locationPhoto.path,
+    sha256: row.locationPhoto.sha256,
+    sealedAt: row.locationPhoto.createdAt,
+  };
+}
+
 function toPiece(
   row: PieceRow,
   layers: LayerData[],
@@ -85,11 +101,12 @@ function toPiece(
     withdrawalMotive: row.withdrawalMotive ?? null,
     imageDestroyedAt: row.imageDestroyedAt ?? null,
     number,
-    origin: null,
-    location: null,
-    revelationTechnique: null,
+    origin: row.origin ?? null,
+    location: row.location ?? null,
+    revelationTechnique: row.revelationTechnique ?? null,
     cote: null,
     notIdentifiedAt: null,
+    locationPhoto: toLocationPhoto(row),
   };
 }
 
@@ -110,6 +127,7 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
     const [traces, referencePrints, subjects] = await Promise.all([
       prisma.trace.findMany({
         where: { caseId },
+        include: { locationPhoto: true },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
       prisma.referencePrint.findMany({

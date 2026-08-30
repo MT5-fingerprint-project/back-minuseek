@@ -3,7 +3,7 @@ import type {
   DeclaredHitData,
   PieceData,
 } from '../../ports/case-report-data.reader';
-import { printedPieces } from './printed-pieces';
+import { printedImagePaths, printedPieces } from './printed-pieces';
 
 const AT = new Date('2026-08-01T09:00:00.000Z');
 
@@ -28,6 +28,7 @@ function piece(overrides: Partial<PieceData> & { id: string }): PieceData {
     revelationTechnique: null,
     cote: 'A',
     notIdentifiedAt: null,
+    locationPhoto: null,
     ...overrides,
   };
 }
@@ -149,5 +150,58 @@ describe('printedPieces', () => {
         }),
       ),
     ).toEqual([]);
+  });
+});
+
+const LOCATION_PHOTO = {
+  path: 'media/case-1/t1-location.jpg',
+  sha256: 'b'.repeat(64),
+  sealedAt: AT,
+};
+
+describe('printedImagePaths', () => {
+  it('embarque la photographie de localisation d’une trace identifiée', () => {
+    expect(
+      printedImagePaths(
+        caseData({
+          traces: [piece({ id: 't1', locationPhoto: LOCATION_PHOTO })],
+          referencePrints: [piece({ id: 'ref-1', status: null, cote: null })],
+          declaredHits: [hit()],
+        }),
+      ),
+    ).toEqual([
+      'media/case-1/t1.png',
+      'media/case-1/ref-1.png',
+      LOCATION_PHOTO.path,
+    ]);
+  });
+
+  it('n’embarque pas la photographie d’une trace exploitable que personne n’a identifiée', () => {
+    expect(
+      printedImagePaths(
+        caseData({
+          traces: [piece({ id: 't1', locationPhoto: LOCATION_PHOTO })],
+        }),
+      ),
+    ).toEqual(['media/case-1/t1.png']);
+  });
+
+  it('n’embarque pas la photographie d’une trace retirée du dossier', () => {
+    expect(
+      printedImagePaths(
+        caseData({
+          traces: [
+            piece({
+              id: 't1',
+              withdrawnAt: AT,
+              withdrawalMotive: 'MISFILED',
+              locationPhoto: LOCATION_PHOTO,
+            }),
+          ],
+          referencePrints: [piece({ id: 'ref-1', status: null, cote: null })],
+          declaredHits: [hit()],
+        }),
+      ),
+    ).not.toContain(LOCATION_PHOTO.path);
   });
 });

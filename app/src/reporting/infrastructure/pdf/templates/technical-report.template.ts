@@ -253,6 +253,12 @@ function annexTitlePage(
     </div>`;
 }
 
+function locationCaption(cote: string, location: string | null): string {
+  return `Trace papillaire cotée ${quoted(cote)}, ${
+    location === null ? 'localisation non renseignée' : `révélée ${location}`
+  }.`;
+}
+
 function annexASection(model: TechnicalReportViewModel): string {
   if (model.annexA.length === 0) {
     return '';
@@ -265,11 +271,7 @@ function annexASection(model: TechnicalReportViewModel): string {
         image: plate.image,
         marks: [],
         cote: plate.cote,
-        caption: `Trace papillaire cotée ${quoted(plate.cote)}, ${
-          plate.location === null
-            ? 'localisation non renseignée'
-            : `révélée ${plate.location}`
-        }.`,
+        caption: locationCaption(plate.cote, plate.location),
       }),
     )
     .join('');
@@ -319,14 +321,15 @@ function annexBSection(model: TechnicalReportViewModel): string {
       if (demonstration.localisationPhoto !== null) {
         pages.push(
           renderPlate({
-            title: `Planche ${toRoman(++rank)}`,
+            title: `Planche ${toRoman(++rank)} — localisation`,
             subtitle,
             image: demonstration.localisationPhoto,
             marks: [],
-            cote: null,
-            caption: `Endroit où la trace papillaire cotée ${quoted(
+            cote: demonstration.cote,
+            caption: locationCaption(
               demonstration.cote,
-            )} a été relevée.`,
+              demonstration.location,
+            ),
           }),
         );
       }

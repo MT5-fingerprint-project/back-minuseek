@@ -87,7 +87,10 @@ export function buildAnnexB(
           }
         : null,
       position: positionLabel(print.position),
-      localisationPhoto: null,
+      localisationPhoto:
+        trace.locationPhoto === null
+          ? null
+          : (images.get(trace.locationPhoto.path) ?? null),
       trace: { image: images.get(trace.path) ?? null, marks: traceMarks },
       referencePrint: {
         image: images.get(print.path) ?? null,

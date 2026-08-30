@@ -49,6 +49,12 @@ export interface MinutiaPairData {
   referenceMinutiaRank: number;
 }
 
+export interface LocationPhotoData {
+  path: string;
+  sha256: string;
+  sealedAt: Date;
+}
+
 export interface PieceData {
   id: string;
   path: string;
@@ -70,6 +76,7 @@ export interface PieceData {
   revelationTechnique: string | null;
   cote: string | null;
   notIdentifiedAt: Date | null;
+  locationPhoto: LocationPhotoData | null;
 }
 
 export interface SubjectData {

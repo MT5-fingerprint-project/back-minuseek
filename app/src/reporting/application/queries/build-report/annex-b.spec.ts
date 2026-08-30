@@ -45,6 +45,7 @@ function piece(overrides: Partial<PieceData> & { id: string }): PieceData {
     revelationTechnique: null,
     cote: 'A',
     notIdentifiedAt: null,
+    locationPhoto: null,
     ...overrides,
   };
 }
@@ -122,8 +123,18 @@ function caseData(overrides: Partial<CaseReportData> = {}): CaseReportData {
 
 const NO_IMAGES = new Map<string, ReportImageViewModel | null>();
 
-function build(data: CaseReportData) {
-  return buildAnnexB('3455', data, NO_IMAGES);
+const PHOTO: ReportImageViewModel = {
+  dataUrl: 'data:image/png;base64,photo',
+  width: 800,
+  height: 600,
+  observedSha256: null,
+};
+
+function build(
+  data: CaseReportData,
+  images: Map<string, ReportImageViewModel | null> = NO_IMAGES,
+) {
+  return buildAnnexB('3455', data, images);
 }
 
 describe('buildAnnexB', () => {
@@ -340,6 +351,75 @@ describe('buildAnnexB', () => {
     );
 
     expect(demonstrations[0].localisationPhoto).toBeNull();
+  });
+
+  it('ouvre la démonstration sur la photographie de localisation scellée', () => {
+    const demonstrations = build(
+      caseData({
+        traces: [
+          piece({
+            id: 't1',
+            location: 'sur la face extérieure de la porte-fenêtre du séjour',
+            locationPhoto: {
+              path: 'media/case-1/t1-location.jpg',
+              sha256: 'b'.repeat(64),
+              sealedAt: AT,
+            },
+          }),
+        ],
+        referencePrints: [piece({ id: 'ref-1', status: null, cote: null })],
+        declaredHits: [hit()],
+      }),
+      new Map([['media/case-1/t1-location.jpg', PHOTO]]),
+    );
+
+    expect(demonstrations[0].localisationPhoto).toEqual(PHOTO);
+    expect(demonstrations[0].location).toBe(
+      'sur la face extérieure de la porte-fenêtre du séjour',
+    );
+  });
+
+  it('laisse la planche vide quand la photographie n’a pas pu être relue', () => {
+    const demonstrations = build(
+      caseData({
+        traces: [
+          piece({
+            id: 't1',
+            locationPhoto: {
+              path: 'media/case-1/t1-location.jpg',
+              sha256: 'b'.repeat(64),
+              sealedAt: AT,
+            },
+          }),
+        ],
+        referencePrints: [piece({ id: 'ref-1', status: null, cote: null })],
+        declaredHits: [hit()],
+      }),
+      new Map([['media/case-1/t1-location.jpg', null]]),
+    );
+
+    expect(demonstrations[0].localisationPhoto).toBeNull();
+  });
+
+  it('n’ouvre aucune démonstration pour une trace non identifiée qui porte une photographie', () => {
+    const demonstrations = build(
+      caseData({
+        traces: [
+          piece({
+            id: 't1',
+            locationPhoto: {
+              path: 'media/case-1/t1-location.jpg',
+              sha256: 'b'.repeat(64),
+              sealedAt: AT,
+            },
+          }),
+        ],
+        referencePrints: [piece({ id: 'ref-1', status: null, cote: null })],
+      }),
+      new Map([['media/case-1/t1-location.jpg', PHOTO]]),
+    );
+
+    expect(demonstrations).toEqual([]);
   });
 
   it('reprend le nom du point posé par l’expert quand il est déclaré', () => {

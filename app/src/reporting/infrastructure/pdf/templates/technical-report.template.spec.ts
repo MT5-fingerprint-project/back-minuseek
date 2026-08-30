@@ -1113,17 +1113,48 @@ describe('renderTechnicalReportHtml — annexe B', () => {
     expect(html).not.toContain('Planche V<');
   });
 
-  it('intercale la planche de localisation quand la photographie existe', () => {
+  it('ouvre la démonstration sur la planche de localisation quand la photographie existe', () => {
     const html = renderTechnicalReportHtml(
       model({
         annexB: [demonstration({ localisationPhoto: IMAGE })],
       }),
     );
 
+    expect(html).toContain('Planche I — localisation');
     expect(html).toContain(
-      'Endroit où la trace papillaire cotée « B » a été relevée.',
+      'Trace papillaire cotée « B », révélée sur la porte-fenêtre du séjour.',
     );
     expect(html).toContain('Planche III');
+  });
+
+  it('dit que la localisation manque plutôt que de laisser la légende vide', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [demonstration({ localisationPhoto: IMAGE, location: null })],
+      }),
+    );
+
+    expect(html).toContain(
+      'Trace papillaire cotée « B », localisation non renseignée.',
+    );
+  });
+
+  it('poursuit la numérotation romaine après une démonstration à trois planches', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({ localisationPhoto: IMAGE }),
+          demonstration({ reference: '3455-T5', cote: 'E' }),
+        ],
+      }),
+    );
+
+    expect(html).toContain('Planche I — localisation');
+    expect(html.indexOf('Planche IV')).toBeGreaterThan(
+      html.indexOf('Planche III'),
+    );
+    expect(html).toContain('Planche V<');
+    expect(html).not.toContain('Planche VI');
   });
 
   it('porte les mêmes numéros et les mêmes noms de points sur les deux planches', () => {

@@ -50,6 +50,7 @@ function trace(overrides: Partial<PieceData> & { id: string }): PieceData {
     revelationTechnique: 'FINGERPRINT_POWDER',
     cote: 'A',
     notIdentifiedAt: null,
+    locationPhoto: null,
     ...overrides,
   };
 }
