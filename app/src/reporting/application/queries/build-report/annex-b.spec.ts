@@ -115,6 +115,7 @@ function caseData(overrides: Partial<CaseReportData> = {}): CaseReportData {
     declaredHits: [],
     subjects: [],
     minutiaPairs: [],
+    verifications: [],
     ...overrides,
   };
 }

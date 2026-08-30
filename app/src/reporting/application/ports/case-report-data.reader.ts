@@ -128,6 +128,27 @@ export interface ExpertiseData {
   assistants: SaisineAssistantData[];
 }
 
+export interface VerifierData extends ExpertData {
+  identityProviderId: string;
+}
+
+export interface VerificationDecisionData {
+  traceId: string;
+  exploitability: string;
+  identifiedReferencePrintId: string | null;
+  outcome: string | null;
+  statedAt: Date;
+}
+
+export interface VerificationReportData {
+  id: string;
+  verifier: VerifierData | null;
+  status: string;
+  requestedAt: Date;
+  completedAt: Date | null;
+  decisions: VerificationDecisionData[];
+}
+
 export interface CaseReportData {
   investigationCase: CaseSummaryData;
   expertise: ExpertiseData | null;
@@ -137,6 +158,7 @@ export interface CaseReportData {
   declaredHits: DeclaredHitData[];
   subjects: SubjectData[];
   minutiaPairs: MinutiaPairData[];
+  verifications: VerificationReportData[];
 }
 
 export interface CaseReportDataReader {

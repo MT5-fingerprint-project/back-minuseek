@@ -138,6 +138,7 @@ const CASE_DATA: CaseReportData = {
   declaredHits: [],
   subjects: [],
   minutiaPairs: [],
+  verifications: [],
 };
 
 const TRACEABILITY_DATA: TraceabilityData = {

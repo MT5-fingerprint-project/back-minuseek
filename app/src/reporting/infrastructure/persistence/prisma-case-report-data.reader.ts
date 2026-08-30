@@ -8,6 +8,8 @@ import type {
   LayerData,
   MinutiaData,
   PieceData,
+  VerificationReportData,
+  VerifierData,
 } from '../../application/ports/case-report-data.reader';
 
 interface PieceRow {
@@ -183,6 +185,7 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
     const declaredPairs = new Set(
       hits.map((hit) => `${hit.traceId}:${hit.referencePrintId}`),
     );
+    const verifications = await this.readVerifications(prisma, caseId);
 
     return {
       investigationCase: {
@@ -263,6 +266,7 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
         withdrawnAt: hit.withdrawnAt,
       })),
       minutiaPairs: [],
+      verifications,
       subjects: subjects.map((subject) => ({
         id: subject.id,
         firstName: subject.firstName,
@@ -273,6 +277,72 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
         type: subject.type,
       })),
     };
+  }
+
+  private async readVerifications(
+    prisma: Awaited<ReturnType<TenantConnectionService['getCurrentClient']>>,
+    caseId: string,
+  ): Promise<VerificationReportData[]> {
+    const missions = await prisma.caseVerification.findMany({
+      where: { caseId },
+      orderBy: [{ requestedAt: 'asc' }, { id: 'asc' }],
+    });
+    if (missions.length === 0) {
+      return [];
+    }
+
+    const [verifiers, decisions] = await Promise.all([
+      this.readVerifiers(
+        prisma,
+        missions.map((mission) => mission.verifierUserId),
+      ),
+      prisma.verificationDecision.findMany({
+        where: {
+          verificationId: { in: missions.map((mission) => mission.id) },
+        },
+        orderBy: [{ statedAt: 'asc' }, { id: 'asc' }],
+      }),
+    ]);
+
+    return missions.map((mission) => ({
+      id: mission.id,
+      verifier: verifiers.get(mission.verifierUserId) ?? null,
+      status: mission.status,
+      requestedAt: mission.requestedAt,
+      completedAt: mission.completedAt,
+      decisions: decisions
+        .filter((decision) => decision.verificationId === mission.id)
+        .map((decision) => ({
+          traceId: decision.traceId,
+          exploitability: decision.exploitability,
+          identifiedReferencePrintId: decision.identifiedReferencePrintId,
+          outcome: decision.outcome,
+          statedAt: decision.statedAt,
+        })),
+    }));
+  }
+
+  private async readVerifiers(
+    prisma: Awaited<ReturnType<TenantConnectionService['getCurrentClient']>>,
+    userIds: string[],
+  ): Promise<Map<string, VerifierData>> {
+    const users = await prisma.user.findMany({
+      where: { id: { in: [...new Set(userIds)] } },
+      include: { personalData: true },
+    });
+    return new Map(
+      users.map((user) => [
+        user.id,
+        {
+          identityProviderId: user.identityProviderId,
+          firstName: user.personalData.firstName,
+          lastName: user.personalData.lastName,
+          grade: user.grade,
+          serviceNumber: user.serviceNumber,
+          role: user.role,
+        },
+      ]),
+    );
   }
 
   private async readExperts(

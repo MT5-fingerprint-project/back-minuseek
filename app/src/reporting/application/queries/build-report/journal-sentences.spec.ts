@@ -30,6 +30,7 @@ function event(
     traceId,
     evidenceClass: 'OBSERVED',
     actorDisplayName: 'Sébastien Aguilar',
+    actorSub: 'sub-aguilar',
     occurredAt: AT,
     payload,
     hash: 'a'.repeat(64),
@@ -532,5 +533,21 @@ describe('journalSentence — la vérification', () => {
         discordantTraceCount: 1,
       }),
     ).toBe('Vérification close : les conclusions divergent sur 1 trace');
+  });
+
+  it("n'affirme rien quand le maillon ne porte pas l'exploitabilité", () => {
+    expect(
+      say(
+        AuditEventTypeEnum.VERIFICATION_CONCLUSION_STATED,
+        { traceId: 'trace-7' },
+        'trace-7',
+      ),
+    ).toBe('Conclusion du vérificateur rendue sur la trace 3455-T7');
+  });
+
+  it("n'affirme pas la divergence quand le maillon ne porte pas de verdict", () => {
+    expect(say(AuditEventTypeEnum.CASE_VERIFICATION_COMPLETED)).toBe(
+      'Vérification close',
+    );
   });
 });

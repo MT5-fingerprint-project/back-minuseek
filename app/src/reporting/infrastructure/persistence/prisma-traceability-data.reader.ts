@@ -26,6 +26,7 @@ export class PrismaTraceabilityDataReader implements TraceabilityDataReader {
       evidenceClass: event.evidenceClass,
       actorDisplayName: (event.actor as unknown as AuditActorPrimitives)
         .displayName,
+      actorSub: (event.actor as unknown as AuditActorPrimitives).sub,
       occurredAt: event.occurredAt,
       payload: event.payload as Record<string, unknown>,
       hash: event.hash,

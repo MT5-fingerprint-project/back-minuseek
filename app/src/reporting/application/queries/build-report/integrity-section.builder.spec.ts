@@ -85,6 +85,7 @@ function event(
     traceId: null,
     evidenceClass: 'OBSERVED',
     actorDisplayName: 'Sébastien Aguilar',
+    actorSub: 'sub-aguilar',
     occurredAt,
     payload,
     hash: 'c'.repeat(64),

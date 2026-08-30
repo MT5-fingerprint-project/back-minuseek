@@ -259,6 +259,25 @@ export interface ReportJournalViewModel {
   actCountPrinted: number;
 }
 
+export interface ReportVerificationTraceViewModel {
+  traceDesignation: string;
+  resultLabel: string;
+}
+
+export interface ReportVerificationActGroupViewModel {
+  pieceDesignation: string;
+  acts: ReportJournalActViewModel[];
+}
+
+export interface ReportVerificationViewModel {
+  verifier: ReportExpertViewModel | null;
+  requestedAt: Date;
+  completedAt: Date;
+  verdictLabel: string;
+  traces: ReportVerificationTraceViewModel[];
+  actGroups: ReportVerificationActGroupViewModel[];
+}
+
 export interface ReportLayerViewModel {
   name: string;
   type: string;
@@ -313,6 +332,7 @@ export interface TechnicalReportViewModel {
   identityDemonstrations: ReportIdentityDemonstrationViewModel[];
   annexA: ReportPlateViewModel[];
   annexB: ReportDemonstrationViewModel[];
+  verifications: ReportVerificationViewModel[];
   journal: ReportJournalViewModel;
 }
 

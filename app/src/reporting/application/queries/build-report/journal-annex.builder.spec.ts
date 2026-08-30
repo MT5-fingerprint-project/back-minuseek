@@ -36,6 +36,7 @@ function event(
     traceId: null,
     evidenceClass: 'OBSERVED',
     actorDisplayName: 'Sébastien Aguilar',
+    actorSub: 'sub-aguilar',
     occurredAt,
     payload,
     hash: 'a'.repeat(64),

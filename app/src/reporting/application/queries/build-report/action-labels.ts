@@ -52,6 +52,16 @@ const WITHDRAWAL_MOTIVE_LABELS: Record<string, string> = {
   WRONG_ATTRIBUTION: 'rattachement erroné à une personne ou à un doigt',
 };
 
+const VERIFICATION_RESULT_LABELS: Record<string, string> = {
+  CONCORDANT: 'Conclusions concordantes',
+  DISCORDANT: 'Discordance — un troisième examen est nécessaire',
+};
+
+const VERIFICATION_VERDICT_LABELS: Record<string, string> = {
+  CONCORDANT: 'Vérification concordante',
+  DISCORDANT: 'Vérification discordante',
+};
+
 const SEX_LABELS: Record<string, string> = {
   MALE: 'masculin',
   FEMALE: 'féminin',
@@ -67,6 +77,15 @@ export function subjectTypeLabel(type: string): string {
 
 export function withdrawalMotiveLabel(motive: string): string {
   return WITHDRAWAL_MOTIVE_LABELS[motive] ?? motive;
+}
+
+export function verificationResultLabel(outcome: string | null): string {
+  if (outcome === null) return 'Non conclue par le vérificateur';
+  return VERIFICATION_RESULT_LABELS[outcome] ?? outcome;
+}
+
+export function verificationVerdictLabel(status: string): string {
+  return VERIFICATION_VERDICT_LABELS[status] ?? status;
 }
 
 export function sexLabel(sex: string): string {
