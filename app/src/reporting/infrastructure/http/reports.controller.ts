@@ -19,9 +19,9 @@ import { ListCaseReportsQuery } from '../../application/queries/list-case-report
 import { CaseNotFoundForReportError } from '../../domain/report/errors/case-not-found-for-report.error';
 import { ReportNotFoundError } from '../../domain/report/errors/report-not-found.error';
 import { ReportSequenceAlreadyTakenError } from '../../domain/report/errors/report-sequence-already-taken.error';
-import { CaseScoped } from '../../../access/infrastructure/http/case-scope.decorator';
 import { CurrentServiceUser } from '../../../identity-access/infrastructure/http/current-service-user.decorator';
 import type { UserReadModel } from '../../../identity-access/application/queries/get-user-by-provider-id/user-read-model';
+import { CaseAdministration } from '../../../access/infrastructure/http/case-scope.decorator';
 import { GenerateReportDto } from './dto/generate-report.dto';
 
 const NO_SERVICE_ACCOUNT_MESSAGE =
@@ -36,7 +36,7 @@ export class ReportsController {
   ) {}
 
   @Post('investigation-cases/:caseId/reports')
-  @CaseScoped()
+  @CaseAdministration()
   @ApiOperation({ summary: 'Générer et sceller un rapport du dossier' })
   @ApiResponse({
     status: 201,
@@ -89,7 +89,7 @@ export class ReportsController {
   }
 
   @Get('investigation-cases/:caseId/reports')
-  @CaseScoped()
+  @CaseAdministration()
   @ApiOperation({ summary: 'Lister les rapports scellés du dossier' })
   @ApiResponse({
     status: 200,
@@ -100,7 +100,7 @@ export class ReportsController {
   }
 
   @Get('reports/:id/download')
-  @CaseScoped()
+  @CaseAdministration()
   @ApiOperation({
     summary: 'URL signée de téléchargement du rapport, avec son empreinte',
   })

@@ -109,6 +109,7 @@ describe('PrismaServiceUserDirectory', () => {
       select: {
         id: true,
         status: true,
+        role: true,
         personalData: { select: { firstName: true, lastName: true } },
       },
     });

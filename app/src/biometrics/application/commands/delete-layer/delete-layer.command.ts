@@ -4,5 +4,6 @@ export class DeleteLayerCommand {
   constructor(
     public readonly actor: AuditActor,
     public readonly id: string,
+    public readonly verifierUserId: string | null = null,
   ) {}
 }

@@ -1,7 +1,7 @@
 import type {
+  CaseAccessGrant,
   CaseAccessReader,
   CaseResourceKind,
-  CaseTitle,
 } from '../../application/case-access.reader';
 
 export interface CaseAccessFixture {
@@ -29,19 +29,30 @@ export class InMemoryCaseAccessReader implements CaseAccessReader {
     };
   }
 
-  findTitle(userId: string, caseId: string): Promise<CaseTitle | null> {
+  findGrant(userId: string, caseId: string): Promise<CaseAccessGrant | null> {
     const isOperator = this.fixture.operators.some(
       (operator) => operator.userId === userId && operator.caseId === caseId,
     );
     if (isOperator) {
-      return Promise.resolve('CASE_OPERATOR');
+      return Promise.resolve({
+        title: 'CASE_OPERATOR',
+        verificationInProgress: false,
+      });
     }
 
-    const isVerifier = this.fixture.verifications.some(
+    const missions = this.fixture.verifications.filter(
       (verification) =>
         verification.userId === userId && verification.caseId === caseId,
     );
-    return Promise.resolve(isVerifier ? 'CASE_VERIFIER' : null);
+    if (missions.length === 0) {
+      return Promise.resolve(null);
+    }
+    return Promise.resolve({
+      title: 'CASE_VERIFIER',
+      verificationInProgress: missions.some(
+        (verification) => verification.inProgress,
+      ),
+    });
   }
 
   findCaseIdsOf(userId: string): Promise<string[]> {

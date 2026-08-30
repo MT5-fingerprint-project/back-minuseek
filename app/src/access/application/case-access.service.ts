@@ -18,6 +18,7 @@ export type AccessTitle = 'SERVICE_MANAGER' | CaseTitle;
 export interface GrantedCaseAccess {
   caseId: string;
   title: AccessTitle;
+  verificationInProgress: boolean;
 }
 
 @Injectable()
@@ -51,14 +52,18 @@ export class CaseAccessService {
     }
 
     if (requester.role === UserRoleEnum.ADMIN) {
-      return { caseId, title: 'SERVICE_MANAGER' };
+      return {
+        caseId,
+        title: 'SERVICE_MANAGER',
+        verificationInProgress: false,
+      };
     }
 
-    const title = await this.caseAccessReader.findTitle(requester.id, caseId);
-    if (title === null) {
+    const grant = await this.caseAccessReader.findGrant(requester.id, caseId);
+    if (grant === null) {
       throw new CaseAccessDeniedError(target);
     }
-    return { caseId, title };
+    return { caseId, ...grant };
   }
 
   visibleCaseIds(requester: CaseRequester): Promise<string[] | null> {

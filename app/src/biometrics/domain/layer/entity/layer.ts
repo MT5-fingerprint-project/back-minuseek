@@ -18,6 +18,7 @@ export interface LayerPrimitives {
   zIndex: number;
   isVisible: boolean;
   settings: LayerSettings;
+  createdByUserId: string | null;
 }
 
 interface CreateLayerProps {
@@ -27,6 +28,7 @@ interface CreateLayerProps {
   type: LayerType;
   zIndex: number;
   settings: LayerSettings;
+  createdByUserId: string | null;
 }
 
 export class Layer {
@@ -38,6 +40,7 @@ export class Layer {
     private _zIndex: number,
     private _isVisible: boolean,
     private _settings: LayerSettings,
+    private readonly _createdByUserId: string | null,
   ) {}
 
   static create(props: CreateLayerProps): Layer {
@@ -49,6 +52,7 @@ export class Layer {
       props.zIndex,
       true,
       props.settings,
+      props.createdByUserId,
     );
   }
 
@@ -61,6 +65,7 @@ export class Layer {
       primitives.zIndex,
       primitives.isVisible,
       primitives.settings,
+      primitives.createdByUserId,
     );
   }
 
@@ -85,6 +90,7 @@ export class Layer {
       zIndex: this._zIndex,
       isVisible: this._isVisible,
       settings: this._settings,
+      createdByUserId: this._createdByUserId,
     };
   }
 
@@ -93,5 +99,9 @@ export class Layer {
   }
   get fingerprintId(): string {
     return this._fingerprintId;
+  }
+
+  get createdByUserId(): string | null {
+    return this._createdByUserId;
   }
 }

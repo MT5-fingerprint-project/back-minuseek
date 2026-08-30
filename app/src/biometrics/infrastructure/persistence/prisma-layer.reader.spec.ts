@@ -10,6 +10,7 @@ interface LayerRow {
   zIndex: number;
   isVisible: boolean;
   settings: unknown;
+  createdByUserId: string | null;
   createdAt: Date;
 }
 
@@ -22,6 +23,7 @@ function aLayerRow(overrides: Partial<LayerRow> = {}): LayerRow {
     zIndex: 0,
     isVisible: true,
     settings: { filterKey: 'contrast', value: 1.2 },
+    createdByUserId: 'user-marie',
     createdAt: new Date('2026-07-01T10:00:00.000Z'),
     ...overrides,
   };
@@ -97,5 +99,34 @@ describe('PrismaLayerReader', () => {
     const [layer] = await reader.findByFingerprintId('fp-1');
 
     expect(layer.settings).toEqual({ filterKey: 'contrast', value: 1.2 });
+  });
+
+  it('ne demande que les calques du vérificateur quand il lit en aveugle', async () => {
+    const { reader, prisma } = build();
+
+    await reader.findByFingerprintId('fp-1', 'user-lucie');
+
+    expect(prisma.findManyArgs[0]).toMatchObject({
+      where: { fingerprintId: 'fp-1', createdByUserId: 'user-lucie' },
+    });
+  });
+
+  it("ne filtre pas sur l'auteur pour le titulaire", async () => {
+    const { reader, prisma } = build();
+
+    await reader.findByFingerprintId('fp-1', null);
+
+    expect(prisma.findManyArgs[0]).toEqual({
+      where: { fingerprintId: 'fp-1' },
+      orderBy: [{ zIndex: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+    });
+  });
+
+  it("rend l'auteur du calque", async () => {
+    const { reader } = build();
+
+    const [layer] = await reader.findByFingerprintId('fp-1');
+
+    expect(layer.createdByUserId).toBe('user-marie');
   });
 });

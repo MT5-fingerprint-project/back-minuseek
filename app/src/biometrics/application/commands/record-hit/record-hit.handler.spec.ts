@@ -55,6 +55,7 @@ describe('RecordHitHandler', () => {
             radius: 5,
             color: '#fff',
           },
+          createdByUserId: 'user-marie',
         }),
       );
     }
@@ -179,6 +180,7 @@ describe('RecordHitHandler', () => {
           type: 'ANNOTATION',
           zIndex: i,
           settings: { type: 'pencil', points: [0, 0, 1, 1] },
+          createdByUserId: 'user-marie',
         }),
       );
     }

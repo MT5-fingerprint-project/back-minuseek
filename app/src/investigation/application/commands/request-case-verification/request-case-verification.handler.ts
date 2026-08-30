@@ -10,6 +10,7 @@ import {
 import { CaseVerification } from '../../../domain/case-verification/entity/case-verification';
 import { CaseVerificationNotAllowedError } from '../../../domain/case-verification/errors/case-verification-not-allowed.error';
 import { SelfVerificationError } from '../../../domain/case-verification/errors/self-verification.error';
+import { ServiceManagerAsVerifierError } from '../../../domain/case-verification/errors/service-manager-as-verifier.error';
 import { VerificationAlreadyPendingError } from '../../../domain/case-verification/errors/verification-already-pending.error';
 import {
   CASE_VERIFICATION_REPOSITORY,
@@ -113,6 +114,9 @@ export class RequestCaseVerificationHandler implements ICommandHandler<
     const designated = await this.serviceUsers.findById(verifierUserId);
     if (!designated) throw new UnknownOperatorError(verifierUserId);
     if (designated.disabled) throw new DisabledOperatorError(verifierUserId);
+    if (designated.role === (UserRoleEnum.ADMIN as string)) {
+      throw new ServiceManagerAsVerifierError(verifierUserId);
+    }
     return designated;
   }
 }

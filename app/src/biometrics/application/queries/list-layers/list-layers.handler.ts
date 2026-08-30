@@ -24,6 +24,9 @@ export class ListLayersHandler implements IQueryHandler<
     if (!location) {
       return [];
     }
-    return this.reader.findByFingerprintId(query.fingerprintId);
+    return this.reader.findByFingerprintId(
+      query.fingerprintId,
+      query.blindVerifierUserId,
+    );
   }
 }

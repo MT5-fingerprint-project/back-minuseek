@@ -239,7 +239,7 @@ export class InvestigationController {
   }
 
   @Post(':id/expertise')
-  @CaseScoped()
+  @CaseAdministration()
   @ApiOperation({
     summary: 'Déclarer une affaire en expertise, serment prêté',
   })
@@ -281,7 +281,7 @@ export class InvestigationController {
   }
 
   @Patch(':id/expertise')
-  @CaseScoped()
+  @CaseAdministration()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Compléter la saisine du dossier en expertise' })
   @ApiResponse({ status: 204, description: 'Saisine enregistrée' })

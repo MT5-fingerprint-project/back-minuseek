@@ -48,10 +48,17 @@ export class InMemoryLayerRepository implements LayerRepository, LayerReader {
     return Promise.resolve(count);
   }
 
-  findByFingerprintId(fingerprintId: string): Promise<LayerReadModel[]> {
+  findByFingerprintId(
+    fingerprintId: string,
+    authoredBy?: string | null,
+  ): Promise<LayerReadModel[]> {
     const rows = [...this.store.values()]
       .map((layer) => layer.toPrimitives())
-      .filter((p) => p.fingerprintId === fingerprintId)
+      .filter(
+        (p) =>
+          p.fingerprintId === fingerprintId &&
+          (authoredBy == null || p.createdByUserId === authoredBy),
+      )
       .sort((a, b) => a.zIndex - b.zIndex);
     return Promise.resolve(rows);
   }

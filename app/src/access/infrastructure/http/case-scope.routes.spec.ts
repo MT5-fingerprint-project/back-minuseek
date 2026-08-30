@@ -236,7 +236,10 @@ class RecordingBus {
   }
 }
 
-async function bootFor(caller: UserReadModel | undefined): Promise<{
+async function bootFor(
+  caller: UserReadModel | undefined,
+  verifications: { caseId: string; userId: string; inProgress: boolean }[] = [],
+): Promise<{
   app: INestApplication;
   server: Server;
   bus: RecordingBus;
@@ -264,6 +267,7 @@ async function bootFor(caller: UserReadModel | undefined): Promise<{
         provide: CASE_ACCESS_READER,
         useValue: new InMemoryCaseAccessReader({
           operators: [{ caseId: AFFAIRE, userId: MARIE.id }],
+          verifications,
           traces: [{ id: TRACE, caseId: AFFAIRE }],
           referencePrints: [{ id: EMPREINTE, caseId: AFFAIRE }],
           layers: [{ id: CALQUE, fingerprintId: TRACE }],
@@ -503,4 +507,217 @@ describe("Le garde d'accès — la liste des affaires", () => {
     ]);
     await app.close();
   });
+});
+
+const ROUTES_FERMEES_AU_VERIFICATEUR: Route[] = [
+  {
+    label: 'PATCH /investigation-cases/:id',
+    method: 'patch',
+    url: `/investigation-cases/${AFFAIRE}`,
+    body: { pvNumber: 'PV-2026-118' },
+  },
+  {
+    label: 'POST /investigation-cases/:id/closure',
+    method: 'post',
+    url: `/investigation-cases/${AFFAIRE}/closure`,
+  },
+  {
+    label: 'POST /investigation-cases/:id/reopening',
+    method: 'post',
+    url: `/investigation-cases/${AFFAIRE}/reopening`,
+    body: { reason: 'Réquisition complémentaire' },
+  },
+  {
+    label: 'POST /investigation-cases/:id/verifications',
+    method: 'post',
+    url: `/investigation-cases/${AFFAIRE}/verifications`,
+    body: { verifierUserId: PERSONNE },
+  },
+  {
+    label: 'GET /investigation-cases/:caseId/audit-events',
+    method: 'get',
+    url: `/investigation-cases/${AFFAIRE}/audit-events`,
+  },
+  {
+    label: 'POST /investigation-cases/:caseId/reports',
+    method: 'post',
+    url: `/investigation-cases/${AFFAIRE}/reports`,
+    body: { type: 'IDENTIFICATION' },
+  },
+  {
+    label: 'GET /investigation-cases/:caseId/reports',
+    method: 'get',
+    url: `/investigation-cases/${AFFAIRE}/reports`,
+  },
+  {
+    label: 'GET /reports/:id/download',
+    method: 'get',
+    url: `/reports/${RAPPORT}/download`,
+  },
+  {
+    label: 'POST /investigation-cases/:id/expertise',
+    method: 'post',
+    url: `/investigation-cases/${AFFAIRE}/expertise`,
+    body: {
+      oathStatement: 'Je soussigné Marie Durand, prête serment.',
+      courtReference: 'Tribunal judiciaire de Paris',
+    },
+  },
+  {
+    label: 'PATCH /investigation-cases/:id/expertise',
+    method: 'patch',
+    url: `/investigation-cases/${AFFAIRE}/expertise`,
+    body: { sealCount: 2 },
+  },
+  {
+    label: 'GET /investigation-cases/:id/verifications',
+    method: 'get',
+    url: `/investigation-cases/${AFFAIRE}/verifications`,
+  },
+  {
+    label: 'POST /traces/:id/hit',
+    method: 'post',
+    url: `/traces/${TRACE}/hit`,
+    body: { caseId: AFFAIRE, referencePrintId: EMPREINTE },
+  },
+  {
+    label: 'DELETE /traces/:id/hit/:referencePrintId',
+    method: 'delete',
+    url: `/traces/${TRACE}/hit/${EMPREINTE}?caseId=${AFFAIRE}`,
+  },
+  {
+    label: 'POST /traces/:id/withdraw',
+    method: 'post',
+    url: `/traces/${TRACE}/withdraw`,
+    body: { motive: 'DUPLICATE' },
+  },
+  {
+    label: 'POST /reference-prints/:id/withdraw',
+    method: 'post',
+    url: `/reference-prints/${EMPREINTE}/withdraw`,
+    body: { motive: 'DUPLICATE' },
+  },
+  {
+    label: 'POST /traces/:id/restore',
+    method: 'post',
+    url: `/traces/${TRACE}/restore`,
+  },
+  {
+    label: 'POST /reference-prints/:id/restore',
+    method: 'post',
+    url: `/reference-prints/${EMPREINTE}/restore`,
+  },
+  {
+    label: 'PATCH /traces/:id/calibration',
+    method: 'patch',
+    url: `/traces/${TRACE}/calibration`,
+    body: { resolutionDpi: 500 },
+  },
+  {
+    label: 'PATCH /reference-prints/:id/calibration',
+    method: 'patch',
+    url: `/reference-prints/${EMPREINTE}/calibration`,
+    body: { resolutionDpi: 500 },
+  },
+];
+
+const ROUTES_OUVERTES_AU_VERIFICATEUR: Route[] = [
+  {
+    label: 'GET /investigation-cases/:id',
+    method: 'get',
+    url: `/investigation-cases/${AFFAIRE}`,
+  },
+  { label: 'GET /traces', method: 'get', url: `/traces?caseId=${AFFAIRE}` },
+  {
+    label: 'GET /layers/:fingerprintId',
+    method: 'get',
+    url: `/layers/${TRACE}`,
+  },
+  {
+    label: 'GET /traces/:id/hits',
+    method: 'get',
+    url: `/traces/${TRACE}/hits`,
+  },
+  {
+    label: 'POST /layers',
+    method: 'post',
+    url: '/layers',
+    body: {
+      fingerprintId: TRACE,
+      name: 'Calque',
+      type: 'MINUTIAE',
+      zIndex: 0,
+      settings: {},
+    },
+  },
+];
+
+describe("Le garde d'accès — le vérificateur dont la mission est rendue", () => {
+  let app: INestApplication;
+  let server: Server;
+
+  beforeEach(async () => {
+    ({ app, server } = await bootFor(LUCIE, [
+      { caseId: AFFAIRE, userId: LUCIE.id, inProgress: false },
+    ]));
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it.each(ROUTES_OUVERTES_AU_VERIFICATEUR)(
+    'relit le dossier sur $label',
+    async (route) => {
+      const response = await call(server, route);
+
+      expect(response.status).not.toBe(403);
+      expect(response.status).not.toBe(404);
+    },
+  );
+
+  it.each(ROUTES_FERMEES_AU_VERIFICATEUR)(
+    "n'administre toujours pas l'affaire sur $label",
+    async (route) => {
+      const response = await call(server, route);
+
+      expect(response.status).toBe(403);
+    },
+  );
+});
+
+describe("Le garde d'accès — le vérificateur en mission", () => {
+  let app: INestApplication;
+  let server: Server;
+  let bus: RecordingBus;
+
+  beforeEach(async () => {
+    ({ app, server, bus } = await bootFor(LUCIE, [
+      { caseId: AFFAIRE, userId: LUCIE.id, inProgress: true },
+    ]));
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it.each(ROUTES_FERMEES_AU_VERIFICATEUR)(
+    "reçoit « interdit » sur $label, qui administre l'affaire",
+    async (route) => {
+      const response = await call(server, route);
+
+      expect(response.status).toBe(403);
+      expect(bus.dispatched).toEqual([]);
+    },
+  );
+
+  it.each(ROUTES_OUVERTES_AU_VERIFICATEUR)(
+    'atteint son handler sur $label',
+    async (route) => {
+      const response = await call(server, route);
+
+      expect(response.status).not.toBe(403);
+      expect(bus.dispatched).toHaveLength(route.dispatches ?? 1);
+    },
+  );
 });

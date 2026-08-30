@@ -9,7 +9,12 @@ describe('ListLayersHandler', () => {
   let repo: InMemoryLayerRepository;
   let locator: InMemoryFingerprintLocatorAdapter;
 
-  const layer = (id: string, fingerprintId: string, zIndex: number) =>
+  const layer = (
+    id: string,
+    fingerprintId: string,
+    zIndex: number,
+    createdByUserId: string | null = 'user-marie',
+  ) =>
     Layer.create({
       id,
       fingerprintId,
@@ -17,6 +22,7 @@ describe('ListLayersHandler', () => {
       type: 'ANNOTATION',
       zIndex,
       settings: { type: 'circle', x: 1, y: 2, radius: 4, color: '#ffffff' },
+      createdByUserId,
     });
 
   beforeEach(() => {
@@ -57,5 +63,38 @@ describe('ListLayersHandler', () => {
     const result = await handler.execute(new ListLayersQuery('retirée'));
 
     expect(result).toEqual([]);
+  });
+
+  it("ne montre au vérificateur en mission que les calques qu'il a posés", async () => {
+    repo.seed(layer('du-titulaire', 'fp-1', 0, 'user-marie'));
+    repo.seed(layer('du-verificateur', 'fp-1', 1, 'user-lucie'));
+
+    const result = await handler.execute(
+      new ListLayersQuery('fp-1', 'user-lucie'),
+    );
+
+    expect(result.map((posé) => posé.id)).toEqual(['du-verificateur']);
+  });
+
+  it("ne donne au vérificateur aucun calque d'avant l'inscription des auteurs", async () => {
+    repo.seed(layer('sans-auteur', 'fp-1', 0, null));
+
+    const result = await handler.execute(
+      new ListLayersQuery('fp-1', 'user-lucie'),
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  it('montre tout au titulaire, comme avant', async () => {
+    repo.seed(layer('du-titulaire', 'fp-1', 0, 'user-marie'));
+    repo.seed(layer('du-verificateur', 'fp-1', 1, 'user-lucie'));
+
+    const result = await handler.execute(new ListLayersQuery('fp-1'));
+
+    expect(result.map((posé) => posé.id)).toEqual([
+      'du-titulaire',
+      'du-verificateur',
+    ]);
   });
 });

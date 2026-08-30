@@ -18,6 +18,7 @@ export class PrismaServiceUserDirectory implements ServiceUserDirectory {
       select: {
         id: true,
         status: true,
+        role: true,
         personalData: { select: { firstName: true, lastName: true } },
       },
     });
@@ -27,6 +28,7 @@ export class PrismaServiceUserDirectory implements ServiceUserDirectory {
     return {
       id: found.id,
       disabled: found.status !== 'ACTIVE',
+      role: found.role,
       firstName: found.personalData.firstName,
       lastName: found.personalData.lastName,
     };

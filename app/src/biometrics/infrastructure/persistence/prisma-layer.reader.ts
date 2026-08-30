@@ -8,10 +8,16 @@ import type { LayerReadModel } from '../../application/queries/list-layers/layer
 export class PrismaLayerReader implements LayerReader {
   constructor(private readonly tenantConnection: TenantConnectionService) {}
 
-  async findByFingerprintId(fingerprintId: string): Promise<LayerReadModel[]> {
+  async findByFingerprintId(
+    fingerprintId: string,
+    authoredBy?: string | null,
+  ): Promise<LayerReadModel[]> {
     const prisma = await this.tenantConnection.getCurrentClient();
     const rows = await prisma.layer.findMany({
-      where: { fingerprintId },
+      where: {
+        fingerprintId,
+        ...(authoredBy == null ? {} : { createdByUserId: authoredBy }),
+      },
       // Ni `zIndex` ni `createdAt` ne sont uniques, et l'empilement est
       // métier-significatif : l'identifiant ferme l'ordre.
       orderBy: [{ zIndex: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
@@ -24,6 +30,7 @@ export class PrismaLayerReader implements LayerReader {
       zIndex: row.zIndex,
       isVisible: row.isVisible,
       settings: row.settings as LayerSettings,
+      createdByUserId: row.createdByUserId,
     }));
   }
 }
