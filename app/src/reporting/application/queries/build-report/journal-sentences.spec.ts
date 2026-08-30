@@ -177,6 +177,60 @@ describe('journalSentence — les pièces', () => {
     );
   });
 
+  it('dit la localisation consignée sur les lieux, avec la phrase du terrain', () => {
+    expect(
+      say(
+        AuditEventTypeEnum.TRACE_LOCATION_STATED,
+        { location: 'Poignée intérieure de la portière conducteur' },
+        'trace-7',
+      ),
+    ).toBe(
+      'Localisation de la trace 3455-T7 consignée sur les lieux, au moment de ' +
+        'la capture — « Poignée intérieure de la portière conducteur »',
+    );
+  });
+
+  it('n’invente aucune phrase quand le maillon ne porte pas la localisation', () => {
+    expect(say(AuditEventTypeEnum.TRACE_LOCATION_STATED, {}, 'trace-7')).toBe(
+      'Localisation de la trace 3455-T7 consignée sur les lieux, au moment de la capture',
+    );
+  });
+
+  it('dit le versement d’une photographie de localisation', () => {
+    expect(
+      say(
+        AuditEventTypeEnum.LOCATION_PHOTO_UPLOADED,
+        {
+          locationPhotoId: 'photo-1',
+          fileSha256: 'a'.repeat(64),
+          storagePath: 'media/case-1/location-photos/photo-1.png',
+        },
+        'trace-7',
+      ),
+    ).toBe(
+      'Photographie de localisation de la trace 3455-T7 versée au dossier et ' +
+        'mise sous scellé',
+    );
+  });
+
+  it('dit le retrait d’une photographie de localisation et son motif', () => {
+    expect(
+      say(
+        AuditEventTypeEnum.LOCATION_PHOTO_DELETED,
+        {
+          locationPhotoId: 'photo-1',
+          storagePath: 'media/case-1/location-photos/photo-1.png',
+          fileSha256: 'a'.repeat(64),
+          motive: 'MISFILED',
+        },
+        'trace-7',
+      ),
+    ).toBe(
+      'Retrait de la photographie de localisation de la trace 3455-T7 — ' +
+        'pièce versée par erreur dans ce dossier',
+    );
+  });
+
   it('dit le rétablissement d’une trace', () => {
     expect(
       say(
