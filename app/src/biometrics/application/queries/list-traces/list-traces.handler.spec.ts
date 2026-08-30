@@ -26,6 +26,9 @@ const traceRow = (overrides: Partial<TraceReadModel> = {}): TraceReadModel => ({
   withdrawnAt: null,
   withdrawalMotive: null,
   resolutionDpi: null,
+  origin: null,
+  location: null,
+  revelationTechnique: null,
   ...overrides,
 });
 

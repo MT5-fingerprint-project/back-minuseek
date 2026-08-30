@@ -1,7 +1,12 @@
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { MINUTIA_SETTINGS_TYPES } from '../../../../shared/domain/forensics/minutiae';
 import { AuditEventData } from '../../ports/traceability-data.reader';
-import { caseStatusLabel, withdrawalMotiveLabel } from './action-labels';
+import {
+  caseStatusLabel,
+  revelationTechniqueLabel,
+  traceOriginLabel,
+  withdrawalMotiveLabel,
+} from './action-labels';
 import { filterSentence, FilterState } from './filter-labels';
 import {
   designationOf,
@@ -166,6 +171,20 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
     return cote === null
       ? `${designation} déclarée exploitable`
       : `${designation} déclarée exploitable, cotée « ${cote} »`;
+  },
+  [AuditEventTypeEnum.TRACE_DESCRIBED]: (event, named) => {
+    const opening = `Fiche renseignée sur ${trace(event, named).bare}`;
+    const origin = traceOriginLabel(text(event, 'origin'));
+    const location = text(event, 'location');
+    const technique = revelationTechniqueLabel(
+      text(event, 'revelationTechnique'),
+    );
+    const stated = [
+      origin === null ? null : `origine : ${origin}`,
+      location === null ? null : `localisation : « ${location} »`,
+      technique === null ? null : `révélation : ${technique}`,
+    ].filter((part): part is string => part !== null);
+    return stated.length === 0 ? opening : `${opening} — ${stated.join(', ')}`;
   },
   [AuditEventTypeEnum.TRACE_CALIBRATED]: calibrationRule(trace),
   [AuditEventTypeEnum.TRACE_DELETED]: (event, named) =>

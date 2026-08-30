@@ -34,6 +34,10 @@ model Trace {
   // confond pas avec un zéro : une trace non calibrée rend `null`.
   resolutionDpi Float?
 
+  origin              TraceOrigin?
+  location            String?
+  revelationTechnique RevelationTechnique?
+
   matchings Matching[]
   hits      Hit[]
 
@@ -44,4 +48,16 @@ enum TraceStatus {
   RECEIVED
   EXPLOITABLE
   NOT_EXPLOITABLE
+}
+
+enum TraceOrigin {
+  DIGITAL
+  PALMAR
+}
+
+enum RevelationTechnique {
+  OPTICAL_PROCESS
+  FINGERPRINT_POWDER
+  DFO
+  NINHYDRIN
 }

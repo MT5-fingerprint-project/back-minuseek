@@ -148,7 +148,7 @@ function build(overrides: Partial<IntegritySectionInput> = {}) {
     events: [],
     anchors: [],
     attestation: VERIFIED,
-    verificationUrl: 'https://minuseek.fr/srpts-paris/verifier',
+    verificationUrl: 'https://minuseek.fr/srpts-paris/verification',
     images: new Map(),
     ...overrides,
   });
@@ -423,7 +423,7 @@ describe('buildIntegritySection — l’attestation', () => {
 
   it('porte l’adresse de vérification telle qu’on la lui donne', () => {
     expect(build().verificationUrl).toBe(
-      'https://minuseek.fr/srpts-paris/verifier',
+      'https://minuseek.fr/srpts-paris/verification',
     );
   });
 });

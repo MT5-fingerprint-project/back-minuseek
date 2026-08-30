@@ -22,6 +22,9 @@ export interface TraceReadModel {
   withdrawnAt: Date | null;
   withdrawalMotive: string | null;
   resolutionDpi: number | null;
+  origin: string | null;
+  location: string | null;
+  revelationTechnique: string | null;
 }
 
 export type TraceView = Omit<TraceReadModel, 'status' | 'identified'> & {

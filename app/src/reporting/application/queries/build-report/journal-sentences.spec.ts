@@ -153,6 +153,30 @@ describe('journalSentence — les pièces', () => {
     );
   });
 
+  it('dit la fiche de la trace et les trois valeurs qu’elle porte', () => {
+    expect(
+      say(
+        AuditEventTypeEnum.TRACE_DESCRIBED,
+        {
+          origin: 'DIGITAL',
+          location: "Sur l'extérieur de la porte d'entrée de l'appartement",
+          revelationTechnique: 'FINGERPRINT_POWDER',
+        },
+        'trace-7',
+      ),
+    ).toBe(
+      'Fiche renseignée sur la trace 3455-T7 — origine : Digitale, ' +
+        "localisation : « Sur l'extérieur de la porte d'entrée de l'appartement », " +
+        'révélation : Poudre dactyloscopique',
+    );
+  });
+
+  it('n’invente aucune valeur quand le maillon ne porte pas la fiche', () => {
+    expect(say(AuditEventTypeEnum.TRACE_DESCRIBED)).toBe(
+      'Fiche renseignée sur une trace papillaire',
+    );
+  });
+
   it('dit le rétablissement d’une trace', () => {
     expect(
       say(

@@ -147,7 +147,7 @@ function model(
       recordVerifiedAtEdition: true,
       firstBrokenEntryNumber: null,
       anchorsFailed: 0,
-      verificationUrl: 'https://minuseek.fr/srpts-paris/verifier',
+      verificationUrl: 'https://minuseek.fr/srpts-paris/verification',
     },
     journal: {
       detail: 'SUMMARY',
@@ -730,7 +730,7 @@ function withIntegrity(overrides: Record<string, unknown> = {}) {
       recordVerifiedAtEdition: true,
       firstBrokenEntryNumber: null,
       anchorsFailed: 0,
-      verificationUrl: 'https://minuseek.fr/srpts-paris/verifier',
+      verificationUrl: 'https://minuseek.fr/srpts-paris/verification',
       ...overrides,
     },
   });
@@ -930,7 +930,7 @@ describe('renderTechnicalReportHtml — section 7', () => {
   it('imprime l’adresse de vérification et ce qu’elle signale', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
 
-    expect(html).toContain('https://minuseek.fr/srpts-paris/verifier');
+    expect(html).toContain('https://minuseek.fr/srpts-paris/verification');
     expect(html).toContain(
       'la page indique en outre si une version antérieure et si une version ultérieure de ce rapport ont été établies',
     );
