@@ -2,6 +2,7 @@ import {
   BadRequestException,
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -24,6 +25,8 @@ import { UnresolvableCaseScopeError } from './unresolvable-case-scope.error';
 export const CASE_NOT_FOUND_MESSAGE = 'Affaire introuvable';
 export const MALFORMED_CASE_SCOPE_MESSAGE =
   "L'affaire visée n'est pas identifiable dans la requête";
+export const CASE_ADMINISTRATION_FORBIDDEN_MESSAGE =
+  "Une mission de vérification n'ouvre pas l'administration de l'affaire";
 
 export type RequestWithCaseAccess = RequestWithCurrentUser & {
   caseAccess?: GrantedCaseAccess;
@@ -42,7 +45,7 @@ export class CaseAccessGuard implements CanActivate {
       CASE_SCOPE_KEY,
       [context.getHandler(), context.getClass()],
     );
-    if (scope?.mode !== 'GUARDED') {
+    if (scope?.mode !== 'GUARDED' && scope?.mode !== 'ADMINISTRATION') {
       return true;
     }
 
@@ -76,8 +79,9 @@ export class CaseAccessGuard implements CanActivate {
       throw new NotFoundException(CASE_NOT_FOUND_MESSAGE);
     }
 
+    let granted: GrantedCaseAccess;
     try {
-      request.caseAccess = await this.tenantContext.run(tenant, () =>
+      granted = await this.tenantContext.run(tenant, () =>
         this.caseAccess.assertAccessTo(requester, resolution.target),
       );
     } catch (error) {
@@ -87,6 +91,11 @@ export class CaseAccessGuard implements CanActivate {
       throw error;
     }
 
+    if (scope.mode === 'ADMINISTRATION' && granted.title === 'CASE_VERIFIER') {
+      throw new ForbiddenException(CASE_ADMINISTRATION_FORBIDDEN_MESSAGE);
+    }
+
+    request.caseAccess = granted;
     return true;
   }
 }

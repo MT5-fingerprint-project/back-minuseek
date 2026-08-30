@@ -443,3 +443,28 @@ describe('journalSentence — une calibration', () => {
     );
   });
 });
+
+describe('journalSentence — la vérification', () => {
+  it('nomme le collègue à qui la vérification est confiée', () => {
+    expect(
+      say(AuditEventTypeEnum.CASE_VERIFICATION_REQUESTED, {
+        verifierName: 'Lucie Bernard',
+        verifierUserId: 'user-lucie',
+      }),
+    ).toBe('Vérification du dossier confiée à Lucie Bernard');
+  });
+
+  it('retombe sur l’identifiant quand le maillon ne porte pas le nom', () => {
+    expect(
+      say(AuditEventTypeEnum.CASE_VERIFICATION_REQUESTED, {
+        verifierUserId: 'user-lucie',
+      }),
+    ).toBe('Vérification du dossier confiée à user-lucie');
+  });
+
+  it('dit la vérification confiée même sans compte désigné dans le maillon', () => {
+    expect(say(AuditEventTypeEnum.CASE_VERIFICATION_REQUESTED)).toBe(
+      'Vérification du dossier confiée à un second regard',
+    );
+  });
+});

@@ -71,10 +71,10 @@ describe("CaseAccessService — l'accès à une affaire", () => {
     ).resolves.toBe('CASE_VERIFIER');
   });
 
-  it('refuse le vérificateur dont la mission est close', async () => {
+  it('laisse relire le dossier au vérificateur dont la mission est close', async () => {
     await expect(
       service.assertAccessToCase(verificateurMissionClose, DOSSIER_DE_MARIE),
-    ).rejects.toThrow(CaseAccessDeniedError);
+    ).resolves.toBe('CASE_VERIFIER');
   });
 
   it("refuse un opérateur étranger à l'affaire", async () => {
@@ -206,10 +206,10 @@ describe('CaseAccessService — le filtre de liste', () => {
     ]);
   });
 
-  it('ne rend aucune affaire à un vérificateur dont la mission est close', async () => {
+  it('garde dans la liste du vérificateur le dossier de sa mission close', async () => {
     await expect(
       service.visibleCaseIds(verificateurMissionClose),
-    ).resolves.toEqual([]);
+    ).resolves.toEqual([DOSSIER_DE_MARIE]);
   });
 
   it('ne filtre pas la liste du responsable de service', async () => {

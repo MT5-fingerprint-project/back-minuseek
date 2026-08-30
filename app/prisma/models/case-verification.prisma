@@ -1,0 +1,18 @@
+model CaseVerification {
+  id                String             @id @db.Uuid
+  caseId            String             @db.Uuid
+  verifierUserId    String             @db.Uuid
+  requestedByUserId String             @db.Uuid
+  status            VerificationStatus @default(PENDING)
+  requestedAt       DateTime           @default(now())
+  completedAt       DateTime?
+
+  @@index([caseId])
+  @@index([verifierUserId, status])
+}
+
+enum VerificationStatus {
+  PENDING
+  CONCORDANT
+  DISCORDANT
+}

@@ -4,12 +4,16 @@ export const CASE_SCOPE_KEY = 'caseScope';
 
 export type CaseScope =
   | { mode: 'GUARDED' }
+  | { mode: 'ADMINISTRATION' }
   | { mode: 'LIST' }
   | { mode: 'NONE'; reason: string }
   | { mode: 'CHECKED_IN_HANDLER'; reason: string };
 
 export const CaseScoped = () =>
   SetMetadata<string, CaseScope>(CASE_SCOPE_KEY, { mode: 'GUARDED' });
+
+export const CaseAdministration = () =>
+  SetMetadata<string, CaseScope>(CASE_SCOPE_KEY, { mode: 'ADMINISTRATION' });
 
 export const CaseScopedList = () =>
   SetMetadata<string, CaseScope>(CASE_SCOPE_KEY, { mode: 'LIST' });

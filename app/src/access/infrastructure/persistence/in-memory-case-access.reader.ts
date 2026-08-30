@@ -39,9 +39,7 @@ export class InMemoryCaseAccessReader implements CaseAccessReader {
 
     const isVerifier = this.fixture.verifications.some(
       (verification) =>
-        verification.userId === userId &&
-        verification.caseId === caseId &&
-        verification.inProgress,
+        verification.userId === userId && verification.caseId === caseId,
     );
     return Promise.resolve(isVerifier ? 'CASE_VERIFIER' : null);
   }
@@ -51,10 +49,7 @@ export class InMemoryCaseAccessReader implements CaseAccessReader {
       .filter((operator) => operator.userId === userId)
       .map((operator) => operator.caseId);
     const verifiedCaseIds = this.fixture.verifications
-      .filter(
-        (verification) =>
-          verification.userId === userId && verification.inProgress,
-      )
+      .filter((verification) => verification.userId === userId)
       .map((verification) => verification.caseId);
 
     return Promise.resolve([...new Set([...ownCaseIds, ...verifiedCaseIds])]);
