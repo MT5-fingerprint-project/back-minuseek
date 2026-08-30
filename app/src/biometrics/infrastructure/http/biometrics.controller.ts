@@ -18,11 +18,16 @@ import {
   Query,
   UnprocessableEntityException,
   UploadedFile,
+  UploadedFiles,
   UseInterceptors,
   ValidationPipe,
 } from '@nestjs/common';
+import type { FileValidator } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import {
   ApiBody,
   ApiConsumes,
@@ -36,6 +41,9 @@ import { DescribeTraceCommand } from '../../application/commands/describe-trace/
 import { CalibrateReferencePrintCommand } from '../../application/commands/calibrate-reference-print/calibrate-reference-print.command';
 import { UploadReferencePrintCommand } from '../../application/commands/upload-reference-print/upload-reference-print.command';
 import { WithdrawTraceCommand } from '../../application/commands/withdraw-trace/withdraw-trace.command';
+import { AttachLocationPhotoCommand } from '../../application/commands/attach-location-photo/attach-location-photo.command';
+import type { AttachedLocationPhoto } from '../../application/commands/attach-location-photo/attach-location-photo.handler';
+import { RemoveLocationPhotoCommand } from '../../application/commands/remove-location-photo/remove-location-photo.command';
 import { RestoreTraceCommand } from '../../application/commands/restore-trace/restore-trace.command';
 import { RestoreReferencePrintCommand } from '../../application/commands/restore-reference-print/restore-reference-print.command';
 import { WithdrawReferencePrintCommand } from '../../application/commands/withdraw-reference-print/withdraw-reference-print.command';
@@ -44,12 +52,15 @@ import { RecordHitCommand } from '../../application/commands/record-hit/record-h
 import { RemoveHitCommand } from '../../application/commands/remove-hit/remove-hit.command';
 import { ListTracesQuery } from '../../application/queries/list-traces/list-traces.query';
 import { GetTraceQuery } from '../../application/queries/get-trace/get-trace.query';
-import type { TraceView } from '../../application/queries/list-traces/trace-read-model';
+import type { TraceDetailView } from '../../application/queries/list-traces/trace-read-model';
 import { ListReferencePrintsQuery } from '../../application/queries/list-reference-prints/list-reference-prints.query';
 import { ListHitsQuery } from '../../application/queries/list-hits/list-hits.query';
 import { CurrentServiceUser } from '../../../identity-access/infrastructure/http/current-service-user.decorator';
 import type { UserReadModel } from '../../../identity-access/application/queries/get-user-by-provider-id/user-read-model';
+import { MAX_TRACE_LOCATION_LENGTH } from '../../domain/trace/entity/trace';
 import { TraceNotFoundError } from '../../domain/trace/errors/trace-not-found.error';
+import { LocationPhotoAlreadyAttachedError } from '../../domain/trace-location-photo/errors/location-photo-already-attached.error';
+import { TraceLocationPhotoNotFoundError } from '../../domain/trace-location-photo/errors/trace-location-photo-not-found.error';
 import { InvalidTraceLocationError } from '../../domain/trace/errors/invalid-trace-location.error';
 import { CaseUnavailableForTraceError } from '../../domain/trace/errors/case-unavailable-for-trace.error';
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
@@ -103,14 +114,30 @@ const captureMetadataPipe = () =>
     forbidNonWhitelisted: true,
   });
 
+const imageValidators = (): FileValidator[] => [
+  new FileTypeValidator({ fileType: IMAGE_MIME }),
+  new MaxFileSizeValidator({ maxSize: MAX_IMAGE_SIZE_BYTES }),
+];
+
 const imageFileValidator = () =>
-  new ParseFilePipe({
-    validators: [
-      new FileTypeValidator({ fileType: IMAGE_MIME }),
-      new MaxFileSizeValidator({ maxSize: MAX_IMAGE_SIZE_BYTES }),
-    ],
-    fileIsRequired: true,
-  });
+  new ParseFilePipe({ validators: imageValidators(), fileIsRequired: true });
+
+interface UploadedImage {
+  buffer: Buffer;
+  mimetype: string;
+  size: number;
+}
+
+// `ParseFilePipe` ne valide qu'un fichier ou un tableau de fichiers : avec
+// `FileFieldsInterceptor` il reçoit un objet de champs et le laisse filer.
+// `FileTypeValidator.isValid` lit les octets de tête, donc rend une promesse.
+async function assertUsableImage(file: UploadedImage): Promise<void> {
+  for (const validator of imageValidators()) {
+    if (!(await validator.isValid(file))) {
+      throw new BadRequestException(validator.buildErrorMessage(file));
+    }
+  }
+}
 
 @ApiTags('biometrics')
 @Controller()
@@ -147,10 +174,11 @@ export class BiometricsController {
   async getTrace(
     @Param('id', ParseUUIDPipe) id: string,
     @BlindVerifierId() blindVerifierUserId: string | null,
-  ): Promise<TraceView> {
-    const trace = await this.queryBus.execute<GetTraceQuery, TraceView | null>(
-      new GetTraceQuery(id, blindVerifierUserId),
-    );
+  ): Promise<TraceDetailView> {
+    const trace = await this.queryBus.execute<
+      GetTraceQuery,
+      TraceDetailView | null
+    >(new GetTraceQuery(id, blindVerifierUserId));
     if (trace === null) {
       throw new NotFoundException(new TraceNotFoundError(id).message);
     }
@@ -347,7 +375,7 @@ export class BiometricsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: DescribeTraceDto,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<TraceView> {
+  ): Promise<TraceDetailView> {
     try {
       await this.commandBus.execute(
         new DescribeTraceCommand(
@@ -370,9 +398,10 @@ export class BiometricsController {
       throw e;
     }
 
-    const trace = await this.queryBus.execute<GetTraceQuery, TraceView | null>(
-      new GetTraceQuery(id),
-    );
+    const trace = await this.queryBus.execute<
+      GetTraceQuery,
+      TraceDetailView | null
+    >(new GetTraceQuery(id));
     if (trace === null) {
       throw new NotFoundException(new TraceNotFoundError(id).message);
     }
@@ -425,7 +454,20 @@ export class BiometricsController {
       type: 'object',
       properties: {
         file: { type: 'string', format: 'binary' },
+        locationPhoto: {
+          type: 'string',
+          format: 'binary',
+          description:
+            "Cliché en plan large de l'endroit d'où la trace a été relevée",
+        },
         caseId: { type: 'string', format: 'uuid' },
+        location: {
+          type: 'string',
+          maxLength: MAX_TRACE_LOCATION_LENGTH,
+          description:
+            'Localisation de la trace, écrite sur les lieux au moment de la capture',
+          example: "Sur l'extérieur de la porte d'entrée de l'appartement",
+        },
         width: { type: 'integer', minimum: 1, example: 3024 },
         height: { type: 'integer', minimum: 1, example: 4032 },
         capturedAt: {
@@ -458,7 +500,8 @@ export class BiometricsController {
       'Fichier manquant, type non supporté (PNG/JPEG/TIFF), au-delà de 20 Mo, caseId invalide, ' +
       'métadonnées de capture invalides (dimensions non appairées, orientation hors 1–8, ' +
       'focale négative, capturedAt non ISO 8601), captureQuality mal formé (JSON invalide, ' +
-      'blurScore négatif, passed non booléen) ou champ inconnu',
+      'blurScore négatif, passed non booléen), localisation de plus de 300 caractères, ' +
+      'photographie de localisation illisible ou champ inconnu',
   })
   @ApiResponse({
     status: 404,
@@ -466,14 +509,29 @@ export class BiometricsController {
       'Affaire inexistante ou non accessible (statut ≠ OPEN/IN_PROGRESS)',
   })
   @ApiResponse({ status: 409, description: 'Affaire close' })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'file', maxCount: 1 },
+      { name: 'locationPhoto', maxCount: 1 },
+    ]),
+  )
   async uploadTrace(
-    @UploadedFile(imageFileValidator())
-    file: { buffer: Buffer },
+    @UploadedFiles()
+    files: { file?: UploadedImage[]; locationPhoto?: UploadedImage[] },
     @Body(captureMetadataPipe()) dto: UploadTraceDto,
     @CurrentUser() user: AuthenticatedUser,
     @CurrentServiceUser() requester?: UserReadModel,
   ) {
+    const [file] = files?.file ?? [];
+    if (file === undefined) {
+      throw new BadRequestException('File is required');
+    }
+    await assertUsableImage(file);
+    const [locationPhoto] = files?.locationPhoto ?? [];
+    if (locationPhoto !== undefined) {
+      await assertUsableImage(locationPhoto);
+    }
+
     try {
       return await this.commandBus.execute<
         UploadTraceCommand,
@@ -493,6 +551,8 @@ export class BiometricsController {
             deviceModel: dto.deviceModel,
           },
           dto.captureQuality,
+          dto.location,
+          locationPhoto?.buffer,
         ),
       );
     } catch (e) {
@@ -509,6 +569,95 @@ export class BiometricsController {
         e instanceof UnsupportedImageFormatError
       )
         throw new BadRequestException(e.message);
+      throw e;
+    }
+  }
+
+  @Post('traces/:id/location-photo')
+  @CaseAdministration()
+  @ApiOperation({
+    summary: 'Rattacher une photographie de localisation à une trace',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+      required: ['file'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Photographie versée au dossier et mise sous scellé',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Fichier manquant, type non supporté (PNG/JPEG/TIFF) ou au-delà de 20 Mo',
+  })
+  @ApiResponse({ status: 404, description: 'Trace non trouvée' })
+  @ApiResponse({
+    status: 409,
+    description: 'Dossier clos, ou photographie déjà rattachée à cette trace',
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  async attachLocationPhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile(imageFileValidator())
+    file: UploadedImage,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<AttachedLocationPhoto> {
+    try {
+      return await this.commandBus.execute<
+        AttachLocationPhotoCommand,
+        AttachedLocationPhoto
+      >(new AttachLocationPhotoCommand(toAuditActor(user), id, file.buffer));
+    } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
+      if (e instanceof LocationPhotoAlreadyAttachedError)
+        throw new ConflictException(e.message);
+      if (e instanceof TraceNotFoundError)
+        throw new NotFoundException(e.message);
+      if (
+        e instanceof InvalidImageError ||
+        e instanceof UnsupportedImageFormatError
+      )
+        throw new BadRequestException(e.message);
+      throw e;
+    }
+  }
+
+  @Delete('traces/:id/location-photo')
+  @CaseAdministration()
+  @HttpCode(204)
+  @ApiOperation({
+    summary: "Retirer la photographie de localisation d'une trace",
+  })
+  @ApiResponse({ status: 204, description: 'Photographie retirée du dossier' })
+  @ApiResponse({ status: 400, description: 'Motif absent ou hors liste' })
+  @ApiResponse({
+    status: 404,
+    description: 'Trace non trouvée, ou aucune photographie rattachée',
+  })
+  @ApiResponse({ status: 409, description: 'Dossier clos' })
+  async removeLocationPhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() dto: WithdrawPieceDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    try {
+      await this.commandBus.execute(
+        new RemoveLocationPhotoCommand(toAuditActor(user), id, dto.motive),
+      );
+    } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
+      if (
+        e instanceof TraceNotFoundError ||
+        e instanceof TraceLocationPhotoNotFoundError
+      )
+        throw new NotFoundException(e.message);
       throw e;
     }
   }

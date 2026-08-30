@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsNumber,
   IsObject,
+  IsOptional,
   IsPositive,
   IsString,
   IsUUID,
@@ -17,6 +18,7 @@ import {
 } from 'class-validator';
 import { CaptureQualityDto } from './capture-quality.dto';
 import { MAX_DEVICE_MODEL_LENGTH } from '../../../domain/trace/value-objects/capture-metadata.vo';
+import { MAX_TRACE_LOCATION_LENGTH } from '../../../domain/trace/entity/trace';
 
 // Les dimensions ne veulent rien dire l'une sans l'autre : chacune n'est
 // validée que si l'une des deux est présente, ce qui fait échouer celle qui
@@ -113,6 +115,17 @@ export class UploadTraceDto {
   @IsNotEmpty()
   @MaxLength(MAX_DEVICE_MODEL_LENGTH)
   deviceModel?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Localisation de la trace, écrite sur les lieux au moment de la capture',
+    maxLength: MAX_TRACE_LOCATION_LENGTH,
+    example: "Sur l'extérieur de la porte d'entrée de l'appartement",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_TRACE_LOCATION_LENGTH)
+  location?: string;
 
   @ApiPropertyOptional({
     type: CaptureQualityDto,

@@ -59,7 +59,10 @@ interface Route {
   method: Method;
   url: string;
   body?: Record<string, unknown>;
-  /** Les routes qui relisent l'affaire après l'avoir changée en envoient deux. */
+  /** Les routes qui relisent l'affaire après l'avoir changée en envoient deux ;
+   * les routes multipart n'en envoient aucune, leur contrôle de fichier tombe
+   * avant le handler faute de pouvoir charger « file-type » (ESM) sous Jest.
+   * Le garde, lui, passe avant les pipes : c'est ce que cette suite vérifie. */
   dispatches?: number;
 }
 
@@ -175,6 +178,17 @@ const ROUTES_GARDEES: Route[] = [
       revelationTechnique: 'FINGERPRINT_POWDER',
     },
     dispatches: 2,
+  },
+  {
+    label: 'POST /traces/:id/location-photo',
+    method: 'post',
+    url: `/traces/${TRACE}/location-photo`,
+    dispatches: 0,
+  },
+  {
+    label: 'DELETE /traces/:id/location-photo',
+    method: 'delete',
+    url: `/traces/${TRACE}/location-photo?motive=MISFILED`,
   },
   {
     label: 'POST /traces/:id/compare',
@@ -654,6 +668,17 @@ const ROUTES_FERMEES_AU_VERIFICATEUR: Route[] = [
       location: "Sur l'extérieur de la porte d'entrée de l'appartement",
       revelationTechnique: 'FINGERPRINT_POWDER',
     },
+  },
+  {
+    label: 'POST /traces/:id/location-photo',
+    method: 'post',
+    url: `/traces/${TRACE}/location-photo`,
+    dispatches: 0,
+  },
+  {
+    label: 'DELETE /traces/:id/location-photo',
+    method: 'delete',
+    url: `/traces/${TRACE}/location-photo?motive=MISFILED`,
   },
   {
     label: 'PATCH /traces/:id/calibration',
