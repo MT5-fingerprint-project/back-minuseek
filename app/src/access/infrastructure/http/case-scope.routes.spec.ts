@@ -87,6 +87,16 @@ const ROUTES_GARDEES: Route[] = [
     dispatches: 2,
   },
   {
+    label: 'POST /investigation-cases/:id/expertise',
+    method: 'post',
+    url: `/investigation-cases/${AFFAIRE}/expertise`,
+    body: {
+      oathStatement: 'Je soussigné Marie Durand, prête serment.',
+      courtReference: 'Tribunal judiciaire de Paris',
+    },
+    dispatches: 2,
+  },
+  {
     label: 'GET /investigation-cases/:caseId/audit-events',
     method: 'get',
     url: `/investigation-cases/${AFFAIRE}/audit-events`,

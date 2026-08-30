@@ -88,6 +88,12 @@ describe('PRINTABLE_EVENT_TYPES', () => {
     ).toBe(false);
   });
 
+  it('imprime la déclaration d’expertise, que le magistrat a intérêt à lire', () => {
+    expect(
+      PRINTABLE_EVENT_TYPES.has(AuditEventTypeEnum.CASE_EXPERTISE_DECLARED),
+    ).toBe(true);
+  });
+
   it('imprime tout le reste du catalogue', () => {
     const printable = Object.values(AuditEventTypeEnum).filter((eventType) =>
       PRINTABLE_EVENT_TYPES.has(eventType),

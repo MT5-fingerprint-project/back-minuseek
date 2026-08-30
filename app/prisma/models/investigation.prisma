@@ -11,6 +11,15 @@ model InvestigationCase {
   @@index([operatorUserId])
 }
 
+model CaseExpertise {
+  id             String   @id @default(uuid()) @db.Uuid
+  caseId         String   @unique @db.Uuid
+  expertUserId   String   @db.Uuid
+  oathStatement  String
+  courtReference String
+  swornAt        DateTime
+}
+
 enum InvestigationCaseStatus {
   OPEN
   IN_PROGRESS
