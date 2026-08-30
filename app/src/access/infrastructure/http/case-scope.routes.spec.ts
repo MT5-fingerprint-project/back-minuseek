@@ -137,6 +137,7 @@ const ROUTES_GARDEES: Route[] = [
     url: `/reports/${RAPPORT}/download`,
   },
   { label: 'GET /traces', method: 'get', url: `/traces?caseId=${AFFAIRE}` },
+  { label: 'GET /traces/:id', method: 'get', url: `/traces/${TRACE}` },
   {
     label: 'GET /reference-prints',
     method: 'get',
@@ -654,6 +655,7 @@ const ROUTES_OUVERTES_AU_VERIFICATEUR: Route[] = [
     url: `/investigation-cases/${AFFAIRE}`,
   },
   { label: 'GET /traces', method: 'get', url: `/traces?caseId=${AFFAIRE}` },
+  { label: 'GET /traces/:id', method: 'get', url: `/traces/${TRACE}` },
   {
     label: 'GET /layers/:fingerprintId',
     method: 'get',

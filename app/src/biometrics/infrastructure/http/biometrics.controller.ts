@@ -41,6 +41,8 @@ import { CompareTraceCommand } from '../../application/commands/compare-trace/co
 import { RecordHitCommand } from '../../application/commands/record-hit/record-hit.command';
 import { RemoveHitCommand } from '../../application/commands/remove-hit/remove-hit.command';
 import { ListTracesQuery } from '../../application/queries/list-traces/list-traces.query';
+import { GetTraceQuery } from '../../application/queries/get-trace/get-trace.query';
+import type { TraceView } from '../../application/queries/list-traces/trace-read-model';
 import { ListReferencePrintsQuery } from '../../application/queries/list-reference-prints/list-reference-prints.query';
 import { ListHitsQuery } from '../../application/queries/list-hits/list-hits.query';
 import { CurrentServiceUser } from '../../../identity-access/infrastructure/http/current-service-user.decorator';
@@ -130,6 +132,25 @@ export class BiometricsController {
         blindVerifierUserId,
       ),
     );
+  }
+
+  @Get('traces/:id')
+  @CaseScoped()
+  @ApiOperation({ summary: 'Consulter une trace seule' })
+  @ApiResponse({ status: 200, description: 'Fiche de la trace' })
+  @ApiResponse({ status: 400, description: "L'identifiant n'est pas un UUID" })
+  @ApiResponse({ status: 404, description: 'Trace non trouvée' })
+  async getTrace(
+    @Param('id', ParseUUIDPipe) id: string,
+    @BlindVerifierId() blindVerifierUserId: string | null,
+  ): Promise<TraceView> {
+    const trace = await this.queryBus.execute<GetTraceQuery, TraceView | null>(
+      new GetTraceQuery(id, blindVerifierUserId),
+    );
+    if (trace === null) {
+      throw new NotFoundException(new TraceNotFoundError(id).message);
+    }
+    return trace;
   }
 
   @Get('reference-prints')

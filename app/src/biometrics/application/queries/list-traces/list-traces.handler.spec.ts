@@ -1,23 +1,8 @@
+import { InMemoryTraceReader } from '../../../infrastructure/persistence/in-memory-trace.reader';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
 import { ListTracesHandler } from './list-traces.handler';
 import { ListTracesQuery } from './list-traces.query';
 import { TraceReadModel } from './trace-read-model';
-import { TraceReader } from './trace.reader';
-
-class InMemoryTraceReader implements TraceReader {
-  constructor(private readonly traces: TraceReadModel[]) {}
-  findByCaseId(caseId: string, withdrawn = false): Promise<TraceReadModel[]> {
-    return Promise.resolve(
-      this.traces
-        .filter(
-          (trace) =>
-            trace.caseId === caseId &&
-            (trace.withdrawnAt !== null) === withdrawn,
-        )
-        .sort((left, right) => left.number - right.number),
-    );
-  }
-}
 
 const traceRow = (overrides: Partial<TraceReadModel> = {}): TraceReadModel => ({
   id: 'trace-1',
@@ -28,7 +13,9 @@ const traceRow = (overrides: Partial<TraceReadModel> = {}): TraceReadModel => ({
   score: null,
   caseId: 'case-9',
   identified: false,
+  sha256: null,
   createdAt: new Date('2026-07-01T00:00:00.000Z'),
+  updatedAt: new Date('2026-07-01T00:00:00.000Z'),
   captureWidth: null,
   captureHeight: null,
   capturedAt: null,

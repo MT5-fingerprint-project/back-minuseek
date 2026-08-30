@@ -43,4 +43,35 @@ export class PrismaTraceReader implements TraceReader {
       identified: hits.length > 0,
     }));
   }
+
+  async findById(id: string): Promise<TraceReadModel | null> {
+    const prisma = await this.tenantConnection.getCurrentClient();
+    const row = await prisma.trace.findUnique({
+      where: { id },
+      include: {
+        hits: {
+          where: { ...NOT_WITHDRAWN, referencePrint: NOT_WITHDRAWN },
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+    if (!row) {
+      return null;
+    }
+    const investigationCase = await prisma.investigationCase.findUnique({
+      where: { id: row.caseId },
+      select: { caseNumber: true },
+    });
+    if (!investigationCase) {
+      return null;
+    }
+    const { hits, ...trace } = row;
+    return {
+      ...trace,
+      captureQuality: trace.captureQuality as CaptureQualityProps | null,
+      reference: traceReference(investigationCase.caseNumber, trace.number),
+      identified: hits.length > 0,
+    };
+  }
 }
