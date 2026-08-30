@@ -11,6 +11,7 @@ import { designationOf } from './piece-designations';
 
 const ADMINISTRATIVE_EVENT_TYPES = new Set<string>([
   AuditEventTypeEnum.CASE_UPDATED,
+  AuditEventTypeEnum.CASE_SAISINE_UPDATED,
   AuditEventTypeEnum.SERVICE_HEADER_SAVED,
 ]);
 

@@ -149,6 +149,8 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
       ? 'Dossier déclaré en expertise, serment prêté'
       : `Dossier déclaré en expertise, serment prêté devant ${court}`;
   },
+  [AuditEventTypeEnum.CASE_SAISINE_UPDATED]: () =>
+    'Saisine du dossier complétée',
   [AuditEventTypeEnum.TRACE_UPLOADED]: (event, named) =>
     `Dépôt de ${trace(event, named).full} et mise sous scellé`,
   [AuditEventTypeEnum.TRACE_QUALIFIED]: (event, named) => {

@@ -163,11 +163,22 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
       }),
     ]);
 
+    const expertise = await prisma.caseExpertise.findUnique({
+      where: { caseId },
+      include: {
+        assistants: {
+          select: { name: true, task: true },
+          orderBy: { id: 'asc' },
+        },
+      },
+    });
+
     const experts = await this.readExperts(
       prisma,
-      hits
-        .map((hit) => hit.declaredByUserId)
-        .filter((userId): userId is string => userId !== null),
+      [
+        ...hits.map((hit) => hit.declaredByUserId),
+        expertise?.expertUserId ?? null,
+      ].filter((userId): userId is string => userId !== null),
     );
     const declaredPairs = new Set(
       hits.map((hit) => `${hit.traceId}:${hit.referencePrintId}`),
@@ -198,6 +209,23 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
           attentionName: null,
         },
       },
+      expertise: expertise
+        ? {
+            expert: experts.get(expertise.expertUserId) ?? null,
+            oathStatement: expertise.oathStatement,
+            courtReference: expertise.courtReference,
+            swornAt: expertise.swornAt,
+            magistrateName: expertise.magistrateName,
+            magistrateTitle: expertise.magistrateTitle,
+            ordinanceDate: expertise.ordinanceDate,
+            missionObject: expertise.missionObject,
+            sealCount: expertise.sealCount,
+            prorogationDeadline: expertise.prorogationDeadline,
+            prorogationOrdinanceDate: expertise.prorogationOrdinanceDate,
+            biologicalPrecautions: expertise.biologicalPrecautions,
+            assistants: expertise.assistants,
+          }
+        : null,
       // Rang provisoire dans l'ordre de dépôt, celui que la migration de L4-1a
       // écrira en colonne : à remplacer par `trace.number` dès sa fusion.
       traces: traces.map((trace, order) =>

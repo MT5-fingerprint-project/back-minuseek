@@ -1,5 +1,6 @@
 import { CaseExpertise } from './case-expertise';
 import { InvalidCaseExpertiseError } from '../errors/invalid-case-expertise.error';
+import { InvalidSaisineError } from '../errors/invalid-saisine.error';
 
 const SERMENT =
   'Je soussigné Julien Marchand, brigadier-chef en fonction au SRPTS de Paris, ' +
@@ -61,5 +62,162 @@ describe('CaseExpertise', () => {
 
   it("nomme le champ fautif dans l'erreur", () => {
     expect(() => declare({ courtReference: '' })).toThrow(/"courtReference"/);
+  });
+});
+
+describe('CaseExpertise — saisine', () => {
+  const ORDONNANCE = new Date('2026-03-04T00:00:00.000Z');
+  const PROROGATION = new Date('2026-06-30T00:00:00.000Z');
+
+  it('part sans aucun élément de saisine', () => {
+    expect(declare().toPrimitives()).toMatchObject({
+      magistrateName: null,
+      ordinanceDate: null,
+      missionObject: null,
+      sealCount: null,
+      prorogationDeadline: null,
+      prorogationOrdinanceDate: null,
+      biologicalPrecautions: false,
+      assistants: [],
+    });
+  });
+
+  it('enregistre les éléments de la commission', () => {
+    const expertise = declare();
+
+    expertise.completeSaisine({
+      magistrateName: 'Claire Rousseau',
+      magistrateTitle: "Juge d'instruction",
+      ordinanceDate: ORDONNANCE,
+      missionObject: 'Exploitation des traces papillaires',
+      sealCount: 3,
+    });
+
+    expect(expertise.toPrimitives()).toMatchObject({
+      magistrateName: 'Claire Rousseau',
+      magistrateTitle: "Juge d'instruction",
+      ordinanceDate: ORDONNANCE,
+      missionObject: 'Exploitation des traces papillaires',
+      sealCount: 3,
+    });
+  });
+
+  it('ne rend que les champs réellement modifiés', () => {
+    const expertise = declare();
+    expertise.completeSaisine({ sealCount: 3, missionObject: 'Traces' });
+
+    const changes = expertise.completeSaisine({
+      sealCount: 3,
+      missionObject: 'Traces papillaires',
+    });
+
+    expect(changes).toEqual({ missionObject: 'Traces papillaires' });
+  });
+
+  it('ne rend aucun changement quand rien ne bouge', () => {
+    const expertise = declare();
+    expertise.completeSaisine({ biologicalPrecautions: true });
+
+    expect(expertise.completeSaisine({ biologicalPrecautions: true })).toEqual(
+      {},
+    );
+  });
+
+  it('remplace la liste des assistants', () => {
+    const expertise = declare();
+    expertise.completeSaisine({
+      assistants: [{ name: 'Paul Ferrand', task: 'Ouverture du véhicule' }],
+    });
+
+    const changes = expertise.completeSaisine({
+      assistants: [{ name: 'Léa Nguyen', task: 'Insertion au FAED' }],
+    });
+
+    expect(changes).toEqual({
+      assistants: [{ name: 'Léa Nguyen', task: 'Insertion au FAED' }],
+    });
+    expect(expertise.toPrimitives().assistants).toEqual([
+      { name: 'Léa Nguyen', task: 'Insertion au FAED' },
+    ]);
+  });
+
+  it('refuse un nombre de scellés nul ou négatif', () => {
+    expect(() => declare().completeSaisine({ sealCount: 0 })).toThrow(
+      InvalidSaisineError,
+    );
+    expect(() => declare().completeSaisine({ sealCount: -1 })).toThrow(
+      InvalidSaisineError,
+    );
+  });
+
+  it("refuse une prorogation antérieure à l'ordonnance initiale", () => {
+    const expertise = declare();
+    expertise.completeSaisine({ ordinanceDate: ORDONNANCE });
+
+    expect(() =>
+      expertise.completeSaisine({
+        prorogationOrdinanceDate: new Date('2026-01-01T00:00:00.000Z'),
+        prorogationDeadline: PROROGATION,
+      }),
+    ).toThrow(InvalidSaisineError);
+  });
+
+  it("refuse une prorogation datée du jour de l'ordonnance initiale", () => {
+    const expertise = declare();
+    expertise.completeSaisine({ ordinanceDate: ORDONNANCE });
+
+    expect(() =>
+      expertise.completeSaisine({ prorogationOrdinanceDate: ORDONNANCE }),
+    ).toThrow(InvalidSaisineError);
+  });
+
+  it("accepte une prorogation postérieure à l'ordonnance initiale", () => {
+    const expertise = declare();
+    expertise.completeSaisine({ ordinanceDate: ORDONNANCE });
+
+    expertise.completeSaisine({
+      prorogationOrdinanceDate: new Date('2026-05-02T00:00:00.000Z'),
+      prorogationDeadline: PROROGATION,
+    });
+
+    expect(expertise.toPrimitives().prorogationDeadline).toEqual(PROROGATION);
+  });
+
+  it("laisse passer une prorogation quand l'ordonnance initiale n'est pas saisie", () => {
+    const expertise = declare();
+
+    expect(() =>
+      expertise.completeSaisine({
+        prorogationOrdinanceDate: new Date('2026-05-02T00:00:00.000Z'),
+      }),
+    ).not.toThrow();
+  });
+
+  it("n'écrit rien quand une règle refuse la saisine", () => {
+    const expertise = declare();
+    expertise.completeSaisine({ sealCount: 3 });
+
+    expect(() =>
+      expertise.completeSaisine({ missionObject: 'Traces', sealCount: -2 }),
+    ).toThrow(InvalidSaisineError);
+    expect(expertise.toPrimitives()).toMatchObject({
+      sealCount: 3,
+      missionObject: null,
+    });
+  });
+
+  it('se relit à l’identique après reconstitution', () => {
+    const expertise = declare();
+    expertise.completeSaisine({
+      ordinanceDate: ORDONNANCE,
+      sealCount: 2,
+      assistants: [{ name: 'Paul Ferrand', task: 'Ouverture du véhicule' }],
+    });
+
+    const primitives = expertise.toPrimitives();
+
+    expect(CaseExpertise.reconstitute(primitives).toPrimitives()).toEqual(
+      primitives,
+    );
   });
 });

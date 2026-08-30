@@ -86,6 +86,9 @@ describe('PRINTABLE_EVENT_TYPES', () => {
     expect(
       PRINTABLE_EVENT_TYPES.has(AuditEventTypeEnum.SERVICE_HEADER_SAVED),
     ).toBe(false);
+    expect(
+      PRINTABLE_EVENT_TYPES.has(AuditEventTypeEnum.CASE_SAISINE_UPDATED),
+    ).toBe(false);
   });
 
   it('imprime la déclaration d’expertise, que le magistrat a intérêt à lire', () => {
@@ -100,7 +103,7 @@ describe('PRINTABLE_EVENT_TYPES', () => {
     );
 
     expect(printable).toHaveLength(
-      Object.values(AuditEventTypeEnum).length - 2,
+      Object.values(AuditEventTypeEnum).length - 3,
     );
   });
 });

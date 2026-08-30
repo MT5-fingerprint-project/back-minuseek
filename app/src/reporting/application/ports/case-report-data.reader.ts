@@ -107,8 +107,30 @@ export interface DeclaredHitData {
   withdrawnAt: Date | null;
 }
 
+export interface SaisineAssistantData {
+  name: string;
+  task: string;
+}
+
+export interface ExpertiseData {
+  expert: ExpertData | null;
+  oathStatement: string;
+  courtReference: string;
+  swornAt: Date;
+  magistrateName: string | null;
+  magistrateTitle: string | null;
+  ordinanceDate: Date | null;
+  missionObject: string | null;
+  sealCount: number | null;
+  prorogationDeadline: Date | null;
+  prorogationOrdinanceDate: Date | null;
+  biologicalPrecautions: boolean;
+  assistants: SaisineAssistantData[];
+}
+
 export interface CaseReportData {
   investigationCase: CaseSummaryData;
+  expertise: ExpertiseData | null;
   traces: PieceData[];
   referencePrints: PieceData[];
   comparisons: ComparisonData[];

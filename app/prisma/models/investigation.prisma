@@ -12,12 +12,31 @@ model InvestigationCase {
 }
 
 model CaseExpertise {
-  id             String   @id @default(uuid()) @db.Uuid
-  caseId         String   @unique @db.Uuid
-  expertUserId   String   @db.Uuid
-  oathStatement  String
-  courtReference String
-  swornAt        DateTime
+  id                       String                   @id @default(uuid()) @db.Uuid
+  caseId                   String                   @unique @db.Uuid
+  expertUserId             String                   @db.Uuid
+  oathStatement            String
+  courtReference           String
+  swornAt                  DateTime
+  magistrateName           String?
+  magistrateTitle          String?
+  ordinanceDate            DateTime?
+  missionObject            String?
+  sealCount                Int?
+  prorogationDeadline      DateTime?
+  prorogationOrdinanceDate DateTime?
+  biologicalPrecautions    Boolean                  @default(false)
+  assistants               CaseExpertiseAssistant[]
+}
+
+model CaseExpertiseAssistant {
+  id          String        @id @default(uuid()) @db.Uuid
+  expertiseId String        @db.Uuid
+  name        String
+  task        String
+  expertise   CaseExpertise @relation(fields: [expertiseId], references: [id], onDelete: Cascade)
+
+  @@index([expertiseId])
 }
 
 enum InvestigationCaseStatus {

@@ -7,6 +7,7 @@ import {
   ReportJournalSummaryViewModel,
   ReportJournalViewModel,
   ReportPieceIntegrityViewModel,
+  ReportSaisineViewModel,
   ReportTreatmentViewModel,
   TechnicalReportViewModel,
 } from '../../../application/report-view-model';
@@ -222,13 +223,14 @@ function summarySection(model: TechnicalReportViewModel): string {
   return `
     <h2>Sommaire</h2>
     <ul class="rec">
-      <li>1. Objet et pièces examinées</li>
-      <li>2. Méthodes et techniques employées</li>
-      <li>3. Traces papillaires examinées</li>
-      <li>4. Exploitabilité et cotation</li>
-      <li>5. Comparaisons et identifications</li>
-      <li>6. Traitements appliqués aux images et intégrité des pièces</li>
-      <li>7. Conclusion</li>
+      <li>1. Saisine</li>
+      <li>2. Objet et pièces examinées</li>
+      <li>3. Méthodes et techniques employées</li>
+      <li>4. Traces papillaires examinées</li>
+      <li>5. Exploitabilité et cotation</li>
+      <li>6. Comparaisons et identifications</li>
+      <li>7. Traitements appliqués aux images et intégrité des pièces</li>
+      <li>8. Conclusion</li>
     </ul>
     <p class="champ" style="font-size:9.5pt">${annexes.join('<br />')}</p>`;
 }
@@ -378,7 +380,7 @@ function objectSection(model: TechnicalReportViewModel): string {
     .join(' et de ');
 
   return `
-    <h2>1. Objet et pièces examinées</h2>
+    <h2>2. Objet et pièces examinées</h2>
     <p>Le présent rapport rend compte de l'examen dactyloscopique de
     ${tracesCount(counts.total)} révélée${plural(counts.total)} dans le cadre du dossier
     ${escapeHtml(model.caseHeader.caseNumber)}, de la détermination de leur caractère
@@ -408,7 +410,7 @@ function methodsSection(model: TechnicalReportViewModel): string {
     .filter((text) => text !== undefined);
 
   return `
-    <h2>2. Méthodes et techniques employées</h2>
+    <h2>3. Méthodes et techniques employées</h2>
     ${
       described.length === 0
         ? `<p class="empty">Aucune technique de révélation n'est enregistrée pour les traces de ce dossier.</p>`
@@ -435,7 +437,7 @@ function examinedTracesSection(model: TechnicalReportViewModel): string {
         : ` et numérotées ${escapeHtml(first)} à ${escapeHtml(last)}`;
 
   return `
-    <h2>3. Traces papillaires examinées</h2>
+    <h2>4. Traces papillaires examinées</h2>
     ${
       examinedTraces.length === 0
         ? '<p class="empty">Aucune trace papillaire n\'a été versée à ce dossier.</p>'
@@ -466,12 +468,12 @@ function examinedTracesSection(model: TechnicalReportViewModel): string {
 function exploitabilitySection(model: TechnicalReportViewModel): string {
   const { exploitability, counts } = model;
   if (exploitability.length === 0) {
-    return `<h2>4. Exploitabilité et cotation</h2>
+    return `<h2>5. Exploitabilité et cotation</h2>
       <p class="empty">Aucune trace papillaire n'a été soumise à examen.</p>`;
   }
 
   return `
-    <h2>4. Exploitabilité et cotation</h2>
+    <h2>5. Exploitabilité et cotation</h2>
     <p>Il a été procédé à un examen méthodique et minutieux ${
       counts.total > 1 ? 'des' : 'de'
     } ${tracesCount(counts.total)} afin de déterminer leur caractère
@@ -535,7 +537,7 @@ function comparisonsSection(model: TechnicalReportViewModel): string {
            encore été examinées.</p>`;
 
   return `
-    <h2>5. Comparaisons et identifications</h2>
+    <h2>6. Comparaisons et identifications</h2>
     <p>Les comparaisons ont été effectuées entre chaque trace papillaire déclarée exploitable
     et les empreintes de référence du dossier.${
       identifications.length === 0
@@ -692,7 +694,7 @@ function integritySection(model: TechnicalReportViewModel): string {
   const pieces = [...integrity.traces, ...integrity.referencePrints];
 
   return `
-    <h2>6. Traitements appliqués aux images et intégrité des pièces</h2>
+    <h2>7. Traitements appliqués aux images et intégrité des pièces</h2>
     ${integrityWarning(integrity)}
     ${INTEGRITY_PREAMBLE.map((paragraph) => `<p>${paragraph}</p>`).join('')}
     ${
@@ -731,7 +733,7 @@ function conclusionSection(model: TechnicalReportViewModel): string {
     .join(', et ');
 
   return `
-    <h2>7. Conclusion</h2>
+    <h2>8. Conclusion</h2>
     <p>L'examen des traces papillaires versées au dossier
     ${escapeHtml(model.caseHeader.caseNumber)} permet de faire ressortir les éléments
     suivants :</p>
@@ -857,6 +859,79 @@ function journalSection(model: TechnicalReportViewModel): string {
     ${journalIntegrityLine(model.integrity)}`;
 }
 
+function commissionParagraph(saisine: ReportSaisineViewModel): string {
+  const magistrate = [saisine.magistrateName, saisine.magistrateTitle]
+    .filter((part): part is string => part !== null && part.length > 0)
+    .join(', ');
+  const parts = [
+    `Sur commission de ${escapeHtml(magistrate.length > 0 ? magistrate : 'la juridiction mandante')}, ${escapeHtml(saisine.courtReference)}`,
+    saisine.ordinanceDate
+      ? `par ordonnance du ${formatLongDay(saisine.ordinanceDate)}`
+      : null,
+    saisine.missionObject ? `pour ${escapeHtml(saisine.missionObject)}` : null,
+    saisine.sealCount === null
+      ? null
+      : `portant sur ${saisine.sealCount} scellé${saisine.sealCount > 1 ? 's' : ''}`,
+  ].filter((part): part is string => part !== null);
+  return `<p>${parts.join(', ')}.</p>`;
+}
+
+function requisitionParagraph(): string {
+  const requisition = `Les opérations ont été conduites à la demande du service requérant.`;
+  const noOrdinance = `Ce dossier n'est pas placé sous expertise judiciaire : aucune ordonnance de commission d'expert n'y est attachée.`;
+  return `<p>${requisition} ${noOrdinance}</p>`;
+}
+
+function assistantsParagraph(saisine: ReportSaisineViewModel): string {
+  if (saisine.assistants.length === 0) return '';
+  const named = saisine.assistants
+    .map(
+      (assistant) =>
+        `${escapeHtml(assistant.name)} (${escapeHtml(assistant.task)})`,
+    )
+    .join(', ');
+  return `<p>Ont assisté l'expert, sous son contrôle et sa responsabilité, pour la tâche indiquée : ${named}.</p>`;
+}
+
+function prorogationParagraph(saisine: ReportSaisineViewModel): string {
+  if (
+    saisine.prorogationDeadline === null &&
+    saisine.prorogationOrdinanceDate === null
+  ) {
+    return '';
+  }
+  return `<p>Le délai de dépôt du rapport a été prorogé par ordonnance du ${formatLongDay(saisine.prorogationOrdinanceDate)}, au ${formatLongDay(saisine.prorogationDeadline)}.</p>`;
+}
+
+function biologicalPrecautionsParagraph(
+  saisine: ReportSaisineViewModel,
+): string {
+  if (!saisine.biologicalPrecautions) return '';
+  return `<p>Les opérations ont été conduites avec les précautions d'usage en vue d'analyses biologiques ultérieures.</p>`;
+}
+
+function oathBylineOf(saisine: ReportSaisineViewModel): string {
+  const by = saisine.expert
+    ? ` par ${escapeHtml(saisine.expert.displayName)}, ${escapeHtml(saisine.expert.grade)}`
+    : '';
+  return `Serment prêté le ${formatLongDay(saisine.swornAt)}${by}.`;
+}
+
+function saisineSection(model: TechnicalReportViewModel): string {
+  const { saisine } = model;
+  if (!saisine) {
+    return `<h2>1. Saisine</h2>${requisitionParagraph()}`;
+  }
+  return `
+    <h2>1. Saisine</h2>
+    ${commissionParagraph(saisine)}
+    <p>${escapeHtml(saisine.oathStatement)}</p>
+    <p class="champ">${oathBylineOf(saisine)}</p>
+    ${assistantsParagraph(saisine)}
+    ${prorogationParagraph(saisine)}
+    ${biologicalPrecautionsParagraph(saisine)}`;
+}
+
 export function renderTechnicalReportHtml(
   model: TechnicalReportViewModel,
 ): string {
@@ -880,6 +955,7 @@ export function renderTechnicalReportHtml(
     ${recipientSection(caseHeader)}
     ${summarySection(model)}
 
+    ${saisineSection(model)}
     ${objectSection(model)}
     ${methodsSection(model)}
     ${examinedTracesSection(model)}

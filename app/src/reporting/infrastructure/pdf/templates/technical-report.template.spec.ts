@@ -52,6 +52,7 @@ function model(
       },
       signatureCity: 'Paris',
     },
+    saisine: null,
     caseHeader: {
       caseNumber: '3455',
       pvNumber: 'PV-2026-001',
@@ -160,17 +161,18 @@ function model(
 }
 
 const SECTION_TITLES = [
-  '1. Objet et pièces examinées',
-  '2. Méthodes et techniques employées',
-  '3. Traces papillaires examinées',
-  '4. Exploitabilité et cotation',
-  '5. Comparaisons et identifications',
-  '6. Traitements appliqués aux images et intégrité des pièces',
-  '7. Conclusion',
+  '1. Saisine',
+  '2. Objet et pièces examinées',
+  '3. Méthodes et techniques employées',
+  '4. Traces papillaires examinées',
+  '5. Exploitabilité et cotation',
+  '6. Comparaisons et identifications',
+  '7. Traitements appliqués aux images et intégrité des pièces',
+  '8. Conclusion',
 ];
 
 describe('renderTechnicalReportHtml — structure', () => {
-  it('sort les sept sections dans l’ordre', () => {
+  it('sort les huit sections dans l’ordre', () => {
     const html = renderTechnicalReportHtml(model());
     const positions = SECTION_TITLES.map((title) => html.indexOf(title));
 
@@ -733,7 +735,7 @@ function withIntegrity(overrides: Record<string, unknown> = {}) {
   });
 }
 
-describe('renderTechnicalReportHtml — section 6', () => {
+describe('renderTechnicalReportHtml — section 7', () => {
   it('imprime le préambule d’intégrité', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
 
@@ -1228,5 +1230,157 @@ describe('renderTechnicalReportHtml — annexe B', () => {
     expect(html).not.toContain('Annexe B — Démonstrations d&#39;identité');
     expect(html).not.toContain("Annexe B — Démonstrations d'identité");
     expect(html).not.toContain('class="planche"');
+  });
+});
+
+const SERMENT =
+  'Je soussigné Julien Marchand, brigadier-chef en fonction au SRPTS de Paris, ' +
+  'expert désigné, prête serment de bien et fidèlement remplir ma mission en mon ' +
+  'honneur et conscience.';
+
+const SAISINE = {
+  expert: {
+    displayName: 'Julien Marchand',
+    grade: 'Brigadier-chef',
+    serviceNumber: 'PTS-0042',
+    role: 'OPERATOR',
+  },
+  oathStatement: SERMENT,
+  courtReference: 'Tribunal judiciaire de Paris',
+  swornAt: new Date('2026-03-06T09:00:00.000Z'),
+  magistrateName: 'Claire Rousseau',
+  magistrateTitle: "Juge d'instruction",
+  ordinanceDate: new Date('2026-03-04T00:00:00.000Z'),
+  missionObject: 'exploitation des traces papillaires',
+  sealCount: 2,
+  prorogationDeadline: new Date('2026-06-30T00:00:00.000Z'),
+  prorogationOrdinanceDate: new Date('2026-05-02T00:00:00.000Z'),
+  biologicalPrecautions: true,
+  assistants: [{ name: 'Paul Ferrand', task: 'ouverture du véhicule' }],
+};
+
+describe('renderTechnicalReportHtml — saisine', () => {
+  it("imprime la commission complète d'un dossier en expertise", () => {
+    const html = renderTechnicalReportHtml(model({ saisine: SAISINE }));
+
+    expect(html).toContain('<h2>1. Saisine</h2>');
+    expect(html).toContain('Claire Rousseau, Juge d&#39;instruction');
+    expect(html).toContain('Tribunal judiciaire de Paris');
+    expect(html).toContain('par ordonnance du 4 mars 2026');
+    expect(html).toContain('portant sur 2 scellés');
+  });
+
+  it('imprime le serment tel quel', () => {
+    const html = renderTechnicalReportHtml(model({ saisine: SAISINE }));
+
+    expect(html).toContain(
+      'prête serment de bien et fidèlement remplir ma mission',
+    );
+    expect(html).toContain('Serment prêté le 6 mars 2026 par Julien Marchand');
+  });
+
+  it('nomme les assistants et la tâche pour laquelle ils ont été sollicités', () => {
+    const html = renderTechnicalReportHtml(model({ saisine: SAISINE }));
+
+    expect(html).toContain('Paul Ferrand (ouverture du véhicule)');
+  });
+
+  it('imprime la prorogation avec ses deux dates', () => {
+    const html = renderTechnicalReportHtml(model({ saisine: SAISINE }));
+
+    expect(html).toContain('prorogé par ordonnance du 2 mai 2026');
+    expect(html).toContain('au 30 juin 2026');
+  });
+
+  it("imprime les précautions en vue d'analyses biologiques", () => {
+    const html = renderTechnicalReportHtml(model({ saisine: SAISINE }));
+
+    expect(html).toContain('analyses biologiques ultérieures');
+  });
+
+  it("n'imprime ni assistant ni prorogation ni précautions quand rien n'est déclaré", () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        saisine: {
+          ...SAISINE,
+          assistants: [],
+          prorogationDeadline: null,
+          prorogationOrdinanceDate: null,
+          biologicalPrecautions: false,
+        },
+      }),
+    );
+
+    expect(html).toContain('<h2>1. Saisine</h2>');
+    expect(html).not.toContain('Ont assisté');
+    expect(html).not.toContain('prorogé par ordonnance');
+    expect(html).not.toContain('analyses biologiques ultérieures');
+  });
+
+  it('renvoie au service requérant sur un dossier ordinaire', () => {
+    const html = renderTechnicalReportHtml(model({ saisine: null }));
+
+    expect(html).toContain('<h2>1. Saisine</h2>');
+    expect(html).toContain('à la demande du service requérant');
+    expect(html).toContain("aucune ordonnance de commission d'expert");
+    expect(html).not.toContain('Sur commission de');
+    expect(html).not.toContain('prête serment');
+  });
+});
+
+describe('renderTechnicalReportHtml — numérotation des sections', () => {
+  it('ouvre le corps du rapport par la section 1, Saisine', () => {
+    const html = renderTechnicalReportHtml(model({ saisine: SAISINE }));
+
+    expect(html.indexOf('<h2>1. Saisine</h2>')).toBeLessThan(
+      html.indexOf('<h2>2. Objet et pièces examinées</h2>'),
+    );
+  });
+
+  it('numérote les sections suivantes de 2 à 8', () => {
+    const html = renderTechnicalReportHtml(model({ saisine: SAISINE }));
+
+    for (const title of [
+      '<h2>2. Objet et pièces examinées</h2>',
+      '<h2>3. Méthodes et techniques employées</h2>',
+      '<h2>4. Traces papillaires examinées</h2>',
+      '<h2>5. Exploitabilité et cotation</h2>',
+      '<h2>6. Comparaisons et identifications</h2>',
+      '<h2>7. Traitements appliqués aux images et intégrité des pièces</h2>',
+      '<h2>8. Conclusion</h2>',
+    ]) {
+      expect(html).toContain(title);
+    }
+  });
+
+  it('ne laisse plus aucune section numérotée à l’ancienne', () => {
+    const html = renderTechnicalReportHtml(model({ saisine: SAISINE }));
+
+    expect(html).not.toContain('<h2>1. Objet et pièces examinées</h2>');
+    expect(html).not.toContain('<h2>7. Conclusion</h2>');
+  });
+
+  it('fait dire la même chose au sommaire', () => {
+    const html = renderTechnicalReportHtml(model({ saisine: SAISINE }));
+
+    for (const line of [
+      '<li>1. Saisine</li>',
+      '<li>2. Objet et pièces examinées</li>',
+      '<li>3. Méthodes et techniques employées</li>',
+      '<li>4. Traces papillaires examinées</li>',
+      '<li>5. Exploitabilité et cotation</li>',
+      '<li>6. Comparaisons et identifications</li>',
+      '<li>7. Traitements appliqués aux images et intégrité des pièces</li>',
+      '<li>8. Conclusion</li>',
+    ]) {
+      expect(html).toContain(line);
+    }
+  });
+
+  it('numérote la section 1 même sur un dossier ordinaire', () => {
+    const html = renderTechnicalReportHtml(model({ saisine: null }));
+
+    expect(html).toContain('<h2>1. Saisine</h2>');
+    expect(html).toContain('<li>1. Saisine</li>');
   });
 });

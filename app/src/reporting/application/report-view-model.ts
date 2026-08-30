@@ -267,10 +267,32 @@ export interface ReportLayerViewModel {
   settings: Record<string, unknown>;
 }
 
+export interface ReportSaisineAssistantViewModel {
+  name: string;
+  task: string;
+}
+
+export interface ReportSaisineViewModel {
+  expert: ReportExpertViewModel | null;
+  oathStatement: string;
+  courtReference: string;
+  swornAt: Date;
+  magistrateName: string | null;
+  magistrateTitle: string | null;
+  ordinanceDate: Date | null;
+  missionObject: string | null;
+  sealCount: number | null;
+  prorogationDeadline: Date | null;
+  prorogationOrdinanceDate: Date | null;
+  biologicalPrecautions: boolean;
+  assistants: ReportSaisineAssistantViewModel[];
+}
+
 export interface TechnicalReportViewModel {
   kind: 'TECHNICAL';
   header: ReportHeaderViewModel;
   caseHeader: ReportCaseHeaderViewModel;
+  saisine: ReportSaisineViewModel | null;
   revelationTechniques: string[];
   previousDocument: ReportPreviousDocumentViewModel | null;
   signer: ReportSignerViewModel;
