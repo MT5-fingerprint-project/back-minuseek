@@ -175,6 +175,58 @@ describe('Trace', () => {
     });
   });
 
+  describe('la localisation saisie sur le terrain', () => {
+    it('carries no location when the upload states none', () => {
+      expect(Trace.upload(baseProps).location).toBeNull();
+    });
+
+    it('records the location written on the spot', () => {
+      const trace = Trace.upload({
+        ...baseProps,
+        location: "Sur l'extérieur de la porte d'entrée de l'appartement",
+      });
+
+      expect(trace.location).toBe(
+        "Sur l'extérieur de la porte d'entrée de l'appartement",
+      );
+    });
+
+    it('trims the location before storing it', () => {
+      expect(
+        Trace.upload({ ...baseProps, location: '   Poignée de la portière  ' })
+          .location,
+      ).toBe('Poignée de la portière');
+    });
+
+    it('treats a location left empty once trimmed as an absence', () => {
+      expect(
+        Trace.upload({ ...baseProps, location: '   ' }).location,
+      ).toBeNull();
+    });
+
+    it('accepts a location of exactly the maximum length', () => {
+      const location = 'a'.repeat(MAX_TRACE_LOCATION_LENGTH);
+
+      expect(Trace.upload({ ...baseProps, location }).location).toBe(location);
+    });
+
+    it('refuses a location one character too long', () => {
+      expect(() =>
+        Trace.upload({
+          ...baseProps,
+          location: 'a'.repeat(MAX_TRACE_LOCATION_LENGTH + 1),
+        }),
+      ).toThrow(InvalidTraceLocationError);
+    });
+
+    it('leaves the origin and the revelation technique unfilled', () => {
+      const trace = Trace.upload({ ...baseProps, location: 'Poignée' });
+
+      expect(trace.origin).toBeNull();
+      expect(trace.revelationTechnique).toBeNull();
+    });
+  });
+
   describe('assertCaseCanReceiveTrace', () => {
     it.each(['OPEN', 'IN_PROGRESS', 'UNDER_REVIEW'])(
       'accepts a case in %s status',
