@@ -52,6 +52,12 @@ export class PrismaCaseVerificationRepository implements CaseVerificationReposit
     });
   }
 
+  async findById(id: string): Promise<CaseVerification | null> {
+    const prisma = await this.tenantConnection.getCurrentClient();
+    const row = await prisma.caseVerification.findUnique({ where: { id } });
+    return row ? CaseVerification.reconstitute(row) : null;
+  }
+
   async hasPendingFor(
     caseId: string,
     verifierUserId: string,

@@ -24,6 +24,8 @@ import { CASE_STATUS } from './application/ports/case-status.port';
 import { CASE_EXPERTISE } from './application/ports/case-expertise.port';
 import { FAMILIAR_REFERENCE_PRINT_READER } from './application/ports/familiar-reference-print.reader';
 import { FAMILIAR_PRINT_DESTRUCTION } from '../investigation/application/ports/familiar-print-destruction.port';
+import { CASE_EXPLOITATION_READER } from '../investigation/application/ports/case-exploitation.reader';
+import { PrismaCaseExploitationReader } from './infrastructure/persistence/prisma-case-exploitation.reader';
 import { FamiliarPrintDestructionService } from './application/services/familiar-print-destruction.service';
 import { PrismaFamiliarReferencePrintReader } from './infrastructure/persistence/prisma-familiar-reference-print.reader';
 import { FINGERPRINT_LOCATOR } from './application/ports/fingerprint-locator.port';
@@ -102,6 +104,10 @@ import { AccessModule } from '../access/access.module';
       provide: FAMILIAR_PRINT_DESTRUCTION,
       useClass: FamiliarPrintDestructionService,
     },
+    {
+      provide: CASE_EXPLOITATION_READER,
+      useClass: PrismaCaseExploitationReader,
+    },
     { provide: TRACE_READER, useClass: PrismaTraceReader },
     { provide: REFERENCE_PRINT_READER, useClass: PrismaReferencePrintReader },
     { provide: LAYER_READER, useClass: PrismaLayerReader },
@@ -138,6 +144,6 @@ import { AccessModule } from '../access/access.module';
       },
     },
   ],
-  exports: [FAMILIAR_PRINT_DESTRUCTION],
+  exports: [FAMILIAR_PRINT_DESTRUCTION, CASE_EXPLOITATION_READER],
 })
 export class BiometricsModule {}

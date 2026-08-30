@@ -6,6 +6,7 @@ export interface CaseVerificationRepository {
     verification: CaseVerification,
     ...acts: AuditEventDraft[]
   ): Promise<void>;
+  findById(id: string): Promise<CaseVerification | null>;
   hasPendingFor(caseId: string, verifierUserId: string): Promise<boolean>;
 }
 

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { PrismaClient } from '../../../../generated/prisma/client';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
+import { VerificationDetailReadModel } from '../../application/queries/get-verification/verification-detail-read-model';
 import { CaseVerificationReadModel } from '../../application/queries/list-case-verifications/case-verification-read-model';
 import type { CaseVerificationReader } from '../../application/queries/list-case-verifications/case-verification.reader';
 import { VerificationStatusEnum } from '../../domain/case-verification/value-objects/verification-status.vo';
@@ -36,6 +37,33 @@ export class PrismaCaseVerificationReader implements CaseVerificationReader {
       orderBy: [{ requestedAt: 'desc' }, { id: 'asc' }],
     });
     return this.withCasesAndVerifiers(prisma, rows);
+  }
+
+  async findDetailById(
+    verificationId: string,
+  ): Promise<VerificationDetailReadModel | null> {
+    const prisma = await this.tenantConnection.getCurrentClient();
+    const row = await prisma.caseVerification.findUnique({
+      where: { id: verificationId },
+    });
+    if (!row) return null;
+
+    const [verification] = await this.withCasesAndVerifiers(prisma, [row]);
+    const decisions = await prisma.verificationDecision.findMany({
+      where: { verificationId },
+      orderBy: [{ statedAt: 'asc' }, { id: 'asc' }],
+    });
+
+    return {
+      ...verification,
+      conclusions: decisions.map((decision) => ({
+        traceId: decision.traceId,
+        exploitability: decision.exploitability,
+        identifiedReferencePrintId: decision.identifiedReferencePrintId,
+        outcome: decision.outcome,
+        statedAt: decision.statedAt,
+      })),
+    };
   }
 
   private async withCasesAndVerifiers(

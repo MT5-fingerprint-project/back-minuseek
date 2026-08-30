@@ -31,6 +31,7 @@ const EMPREINTE = '33333333-3333-4333-8333-333333333333';
 const CALQUE = '44444444-4444-4444-8444-444444444444';
 const PERSONNE = '55555555-5555-4555-8555-555555555555';
 const RAPPORT = '66666666-6666-4666-8666-666666666666';
+const MISSION = '77777777-7777-4777-8777-777777777777';
 
 const MARIE: UserReadModel = {
   id: 'marie',
@@ -443,6 +444,31 @@ describe("Le garde d'accès — les routes qui ne touchent aucune affaire", () =
     const response = await request(server).get('/verifications?mine=true');
 
     expect(response.status).toBe(200);
+    expect(bus.dispatched).toHaveLength(1);
+  });
+
+  it('laisse le porteur lire sa mission, à charge pour la query de le vérifier', async () => {
+    const response = await request(server).get(`/verifications/${MISSION}`);
+
+    expect(response.status).toBe(200);
+    expect(bus.dispatched).toHaveLength(1);
+  });
+
+  it('laisse rendre une conclusion : la mission porte son affaire', async () => {
+    const response = await request(server)
+      .put(`/verifications/${MISSION}/conclusions/${TRACE}`)
+      .send({ exploitability: 'EXPLOITABLE' });
+
+    expect(response.status).toBe(204);
+    expect(bus.dispatched).toHaveLength(1);
+  });
+
+  it('laisse valider une vérification', async () => {
+    const response = await request(server).post(
+      `/verifications/${MISSION}/completion`,
+    );
+
+    expect(response.status).toBe(204);
     expect(bus.dispatched).toHaveLength(1);
   });
 

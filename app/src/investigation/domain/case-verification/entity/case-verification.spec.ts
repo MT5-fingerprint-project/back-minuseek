@@ -1,3 +1,4 @@
+import { DecisionOutcomeEnum } from '../value-objects/decision-outcome.vo';
 import { InvalidVerificationStatusError } from '../value-objects/verification-status.vo';
 import { VerificationStatusEnum } from '../value-objects/verification-status.vo';
 import { CaseVerification } from './case-verification';
@@ -45,5 +46,29 @@ describe('CaseVerification', () => {
     verification.requestedAt.setFullYear(1999);
 
     expect(verification.requestedAt.getFullYear()).toBe(2026);
+  });
+
+  it('se clôt sur le verdict de la confrontation, à la date du jour', () => {
+    const verification = CaseVerification.reconstitute(PRIMITIVES);
+
+    verification.complete(DecisionOutcomeEnum.DISCORDANT);
+
+    expect(verification.status).toBe(VerificationStatusEnum.DISCORDANT);
+    expect(verification.completedAt).not.toBeNull();
+  });
+
+  it('rejoue la confrontation sur une mission déjà close', () => {
+    const verification = CaseVerification.reconstitute({
+      ...PRIMITIVES,
+      status: VerificationStatusEnum.DISCORDANT,
+      completedAt: new Date('2026-08-20T10:00:00.000Z'),
+    });
+
+    verification.complete(DecisionOutcomeEnum.CONCORDANT);
+
+    expect(verification.status).toBe(VerificationStatusEnum.CONCORDANT);
+    expect(verification.completedAt?.getTime()).toBeGreaterThan(
+      new Date('2026-08-20T10:00:00.000Z').getTime(),
+    );
   });
 });

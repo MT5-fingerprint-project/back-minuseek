@@ -1,3 +1,4 @@
+import { DecisionOutcomeEnum } from '../value-objects/decision-outcome.vo';
 import {
   VerificationStatus,
   VerificationStatusEnum,
@@ -55,6 +56,11 @@ export class CaseVerification {
       primitives.requestedAt,
       primitives.completedAt,
     );
+  }
+
+  complete(outcome: DecisionOutcomeEnum): void {
+    this._status = VerificationStatus.from(outcome);
+    this._completedAt = new Date();
   }
 
   toPrimitives(): CaseVerificationPrimitives {
