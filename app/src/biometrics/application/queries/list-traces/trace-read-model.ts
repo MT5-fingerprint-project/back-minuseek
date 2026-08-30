@@ -9,7 +9,9 @@ export interface TraceReadModel {
   score: number | null;
   caseId: string;
   identified: boolean;
+  sha256: string | null;
   createdAt: Date;
+  updatedAt: Date;
   captureWidth: number | null;
   captureHeight: number | null;
   capturedAt: Date | null;

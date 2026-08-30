@@ -9,6 +9,7 @@ import { RestoreTraceHandler } from './application/commands/restore-trace/restor
 import { RestoreReferencePrintHandler } from './application/commands/restore-reference-print/restore-reference-print.handler';
 import { WithdrawReferencePrintHandler } from './application/commands/withdraw-reference-print/withdraw-reference-print.handler';
 import { ListTracesHandler } from './application/queries/list-traces/list-traces.handler';
+import { GetTraceHandler } from './application/queries/get-trace/get-trace.handler';
 import { ListReferencePrintsHandler } from './application/queries/list-reference-prints/list-reference-prints.handler';
 import { CreateLayerHandler } from './application/commands/create-layer/create-layer.handler';
 import { UpdateLayerHandler } from './application/commands/update-layer/update-layer.handler';
@@ -75,6 +76,7 @@ import { AccessModule } from '../access/access.module';
     RestoreTraceHandler,
     RestoreReferencePrintHandler,
     ListTracesHandler,
+    GetTraceHandler,
     ListReferencePrintsHandler,
     CreateLayerHandler,
     UpdateLayerHandler,
