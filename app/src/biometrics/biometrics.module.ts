@@ -4,6 +4,7 @@ import { UploadReferencePrintHandler } from './application/commands/upload-refer
 import { UploadTraceHandler } from './application/commands/upload-trace/upload-trace.handler';
 import { WithdrawTraceHandler } from './application/commands/withdraw-trace/withdraw-trace.handler';
 import { CalibrateTraceHandler } from './application/commands/calibrate-trace/calibrate-trace.handler';
+import { DescribeTraceHandler } from './application/commands/describe-trace/describe-trace.handler';
 import { CalibrateReferencePrintHandler } from './application/commands/calibrate-reference-print/calibrate-reference-print.handler';
 import { RestoreTraceHandler } from './application/commands/restore-trace/restore-trace.handler';
 import { RestoreReferencePrintHandler } from './application/commands/restore-reference-print/restore-reference-print.handler';
@@ -73,6 +74,7 @@ import { AccessModule } from '../access/access.module';
     WithdrawReferencePrintHandler,
     CalibrateTraceHandler,
     CalibrateReferencePrintHandler,
+    DescribeTraceHandler,
     RestoreTraceHandler,
     RestoreReferencePrintHandler,
     ListTracesHandler,

@@ -166,6 +166,17 @@ const ROUTES_GARDEES: Route[] = [
     url: `/reference-prints/${EMPREINTE}/restore`,
   },
   {
+    label: 'PUT /traces/:id/description',
+    method: 'put',
+    url: `/traces/${TRACE}/description`,
+    body: {
+      origin: 'DIGITAL',
+      location: "Sur l'extérieur de la porte d'entrée de l'appartement",
+      revelationTechnique: 'FINGERPRINT_POWDER',
+    },
+    dispatches: 2,
+  },
+  {
     label: 'POST /traces/:id/compare',
     method: 'post',
     url: `/traces/${TRACE}/compare`,
@@ -633,6 +644,16 @@ const ROUTES_FERMEES_AU_VERIFICATEUR: Route[] = [
     label: 'POST /reference-prints/:id/restore',
     method: 'post',
     url: `/reference-prints/${EMPREINTE}/restore`,
+  },
+  {
+    label: 'PUT /traces/:id/description',
+    method: 'put',
+    url: `/traces/${TRACE}/description`,
+    body: {
+      origin: 'DIGITAL',
+      location: "Sur l'extérieur de la porte d'entrée de l'appartement",
+      revelationTechnique: 'FINGERPRINT_POWDER',
+    },
   },
   {
     label: 'PATCH /traces/:id/calibration',

@@ -4,6 +4,7 @@ import { ImageResolution } from '../../image-resolution.vo';
 import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../withdrawal/errors/not-withdrawn.error';
 import { Withdrawal } from '../../withdrawal/withdrawal.vo';
+import { InvalidTraceLocationError } from '../errors/invalid-trace-location.error';
 import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
 import { CaptureMetadata } from '../value-objects/capture-metadata.vo';
 import {
@@ -11,7 +12,14 @@ import {
   CaptureQualityProps,
 } from '../value-objects/capture-quality.vo';
 import { ExploitabilityScore } from '../value-objects/exploitability-score.vo';
+import {
+  RevelationTechnique,
+  RevelationTechniqueEnum,
+} from '../value-objects/revelation-technique.vo';
+import { TraceOrigin, TraceOriginEnum } from '../value-objects/trace-origin.vo';
 import { TraceStatus, TraceStatusEnum } from '../value-objects/trace-status.vo';
+
+export const MAX_TRACE_LOCATION_LENGTH = 300;
 
 export interface TracePrimitives {
   id: string;
@@ -32,6 +40,15 @@ export interface TracePrimitives {
   withdrawnAt: Date | null;
   withdrawalMotive: string | null;
   resolutionDpi: number | null;
+  origin: TraceOriginEnum | null;
+  location: string | null;
+  revelationTechnique: RevelationTechniqueEnum | null;
+}
+
+export interface TraceDescription {
+  origin: string;
+  location: string;
+  revelationTechnique: string;
 }
 
 interface UploadTraceProps {
@@ -59,6 +76,9 @@ export class Trace {
     private readonly _captureQuality: CaptureQuality | null,
     private _withdrawal: Withdrawal | null,
     private _resolution: ImageResolution | null,
+    private _origin: TraceOrigin | null,
+    private _location: string | null,
+    private _revelationTechnique: RevelationTechnique | null,
   ) {}
 
   static assertCaseCanReceiveTrace(
@@ -94,6 +114,9 @@ export class Trace {
       props.captureQuality ?? null,
       null,
       null,
+      null,
+      null,
+      null,
     );
   }
 
@@ -116,6 +139,9 @@ export class Trace {
     withdrawnAt: Date | null;
     withdrawalMotive: string | null;
     resolutionDpi: number | null;
+    origin: string | null;
+    location: string | null;
+    revelationTechnique: string | null;
   }): Trace {
     return new Trace(
       payload.id,
@@ -139,11 +165,34 @@ export class Trace {
       CaptureQuality.fromPersistence(payload.captureQuality),
       Withdrawal.fromPersistence(payload.withdrawalMotive, payload.withdrawnAt),
       ImageResolution.fromPersistence(payload.resolutionDpi),
+      TraceOrigin.fromPersistence(payload.origin),
+      payload.location,
+      RevelationTechnique.fromPersistence(payload.revelationTechnique),
     );
   }
 
   calibrate(resolutionDpi: number): void {
     this._resolution = ImageResolution.of(resolutionDpi);
+  }
+
+  describe(description: TraceDescription): void {
+    const origin = TraceOrigin.from(description.origin);
+    const revelationTechnique = RevelationTechnique.from(
+      description.revelationTechnique,
+    );
+    const location = description.location.trim();
+    if (location.length === 0) {
+      throw new InvalidTraceLocationError('elle ne peut pas être vide');
+    }
+    if (location.length > MAX_TRACE_LOCATION_LENGTH) {
+      throw new InvalidTraceLocationError(
+        `elle ne peut pas dépasser ${MAX_TRACE_LOCATION_LENGTH} caractères`,
+      );
+    }
+
+    this._origin = origin;
+    this._location = location;
+    this._revelationTechnique = revelationTechnique;
   }
 
   evaluate(score: ExploitabilityScore): void {
@@ -190,6 +239,9 @@ export class Trace {
       withdrawnAt: this._withdrawal?.getAt() ?? null,
       withdrawalMotive: this._withdrawal?.getMotive() ?? null,
       resolutionDpi: this._resolution?.getValue() ?? null,
+      origin: this._origin?.getValue() ?? null,
+      location: this._location,
+      revelationTechnique: this._revelationTechnique?.getValue() ?? null,
     };
   }
 
@@ -243,5 +295,17 @@ export class Trace {
 
   get resolutionDpi(): number | null {
     return this._resolution?.getValue() ?? null;
+  }
+
+  get origin(): TraceOriginEnum | null {
+    return this._origin?.getValue() ?? null;
+  }
+
+  get location(): string | null {
+    return this._location;
+  }
+
+  get revelationTechnique(): RevelationTechniqueEnum | null {
+    return this._revelationTechnique?.getValue() ?? null;
   }
 }

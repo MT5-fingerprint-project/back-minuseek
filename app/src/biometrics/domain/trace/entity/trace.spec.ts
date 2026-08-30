@@ -2,16 +2,19 @@ import { FileDigest, InvalidFileDigestError } from '../../file-digest.vo';
 import { InvalidImageResolutionError } from '../../image-resolution.vo';
 import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-trace.error';
 import { CaseNotOpenForWorkError } from '../../errors/case-not-open-for-work.error';
+import { InvalidTraceLocationError } from '../errors/invalid-trace-location.error';
 import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
 import { CaptureMetadata } from '../value-objects/capture-metadata.vo';
 import { CaptureQuality } from '../value-objects/capture-quality.vo';
 import { InvalidCaptureQualityError } from '../errors/invalid-capture-quality.error';
 import { ExploitabilityScore } from '../value-objects/exploitability-score.vo';
+import { InvalidRevelationTechniqueError } from '../value-objects/revelation-technique.vo';
+import { InvalidTraceOriginError } from '../value-objects/trace-origin.vo';
 import { TraceStatusEnum } from '../value-objects/trace-status.vo';
 import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../withdrawal/errors/not-withdrawn.error';
 import { InvalidWithdrawalMotiveError } from '../../withdrawal/withdrawal.vo';
-import { Trace } from './trace';
+import { MAX_TRACE_LOCATION_LENGTH, Trace } from './trace';
 
 const WITHDRAWN_AT = new Date('2026-08-12T09:00:00.000Z');
 
@@ -66,6 +69,9 @@ describe('Trace', () => {
         withdrawnAt: null,
         withdrawalMotive: null,
         resolutionDpi: null,
+        origin: null,
+        location: null,
+        revelationTechnique: null,
       });
     });
 
@@ -101,6 +107,9 @@ describe('Trace', () => {
         withdrawnAt: null,
         withdrawalMotive: null,
         resolutionDpi: null,
+        origin: null,
+        location: null,
+        revelationTechnique: null,
       });
     });
 
@@ -239,6 +248,9 @@ describe('Trace', () => {
         withdrawnAt: null,
         withdrawalMotive: null,
         resolutionDpi: null,
+        origin: null,
+        location: null,
+        revelationTechnique: null,
       });
 
       expect(trace.status).toBe(TraceStatusEnum.EXPLOITABLE);
@@ -267,6 +279,9 @@ describe('Trace', () => {
         withdrawnAt: null,
         withdrawalMotive: null,
         resolutionDpi: null,
+        origin: null,
+        location: null,
+        revelationTechnique: null,
       });
 
       expect(trace.sha256).toBeNull();
@@ -292,6 +307,9 @@ describe('Trace', () => {
         withdrawnAt: null,
         withdrawalMotive: null,
         resolutionDpi: null,
+        origin: null,
+        location: null,
+        revelationTechnique: null,
       });
 
       expect(trace.captureQuality?.blurScore).toBe(128.4);
@@ -319,6 +337,9 @@ describe('Trace', () => {
           withdrawnAt: null,
           withdrawalMotive: null,
           resolutionDpi: null,
+          origin: null,
+          location: null,
+          revelationTechnique: null,
         }),
       ).toThrow(InvalidCaptureQualityError);
     });
@@ -344,6 +365,9 @@ describe('Trace', () => {
           withdrawnAt: null,
           withdrawalMotive: null,
           resolutionDpi: null,
+          origin: null,
+          location: null,
+          revelationTechnique: null,
         }),
       ).toThrow(InvalidFileDigestError);
     });
@@ -370,6 +394,9 @@ describe('Trace', () => {
         withdrawnAt: null,
         withdrawalMotive: null,
         resolutionDpi: null,
+        origin: null,
+        location: null,
+        revelationTechnique: null,
       });
     });
 
@@ -393,6 +420,9 @@ describe('Trace', () => {
         withdrawnAt: null,
         withdrawalMotive: null,
         resolutionDpi: null,
+        origin: null,
+        location: null,
+        revelationTechnique: null,
       });
 
       expect(trace.captureMetadata.width).toBeUndefined();
@@ -455,6 +485,147 @@ describe('Trace', () => {
 
       expect(() => trace.calibrate(3)).toThrow(InvalidImageResolutionError);
       expect(trace.resolutionDpi).toBeNull();
+    });
+  });
+
+  describe('describe', () => {
+    const FILLED_IN = {
+      origin: 'DIGITAL',
+      location: "Sur l'extérieur de la porte d'entrée de l'appartement",
+      revelationTechnique: 'FINGERPRINT_POWDER',
+    };
+
+    it('carries no description until the operator fills one in', () => {
+      const trace = Trace.upload(baseProps);
+
+      expect(trace.origin).toBeNull();
+      expect(trace.location).toBeNull();
+      expect(trace.revelationTechnique).toBeNull();
+    });
+
+    it('records the origin, the location and the revelation technique', () => {
+      const trace = Trace.upload(baseProps);
+
+      trace.describe(FILLED_IN);
+
+      expect(trace.toPrimitives()).toMatchObject({
+        origin: 'DIGITAL',
+        location: "Sur l'extérieur de la porte d'entrée de l'appartement",
+        revelationTechnique: 'FINGERPRINT_POWDER',
+      });
+    });
+
+    it('replaces the three values at once when the fiche is corrected', () => {
+      const trace = Trace.upload(baseProps);
+      trace.describe(FILLED_IN);
+
+      trace.describe({
+        origin: 'PALMAR',
+        location: 'Sur la bouteille de Vodka de marque "POLIAKOV"',
+        revelationTechnique: 'DFO',
+      });
+
+      expect(trace.toPrimitives()).toMatchObject({
+        origin: 'PALMAR',
+        location: 'Sur la bouteille de Vodka de marque "POLIAKOV"',
+        revelationTechnique: 'DFO',
+      });
+    });
+
+    it('trims the location before storing it', () => {
+      const trace = Trace.upload(baseProps);
+
+      trace.describe({ ...FILLED_IN, location: '  Sur le rebord du lit  ' });
+
+      expect(trace.location).toBe('Sur le rebord du lit');
+    });
+
+    it('refuses a location left empty once trimmed', () => {
+      const trace = Trace.upload(baseProps);
+
+      expect(() => trace.describe({ ...FILLED_IN, location: '   ' })).toThrow(
+        InvalidTraceLocationError,
+      );
+      expect(trace.location).toBeNull();
+    });
+
+    it('accepts a location of exactly the maximum length', () => {
+      const trace = Trace.upload(baseProps);
+      const longestAccepted = 'a'.repeat(MAX_TRACE_LOCATION_LENGTH);
+
+      trace.describe({ ...FILLED_IN, location: longestAccepted });
+
+      expect(trace.location).toBe(longestAccepted);
+    });
+
+    it('refuses a location one character too long', () => {
+      const trace = Trace.upload(baseProps);
+
+      expect(() =>
+        trace.describe({
+          ...FILLED_IN,
+          location: 'a'.repeat(MAX_TRACE_LOCATION_LENGTH + 1),
+        }),
+      ).toThrow(InvalidTraceLocationError);
+    });
+
+    it('refuses an origin outside the vocabulary and writes nothing', () => {
+      const trace = Trace.upload(baseProps);
+
+      expect(() => trace.describe({ ...FILLED_IN, origin: 'PLANTAR' })).toThrow(
+        InvalidTraceOriginError,
+      );
+      expect(trace.toPrimitives()).toMatchObject({
+        origin: null,
+        location: null,
+        revelationTechnique: null,
+      });
+    });
+
+    it('refuses a revelation technique outside the vocabulary and writes nothing', () => {
+      const trace = Trace.upload(baseProps);
+
+      expect(() =>
+        trace.describe({ ...FILLED_IN, revelationTechnique: 'CYANOACRYLATE' }),
+      ).toThrow(InvalidRevelationTechniqueError);
+      expect(trace.toPrimitives()).toMatchObject({
+        origin: null,
+        location: null,
+        revelationTechnique: null,
+      });
+    });
+
+    it('leaves the previous fiche untouched when a correction is refused', () => {
+      const trace = Trace.upload(baseProps);
+      trace.describe(FILLED_IN);
+
+      expect(() =>
+        trace.describe({
+          origin: 'PALMAR',
+          location: 'Sur le rebord du lit de la chambre d’amis',
+          revelationTechnique: 'CYANOACRYLATE',
+        }),
+      ).toThrow(InvalidRevelationTechniqueError);
+      expect(trace.toPrimitives()).toMatchObject(FILLED_IN);
+    });
+
+    it('still accepts a correction on a trace already declared exploitable', () => {
+      const trace = Trace.upload(baseProps);
+      trace.evaluate(ExploitabilityScore.of(12));
+
+      trace.describe(FILLED_IN);
+
+      expect(trace.status).toBe(TraceStatusEnum.EXPLOITABLE);
+      expect(trace.toPrimitives()).toMatchObject(FILLED_IN);
+    });
+
+    it('round-trips the fiche through the persisted primitives', () => {
+      const trace = Trace.upload(baseProps);
+      trace.describe(FILLED_IN);
+
+      const rebuilt = Trace.reconstitute(trace.toPrimitives());
+
+      expect(rebuilt.toPrimitives()).toEqual(trace.toPrimitives());
     });
   });
 

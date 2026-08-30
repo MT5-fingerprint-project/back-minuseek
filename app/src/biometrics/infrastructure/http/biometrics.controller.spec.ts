@@ -29,6 +29,9 @@ const aTraceView = (overrides: Partial<TraceView> = {}): TraceView => ({
   withdrawnAt: null,
   withdrawalMotive: null,
   resolutionDpi: null,
+  origin: null,
+  location: null,
+  revelationTechnique: null,
   ...overrides,
 });
 

@@ -14,6 +14,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   UnprocessableEntityException,
   UploadedFile,
@@ -31,6 +32,7 @@ import {
 } from '@nestjs/swagger';
 import { UploadTraceCommand } from '../../application/commands/upload-trace/upload-trace.command';
 import { CalibrateTraceCommand } from '../../application/commands/calibrate-trace/calibrate-trace.command';
+import { DescribeTraceCommand } from '../../application/commands/describe-trace/describe-trace.command';
 import { CalibrateReferencePrintCommand } from '../../application/commands/calibrate-reference-print/calibrate-reference-print.command';
 import { UploadReferencePrintCommand } from '../../application/commands/upload-reference-print/upload-reference-print.command';
 import { WithdrawTraceCommand } from '../../application/commands/withdraw-trace/withdraw-trace.command';
@@ -48,6 +50,7 @@ import { ListHitsQuery } from '../../application/queries/list-hits/list-hits.que
 import { CurrentServiceUser } from '../../../identity-access/infrastructure/http/current-service-user.decorator';
 import type { UserReadModel } from '../../../identity-access/application/queries/get-user-by-provider-id/user-read-model';
 import { TraceNotFoundError } from '../../domain/trace/errors/trace-not-found.error';
+import { InvalidTraceLocationError } from '../../domain/trace/errors/invalid-trace-location.error';
 import { CaseUnavailableForTraceError } from '../../domain/trace/errors/case-unavailable-for-trace.error';
 import { ReferencePrintNotFoundError } from '../../domain/reference-print/errors/reference-print-not-found.error';
 import { InsufficientMinutiaeError } from '../../domain/hit/errors/insufficient-minutiae.error';
@@ -64,6 +67,7 @@ import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types'
 import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapper';
 import { WithdrawPieceDto } from './dto/withdraw-piece.dto';
 import { CalibrateImageDto } from './dto/calibrate-image.dto';
+import { DescribeTraceDto } from './dto/describe-trace.dto';
 import { UploadTraceDto } from './dto/upload-trace.dto';
 import { UploadReferencePrintDto } from './dto/upload-reference-print.dto';
 import { ListTracesDto } from './dto/list-traces.dto';
@@ -323,6 +327,51 @@ export class BiometricsController {
         throw new BadRequestException(e.message);
       throw e;
     }
+  }
+
+  @Put('traces/:id/description')
+  @CaseAdministration()
+  @ApiOperation({
+    summary:
+      "Renseigner l'origine, la localisation et la révélation d'une trace",
+  })
+  @ApiResponse({ status: 200, description: 'Fiche de la trace enregistrée' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Origine ou technique hors vocabulaire, localisation vide ou de plus de 300 caractères',
+  })
+  @ApiResponse({ status: 404, description: 'Trace non trouvée' })
+  async describeTrace(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DescribeTraceDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<TraceView> {
+    try {
+      await this.commandBus.execute(
+        new DescribeTraceCommand(
+          toAuditActor(user),
+          id,
+          dto.origin,
+          dto.location,
+          dto.revelationTechnique,
+        ),
+      );
+    } catch (e) {
+      if (e instanceof TraceNotFoundError)
+        throw new NotFoundException(e.message);
+      if (e instanceof InvalidTraceLocationError)
+        throw new BadRequestException(e.message);
+      throw e;
+    }
+
+    const trace = await this.queryBus.execute<GetTraceQuery, TraceView | null>(
+      new GetTraceQuery(id),
+    );
+    if (trace === null) {
+      throw new NotFoundException(new TraceNotFoundError(id).message);
+    }
+    return trace;
   }
 
   @Patch('reference-prints/:id/calibration')
