@@ -4,7 +4,10 @@ import {
   IMAGE_STORAGE,
   ImageStoragePort,
 } from '../../ports/image-storage.port';
-import { TraceView } from '../list-traces/trace-read-model';
+import {
+  TraceDetailView,
+  TraceLocationPhotoView,
+} from '../list-traces/trace-read-model';
 import { TRACE_READER, TraceReader } from '../list-traces/trace.reader';
 import { GetTraceQuery } from './get-trace.query';
 
@@ -17,17 +20,28 @@ export class GetTraceHandler implements IQueryHandler<GetTraceQuery> {
     private readonly storage: ImageStoragePort,
   ) {}
 
-  async execute(query: GetTraceQuery): Promise<TraceView | null> {
+  async execute(query: GetTraceQuery): Promise<TraceDetailView | null> {
     const trace = await this.reader.findById(query.traceId);
     if (trace === null) {
       return null;
     }
     const blind = query.blindVerifierUserId !== null;
+    const { locationPhoto, ...columns } = trace;
+    let photo: TraceLocationPhotoView | null = null;
+    if (locationPhoto !== null) {
+      photo = {
+        id: locationPhoto.id,
+        url: await this.storage.getUrl(locationPhoto.path),
+        sha256: locationPhoto.sha256,
+        sealedAt: locationPhoto.sealedAt,
+      };
+    }
     return {
-      ...trace,
+      ...columns,
       status: blind ? null : trace.status,
       identified: blind ? null : trace.identified,
       url: await this.storage.getUrl(trace.path),
+      locationPhoto: photo,
     };
   }
 }

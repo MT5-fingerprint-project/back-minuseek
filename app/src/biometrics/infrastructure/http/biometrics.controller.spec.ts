@@ -1,12 +1,14 @@
 import { NotFoundException } from '@nestjs/common';
 import type { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { GetTraceQuery } from '../../application/queries/get-trace/get-trace.query';
-import type { TraceView } from '../../application/queries/list-traces/trace-read-model';
+import type { TraceDetailView } from '../../application/queries/list-traces/trace-read-model';
 import { BiometricsController } from './biometrics.controller';
 
 const TRACE = '22222222-2222-4222-8222-222222222222';
 
-const aTraceView = (overrides: Partial<TraceView> = {}): TraceView => ({
+const aTraceView = (
+  overrides: Partial<TraceDetailView> = {},
+): TraceDetailView => ({
   id: TRACE,
   number: 7,
   reference: '3455-T7',
@@ -32,10 +34,12 @@ const aTraceView = (overrides: Partial<TraceView> = {}): TraceView => ({
   origin: null,
   location: null,
   revelationTechnique: null,
+  hasLocationPhoto: false,
+  locationPhoto: null,
   ...overrides,
 });
 
-function build(answer: TraceView | null) {
+function build(answer: TraceDetailView | null) {
   const dispatched: GetTraceQuery[] = [];
   const queryBus = {
     execute: (query: GetTraceQuery) => {
