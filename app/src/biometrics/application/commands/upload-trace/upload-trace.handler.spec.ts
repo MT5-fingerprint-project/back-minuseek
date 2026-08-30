@@ -11,6 +11,7 @@ import { CaptureMetadataProps } from '../../../domain/trace/value-objects/captur
 import { CaptureQualityProps } from '../../../domain/trace/value-objects/capture-quality.vo';
 import { InvalidCaptureQualityError } from '../../../domain/trace/errors/invalid-capture-quality.error';
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
+import { InMemoryTraceLocationPhotoRepository } from '../../../infrastructure/persistence/in-memory-trace-location-photo.repository';
 import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryTraceNumberAllocatorAdapter } from '../../../infrastructure/persistence/in-memory-trace-number-allocator.adapter';
 import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
@@ -20,6 +21,9 @@ import { InMemoryImageConverter } from '../../../infrastructure/conversion/in-me
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
 import { TraceRepository } from '../../../domain/trace/repository/trace.repository';
+import { InvalidTraceLocationError } from '../../../domain/trace/errors/invalid-trace-location.error';
+import { UnsupportedImageFormatError } from '../../services/displayable-image';
+import { MAX_TRACE_LOCATION_LENGTH } from '../../../domain/trace/entity/trace';
 import { CaseAccessDeniedError } from '../../../../access/application/case-access-denied.error';
 import { CaseAccessService } from '../../../../access/application/case-access.service';
 import { InMemoryCaseAccessReader } from '../../../../access/infrastructure/persistence/in-memory-case-access.reader';
@@ -74,6 +78,7 @@ describe('UploadTraceHandler', () => {
   let idGenerator: IdGenerator;
   let sealRegistry: InMemorySealRegistry;
   let traceNumbers: InMemoryTraceNumberAllocatorAdapter;
+  let locationPhotos: InMemoryTraceLocationPhotoRepository;
 
   const buildHandler = (
     traceRepo: TraceRepository,
@@ -93,12 +98,14 @@ describe('UploadTraceHandler', () => {
       sealRegistry,
       traceNumbers,
       transactions,
+      locationPhotos,
     );
 
   beforeEach(() => {
     sealRegistry = new InMemorySealRegistry();
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryTraceRepository(auditTrail);
+    locationPhotos = new InMemoryTraceLocationPhotoRepository(auditTrail);
     storage = new InMemoryImageStorageAdapter();
     caseStatus = new InMemoryCaseStatusAdapter();
     idGenerator = { generate: jest.fn().mockReturnValue('trace-123') };
@@ -458,6 +465,150 @@ describe('UploadTraceHandler', () => {
     expect(uploaded.id).toBe('trace-123');
     expect(await repo.findById('trace-123')).not.toBeNull();
     expect(auditTrail.events).toHaveLength(1);
+  });
+
+  describe('la localisation consignée sur les lieux', () => {
+    const LOCATION = "Sur l'extérieur de la porte d'entrée de l'appartement";
+    const PHOTO_KEY =
+      'investigation-case/case-9/location-photos/location-photo-1.png';
+    const photoBuffer = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+      Buffer.from('location-photo'),
+    ]);
+    const PHOTO_SHA256 =
+      '3d3aec9f22cd0405be09f51d9ba3e4ec270140b3fa2265ca7cafcd08ddff7332';
+
+    const upload = (location?: string, photo?: Buffer) =>
+      new UploadTraceCommand(
+        EXPERT_ACTOR,
+        MARIE,
+        pngBuffer,
+        'case-9',
+        undefined,
+        undefined,
+        location,
+        photo,
+      );
+
+    beforeEach(() => {
+      caseStatus.set('case-9', 'OPEN');
+      idGenerator.generate = jest
+        .fn()
+        .mockReturnValueOnce('trace-123')
+        .mockReturnValueOnce('location-photo-1');
+    });
+
+    it('écrit la trace, la photographie et les trois actes en une seule opération', async () => {
+      await handler.execute(upload(LOCATION, photoBuffer));
+
+      expect(auditTrail.events.map((event) => event.eventType)).toEqual([
+        AuditEventTypeEnum.TRACE_UPLOADED,
+        AuditEventTypeEnum.LOCATION_PHOTO_UPLOADED,
+        AuditEventTypeEnum.TRACE_LOCATION_STATED,
+      ]);
+      expect(auditTrail.events.map((event) => event.evidenceClass)).toEqual([
+        EvidenceClassEnum.OBSERVED,
+        EvidenceClassEnum.OBSERVED,
+        EvidenceClassEnum.DECLARED,
+      ]);
+
+      const [, photoEvent, locationEvent] = auditTrail.events;
+      expect(photoEvent.caseId).toBe('case-9');
+      expect(photoEvent.traceId).toBe('trace-123');
+      expect(photoEvent.payload).toEqual({
+        locationPhotoId: 'location-photo-1',
+        fileSha256: PHOTO_SHA256,
+        storagePath: `media/${PHOTO_KEY}`,
+        sizeBytes: photoBuffer.length,
+        mimeType: 'image/png',
+      });
+      expect(locationEvent.payload).toEqual({ location: LOCATION });
+
+      expect((await repo.findById('trace-123'))?.location).toBe(LOCATION);
+      expect((await locationPhotos.findByTraceId('trace-123'))?.path).toBe(
+        `media/${PHOTO_KEY}`,
+      );
+      expect(storage.getSaved(PHOTO_KEY)?.equals(photoBuffer)).toBe(true);
+    });
+
+    it('scelle la photographie sur les octets reçus', async () => {
+      await handler.execute(upload(undefined, photoBuffer));
+
+      expect((await locationPhotos.findByTraceId('trace-123'))?.sha256).toBe(
+        PHOTO_SHA256,
+      );
+      expect(auditTrail.events[1].payload.fileSha256).toBe(PHOTO_SHA256);
+    });
+
+    it("n'inscrit qu'un acte quand le dépôt ne porte aucune localisation", async () => {
+      await handler.execute(upload());
+
+      expect(auditTrail.events).toHaveLength(1);
+      expect(auditTrail.events[0].eventType).toBe(
+        AuditEventTypeEnum.TRACE_UPLOADED,
+      );
+      expect(await locationPhotos.findByTraceId('trace-123')).toBeNull();
+    });
+
+    it('accepte une phrase sans photographie', async () => {
+      await handler.execute(upload(LOCATION));
+
+      expect(auditTrail.events.map((event) => event.eventType)).toEqual([
+        AuditEventTypeEnum.TRACE_UPLOADED,
+        AuditEventTypeEnum.TRACE_LOCATION_STATED,
+      ]);
+      expect((await repo.findById('trace-123'))?.location).toBe(LOCATION);
+    });
+
+    it('accepte une photographie sans phrase', async () => {
+      await handler.execute(upload(undefined, photoBuffer));
+
+      expect(auditTrail.events.map((event) => event.eventType)).toEqual([
+        AuditEventTypeEnum.TRACE_UPLOADED,
+        AuditEventTypeEnum.LOCATION_PHOTO_UPLOADED,
+      ]);
+      expect((await repo.findById('trace-123'))?.location).toBeNull();
+    });
+
+    it('refuse une localisation trop longue sans rien stocker', async () => {
+      await expect(
+        handler.execute(upload('a'.repeat(MAX_TRACE_LOCATION_LENGTH + 1))),
+      ).rejects.toBeInstanceOf(InvalidTraceLocationError);
+
+      expect(auditTrail.events).toHaveLength(0);
+      expect(
+        storage.getSaved('investigation-case/case-9/traces/trace-123.png'),
+      ).toBeUndefined();
+    });
+
+    it("refuse une photographie illisible avant d'écrire quoi que ce soit", async () => {
+      await expect(
+        handler.execute(
+          upload(LOCATION, Buffer.from('ceci-n-est-pas-une-image')),
+        ),
+      ).rejects.toBeInstanceOf(UnsupportedImageFormatError);
+
+      expect(auditTrail.events).toHaveLength(0);
+      expect(
+        storage.getSaved('investigation-case/case-9/traces/trace-123.png'),
+      ).toBeUndefined();
+      expect(storage.getSaved(PHOTO_KEY)).toBeUndefined();
+    });
+
+    it('ne laisse aucun des deux fichiers dans le stockage quand la transaction échoue', async () => {
+      const failing = buildHandler(
+        new FailingTraceRepository(new Error('rollback')),
+      );
+
+      await expect(
+        failing.execute(upload(LOCATION, photoBuffer)),
+      ).rejects.toThrow('rollback');
+
+      expect(
+        storage.getSaved('investigation-case/case-9/traces/trace-123.png'),
+      ).toBeUndefined();
+      expect(storage.getSaved(PHOTO_KEY)).toBeUndefined();
+    });
   });
 
   it('porte la même empreinte dans les deux colonnes quand rien n’est converti', async () => {
