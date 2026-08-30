@@ -43,6 +43,7 @@ function trace(overrides: Partial<PieceData> & { id: string }): PieceData {
     minutiae: [],
     withdrawnAt: null,
     withdrawalMotive: null,
+    withdrawalMotiveDetail: null,
     imageDestroyedAt: null,
     number: 1,
     origin: 'DIGITAL',
@@ -242,6 +243,7 @@ describe('buildTechnicalReport — annexe A', () => {
             number: 1,
             withdrawnAt: new Date('2026-08-12T10:00:00.000Z'),
             withdrawalMotive: 'MISFILED',
+            withdrawalMotiveDetail: null,
           }),
         ],
       }),
@@ -475,6 +477,7 @@ describe('buildTechnicalReport — discrimination', () => {
             cote: null,
             withdrawnAt: new Date('2026-08-12T00:00:00.000Z'),
             withdrawalMotive: 'DUPLICATE',
+            withdrawalMotiveDetail: null,
           }),
         ],
       }),
@@ -484,6 +487,29 @@ describe('buildTechnicalReport — discrimination', () => {
       "Retirée du dossier le 12 août 2026 — doublon d'une pièce déjà versée",
     );
     expect(model.counts.total).toBe(0);
+  });
+
+  it("imprime la phrase de l'opérateur quand le motif est OTHER", () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            cote: null,
+            withdrawnAt: new Date('2026-08-12T00:00:00.000Z'),
+            withdrawalMotive: 'OTHER',
+            withdrawalMotiveDetail:
+              'relevée sur un scellé rattaché à une autre procédure',
+          }),
+        ],
+      }),
+    );
+
+    expect(model.exploitability[0].withdrawal).toBe(
+      'Retirée du dossier le 12 août 2026 — ' +
+        '« relevée sur un scellé rattaché à une autre procédure »',
+    );
   });
 });
 
@@ -705,6 +731,7 @@ describe('buildTechnicalReport — méthodes de révélation', () => {
             revelationTechnique: 'NINHYDRIN',
             withdrawnAt: new Date('2026-08-12T10:00:00.000Z'),
             withdrawalMotive: 'MISFILED',
+            withdrawalMotiveDetail: null,
           }),
         ],
       }),

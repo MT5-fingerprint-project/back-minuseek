@@ -14,6 +14,7 @@ export interface ReferencePrintReadModel {
   matchings: ReferencePrintMatchingReadModel[];
   withdrawnAt: Date | null;
   withdrawalMotive: string | null;
+  withdrawalMotiveDetail: string | null;
   imageDestroyedAt: Date | null;
   resolutionDpi: number | null;
 }

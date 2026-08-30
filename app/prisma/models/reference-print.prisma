@@ -11,6 +11,11 @@ model ReferencePrint {
 
   withdrawnAt      DateTime?
   withdrawalMotive WithdrawalMotive?
+
+  // Renseigné si et seulement si le motif est OTHER : la phrase de l'opérateur,
+  // imprimée telle quelle dans le rapport à la place d'un libellé de la liste.
+  withdrawalMotiveDetail String?
+
   imageDestroyedAt DateTime?
 
   // Résolution calibrée par l'opérateur sur la règle photographiée (L5-4), en

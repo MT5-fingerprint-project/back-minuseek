@@ -39,6 +39,7 @@ export interface TracePrimitives {
   captureQuality: CaptureQualityProps | null;
   withdrawnAt: Date | null;
   withdrawalMotive: string | null;
+  withdrawalMotiveDetail: string | null;
   resolutionDpi: number | null;
   origin: TraceOriginEnum | null;
   location: string | null;
@@ -149,6 +150,7 @@ export class Trace {
     captureQuality: unknown;
     withdrawnAt: Date | null;
     withdrawalMotive: string | null;
+    withdrawalMotiveDetail: string | null;
     resolutionDpi: number | null;
     origin: string | null;
     location: string | null;
@@ -174,7 +176,11 @@ export class Trace {
         deviceModel: payload.captureDeviceModel ?? undefined,
       }),
       CaptureQuality.fromPersistence(payload.captureQuality),
-      Withdrawal.fromPersistence(payload.withdrawalMotive, payload.withdrawnAt),
+      Withdrawal.fromPersistence(
+        payload.withdrawalMotive,
+        payload.withdrawnAt,
+        payload.withdrawalMotiveDetail,
+      ),
       ImageResolution.fromPersistence(payload.resolutionDpi),
       TraceOrigin.fromPersistence(payload.origin),
       payload.location,
@@ -212,11 +218,11 @@ export class Trace {
       : TraceStatus.notExploitable();
   }
 
-  withdraw(motive: string, at: Date): void {
+  withdraw(motive: string, at: Date, motiveDetail?: string | null): void {
     if (this._withdrawal !== null) {
       throw new AlreadyWithdrawnError(this._id);
     }
-    this._withdrawal = Withdrawal.of(motive, at);
+    this._withdrawal = Withdrawal.of(motive, at, motiveDetail);
   }
 
   restore(): void {
@@ -245,6 +251,7 @@ export class Trace {
       captureQuality: this._captureQuality?.toPrimitives() ?? null,
       withdrawnAt: this._withdrawal?.getAt() ?? null,
       withdrawalMotive: this._withdrawal?.getMotive() ?? null,
+      withdrawalMotiveDetail: this._withdrawal?.getDetail() ?? null,
       resolutionDpi: this._resolution?.getValue() ?? null,
       origin: this._origin?.getValue() ?? null,
       location: this._location,
@@ -298,6 +305,10 @@ export class Trace {
 
   get withdrawnAt(): Date | null {
     return this._withdrawal?.getAt() ?? null;
+  }
+
+  get withdrawalMotiveDetail(): string | null {
+    return this._withdrawal?.getDetail() ?? null;
   }
 
   get resolutionDpi(): number | null {

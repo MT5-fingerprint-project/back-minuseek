@@ -13,6 +13,7 @@ import {
   TRACE_LOCATION_PHOTO_REPOSITORY,
   TraceLocationPhotoRepository,
 } from '../../../domain/trace-location-photo/repository/trace-location-photo.repository';
+import { withdrawalDetailOf } from '../../../domain/withdrawal/withdrawal.vo';
 import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
 import { RemoveLocationPhotoCommand } from './remove-location-photo.command';
 
@@ -31,6 +32,8 @@ export class RemoveLocationPhotoHandler implements ICommandHandler<
   ) {}
 
   async execute(cmd: RemoveLocationPhotoCommand): Promise<void> {
+    const motiveDetail = withdrawalDetailOf(cmd.motive, cmd.motiveDetail);
+
     const trace = await this.traces.findById(cmd.traceId);
     if (!trace) {
       throw new TraceNotFoundError(cmd.traceId);
@@ -59,6 +62,7 @@ export class RemoveLocationPhotoHandler implements ICommandHandler<
         storagePath: photo.path,
         fileSha256: photo.sha256,
         motive: cmd.motive,
+        motiveDetail,
       },
     });
   }

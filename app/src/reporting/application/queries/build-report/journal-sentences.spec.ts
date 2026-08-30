@@ -153,6 +153,25 @@ describe('journalSentence — les pièces', () => {
     );
   });
 
+  it("imprime la phrase de l'opérateur quand le motif est OTHER", () => {
+    expect(
+      say(
+        AuditEventTypeEnum.TRACE_DELETED,
+        {
+          traceId: 'trace-7',
+          storagePath: 'media/case-1/traces/trace-7.png',
+          fileSha256: 'a'.repeat(64),
+          motive: 'OTHER',
+          motiveDetail: 'relevée sur un scellé rattaché à une autre procédure',
+        },
+        'trace-7',
+      ),
+    ).toBe(
+      'Retrait de la trace 3455-T7 cotée « B » du dossier — ' +
+        '« relevée sur un scellé rattaché à une autre procédure »',
+    );
+  });
+
   it('dit la fiche de la trace et les trois valeurs qu’elle porte', () => {
     expect(
       say(

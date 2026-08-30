@@ -5,5 +5,6 @@ export class WithdrawTraceCommand {
     public readonly actor: AuditActor,
     public readonly id: string,
     public readonly motive: string,
+    public readonly motiveDetail: string | null = null,
   ) {}
 }

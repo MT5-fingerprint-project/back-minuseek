@@ -68,6 +68,7 @@ describe('Trace', () => {
         captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        withdrawalMotiveDetail: null,
         resolutionDpi: null,
         origin: null,
         location: null,
@@ -106,6 +107,7 @@ describe('Trace', () => {
         captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        withdrawalMotiveDetail: null,
         resolutionDpi: null,
         origin: null,
         location: null,
@@ -299,6 +301,7 @@ describe('Trace', () => {
         captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        withdrawalMotiveDetail: null,
         resolutionDpi: null,
         origin: null,
         location: null,
@@ -330,6 +333,7 @@ describe('Trace', () => {
         captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        withdrawalMotiveDetail: null,
         resolutionDpi: null,
         origin: null,
         location: null,
@@ -358,6 +362,7 @@ describe('Trace', () => {
         captureQuality: { blurScore: 128.4, passed: true },
         withdrawnAt: null,
         withdrawalMotive: null,
+        withdrawalMotiveDetail: null,
         resolutionDpi: null,
         origin: null,
         location: null,
@@ -388,6 +393,7 @@ describe('Trace', () => {
           captureQuality: { blurScore: 'flou', passed: true },
           withdrawnAt: null,
           withdrawalMotive: null,
+          withdrawalMotiveDetail: null,
           resolutionDpi: null,
           origin: null,
           location: null,
@@ -416,6 +422,7 @@ describe('Trace', () => {
           captureQuality: null,
           withdrawnAt: null,
           withdrawalMotive: null,
+          withdrawalMotiveDetail: null,
           resolutionDpi: null,
           origin: null,
           location: null,
@@ -445,6 +452,7 @@ describe('Trace', () => {
         captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        withdrawalMotiveDetail: null,
         resolutionDpi: null,
         origin: null,
         location: null,
@@ -471,6 +479,7 @@ describe('Trace', () => {
         captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
+        withdrawalMotiveDetail: null,
         resolutionDpi: null,
         origin: null,
         location: null,
@@ -696,6 +705,7 @@ describe('Trace', () => {
       expect(trace.toPrimitives()).toMatchObject({
         withdrawnAt: WITHDRAWN_AT,
         withdrawalMotive: 'DUPLICATE',
+        withdrawalMotiveDetail: null,
       });
     });
 
@@ -724,6 +734,7 @@ describe('Trace', () => {
       expect(trace.toPrimitives()).toMatchObject({
         withdrawnAt: null,
         withdrawalMotive: null,
+        withdrawalMotiveDetail: null,
         resolutionDpi: null,
       });
     });

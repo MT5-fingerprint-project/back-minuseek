@@ -50,6 +50,7 @@ const WITHDRAWAL_MOTIVE_LABELS: Record<string, string> = {
   DUPLICATE: "doublon d'une pièce déjà versée",
   MISFILED: 'pièce versée par erreur dans ce dossier',
   WRONG_ATTRIBUTION: 'rattachement erroné à une personne ou à un doigt',
+  OTHER: 'autre motif',
 };
 
 const VERIFICATION_RESULT_LABELS: Record<string, string> = {
@@ -75,7 +76,15 @@ export function subjectTypeLabel(type: string): string {
   return SUBJECT_TYPE_LABELS[type] ?? type;
 }
 
-export function withdrawalMotiveLabel(motive: string): string {
+/** Sous OTHER, le rapport imprime la phrase de l'opérateur entre guillemets, comme
+ * il le fait déjà de la localisation relevée sur les lieux. */
+export function withdrawalMotiveLabel(
+  motive: string,
+  detail: string | null = null,
+): string {
+  if (motive === 'OTHER' && detail !== null && detail.length > 0) {
+    return `« ${detail} »`;
+  }
   return WITHDRAWAL_MOTIVE_LABELS[motive] ?? motive;
 }
 

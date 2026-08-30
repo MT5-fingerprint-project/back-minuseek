@@ -21,6 +21,7 @@ function piece(overrides: Partial<PieceData> & { id: string }): PieceData {
     minutiae: [],
     withdrawnAt: null,
     withdrawalMotive: null,
+    withdrawalMotiveDetail: null,
     imageDestroyedAt: null,
     number: null,
     origin: null,

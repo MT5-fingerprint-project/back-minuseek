@@ -30,6 +30,7 @@ const aTraceView = (
   captureQuality: null,
   withdrawnAt: null,
   withdrawalMotive: null,
+  withdrawalMotiveDetail: null,
   resolutionDpi: null,
   origin: null,
   location: null,

@@ -16,6 +16,7 @@ export interface ReferencePrintPrimitives {
   position: string | null;
   withdrawnAt: Date | null;
   withdrawalMotive: string | null;
+  withdrawalMotiveDetail: string | null;
   imageDestroyedAt: Date | null;
   resolutionDpi: number | null;
 }
@@ -82,6 +83,7 @@ export class ReferencePrint {
       Withdrawal.fromPersistence(
         primitives.withdrawalMotive,
         primitives.withdrawnAt,
+        primitives.withdrawalMotiveDetail,
       ),
       primitives.imageDestroyedAt,
       ImageResolution.fromPersistence(primitives.resolutionDpi),
@@ -102,11 +104,11 @@ export class ReferencePrint {
     this._imageDestroyedAt = destroyedAt;
   }
 
-  withdraw(motive: string, at: Date): void {
+  withdraw(motive: string, at: Date, motiveDetail?: string | null): void {
     if (this._withdrawal !== null) {
       throw new AlreadyWithdrawnError(this._id);
     }
-    this._withdrawal = Withdrawal.of(motive, at);
+    this._withdrawal = Withdrawal.of(motive, at, motiveDetail);
   }
 
   restore(): void {
@@ -127,6 +129,7 @@ export class ReferencePrint {
       position: this._position ? this._position.getValue() : null,
       withdrawnAt: this._withdrawal?.getAt() ?? null,
       withdrawalMotive: this._withdrawal?.getMotive() ?? null,
+      withdrawalMotiveDetail: this._withdrawal?.getDetail() ?? null,
       imageDestroyedAt: this._imageDestroyedAt,
       resolutionDpi: this._resolution?.getValue() ?? null,
     };
@@ -174,6 +177,10 @@ export class ReferencePrint {
 
   get withdrawnAt(): Date | null {
     return this._withdrawal?.getAt() ?? null;
+  }
+
+  get withdrawalMotiveDetail(): string | null {
+    return this._withdrawal?.getDetail() ?? null;
   }
 
   get resolutionDpi(): number | null {

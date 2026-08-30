@@ -13,6 +13,10 @@ model Trace {
   withdrawnAt      DateTime?
   withdrawalMotive WithdrawalMotive?
 
+  // Renseigné si et seulement si le motif est OTHER : la phrase de l'opérateur,
+  // imprimée telle quelle dans le rapport à la place d'un libellé de la liste.
+  withdrawalMotiveDetail String?
+
   // Métadonnées de capture (B1b). Toutes nullables : le chemin galerie et les
   // traces antérieures n'en portent aucune. `capturedAt` est la date de PRISE DE
   // VUE (EXIF), à ne pas confondre avec `createdAt`, date de réception serveur.

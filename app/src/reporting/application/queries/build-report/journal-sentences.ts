@@ -51,7 +51,7 @@ function withMotive(sentence: string, event: AuditEventData): string {
   const motive = text(event, 'motive') ?? text(event, 'reason');
   return motive === null
     ? sentence
-    : `${sentence} — ${withdrawalMotiveLabel(motive)}`;
+    : `${sentence} — ${withdrawalMotiveLabel(motive, text(event, 'motiveDetail'))}`;
 }
 
 function layerPiece(event: AuditEventData, named: Designations): string {
