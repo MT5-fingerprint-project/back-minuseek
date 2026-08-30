@@ -29,3 +29,4 @@ On consigne ici les **décisions structurantes** du repo : choix techno, trade-o
 - [ADR-0016](0016-reglages-de-service-dans-la-base-du-tenant.md) — Les réglages d'un service vivent dans sa base, sur une ligne unique, et leur écriture est un acte
 - [ADR-0017](0017-numerotation-et-signataire-des-rapports.md) — Un rapport porte un numéro pris sur un compteur unique par dossier, et le nom de celui qui le signe
 - [ADR-0018](0018-registre-des-scelles-projete-en-base-d-administration.md) — Le registre des scellés est une projection en base d'administration, pas une seconde vérité
+- [ADR-0019](0019-mission-de-verification-distincte-de-l-operateur.md) — La vérification est une mission portée par une table à part, et elle n'ouvre pas l'administration de l'affaire
