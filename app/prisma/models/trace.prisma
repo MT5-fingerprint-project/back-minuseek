@@ -38,8 +38,9 @@ model Trace {
   location            String?
   revelationTechnique RevelationTechnique?
 
-  matchings Matching[]
-  hits      Hit[]
+  matchings     Matching[]
+  hits          Hit[]
+  locationPhoto TraceLocationPhoto?
 
   @@unique([caseId, number])
 }
