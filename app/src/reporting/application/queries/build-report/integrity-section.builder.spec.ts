@@ -69,6 +69,7 @@ function trace(overrides: Partial<PieceData> = {}): PieceData {
     revelationTechnique: null,
     cote: 'B',
     notIdentifiedAt: null,
+    locationPhoto: null,
     ...overrides,
   };
 }

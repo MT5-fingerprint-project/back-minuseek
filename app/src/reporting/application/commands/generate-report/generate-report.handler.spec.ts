@@ -60,6 +60,11 @@ const SIGNER: ReportSignerData = {
 };
 const TRACE_PATH = 'media/investigation-case/case-1/traces/trace-1.png';
 const REF_PATH = 'media/investigation-case/case-1/reference-prints/ref-1.jpg';
+const LOCATION_PHOTO = {
+  path: 'media/investigation-case/case-1/traces/trace-1-location.jpg',
+  sha256: 'f'.repeat(64),
+  sealedAt: new Date('2026-08-01T10:05:00.000Z'),
+};
 
 const CASE_DATA: CaseReportData = {
   investigationCase: {
@@ -108,6 +113,7 @@ const CASE_DATA: CaseReportData = {
       revelationTechnique: null,
       cote: null,
       notIdentifiedAt: null,
+      locationPhoto: null,
     },
   ],
   referencePrints: [
@@ -132,6 +138,7 @@ const CASE_DATA: CaseReportData = {
       revelationTechnique: null,
       cote: null,
       notIdentifiedAt: null,
+      locationPhoto: null,
     },
   ],
   comparisons: [],
@@ -595,6 +602,41 @@ describe('GenerateReportHandler', () => {
     const model = renderer.rendered[0];
     if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
     expect(model.traces[0].image).toBeNull();
+  });
+
+  it('n’embarque pas la photographie de localisation d’une trace que personne n’a identifiée', async () => {
+    caseData.data = {
+      ...CASE_DATA,
+      traces: [{ ...CASE_DATA.traces[0], locationPhoto: LOCATION_PHOTO }],
+    };
+
+    await generate();
+
+    expect(imageEmbedder.embedded).toEqual([TRACE_PATH]);
+  });
+
+  it('embarque la photographie de localisation d’une trace identifiée', async () => {
+    caseData.data = {
+      ...CASE_DATA,
+      traces: [{ ...CASE_DATA.traces[0], locationPhoto: LOCATION_PHOTO }],
+      declaredHits: [
+        {
+          traceId: 'trace-1',
+          referencePrintId: 'ref-1',
+          declaredAt: new Date('2026-08-01T12:00:00.000Z'),
+          declaredBy: null,
+          withdrawnAt: null,
+        },
+      ],
+    };
+
+    await generate();
+
+    expect(imageEmbedder.embedded).toEqual([
+      TRACE_PATH,
+      REF_PATH,
+      LOCATION_PHOTO.path,
+    ]);
   });
 
   it('projette le scellé du rapport au registre public, avec sa nature', async () => {

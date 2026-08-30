@@ -40,6 +40,7 @@ function piece(overrides: Partial<PieceData> & { id: string }): PieceData {
     revelationTechnique: null,
     cote: null,
     notIdentifiedAt: null,
+    locationPhoto: null,
     ...overrides,
   };
 }

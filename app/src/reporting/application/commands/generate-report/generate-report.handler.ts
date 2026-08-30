@@ -27,7 +27,6 @@ import {
   CASE_REPORT_DATA_READER,
   type CaseReportData,
   type CaseReportDataReader,
-  type PieceData,
 } from '../../ports/case-report-data.reader';
 import {
   CHAIN_ATTESTATION,
@@ -68,7 +67,7 @@ import {
   TRACEABILITY_DATA_READER,
   type TraceabilityDataReader,
 } from '../../ports/traceability-data.reader';
-import { printedPieces } from '../../queries/build-report/printed-pieces';
+import { printedImagePaths } from '../../queries/build-report/printed-pieces';
 import { buildTechnicalReport } from '../../queries/build-report/technical-report.builder';
 import { buildTraceabilityReport } from '../../queries/build-report/traceability-report.builder';
 import { ReportImageViewModel, ReportViewModel } from '../../report-view-model';
@@ -211,7 +210,7 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     if (command.type === 'TECHNICAL') {
       const [images, chainEvents, anchors, contributors, attestation] =
         await Promise.all([
-          this.imagesOf(printedPieces(data)),
+          this.imagesOf(printedImagePaths(data)),
           this.traceabilityData.readCaseEvents(command.caseId),
           this.traceabilityData.readAnchors(),
           this.contributors.read(command.caseId),
@@ -259,12 +258,11 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
   }
 
   private async imagesOf(
-    pieces: PieceData[],
+    paths: string[],
   ): Promise<Map<string, ReportImageViewModel | null>> {
     const entries = await Promise.all(
-      pieces.map(
-        async (piece) =>
-          [piece.path, await this.imageEmbedder.embed(piece.path)] as const,
+      paths.map(
+        async (path) => [path, await this.imageEmbedder.embed(path)] as const,
       ),
     );
     return new Map(entries);
