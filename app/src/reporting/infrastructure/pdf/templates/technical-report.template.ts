@@ -9,6 +9,8 @@ import {
   ReportPieceIntegrityViewModel,
   ReportSaisineViewModel,
   ReportTreatmentViewModel,
+  ReportVerificationActGroupViewModel,
+  ReportVerificationViewModel,
   TechnicalReportViewModel,
 } from '../../../application/report-view-model';
 import {
@@ -218,6 +220,9 @@ function summarySection(model: TechnicalReportViewModel): string {
       : 'Annexe A — Inventaire des traces papillaires exploitables',
     model.annexB.length === 0 ? null : "Annexe B — Démonstrations d'identité",
     'Annexe C — Journal des actes',
+    model.verifications.length === 0
+      ? null
+      : 'Annexe D — Vérification par un second regard',
   ].filter((line): line is string => line !== null);
 
   return `
@@ -859,6 +864,76 @@ function journalSection(model: TechnicalReportViewModel): string {
     ${journalIntegrityLine(model.integrity)}`;
 }
 
+function verificationActsTable(
+  group: ReportVerificationActGroupViewModel,
+): string {
+  return `
+    <h3>Actes sur ${escapeHtml(group.pieceDesignation)}</h3>
+    <table>
+      <tr><th>N°</th><th>Date et heure</th><th>Acte</th></tr>
+      ${group.acts
+        .map(
+          (act) => `
+      <tr>
+        <td class="numeric">${act.order}</td>
+        <td>${formatDayTime(act.occurredAt)}</td>
+        <td>${escapeHtml(act.sentence)}</td>
+      </tr>`,
+        )
+        .join('')}
+    </table>`;
+}
+
+function verificationBlock(
+  verification: ReportVerificationViewModel,
+  order: number,
+): string {
+  const { verifier } = verification;
+  const quality =
+    verifier === null
+      ? 'Compte supprimé du service'
+      : `${escapeHtml(verifier.displayName)}, ${escapeHtml(
+          verifier.grade,
+        )}, matricule ${escapeHtml(verifier.serviceNumber)}`;
+
+  return `
+    <h3>Vérification ${order} — ${escapeHtml(verification.verdictLabel)}</h3>
+    <p class="champ">Vérificateur : ${quality}</p>
+    <p class="champ">Vérification confiée le ${formatDayTime(
+      verification.requestedAt,
+    )}, conclusions rendues le ${formatDayTime(verification.completedAt)}.</p>
+    <table>
+      <tr><th>Trace</th><th>Résultat de la confrontation</th></tr>
+      ${verification.traces
+        .map(
+          (trace) => `
+      <tr>
+        <td>${escapeHtml(trace.traceDesignation)}</td>
+        <td>${escapeHtml(trace.resultLabel)}</td>
+      </tr>`,
+        )
+        .join('')}
+    </table>
+    ${
+      verification.actGroups.length === 0
+        ? '<p class="empty">Aucun acte du vérificateur sur les images.</p>'
+        : verification.actGroups.map(verificationActsTable).join('')
+    }`;
+}
+
+function verificationAnnexSection(model: TechnicalReportViewModel): string {
+  if (model.verifications.length === 0) {
+    return '';
+  }
+
+  return `
+    ${annexTitlePage('Annexe D — Vérification par un second regard', model)}
+    <p>Le dossier a été revérifié en aveugle : le vérificateur n'a eu accès ni aux réglages, ni aux repères, ni aux identifications, ni aux déclarations d'exploitabilité de l'opérateur du dossier. Les actes ci-dessous sont regroupés par pièce ; ils figurent aussi, dans la chronologie du dossier, à l'annexe C.</p>
+    ${model.verifications
+      .map((verification, order) => verificationBlock(verification, order + 1))
+      .join('')}`;
+}
+
 function commissionParagraph(saisine: ReportSaisineViewModel): string {
   const magistrate = [saisine.magistrateName, saisine.magistrateTitle]
     .filter((part): part is string => part !== null && part.length > 0)
@@ -970,6 +1045,8 @@ export function renderTechnicalReportHtml(
     ${annexBSection(model)}
 
     ${journalSection(model)}
+
+    ${verificationAnnexSection(model)}
 
     <div class="pied">${reportFooterText(model.header.reportNumber)}</div>
   </body>

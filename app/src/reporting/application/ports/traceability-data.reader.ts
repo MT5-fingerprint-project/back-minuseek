@@ -4,6 +4,7 @@ export interface AuditEventData {
   traceId: string | null;
   evidenceClass: string;
   actorDisplayName: string;
+  actorSub: string;
   occurredAt: Date;
   payload: Record<string, unknown>;
   hash: string;

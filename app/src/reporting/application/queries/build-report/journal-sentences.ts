@@ -231,6 +231,9 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
     if (exploitable === 'NOT_EXPLOITABLE') {
       return `Le vérificateur déclare ${designation} inexploitable`;
     }
+    if (exploitable !== 'EXPLOITABLE') {
+      return `Conclusion du vérificateur rendue sur ${designation}`;
+    }
     const identified = text(event, 'identifiedReferencePrintId');
     return identified === null
       ? `Le vérificateur déclare ${designation} exploitable, sans identification`
@@ -242,6 +245,9 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
     const verdict = text(event, 'verdict');
     if (verdict === 'CONCORDANT') {
       return 'Vérification close : les conclusions concordent';
+    }
+    if (verdict !== 'DISCORDANT') {
+      return 'Vérification close';
     }
     const diverging = count(event, 'discordantTraceCount');
     const opening = 'Vérification close : les conclusions divergent';

@@ -41,6 +41,7 @@ import { buildLetterhead, signatureCityOf } from './letterhead';
 import { buildIntegritySection } from './integrity-section.builder';
 import { buildJournalAnnex } from './journal-annex.builder';
 import { pieceDesignations } from './piece-designations';
+import { buildVerificationAnnexes } from './verification-annex';
 import {
   buildDemonstrations,
   isWithdrawn,
@@ -323,6 +324,11 @@ export function buildTechnicalReport(
     identityDemonstrations: buildDemonstrations(data, pieceViewModels),
     annexA: buildAnnexA(caseNumber, orderedTraces, images),
     annexB: buildAnnexB(caseNumber, data, images),
+    verifications: buildVerificationAnnexes(
+      data,
+      input.chainEvents,
+      designations,
+    ),
     integrity: buildIntegritySection({
       traces: data.traces,
       referencePrints: data.referencePrints,

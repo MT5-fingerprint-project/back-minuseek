@@ -115,6 +115,7 @@ function caseData(overrides: Partial<CaseReportData> = {}): CaseReportData {
     declaredHits: [],
     subjects: [],
     minutiaPairs: [],
+    verifications: [],
     ...overrides,
   };
 }
@@ -828,5 +829,90 @@ describe('buildTechnicalReport — saisine', () => {
       biologicalPrecautions: true,
       assistants: [{ name: 'Paul Ferrand', task: 'ouverture du véhicule' }],
     });
+  });
+});
+
+describe('buildTechnicalReport — annexe de vérification', () => {
+  it("n'ajoute rien au rapport d'un dossier jamais vérifié", () => {
+    expect(build(caseData()).verifications).toEqual([]);
+  });
+
+  it('branche l’annexe sur les missions closes du dossier', () => {
+    const model = build(
+      caseData({
+        traces: [trace({ id: 'trace-1', number: 1, cote: 'A' })],
+        verifications: [
+          {
+            id: 'verification-1',
+            verifier: {
+              identityProviderId: 'sub-lucie',
+              firstName: 'Lucie',
+              lastName: 'Bernard',
+              grade: 'Brigadier',
+              serviceNumber: 'PTS-0042',
+              role: 'OPERATOR',
+            },
+            status: 'CONCORDANT',
+            requestedAt: new Date('2026-08-10T08:00:00.000Z'),
+            completedAt: new Date('2026-08-12T08:00:00.000Z'),
+            decisions: [],
+          },
+        ],
+      }),
+    );
+
+    expect(model.verifications).toHaveLength(1);
+    expect(model.verifications[0].verdictLabel).toBe(
+      'Vérification concordante',
+    );
+  });
+
+  it('regroupe les actes du vérificateur, et les laisse un par un au journal', () => {
+    const acteDuVerificateur = {
+      seq: 20,
+      eventType: 'LAYER_CREATED',
+      traceId: 'trace-1',
+      evidenceClass: 'OBSERVED',
+      actorDisplayName: 'Lucie Bernard',
+      actorSub: 'sub-lucie',
+      occurredAt: new Date('2026-08-11T09:00:00.000Z'),
+      payload: {
+        fingerprintId: 'trace-1',
+        type: 'ANNOTATION',
+        settings: { type: 'circle' },
+      },
+      hash: 'f'.repeat(64),
+      prevHash: 'e'.repeat(64),
+    };
+
+    const model = build(
+      caseData({
+        traces: [trace({ id: 'trace-1', number: 1, cote: 'A' })],
+        verifications: [
+          {
+            id: 'verification-1',
+            verifier: {
+              identityProviderId: 'sub-lucie',
+              firstName: 'Lucie',
+              lastName: 'Bernard',
+              grade: 'Brigadier',
+              serviceNumber: 'PTS-0042',
+              role: 'OPERATOR',
+            },
+            status: 'CONCORDANT',
+            requestedAt: new Date('2026-08-10T08:00:00.000Z'),
+            completedAt: new Date('2026-08-12T08:00:00.000Z'),
+            decisions: [],
+          },
+        ],
+      }),
+      { chainEvents: [acteDuVerificateur], journalDetail: 'FULL' },
+    );
+
+    expect(model.verifications[0].actGroups).toHaveLength(1);
+    expect(model.verifications[0].actGroups[0].acts).toHaveLength(1);
+    expect(model.journal.acts.map((act) => act.sentence)).toContain(
+      model.verifications[0].actGroups[0].acts[0].sentence,
+    );
   });
 });

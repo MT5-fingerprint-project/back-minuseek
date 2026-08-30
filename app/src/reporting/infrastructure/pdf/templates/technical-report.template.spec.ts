@@ -156,6 +156,7 @@ function model(
       actCountTotal: 0,
       actCountPrinted: 0,
     },
+    verifications: [],
     ...overrides,
   };
 }
@@ -1382,5 +1383,115 @@ describe('renderTechnicalReportHtml — numérotation des sections', () => {
 
     expect(html).toContain('<h2>1. Saisine</h2>');
     expect(html).toContain('<li>1. Saisine</li>');
+  });
+});
+
+describe('renderTechnicalReportHtml — annexe D, la vérification', () => {
+  const VERIFICATION = {
+    verifier: {
+      displayName: 'Lucie Bernard',
+      grade: 'Brigadier',
+      serviceNumber: 'PTS-0042',
+      role: 'OPERATOR',
+    },
+    requestedAt: new Date('2026-08-10T08:00:00.000Z'),
+    completedAt: new Date('2026-08-12T08:00:00.000Z'),
+    verdictLabel: 'Vérification discordante',
+    traces: [
+      {
+        traceDesignation: 'la trace 3455-T1 cotée « A »',
+        resultLabel: 'Discordance — un troisième examen est nécessaire',
+      },
+      {
+        traceDesignation: 'la trace 3455-T2 cotée « B »',
+        resultLabel: 'Conclusions concordantes',
+      },
+    ],
+    actGroups: [
+      {
+        pieceDesignation: 'la trace 3455-T1 cotée « A »',
+        acts: [
+          {
+            order: 1,
+            occurredAt: new Date('2026-08-11T09:00:00.000Z'),
+            actorDisplayName: 'Lucie Bernard',
+            sentence: 'Minutie relevée sur la trace 3455-T1 cotée « A »',
+          },
+        ],
+      },
+    ],
+  };
+
+  it("n'imprime aucune annexe D sur un dossier jamais vérifié, ni ne l'annonce", () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html).not.toContain('Annexe D');
+    expect(html).not.toContain('vérificateur');
+  });
+
+  it('annonce l’annexe D au sommaire dès qu’une vérification est close', () => {
+    const html = renderTechnicalReportHtml(
+      model({ verifications: [VERIFICATION] }),
+    );
+
+    expect(html).toContain('Annexe D — Vérification par un second regard');
+  });
+
+  it('imprime le vérificateur, sa qualité et les deux dates de sa mission', () => {
+    const html = renderTechnicalReportHtml(
+      model({ verifications: [VERIFICATION] }),
+    );
+
+    expect(html).toContain('Lucie Bernard');
+    expect(html).toContain('matricule PTS-0042');
+    expect(html).toContain('Vérification discordante');
+    expect(html).toContain('12/08/2026');
+  });
+
+  it('imprime le résultat de chaque trace et les actes regroupés par pièce', () => {
+    const html = renderTechnicalReportHtml(
+      model({ verifications: [VERIFICATION] }),
+    );
+
+    expect(html).toContain('Discordance — un troisième examen est nécessaire');
+    expect(html).toContain('Conclusions concordantes');
+    expect(html).toContain('Actes sur la trace 3455-T1');
+    expect(html).toContain('Minutie relevée sur la trace 3455-T1');
+  });
+
+  it('imprime les vérifications successives dans leur ordre', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        verifications: [
+          VERIFICATION,
+          { ...VERIFICATION, verdictLabel: 'Vérification concordante' },
+        ],
+      }),
+    );
+
+    expect(html.indexOf('Vérification 1')).toBeLessThan(
+      html.indexOf('Vérification 2'),
+    );
+  });
+
+  it('dit le compte supprimé plutôt qu’un vérificateur vide', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        verifications: [{ ...VERIFICATION, verifier: null, actGroups: [] }],
+      }),
+    );
+
+    expect(html).toContain('Compte supprimé du service');
+    expect(html).toContain('Aucun acte du vérificateur sur les images.');
+  });
+
+  it('imprime l’annexe D après le journal des actes', () => {
+    const html = renderTechnicalReportHtml(
+      model({ verifications: [VERIFICATION] }),
+    );
+
+    expect(html.indexOf('Annexe C — Journal des actes')).toBeLessThan(
+      html.indexOf('Annexe D — Vérification par un second regard'),
+    );
   });
 });
