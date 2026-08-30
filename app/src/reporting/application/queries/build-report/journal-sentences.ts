@@ -219,6 +219,12 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
     'Horodatage du registre du laboratoire par une autorité extérieure',
   [AuditEventTypeEnum.SERVICE_HEADER_SAVED]: () =>
     'En-tête du service enregistré',
+  [AuditEventTypeEnum.CASE_VERIFICATION_REQUESTED]: (event) => {
+    const name = text(event, 'verifierName') ?? text(event, 'verifierUserId');
+    return name === null
+      ? 'Vérification du dossier confiée à un second regard'
+      : `Vérification du dossier confiée à ${name}`;
+  },
 };
 
 export function journalSentence(

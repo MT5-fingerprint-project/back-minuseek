@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Controller,
+  ForbiddenException,
   Get,
   NotFoundException,
   Post,
@@ -17,12 +18,14 @@ import type {
 import { CaseAccessService } from '../../application/case-access.service';
 import { InMemoryCaseAccessReader } from '../persistence/in-memory-case-access.reader';
 import {
+  CASE_ADMINISTRATION_FORBIDDEN_MESSAGE,
   CASE_NOT_FOUND_MESSAGE,
   MALFORMED_CASE_SCOPE_MESSAGE,
   CaseAccessGuard,
 } from './case-access.guard';
 import type { RequestWithCaseAccess } from './case-access.guard';
 import {
+  CaseAdministration,
   CaseScopeCheckedInHandler,
   CaseScoped,
   CaseScopedList,
@@ -61,6 +64,12 @@ class CaseRoutes {
 
   @Get(':id')
   readCase() {
+    return null;
+  }
+
+  @Post(':id/closure')
+  @CaseAdministration()
+  closeCase() {
     return null;
   }
 }
@@ -411,5 +420,113 @@ describe('CaseAccessGuard — la requête malformée et le câblage fautif', () 
     expect(refusal).not.toBeInstanceOf(NotFoundException);
     expect((refusal as Error).message).toBe('base injoignable');
     expect(request.caseAccess).toBeUndefined();
+  });
+});
+
+describe("CaseAccessGuard — une route d'administration de l'affaire", () => {
+  const guardWithVerifier = (): CaseAccessGuard =>
+    guardWith(
+      new InMemoryCaseAccessReader({
+        operators: [{ caseId: AFFAIRE, userId: 'marie' }],
+        verifications: [{ caseId: AFFAIRE, userId: 'lucie', inProgress: true }],
+        traces: [{ id: IMAGE, caseId: AFFAIRE }],
+      }),
+    );
+
+  const administrationRequest = (
+    currentUser: UserReadModel,
+  ): RequestWithCaseAccess =>
+    requestFor(currentUser, { method: 'POST', params: { id: AFFAIRE } });
+
+  it("laisse passer l'opérateur de l'affaire", async () => {
+    const request = administrationRequest(MARIE);
+    await expect(
+      guardWithVerifier().canActivate(
+        contextFor(CaseRoutes, 'closeCase', request),
+      ),
+    ).resolves.toBe(true);
+    expect(request.caseAccess).toEqual({
+      caseId: AFFAIRE,
+      title: 'CASE_OPERATOR',
+    });
+  });
+
+  it('laisse passer le responsable de service', async () => {
+    await expect(
+      guardWithVerifier().canActivate(
+        contextFor(CaseRoutes, 'closeCase', administrationRequest(NADIA)),
+      ),
+    ).resolves.toBe(true);
+  });
+
+  it("refuse le vérificateur en mission, qui lit l'affaire mais ne l'administre pas", async () => {
+    const refusal = await refusalOn(
+      guardWithVerifier(),
+      CaseRoutes,
+      'closeCase',
+      administrationRequest(LUCIE),
+    );
+    expect(refusal).toBeInstanceOf(ForbiddenException);
+    expect((refusal as ForbiddenException).message).toBe(
+      CASE_ADMINISTRATION_FORBIDDEN_MESSAGE,
+    );
+  });
+
+  it("laisse le vérificateur lire l'affaire sur une route ordinaire", async () => {
+    await expect(
+      guardWithVerifier().canActivate(
+        contextFor(LayersRoutes, 'listLayers', requestFor(LUCIE)),
+      ),
+    ).resolves.toBe(true);
+  });
+
+  it("répond introuvable, et non interdit, à un étranger à l'affaire", async () => {
+    const refusal = await refusalOn(
+      guardWith(new InMemoryCaseAccessReader({ operators: [] })),
+      CaseRoutes,
+      'closeCase',
+      administrationRequest(LUCIE),
+    );
+    expect(refusal).toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('CaseAccessGuard — le vérificateur dont la mission est close', () => {
+  const guardWithPastVerifier = (): CaseAccessGuard =>
+    guardWith(
+      new InMemoryCaseAccessReader({
+        operators: [{ caseId: AFFAIRE, userId: 'marie' }],
+        verifications: [
+          { caseId: AFFAIRE, userId: 'lucie', inProgress: false },
+        ],
+        traces: [{ id: IMAGE, caseId: AFFAIRE }],
+      }),
+    );
+
+  it("garde l'accès au dossier qu'il a vérifié", async () => {
+    const request = requestFor(LUCIE);
+    await expect(
+      guardWithPastVerifier().canActivate(
+        contextFor(LayersRoutes, 'listLayers', request),
+      ),
+    ).resolves.toBe(true);
+    expect(request.caseAccess).toEqual({
+      caseId: AFFAIRE,
+      title: 'CASE_VERIFIER',
+    });
+  });
+
+  it("ne gagne pas pour autant l'administration de l'affaire", async () => {
+    const refusal = await refusalOn(
+      guardWithPastVerifier(),
+      CaseRoutes,
+      'closeCase',
+      requestFor(LUCIE, { method: 'POST', params: { id: AFFAIRE } }),
+    );
+
+    expect(refusal).toBeInstanceOf(ForbiddenException);
+    expect((refusal as ForbiddenException).message).toBe(
+      CASE_ADMINISTRATION_FORBIDDEN_MESSAGE,
+    );
   });
 });

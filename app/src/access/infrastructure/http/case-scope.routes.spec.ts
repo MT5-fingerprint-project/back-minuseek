@@ -14,6 +14,7 @@ import { MeController } from '../../../identity-access/infrastructure/http/me.co
 import { SubjectController } from '../../../identity-access/infrastructure/http/subject.controller';
 import { UserController } from '../../../identity-access/infrastructure/http/user.controller';
 import { InvestigationController } from '../../../investigation/infrastructure/http/investigation.controller';
+import { VerificationsController } from '../../../investigation/infrastructure/http/verifications.controller';
 import { ListInvestigationCasesQuery } from '../../../investigation/application/queries/list-investigation-cases/list-investigation-cases.query';
 import { ReportsController } from '../../../reporting/infrastructure/http/reports.controller';
 import { ServiceSettingsController } from '../../../organization/infrastructure/http/service-settings.controller';
@@ -101,6 +102,17 @@ const ROUTES_GARDEES: Route[] = [
     method: 'patch',
     url: `/investigation-cases/${AFFAIRE}/expertise`,
     body: { sealCount: 2 },
+  },
+  {
+    label: 'POST /investigation-cases/:id/verifications',
+    method: 'post',
+    url: `/investigation-cases/${AFFAIRE}/verifications`,
+    body: { verifierUserId: PERSONNE },
+  },
+  {
+    label: 'GET /investigation-cases/:id/verifications',
+    method: 'get',
+    url: `/investigation-cases/${AFFAIRE}/verifications`,
   },
   {
     label: 'GET /investigation-cases/:caseId/audit-events',
@@ -233,6 +245,7 @@ async function bootFor(caller: UserReadModel | undefined): Promise<{
   const moduleRef = await Test.createTestingModule({
     controllers: [
       InvestigationController,
+      VerificationsController,
       AuditTrailController,
       ReportsController,
       BiometricsController,
@@ -420,6 +433,13 @@ describe("Le garde d'accès — les routes qui ne touchent aucune affaire", () =
       'Cannot POST /users',
     );
     expect(bus.dispatched).toEqual([]);
+  });
+
+  it("laisse chacun lire les missions de vérification qu'on lui a confiées", async () => {
+    const response = await request(server).get('/verifications?mine=true');
+
+    expect(response.status).toBe(200);
+    expect(bus.dispatched).toHaveLength(1);
   });
 
   it("laisse tout compte du service lire l'en-tête de son service", async () => {

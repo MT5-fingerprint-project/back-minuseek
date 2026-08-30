@@ -50,6 +50,7 @@ import { UserReadModel } from '../../../identity-access/application/queries/get-
 import { UserRoleEnum } from '../../../identity-access/domain/user/value-objects/user-role.vo';
 import type { CaseRequester } from '../../../access/application/case-access.service';
 import {
+  CaseAdministration,
   CaseScoped,
   CaseScopedList,
   NoCaseScope,
@@ -151,7 +152,7 @@ export class InvestigationController {
   }
 
   @Patch(':id')
-  @CaseScoped()
+  @CaseAdministration()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: "Corriger les informations d'une affaire" })
   @ApiResponse({ status: 204, description: 'Affaire modifiée' })
@@ -202,7 +203,7 @@ export class InvestigationController {
     }
   }
   @Post(':id/closure')
-  @CaseScoped()
+  @CaseAdministration()
   @ApiOperation({
     summary: 'Clore une affaire : le travail technique est fini',
   })
@@ -220,7 +221,7 @@ export class InvestigationController {
   }
 
   @Post(':id/reopening')
-  @CaseScoped()
+  @CaseAdministration()
   @ApiOperation({ summary: 'Rouvrir une affaire close, sur motif écrit' })
   @ApiResponse({ status: 200, description: "Détail de l'affaire rouverte" })
   @ApiResponse({ status: 400, description: 'Motif absent ou trop long' })
