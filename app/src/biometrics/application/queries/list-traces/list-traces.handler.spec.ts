@@ -6,9 +6,6 @@ import { TraceReader } from './trace.reader';
 
 class InMemoryTraceReader implements TraceReader {
   constructor(private readonly traces: TraceReadModel[]) {}
-
-  // Même ordre que `prisma-trace.reader.ts` : la plus récente d'abord, puis
-  // l'identifiant pour départager deux dépôts de la même seconde.
   findByCaseId(caseId: string, withdrawn = false): Promise<TraceReadModel[]> {
     return Promise.resolve(
       this.traces
@@ -17,21 +14,20 @@ class InMemoryTraceReader implements TraceReader {
             trace.caseId === caseId &&
             (trace.withdrawnAt !== null) === withdrawn,
         )
-        .sort(
-          (left, right) =>
-            right.createdAt.getTime() - left.createdAt.getTime() ||
-            left.id.localeCompare(right.id),
-        ),
+        .sort((left, right) => left.number - right.number),
     );
   }
 }
 
 const traceRow = (overrides: Partial<TraceReadModel> = {}): TraceReadModel => ({
   id: 'trace-1',
+  number: 1,
+  reference: '3455-T1',
   path: 'media/investigation-case/case-9/traces/trace-1.png',
   status: 'RECEIVED',
   score: null,
   caseId: 'case-9',
+  identified: false,
   createdAt: new Date('2026-07-01T00:00:00.000Z'),
   captureWidth: null,
   captureHeight: null,
@@ -153,12 +149,11 @@ describe('ListTracesHandler', () => {
     expect(data[0].resolutionDpi).toBeNull();
   });
 
-  it('départage deux traces déposées dans la même seconde par leur identifiant', async () => {
-    const capturedAt = new Date('2026-07-01T00:00:00.000Z');
+  it('rend les traces dans l\u2019ordre de leurs numéros', async () => {
     const reader = new InMemoryTraceReader([
-      traceRow({ id: 'trace-a', createdAt: capturedAt }),
-      traceRow({ id: 'trace-c', createdAt: capturedAt }),
-      traceRow({ id: 'trace-b', createdAt: capturedAt }),
+      traceRow({ id: 'trace-c', number: 3, reference: '3455-T3' }),
+      traceRow({ id: 'trace-a', number: 1, reference: '3455-T1' }),
+      traceRow({ id: 'trace-b', number: 2, reference: '3455-T2' }),
     ]);
     const handler = new ListTracesHandler(
       reader,
@@ -167,11 +162,43 @@ describe('ListTracesHandler', () => {
 
     const { data } = await handler.execute(new ListTracesQuery('case-9'));
 
-    expect(data.map((trace) => trace.id)).toEqual([
-      'trace-a',
-      'trace-b',
-      'trace-c',
+    expect(data.map((trace) => trace.reference)).toEqual([
+      '3455-T1',
+      '3455-T2',
+      '3455-T3',
     ]);
+  });
+
+  it('expose la référence composée et l\u2019état identifié de chaque trace', async () => {
+    const reader = new InMemoryTraceReader([
+      traceRow({ reference: '2026-00042-T50', number: 50, identified: true }),
+    ]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0]).toMatchObject({
+      number: 50,
+      reference: '2026-00042-T50',
+      identified: true,
+    });
+  });
+
+  it("cache l'identification du titulaire au vérificateur en mission", async () => {
+    const reader = new InMemoryTraceReader([traceRow({ identified: true })]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(
+      new ListTracesQuery('case-9', false, 'user-lucie'),
+    );
+
+    expect(data[0].identified).toBeNull();
   });
   it('ne liste que les traces retirées quand on les demande', async () => {
     const reader = new InMemoryTraceReader([

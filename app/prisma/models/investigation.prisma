@@ -1,12 +1,13 @@
 model InvestigationCase {
-  id             String                  @id @default(uuid()) @db.Uuid
-  caseNumber     String                  @unique
-  pvNumber       String
-  description    String?
-  status         InvestigationCaseStatus @default(OPEN)
-  operatorUserId String?                 @db.Uuid
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  id              String                  @id @default(uuid()) @db.Uuid
+  caseNumber      String                  @unique
+  pvNumber        String
+  description     String?
+  status          InvestigationCaseStatus @default(OPEN)
+  operatorUserId  String?                 @db.Uuid
+  lastTraceNumber Int                     @default(0)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
 
   @@index([operatorUserId])
 }

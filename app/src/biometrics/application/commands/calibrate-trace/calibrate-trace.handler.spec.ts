@@ -20,6 +20,7 @@ describe('CalibrateTraceHandler', () => {
   const seededTrace = () =>
     Trace.upload({
       id: 'trace-1',
+      number: 1,
       path: STORED_PATH,
       caseId: 'case-1',
       sha256: ANY_SEAL,

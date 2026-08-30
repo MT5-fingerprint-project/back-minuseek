@@ -41,6 +41,7 @@ describe('les lectures ignorent les pièces retirées, sauf le rapport', () => {
     await client.trace.create({
       data: {
         id: TRACE_ID,
+        number: 1,
         path: `traces/${TRACE_ID}.png`,
         caseId: CASE_ID,
         withdrawnAt: WITHDRAWN_AT,
@@ -144,6 +145,7 @@ describe('les lectures ignorent les pièces retirées, sauf le rapport', () => {
       harness.database.client.trace.create({
         data: {
           id: randomUUID(),
+          number: 2,
           path: 'traces/orpheline.png',
           caseId: CASE_ID,
           withdrawnAt: WITHDRAWN_AT,

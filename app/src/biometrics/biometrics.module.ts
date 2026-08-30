@@ -21,6 +21,7 @@ import { ListHitsHandler } from './application/queries/list-hits/list-hits.handl
 import { IMAGE_STORAGE } from './application/ports/image-storage.port';
 import { IMAGE_CONVERTER } from './application/ports/image-converter.port';
 import { CASE_STATUS } from './application/ports/case-status.port';
+import { TRACE_NUMBER_ALLOCATOR } from './application/ports/trace-number-allocator.port';
 import { CASE_EXPERTISE } from './application/ports/case-expertise.port';
 import { FAMILIAR_REFERENCE_PRINT_READER } from './application/ports/familiar-reference-print.reader';
 import { FAMILIAR_PRINT_DESTRUCTION } from '../investigation/application/ports/familiar-print-destruction.port';
@@ -45,6 +46,7 @@ import { PrismaReferencePrintRepository } from './infrastructure/persistence/pri
 import { PrismaTraceRepository } from './infrastructure/persistence/prisma-trace.repository';
 import { PrismaCaseExpertiseAdapter } from './infrastructure/persistence/prisma-case-expertise.adapter';
 import { PrismaCaseStatusAdapter } from './infrastructure/persistence/prisma-case-status.adapter';
+import { PrismaTraceNumberAllocatorAdapter } from './infrastructure/persistence/prisma-trace-number-allocator.adapter';
 import { PrismaFingerprintLocatorAdapter } from './infrastructure/persistence/prisma-fingerprint-locator.adapter';
 import { PrismaTraceReader } from './infrastructure/persistence/prisma-trace.reader';
 import { PrismaReferencePrintReader } from './infrastructure/persistence/prisma-reference-print.reader';
@@ -84,6 +86,10 @@ import { AccessModule } from '../access/access.module';
     ListHitsHandler,
     { provide: TRACE_REPOSITORY, useClass: PrismaTraceRepository },
     { provide: CASE_STATUS, useClass: PrismaCaseStatusAdapter },
+    {
+      provide: TRACE_NUMBER_ALLOCATOR,
+      useClass: PrismaTraceNumberAllocatorAdapter,
+    },
     { provide: CASE_EXPERTISE, useClass: PrismaCaseExpertiseAdapter },
     {
       provide: FINGERPRINT_LOCATOR,

@@ -27,6 +27,7 @@ describe('RemoveHitHandler', () => {
     traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
+        number: 1,
         path: 'media/trace-1.png',
         caseId: 'case-1',
         sha256: ANY_SEAL,
@@ -91,6 +92,7 @@ describe('RemoveHitHandler', () => {
     traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
+        number: 1,
         path: 'media/trace-1.png',
         caseId: 'other-case',
         sha256: ANY_SEAL,
@@ -108,6 +110,7 @@ describe('RemoveHitHandler', () => {
     traceRepo.seed(
       Trace.upload({
         id: 'trace-1',
+        number: 1,
         path: 'media/trace-1.png',
         caseId: 'case-1',
         sha256: ANY_SEAL,
@@ -168,6 +171,7 @@ describe('RemoveHitHandler', () => {
   it('refuses a withdrawn trace as if it did not exist', async () => {
     const trace = Trace.upload({
       id: 'trace-1',
+      number: 1,
       path: 'media/trace-1.png',
       caseId: 'case-1',
       sha256: ANY_SEAL,

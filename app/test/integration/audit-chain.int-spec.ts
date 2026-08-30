@@ -40,7 +40,12 @@ describe("chaîne d'audit contre un vrai Postgres", () => {
       harness.runner.run(async () => {
         const client = await harness.connection.getCurrentClient();
         await client.trace.create({
-          data: { id: traceId, path: `traces/${index}.png`, caseId: CASE_ID },
+          data: {
+            id: traceId,
+            number: index + 1,
+            path: `traces/${index}.png`,
+            caseId: CASE_ID,
+          },
         });
         await harness.appender.append({
           eventType: AuditEventTypeEnum.TRACE_UPLOADED,
@@ -64,6 +69,7 @@ describe("chaîne d'audit contre un vrai Postgres", () => {
         await client.trace.create({
           data: {
             id: randomUUID(),
+            number: 1,
             path: 'traces/unchained.png',
             caseId: CASE_ID,
           },

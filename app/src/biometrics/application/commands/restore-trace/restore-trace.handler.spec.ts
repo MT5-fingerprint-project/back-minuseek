@@ -23,6 +23,7 @@ describe('RestoreTraceHandler', () => {
   const trace = (): Trace =>
     Trace.upload({
       id: 'trace-1',
+      number: 1,
       path: 'media/investigation-case/case-1/traces/trace-1.png',
       caseId: 'case-1',
       sha256: ANY_SEAL,

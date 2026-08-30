@@ -21,6 +21,7 @@ const TEST_IMAGE_SHA256 =
 describe('Trace', () => {
   const baseProps = {
     id: 't-1',
+    number: 3,
     path: 'media/case-9/traces/t-1.png',
     caseId: 'case-9',
     sha256: FileDigest.ofBuffer(Buffer.from('test-image')),
@@ -48,6 +49,7 @@ describe('Trace', () => {
 
       expect(trace.toPrimitives()).toEqual({
         id: 't-1',
+        number: 3,
         path: 'media/case-9/traces/t-1.png',
         status: TraceStatusEnum.RECEIVED,
         score: null,
@@ -82,6 +84,7 @@ describe('Trace', () => {
 
       expect(trace.toPrimitives()).toEqual({
         id: 't-1',
+        number: 3,
         path: 'media/case-9/traces/t-1.png',
         status: TraceStatusEnum.RECEIVED,
         score: null,
@@ -146,6 +149,21 @@ describe('Trace', () => {
     it('rejects a missing caseId', () => {
       expect(() => Trace.upload({ ...baseProps, caseId: '' })).toThrow();
     });
+
+    it('carries the number allocated to it in the case', () => {
+      expect(Trace.upload(baseProps).number).toBe(3);
+      expect(Trace.upload(baseProps).toPrimitives().number).toBe(3);
+    });
+
+    it('rejects a missing number', () => {
+      expect(() =>
+        Trace.upload({ ...baseProps, number: undefined as unknown as number }),
+      ).toThrow();
+    });
+
+    it('rejects a number below one', () => {
+      expect(() => Trace.upload({ ...baseProps, number: 0 })).toThrow();
+    });
   });
 
   describe('assertCaseCanReceiveTrace', () => {
@@ -204,6 +222,7 @@ describe('Trace', () => {
     it('rebuilds a trace from primitives', () => {
       const trace = Trace.reconstitute({
         id: 't-1',
+        number: 3,
         path: 'media/case-9/traces/t-1.png',
         status: TraceStatusEnum.EXPLOITABLE,
         score: 18,
@@ -231,6 +250,7 @@ describe('Trace', () => {
     it('rebuilds a trace deposited before the seal existed', () => {
       const trace = Trace.reconstitute({
         id: 't-1',
+        number: 3,
         path: 'media/case-9/traces/t-1.png',
         status: TraceStatusEnum.RECEIVED,
         score: null,
@@ -255,6 +275,7 @@ describe('Trace', () => {
     it('rebuilds the capture quality check stored in the column', () => {
       const trace = Trace.reconstitute({
         id: 't-1',
+        number: 3,
         path: 'media/case-9/traces/t-1.png',
         status: TraceStatusEnum.RECEIVED,
         score: null,
@@ -281,6 +302,7 @@ describe('Trace', () => {
       expect(() =>
         Trace.reconstitute({
           id: 't-1',
+          number: 3,
           path: 'media/case-9/traces/t-1.png',
           status: TraceStatusEnum.RECEIVED,
           score: null,
@@ -305,6 +327,7 @@ describe('Trace', () => {
       expect(() =>
         Trace.reconstitute({
           id: 't-1',
+          number: 3,
           path: 'media/case-9/traces/t-1.png',
           status: TraceStatusEnum.RECEIVED,
           score: null,
@@ -330,6 +353,7 @@ describe('Trace', () => {
     it('emits the seal alongside the piece', () => {
       expect(Trace.upload(baseProps).toPrimitives()).toEqual({
         id: 't-1',
+        number: 3,
         path: 'media/case-9/traces/t-1.png',
         status: TraceStatusEnum.RECEIVED,
         score: null,
@@ -352,6 +376,7 @@ describe('Trace', () => {
     it('rebuilds a legacy row that predates the capture columns', () => {
       const trace = Trace.reconstitute({
         id: 't-1',
+        number: 3,
         path: 'media/case-9/traces/t-1.png',
         status: TraceStatusEnum.RECEIVED,
         score: null,

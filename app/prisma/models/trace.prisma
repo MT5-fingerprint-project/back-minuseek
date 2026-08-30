@@ -1,13 +1,14 @@
 model Trace {
-  id        String      @id @db.Uuid
-  path      String
-  status    TraceStatus @default(RECEIVED)
-  score     Int?
-  caseId    String      @db.Uuid
-  sha256    String?     @db.Char(64)
+  id                String      @id @db.Uuid
+  number            Int
+  path              String
+  status            TraceStatus @default(RECEIVED)
+  score             Int?
+  caseId            String      @db.Uuid
+  sha256            String?     @db.Char(64)
   displayableSha256 String?     @db.Char(64)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 
   withdrawnAt      DateTime?
   withdrawalMotive WithdrawalMotive?
@@ -35,6 +36,8 @@ model Trace {
 
   matchings Matching[]
   hits      Hit[]
+
+  @@unique([caseId, number])
 }
 
 enum TraceStatus {
