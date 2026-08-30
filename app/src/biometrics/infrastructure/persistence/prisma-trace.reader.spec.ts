@@ -14,6 +14,12 @@ interface TraceRow {
   updatedAt: Date;
   captureQuality: unknown;
   hits: { id: string }[];
+  locationPhoto: {
+    id: string;
+    path: string;
+    sha256: string;
+    createdAt: Date;
+  } | null;
 }
 
 function aTraceRow(overrides: Partial<TraceRow> = {}): TraceRow {
@@ -29,6 +35,7 @@ function aTraceRow(overrides: Partial<TraceRow> = {}): TraceRow {
     updatedAt: new Date('2026-07-02T10:00:00.000Z'),
     captureQuality: null,
     hits: [],
+    locationPhoto: null,
     ...overrides,
   };
 }
@@ -121,6 +128,72 @@ describe('PrismaTraceReader', () => {
     const [trace] = await reader.findByCaseId('case-9');
 
     expect(trace.reference).toBe('3455-T7');
+  });
+
+  it("ne demande à la liste que l'existence de la photographie, pas ses colonnes", async () => {
+    const { reader, prisma } = build();
+
+    await reader.findByCaseId('case-9');
+
+    expect(prisma.findManyArgs[0]).toMatchObject({
+      include: { locationPhoto: { select: { id: true } } },
+    });
+  });
+
+  it("dit qu'une trace de la liste porte une photographie de localisation", async () => {
+    const { reader } = build([
+      aTraceRow({
+        locationPhoto: {
+          id: 'photo-1',
+          path: 'media/investigation-case/case-9/location-photos/photo-1.png',
+          sha256: 'b'.repeat(64),
+          createdAt: new Date('2026-07-01T11:00:00.000Z'),
+        },
+      }),
+    ]);
+
+    const [trace] = await reader.findByCaseId('case-9');
+
+    expect(trace.hasLocationPhoto).toBe(true);
+    expect(trace).not.toHaveProperty('locationPhoto');
+  });
+
+  it("dit qu'une trace de la liste n'en porte aucune", async () => {
+    const { reader } = build();
+
+    const [trace] = await reader.findByCaseId('case-9');
+
+    expect(trace.hasLocationPhoto).toBe(false);
+  });
+
+  it('rend la photographie complète sur la trace seule', async () => {
+    const sealedAt = new Date('2026-07-01T11:00:00.000Z');
+    const { reader } = build([
+      aTraceRow({
+        locationPhoto: {
+          id: 'photo-1',
+          path: 'media/investigation-case/case-9/location-photos/photo-1.png',
+          sha256: 'b'.repeat(64),
+          createdAt: sealedAt,
+        },
+      }),
+    ]);
+
+    const trace = await reader.findById('trace-1');
+
+    expect(trace?.hasLocationPhoto).toBe(true);
+    expect(trace?.locationPhoto).toEqual({
+      id: 'photo-1',
+      path: 'media/investigation-case/case-9/location-photos/photo-1.png',
+      sha256: 'b'.repeat(64),
+      sealedAt,
+    });
+  });
+
+  it('rend null quand la trace seule ne porte aucune photographie', async () => {
+    const { reader } = build();
+
+    expect((await reader.findById('trace-1'))?.locationPhoto).toBeNull();
   });
 
   it('rend identifiée une trace qui porte une correspondance déclarée', async () => {

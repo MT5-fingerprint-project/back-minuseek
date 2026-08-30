@@ -1,0 +1,11 @@
+model TraceLocationPhoto {
+  id        String   @id @db.Uuid
+  traceId   String   @unique @db.Uuid
+  caseId    String   @db.Uuid
+  path      String
+  sha256    String   @db.Char(64)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trace Trace @relation(fields: [traceId], references: [id], onDelete: Cascade)
+}

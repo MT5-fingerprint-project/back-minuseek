@@ -3,6 +3,8 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { UploadReferencePrintHandler } from './application/commands/upload-reference-print/upload-reference-print.handler';
 import { UploadTraceHandler } from './application/commands/upload-trace/upload-trace.handler';
 import { WithdrawTraceHandler } from './application/commands/withdraw-trace/withdraw-trace.handler';
+import { AttachLocationPhotoHandler } from './application/commands/attach-location-photo/attach-location-photo.handler';
+import { RemoveLocationPhotoHandler } from './application/commands/remove-location-photo/remove-location-photo.handler';
 import { CalibrateTraceHandler } from './application/commands/calibrate-trace/calibrate-trace.handler';
 import { DescribeTraceHandler } from './application/commands/describe-trace/describe-trace.handler';
 import { CalibrateReferencePrintHandler } from './application/commands/calibrate-reference-print/calibrate-reference-print.handler';
@@ -39,6 +41,7 @@ import { LAYER_READER } from './application/queries/list-layers/layer.reader';
 import { HIT_READER } from './application/queries/list-hits/hit.reader';
 import { REFERENCE_PRINT_REPOSITORY } from './domain/reference-print/repository/reference-print.repository';
 import { TRACE_REPOSITORY } from './domain/trace/repository/trace.repository';
+import { TRACE_LOCATION_PHOTO_REPOSITORY } from './domain/trace-location-photo/repository/trace-location-photo.repository';
 import { LAYER_REPOSITORY } from './domain/layer/repository/layer.repository';
 import { MATCHING_REPOSITORY } from './domain/matching/repository/matching.repository';
 import { HIT_REPOSITORY } from './domain/hit/repository/hit.repository';
@@ -46,6 +49,7 @@ import { BiometricsController } from './infrastructure/http/biometrics.controlle
 import { LayersController } from './infrastructure/http/layers.controller';
 import { PrismaReferencePrintRepository } from './infrastructure/persistence/prisma-reference-print.repository';
 import { PrismaTraceRepository } from './infrastructure/persistence/prisma-trace.repository';
+import { PrismaTraceLocationPhotoRepository } from './infrastructure/persistence/prisma-trace-location-photo.repository';
 import { PrismaCaseExpertiseAdapter } from './infrastructure/persistence/prisma-case-expertise.adapter';
 import { PrismaCaseStatusAdapter } from './infrastructure/persistence/prisma-case-status.adapter';
 import { PrismaTraceNumberAllocatorAdapter } from './infrastructure/persistence/prisma-trace-number-allocator.adapter';
@@ -72,6 +76,8 @@ import { AccessModule } from '../access/access.module';
     UploadReferencePrintHandler,
     WithdrawTraceHandler,
     WithdrawReferencePrintHandler,
+    AttachLocationPhotoHandler,
+    RemoveLocationPhotoHandler,
     CalibrateTraceHandler,
     CalibrateReferencePrintHandler,
     DescribeTraceHandler,
@@ -89,6 +95,10 @@ import { AccessModule } from '../access/access.module';
     RemoveHitHandler,
     ListHitsHandler,
     { provide: TRACE_REPOSITORY, useClass: PrismaTraceRepository },
+    {
+      provide: TRACE_LOCATION_PHOTO_REPOSITORY,
+      useClass: PrismaTraceLocationPhotoRepository,
+    },
     { provide: CASE_STATUS, useClass: PrismaCaseStatusAdapter },
     {
       provide: TRACE_NUMBER_ALLOCATOR,

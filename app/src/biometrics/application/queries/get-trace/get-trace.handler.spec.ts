@@ -1,11 +1,13 @@
 import { InMemoryTraceReader } from '../../../infrastructure/persistence/in-memory-trace.reader';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
-import { TraceReadModel } from '../list-traces/trace-read-model';
+import { TraceDetailReadModel } from '../list-traces/trace-read-model';
 import { TraceReader } from '../list-traces/trace.reader';
 import { GetTraceHandler } from './get-trace.handler';
 import { GetTraceQuery } from './get-trace.query';
 
-const traceRow = (overrides: Partial<TraceReadModel> = {}): TraceReadModel => ({
+const traceRow = (
+  overrides: Partial<TraceDetailReadModel> = {},
+): TraceDetailReadModel => ({
   id: 'trace-1',
   number: 7,
   reference: '3455-T7',
@@ -30,6 +32,8 @@ const traceRow = (overrides: Partial<TraceReadModel> = {}): TraceReadModel => ({
   origin: null,
   location: null,
   revelationTechnique: null,
+  hasLocationPhoto: false,
+  locationPhoto: null,
   ...overrides,
 });
 
@@ -54,6 +58,41 @@ describe('GetTraceHandler', () => {
       updatedAt: new Date('2026-07-02T00:00:00.000Z'),
       url: '/media/investigation-case/case-9/traces/trace-1.png',
     });
+  });
+
+  it('signe une adresse pour la photographie de localisation et rend son scellé', async () => {
+    const sealedAt = new Date('2026-07-01T11:00:00.000Z');
+    const handler = handlerOver(
+      new InMemoryTraceReader([
+        traceRow({
+          locationPhoto: {
+            id: 'photo-1',
+            path: 'media/investigation-case/case-9/location-photos/photo-1.png',
+            sha256: 'b'.repeat(64),
+            sealedAt,
+          },
+        }),
+      ]),
+    );
+
+    const trace = await handler.execute(new GetTraceQuery('trace-1'));
+
+    expect(trace?.hasLocationPhoto).toBe(true);
+    expect(trace?.locationPhoto).toEqual({
+      id: 'photo-1',
+      url: '/media/investigation-case/case-9/location-photos/photo-1.png',
+      sha256: 'b'.repeat(64),
+      sealedAt,
+    });
+  });
+
+  it("rend une photographie nulle quand la trace n'en porte aucune", async () => {
+    const handler = handlerOver(new InMemoryTraceReader([traceRow()]));
+
+    const trace = await handler.execute(new GetTraceQuery('trace-1'));
+
+    expect(trace?.locationPhoto).toBeNull();
+    expect(trace?.hasLocationPhoto).toBe(false);
   });
 
   it("ne rend rien quand la trace n'existe pas", async () => {

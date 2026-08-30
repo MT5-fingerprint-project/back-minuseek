@@ -60,6 +60,15 @@ interface UploadTraceProps {
   displayableSha256?: FileDigest;
   captureMetadata?: CaptureMetadata;
   captureQuality?: CaptureQuality;
+  location?: string;
+}
+
+function assertLocationFitsColumn(location: string): void {
+  if (location.length > MAX_TRACE_LOCATION_LENGTH) {
+    throw new InvalidTraceLocationError(
+      `elle ne peut pas dépasser ${MAX_TRACE_LOCATION_LENGTH} caractères`,
+    );
+  }
 }
 
 export class Trace {
@@ -101,6 +110,8 @@ export class Trace {
     if (!Number.isInteger(props.number) || props.number < 1) {
       throw new Error('Trace number must be a positive integer');
     }
+    const location = props.location?.trim() ?? '';
+    assertLocationFitsColumn(location);
     return new Trace(
       props.id,
       props.number,
@@ -115,7 +126,7 @@ export class Trace {
       null,
       null,
       null,
-      null,
+      location.length === 0 ? null : location,
       null,
     );
   }
@@ -184,11 +195,7 @@ export class Trace {
     if (location.length === 0) {
       throw new InvalidTraceLocationError('elle ne peut pas être vide');
     }
-    if (location.length > MAX_TRACE_LOCATION_LENGTH) {
-      throw new InvalidTraceLocationError(
-        `elle ne peut pas dépasser ${MAX_TRACE_LOCATION_LENGTH} caractères`,
-      );
-    }
+    assertLocationFitsColumn(location);
 
     this._origin = origin;
     this._location = location;

@@ -186,6 +186,24 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
     ].filter((part): part is string => part !== null);
     return stated.length === 0 ? opening : `${opening} — ${stated.join(', ')}`;
   },
+  [AuditEventTypeEnum.TRACE_LOCATION_STATED]: (event, named) => {
+    const opening = `Localisation de ${
+      trace(event, named).bare
+    } consignée sur les lieux, au moment de la capture`;
+    const location = text(event, 'location');
+    return location === null ? opening : `${opening} — « ${location} »`;
+  },
+  [AuditEventTypeEnum.LOCATION_PHOTO_UPLOADED]: (event, named) =>
+    `Photographie de localisation de ${
+      trace(event, named).bare
+    } versée au dossier et mise sous scellé`,
+  [AuditEventTypeEnum.LOCATION_PHOTO_DELETED]: (event, named) =>
+    withMotive(
+      `Retrait de la photographie de localisation de ${
+        trace(event, named).bare
+      }`,
+      event,
+    ),
   [AuditEventTypeEnum.TRACE_CALIBRATED]: calibrationRule(trace),
   [AuditEventTypeEnum.TRACE_DELETED]: (event, named) =>
     withMotive(`Retrait de ${trace(event, named).full} du dossier`, event),

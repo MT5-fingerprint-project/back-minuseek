@@ -2,9 +2,11 @@ import { InMemoryTraceReader } from '../../../infrastructure/persistence/in-memo
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
 import { ListTracesHandler } from './list-traces.handler';
 import { ListTracesQuery } from './list-traces.query';
-import { TraceReadModel } from './trace-read-model';
+import { TraceDetailReadModel } from './trace-read-model';
 
-const traceRow = (overrides: Partial<TraceReadModel> = {}): TraceReadModel => ({
+const traceRow = (
+  overrides: Partial<TraceDetailReadModel> = {},
+): TraceDetailReadModel => ({
   id: 'trace-1',
   number: 1,
   reference: '3455-T1',
@@ -29,10 +31,37 @@ const traceRow = (overrides: Partial<TraceReadModel> = {}): TraceReadModel => ({
   origin: null,
   location: null,
   revelationTechnique: null,
+  hasLocationPhoto: false,
+  locationPhoto: null,
   ...overrides,
 });
 
 describe('ListTracesHandler', () => {
+  it("dit si chaque trace porte une photographie, sans en signer l'adresse", async () => {
+    const reader = new InMemoryTraceReader([
+      traceRow({
+        id: 'trace-1',
+        number: 1,
+        locationPhoto: {
+          id: 'photo-1',
+          path: 'media/investigation-case/case-9/location-photos/photo-1.png',
+          sha256: 'b'.repeat(64),
+          sealedAt: new Date('2026-07-01T11:00:00.000Z'),
+        },
+      }),
+      traceRow({ id: 'trace-2', number: 2 }),
+    ]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data.map((trace) => trace.hasLocationPhoto)).toEqual([true, false]);
+    expect(data[0]).not.toHaveProperty('locationPhoto');
+  });
+
   it('adds a url derived from the path to each trace of the case', async () => {
     const reader = new InMemoryTraceReader([traceRow()]);
     const handler = new ListTracesHandler(

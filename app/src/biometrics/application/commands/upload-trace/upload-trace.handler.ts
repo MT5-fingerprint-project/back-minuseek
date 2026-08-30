@@ -8,12 +8,17 @@ import {
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { FileDigest } from '../../../domain/file-digest.vo';
 import { Trace } from '../../../domain/trace/entity/trace';
+import { TraceLocationPhoto } from '../../../domain/trace-location-photo/entity/trace-location-photo';
 import { CaptureMetadata } from '../../../domain/trace/value-objects/capture-metadata.vo';
 import { CaptureQuality } from '../../../domain/trace/value-objects/capture-quality.vo';
 import {
   TRACE_REPOSITORY,
   TraceRepository,
 } from '../../../domain/trace/repository/trace.repository';
+import {
+  TRACE_LOCATION_PHOTO_REPOSITORY,
+  TraceLocationPhotoRepository,
+} from '../../../domain/trace-location-photo/repository/trace-location-photo.repository';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import {
@@ -40,6 +45,7 @@ import {
 import {
   archivedOriginalPath,
   detectImageMimeType,
+  StoredImage,
   storeDisplayableImage,
 } from '../../services/displayable-image';
 import { CaseAccessService } from '../../../../access/application/case-access.service';
@@ -70,6 +76,8 @@ export class UploadTraceHandler implements ICommandHandler<
     private readonly traceNumbers: TraceNumberAllocatorPort,
     @Inject(TRANSACTION_RUNNER)
     private readonly transactions: TransactionRunner,
+    @Inject(TRACE_LOCATION_PHOTO_REPOSITORY)
+    private readonly locationPhotos: TraceLocationPhotoRepository,
   ) {}
 
   async execute(
@@ -88,12 +96,46 @@ export class UploadTraceHandler implements ICommandHandler<
 
     const id = this.idGenerator.generate();
     const mimeType = detectImageMimeType(cmd.fileBuffer);
+    // Le format de la photographie est lu avant toute écriture : un second
+    // fichier illisible fait échouer le dépôt sans laisser le premier stocké.
+    const locationPhotoBuffer = cmd.locationPhotoBuffer;
+    const locationPhotoMimeType =
+      locationPhotoBuffer === undefined
+        ? null
+        : detectImageMimeType(locationPhotoBuffer);
+
     const stored = await storeDisplayableImage(
       this.storage,
       this.converter,
       cmd.fileBuffer,
       `investigation-case/${cmd.caseId}/traces/${id}`,
     );
+
+    let locationPhoto: {
+      id: string;
+      stored: StoredImage;
+      sizeBytes: number;
+      mimeType: string;
+    } | null = null;
+    if (locationPhotoBuffer !== undefined && locationPhotoMimeType !== null) {
+      const locationPhotoId = this.idGenerator.generate();
+      try {
+        locationPhoto = {
+          id: locationPhotoId,
+          stored: await storeDisplayableImage(
+            this.storage,
+            this.converter,
+            locationPhotoBuffer,
+            `investigation-case/${cmd.caseId}/location-photos/${locationPhotoId}`,
+          ),
+          sizeBytes: locationPhotoBuffer.length,
+          mimeType: locationPhotoMimeType,
+        };
+      } catch (error) {
+        await this.discardStoredImage(stored);
+        throw error;
+      }
+    }
 
     let link: AuditLink;
     try {
@@ -108,8 +150,9 @@ export class UploadTraceHandler implements ICommandHandler<
           displayableSha256: FileDigest.from(stored.displayableSha256),
           captureMetadata,
           captureQuality,
+          location: cmd.location,
         });
-        return this.repo.save(trace, {
+        const uploaded = await this.repo.save(trace, {
           eventType: AuditEventTypeEnum.TRACE_UPLOADED,
           evidenceClass: EvidenceClassEnum.OBSERVED,
           actor: cmd.actor,
@@ -124,12 +167,50 @@ export class UploadTraceHandler implements ICommandHandler<
             mimeType,
           },
         });
+
+        if (locationPhoto !== null) {
+          const photo = TraceLocationPhoto.attach({
+            id: locationPhoto.id,
+            traceId: id,
+            caseId: cmd.caseId,
+            path: locationPhoto.stored.path,
+            sha256: FileDigest.from(locationPhoto.stored.receivedSha256),
+          });
+          await this.locationPhotos.save(photo, {
+            eventType: AuditEventTypeEnum.LOCATION_PHOTO_UPLOADED,
+            evidenceClass: EvidenceClassEnum.OBSERVED,
+            actor: cmd.actor,
+            caseId: cmd.caseId,
+            traceId: id,
+            payload: {
+              locationPhotoId: locationPhoto.id,
+              fileSha256: locationPhoto.stored.receivedSha256,
+              storagePath: locationPhoto.stored.path,
+              sizeBytes: locationPhoto.sizeBytes,
+              mimeType: locationPhoto.mimeType,
+            },
+          });
+        }
+
+        // La phrase du terrain a déjà été écrite par la ligne ci-dessus : son
+        // acte voyage avec une écriture, donc il rejoue le même enregistrement.
+        if (trace.location !== null) {
+          await this.repo.save(trace, {
+            eventType: AuditEventTypeEnum.TRACE_LOCATION_STATED,
+            evidenceClass: EvidenceClassEnum.DECLARED,
+            actor: cmd.actor,
+            caseId: cmd.caseId,
+            traceId: id,
+            payload: { location: trace.location },
+          });
+        }
+
+        return uploaded;
       });
     } catch (error) {
-      await this.discardStoredFile(stored.path);
-      const archived = archivedOriginalPath(stored.path);
-      if (archived) {
-        await this.discardStoredFile(archived);
+      await this.discardStoredImage(stored);
+      if (locationPhoto !== null) {
+        await this.discardStoredImage(locationPhoto.stored);
       }
       throw error;
     }
@@ -148,6 +229,14 @@ export class UploadTraceHandler implements ICommandHandler<
 
     const url = await this.storage.getUrl(stored.path);
     return { id, path: stored.path, url };
+  }
+
+  private async discardStoredImage(image: StoredImage): Promise<void> {
+    await this.discardStoredFile(image.path);
+    const archived = archivedOriginalPath(image.path);
+    if (archived) {
+      await this.discardStoredFile(archived);
+    }
   }
 
   private async discardStoredFile(storedPath: string): Promise<void> {

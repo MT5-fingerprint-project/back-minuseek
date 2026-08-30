@@ -11,5 +11,7 @@ export class UploadTraceCommand {
     public readonly caseId: string,
     public readonly capture?: CaptureMetadataProps,
     public readonly captureQuality?: CaptureQualityProps,
+    public readonly location?: string,
+    public readonly locationPhotoBuffer?: Buffer,
   ) {}
 }
