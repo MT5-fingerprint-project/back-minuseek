@@ -50,12 +50,9 @@ import { BiometricsModule } from '../biometrics/biometrics.module';
 @Module({
   imports: [CqrsModule, AuditTrailModule, AccessModule, BiometricsModule],
   controllers: [
-    
     InvestigationController,
     RecipientBookController,
-   
     VerificationsController,
-  ,
     ServiceActivityController,
   ],
   providers: [

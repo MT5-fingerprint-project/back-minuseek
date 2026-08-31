@@ -306,6 +306,7 @@ describe('InvestigationCase', () => {
         ...NO_RECIPIENT,
         status: InvestigationCaseStatusEnum.OPEN,
         operatorUserId: OPENED_BY,
+        closedAt: null,
         createdAt: new Date('2026-01-01T10:00:00Z'),
         updatedAt: new Date('2026-01-01T10:00:00Z'),
         ...header,
@@ -515,6 +516,7 @@ describe('InvestigationCase', () => {
         recipientAttentionName: 'MARCHAND Claire',
         status: InvestigationCaseStatusEnum.OPEN,
         operatorUserId: OPENED_BY,
+        closedAt: null,
         createdAt: new Date('2026-01-01T10:00:00Z'),
         updatedAt: new Date('2026-01-01T10:00:00Z'),
       });

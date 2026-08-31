@@ -42,6 +42,7 @@ describe('UpdateCaseRecipientHandler', () => {
         ...NO_RECIPIENT,
         status: InvestigationCaseStatusEnum.OPEN,
         operatorUserId: 'user-marie',
+        closedAt: null,
         createdAt: new Date('2026-01-01T10:00:00Z'),
         updatedAt: new Date('2026-01-01T10:00:00Z'),
       }),

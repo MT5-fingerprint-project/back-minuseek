@@ -117,6 +117,9 @@ export class InvestigationCase {
       props.description,
       InvestigationCaseStatus.open(),
       props.operatorUserId,
+      NO_JUDICIAL_HEADER,
+      NO_RECIPIENT,
+      null,
       now,
       now,
     );
