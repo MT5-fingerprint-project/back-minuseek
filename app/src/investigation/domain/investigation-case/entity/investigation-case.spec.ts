@@ -11,6 +11,7 @@ import { InvalidOffensePeriodError } from '../errors/invalid-offense-period.erro
 
 const OPENED_BY = 'user-marie';
 const HANDED_TO = 'user-pierre';
+const CLOTURE_PRECEDENTE = new Date('2026-02-01T10:00:00Z');
 
 const JUNE_1ST = new Date('2026-06-01');
 const JUNE_3RD = new Date('2026-06-03');
@@ -47,6 +48,7 @@ function aCaseIn(status: InvestigationCaseStatusEnum) {
     ...NO_RECIPIENT,
     status,
     operatorUserId: OPENED_BY,
+    closedAt: null,
     createdAt: new Date('2026-01-01T10:00:00Z'),
     updatedAt: new Date('2026-01-01T10:00:00Z'),
   });
@@ -62,6 +64,7 @@ function aClosedCase() {
     ...NO_RECIPIENT,
     status: InvestigationCaseStatusEnum.CLOSED,
     operatorUserId: OPENED_BY,
+    closedAt: CLOTURE_PRECEDENTE,
     createdAt: new Date('2026-01-01T10:00:00Z'),
     updatedAt: new Date('2026-01-01T10:00:00Z'),
   });
@@ -109,6 +112,7 @@ describe('InvestigationCase', () => {
       ...NO_RECIPIENT,
       status: InvestigationCaseStatusEnum.OPEN,
       operatorUserId: null,
+      closedAt: null,
       createdAt: new Date('2026-01-01T10:00:00Z'),
       updatedAt: new Date('2026-01-01T10:00:00Z'),
     });
@@ -156,6 +160,7 @@ describe('InvestigationCase', () => {
       ...NO_RECIPIENT,
       status: InvestigationCaseStatusEnum.OPEN,
       operatorUserId: OPENED_BY,
+      closedAt: null,
       createdAt: new Date('2026-01-01T10:00:00Z'),
       updatedAt: new Date('2026-01-01T10:00:00Z'),
     });
@@ -194,6 +199,7 @@ describe('InvestigationCase', () => {
       ...NO_RECIPIENT,
       status: InvestigationCaseStatusEnum.OPEN,
       operatorUserId: OPENED_BY,
+      closedAt: null,
       createdAt: new Date('2026-01-01T10:00:00Z'),
       updatedAt: new Date('2026-01-01T10:00:00Z'),
     });
@@ -235,6 +241,40 @@ describe('InvestigationCase', () => {
 
     it('refuse de clore une affaire déjà close', () => {
       expect(() => aClosedCase().close()).toThrow(InvalidCaseTransitionError);
+    });
+
+    it("n'a pas de date de clôture tant qu'elle est ouverte", () => {
+      expect(anOpenCase().closedAt).toBeNull();
+    });
+
+    it('date la clôture au moment où elle a lieu', () => {
+      const c = aCaseIn(InvestigationCaseStatusEnum.IN_PROGRESS);
+
+      c.close();
+
+      expect(c.closedAt).toBeInstanceOf(Date);
+      expect(c.closedAt!.getTime()).toBeGreaterThan(
+        new Date('2026-01-01T10:00:00Z').getTime(),
+      );
+    });
+
+    it('efface la date de clôture quand on rouvre', () => {
+      const c = aClosedCase();
+
+      c.reopen();
+
+      expect(c.closedAt).toBeNull();
+    });
+
+    it('remplace la date par celle de la dernière clôture quand on reclôt', () => {
+      const c = aClosedCase();
+
+      c.reopen();
+      c.close();
+
+      expect(c.closedAt!.getTime()).toBeGreaterThan(
+        CLOTURE_PRECEDENTE.getTime(),
+      );
     });
 
     it('rouvre une affaire close en travail en cours', () => {

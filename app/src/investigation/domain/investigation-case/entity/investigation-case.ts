@@ -14,8 +14,6 @@ interface OpenInvestigationCaseProps {
   operatorUserId: string;
 }
 
-/** Les informations administratives de la procédure. Toutes facultatives : une
- * affaire s'ouvre avec ce qu'on sait et se complète ensuite. */
 export interface CaseJudicialHeader {
   requestDate: Date | null;
   requesterQuality: string | null;
@@ -55,9 +53,6 @@ export const NO_JUDICIAL_HEADER: CaseJudicialHeader = {
   caseAgainst: null,
 };
 
-/** Ce que le dossier porte du destinataire : une copie des trois lignes, jamais
- * une référence au carnet — retirer une fiche du carnet ne réécrit aucun
- * dossier déjà adressé. */
 export interface CaseRecipient {
   recipientAuthority: string | null;
   recipientAttentionQuality: string | null;
@@ -70,8 +65,6 @@ export const NO_RECIPIENT: CaseRecipient = {
   recipientAttentionName: null,
 };
 
-/** Les trois lignes telles que la route les reçoit : un bloc, remplacé en
- * entier. */
 export interface StatedRecipient {
   authority?: string | null;
   attentionQuality?: string | null;
@@ -91,11 +84,11 @@ export interface InvestigationCasePrimitives
   description: string | null;
   status: string;
   operatorUserId: string | null;
+  closedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-/** Un champ absent n'est pas touché ; un champ à `null` est vidé. */
 function statedOr<T>(sent: T | null | undefined, current: T | null): T | null {
   return sent === undefined ? current : sent;
 }
@@ -110,6 +103,7 @@ export class InvestigationCase {
     private _operatorUserId: string | null,
     private _judicialHeader: CaseJudicialHeader,
     private _recipient: CaseRecipient,
+    private _closedAt: Date | null,
     private readonly _createdAt: Date,
     private _updatedAt: Date,
   ) {}
@@ -123,8 +117,6 @@ export class InvestigationCase {
       props.description,
       InvestigationCaseStatus.open(),
       props.operatorUserId,
-      { ...NO_JUDICIAL_HEADER },
-      { ...NO_RECIPIENT },
       now,
       now,
     );
@@ -157,6 +149,7 @@ export class InvestigationCase {
         recipientAttentionQuality: primitives.recipientAttentionQuality,
         recipientAttentionName: primitives.recipientAttentionName,
       },
+      primitives.closedAt,
       primitives.createdAt,
       primitives.updatedAt,
     );
@@ -166,8 +159,6 @@ export class InvestigationCase {
     if (this.status === InvestigationCaseStatusEnum.CLOSED) {
       throw new CaseClosedError(this._id);
     }
-    // La période est jugée avant toute écriture : un refus ne laisse pas
-    // derrière lui la moitié d'une correction.
     const judicialHeader = this.judicialHeaderStatedBy(correction);
     if (correction.pvNumber !== undefined) {
       this._pvNumber = correction.pvNumber;
@@ -179,8 +170,6 @@ export class InvestigationCase {
     this._updatedAt = new Date();
   }
 
-  /** Applique les champs judiciaires fournis et laisse les autres intacts : un
-   * remplacement de bloc viderait ce que le formulaire ne renvoie pas. */
   private judicialHeaderStatedBy(
     correction: CaseCorrection,
   ): CaseJudicialHeader {
@@ -224,8 +213,6 @@ export class InvestigationCase {
     return stated;
   }
 
-  /** Le destinataire se remplace en bloc : le dialogue renvoie les trois lignes
-   * ensemble, et ce qu'il n'a pas rempli n'est pas adressé. */
   replaceRecipient(stated: StatedRecipient): void {
     if (this.status === InvestigationCaseStatusEnum.CLOSED) {
       throw new CaseClosedError(this._id);
@@ -246,6 +233,7 @@ export class InvestigationCase {
       );
     }
     this._status = InvestigationCaseStatus.closed();
+    this._closedAt = new Date();
     this._updatedAt = new Date();
   }
 
@@ -257,6 +245,7 @@ export class InvestigationCase {
       );
     }
     this._status = InvestigationCaseStatus.inProgress();
+    this._closedAt = null;
     this._updatedAt = new Date();
   }
 
@@ -290,6 +279,10 @@ export class InvestigationCase {
 
   get operatorUserId() {
     return this._operatorUserId;
+  }
+
+  get closedAt() {
+    return this._closedAt;
   }
 
   get createdAt() {

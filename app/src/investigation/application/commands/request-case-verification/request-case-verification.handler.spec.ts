@@ -53,6 +53,7 @@ describe('RequestCaseVerificationHandler', () => {
         ...NO_RECIPIENT,
         status,
         operatorUserId: MARIE,
+        closedAt: null,
         createdAt: new Date('2026-08-01T10:00:00.000Z'),
         updatedAt: new Date('2026-08-01T10:00:00.000Z'),
       }),

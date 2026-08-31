@@ -6,9 +6,8 @@ model InvestigationCase {
   status          InvestigationCaseStatus @default(OPEN)
   operatorUserId  String?                 @db.Uuid
   lastTraceNumber Int                     @default(0)
+  closedAt        DateTime?
 
-  // Une affaire s'ouvre avec ce qu'on sait et se complète ensuite : la nullité
-  // est structurelle, pas de la prudence.
   requestDate       DateTime? @db.Date
   requesterQuality  String?
   requesterName     String?
@@ -20,8 +19,6 @@ model InvestigationCase {
   interventionDate  DateTime? @db.Date
   caseAgainst       String?
 
-  // Une copie des trois lignes du destinataire, sans clé étrangère vers le
-  // carnet : le rapport les lit sans jointure.
   recipientAuthority        String?
   recipientAttentionQuality String?
   recipientAttentionName    String?
