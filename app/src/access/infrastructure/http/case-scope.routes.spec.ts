@@ -19,6 +19,7 @@ import { VerificationsController } from '../../../investigation/infrastructure/h
 import { ListInvestigationCasesQuery } from '../../../investigation/application/queries/list-investigation-cases/list-investigation-cases.query';
 import { ReportsController } from '../../../reporting/infrastructure/http/reports.controller';
 import { ServiceSettingsController } from '../../../organization/infrastructure/http/service-settings.controller';
+import { ServiceActivityController } from '../../../investigation/infrastructure/http/service-activity.controller';
 import { TenantContextService } from '../../../tenancy/application/tenant-context.service';
 import { CASE_ACCESS_READER } from '../../application/case-access.reader';
 import { CaseAccessService } from '../../application/case-access.service';
@@ -296,6 +297,7 @@ async function bootFor(
       UserController,
       MeController,
       ServiceSettingsController,
+      ServiceActivityController,
     ],
     providers: [
       CaseAccessService,
@@ -526,6 +528,13 @@ describe("Le garde d'accès — les routes qui ne touchent aucune affaire", () =
 
   it("laisse tout compte du service lire l'en-tête de son service", async () => {
     const response = await request(server).get('/service-settings');
+
+    expect(response.status).toBe(200);
+    expect(bus.dispatched).toHaveLength(1);
+  });
+
+  it("laisse la lecture de l'activité du service franchir le garde : elle ne vise aucune affaire", async () => {
+    const response = await request(server).get('/service-activity');
 
     expect(response.status).toBe(200);
     expect(bus.dispatched).toHaveLength(1);

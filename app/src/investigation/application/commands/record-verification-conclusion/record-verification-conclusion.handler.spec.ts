@@ -52,6 +52,7 @@ describe('RecordVerificationConclusionHandler', () => {
         ...NO_RECIPIENT,
         status,
         operatorUserId: 'user-marie',
+        closedAt: null,
         createdAt: new Date('2026-08-01T10:00:00.000Z'),
         updatedAt: new Date('2026-08-01T10:00:00.000Z'),
       }),

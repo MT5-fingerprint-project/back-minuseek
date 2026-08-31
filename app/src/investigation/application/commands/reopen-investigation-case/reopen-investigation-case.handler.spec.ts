@@ -35,6 +35,7 @@ describe('ReopenInvestigationCaseHandler', () => {
         ...NO_RECIPIENT,
         status,
         operatorUserId: 'user-marie',
+        closedAt: null,
         createdAt: new Date('2026-01-01T10:00:00Z'),
         updatedAt: new Date('2026-01-01T10:00:00Z'),
       }),
