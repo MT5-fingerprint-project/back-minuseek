@@ -822,7 +822,7 @@ describe('renderTechnicalReportHtml — section 7', () => {
     );
   });
 
-  it('imprime la mention dégradée quand aucune ancre ne couvre les actes', () => {
+  it('ne dit rien quand aucune ancre ne couvre les actes', () => {
     const html = renderTechnicalReportHtml(
       withIntegrity({
         traces: [{ ...PIECE_INTEGRITY, coveringAnchor: null }],
@@ -833,12 +833,11 @@ describe('renderTechnicalReportHtml — section 7', () => {
       }),
     );
 
-    expect(html).toContain(
-      'Aucun horodatage extérieur ne couvre encore ces opérations',
-    );
+    expect(html).not.toContain('Aucun horodatage extérieur');
+    expect(html).not.toContain('ne sont attestées que par');
   });
 
-  it('imprime la mention dégradée quand le laboratoire n’a jamais été horodaté', () => {
+  it('ne dit rien quand le laboratoire n’a jamais été horodaté', () => {
     const html = renderTechnicalReportHtml(
       withIntegrity({
         traces: [{ ...PIECE_INTEGRITY, coveringAnchor: null }],
@@ -846,9 +845,8 @@ describe('renderTechnicalReportHtml — section 7', () => {
       }),
     );
 
-    expect(html).toContain(
-      "Aucun horodatage extérieur n'a encore été obtenu pour le registre de ce laboratoire",
-    );
+    expect(html).not.toContain('Aucun horodatage extérieur');
+    expect(html).not.toContain('pas encore été horodaté');
   });
 
   it('affirme le contrôle quand le fichier porte bien l’empreinte inscrite', () => {
@@ -871,7 +869,7 @@ describe('renderTechnicalReportHtml — section 7', () => {
     );
   });
 
-  it('dit qu’un fichier illisible à l’édition n’a pas été contrôlé', () => {
+  it('n’affirme aucun contrôle quand le fichier n’a pas pu être relu', () => {
     const html = renderTechnicalReportHtml(
       withIntegrity({
         traces: [
@@ -884,8 +882,10 @@ describe('renderTechnicalReportHtml — section 7', () => {
       }),
     );
 
-    expect(html).toContain(
-      "Le fichier n'a pas pu être relu à l'édition du présent rapport ; le contrôle n'a pas été effectué.",
+    expect(html).not.toContain("Le fichier n'a pas pu être relu");
+    expect(html).not.toContain("le contrôle n'a pas été effectué");
+    expect(html).not.toContain(
+      "le fichier conservé porte bien l'empreinte inscrite au registre",
     );
   });
 

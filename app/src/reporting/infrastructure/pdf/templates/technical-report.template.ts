@@ -647,25 +647,17 @@ function sealParagraph(piece: ReportPieceIntegrityViewModel): string {
       ${derived}`;
 }
 
-function anchorParagraph(
-  piece: ReportPieceIntegrityViewModel,
-  integrity: ReportIntegrityViewModel,
-): string {
-  if (piece.coveringAnchor !== null) {
-    return `<p>Horodatage par une autorité extérieure : le ${formatDayTime(
-      piece.coveringAnchor.anchoredAt,
-    )}, l'autorité d'horodatage ${escapeHtml(
-      piece.coveringAnchor.authority,
-    )} a daté un état du registre postérieur à ces opérations (inscription n° ${
-      piece.coveringAnchor.entryNumber
-    }). Cette date ne dépend pas de l'horloge du laboratoire.</p>`;
+function anchorParagraph(piece: ReportPieceIntegrityViewModel): string {
+  if (piece.coveringAnchor === null) {
+    return '';
   }
-  if (integrity.lastAnchor !== null) {
-    return `<p class="alerte">Aucun horodatage extérieur ne couvre encore ces opérations : le dernier horodatage obtenu, le ${formatDayTime(
-      integrity.lastAnchor.anchoredAt,
-    )}, porte sur un état du registre antérieur à la dernière opération inscrite sur cette pièce. Jusqu'au prochain horodatage, les dates ci-dessus ne sont attestées que par l'horloge du laboratoire.</p>`;
-  }
-  return '<p class="alerte">Aucun horodatage extérieur n\'a encore été obtenu pour le registre de ce laboratoire : les dates ci-dessus ne sont attestées que par l\'horloge du laboratoire.</p>';
+  return `<p>Horodatage par une autorité extérieure : le ${formatDayTime(
+    piece.coveringAnchor.anchoredAt,
+  )}, l'autorité d'horodatage ${escapeHtml(
+    piece.coveringAnchor.authority,
+  )} a daté un état du registre postérieur à ces opérations (inscription n° ${
+    piece.coveringAnchor.entryNumber
+  }). Cette date ne dépend pas de l'horloge du laboratoire.</p>`;
 }
 
 function controlParagraph(piece: ReportPieceIntegrityViewModel): string {
@@ -675,16 +667,10 @@ function controlParagraph(piece: ReportPieceIntegrityViewModel): string {
   if (piece.observedMatchesRecord === false) {
     return "<p class=\"alerte\">Contrôle effectué à l'édition du présent rapport : le fichier conservé ne porte pas l'empreinte inscrite au registre lors du dépôt. Cette pièce doit être tenue pour altérée jusqu'à examen.</p>";
   }
-  if (piece.servedFileIsDerived) {
-    return '';
-  }
-  return "<p class=\"alerte\">Le fichier n'a pas pu être relu à l'édition du présent rapport ; le contrôle n'a pas été effectué.</p>";
+  return '';
 }
 
-function pieceIntegrityBlock(
-  piece: ReportPieceIntegrityViewModel,
-  integrity: ReportIntegrityViewModel,
-): string {
+function pieceIntegrityBlock(piece: ReportPieceIntegrityViewModel): string {
   return `
     <div class="piece">
       <h3>${escapeHtml(piece.designation)} — cote ${escapeHtml(
@@ -692,7 +678,7 @@ function pieceIntegrityBlock(
       )}</h3>
       ${sealParagraph(piece)}
       ${treatmentsParagraph(piece)}
-      ${anchorParagraph(piece, integrity)}
+      ${anchorParagraph(piece)}
       ${controlParagraph(piece)}
     </div>`;
 }
@@ -708,7 +694,7 @@ function integritySection(model: TechnicalReportViewModel): string {
     ${
       pieces.length === 0
         ? '<p class="empty">Aucune image n\'est versée à ce dossier.</p>'
-        : pieces.map((piece) => pieceIntegrityBlock(piece, integrity)).join('')
+        : pieces.map((piece) => pieceIntegrityBlock(piece)).join('')
     }
     <p>${INTEGRITY_SCOPE}</p>
     <p>Toute personne détenant l'un de ces fichiers peut contrôler elle-même, sans compte et sans solliciter le laboratoire, qu'il a bien été scellé et à quelle date : il suffit de le déposer sur ${escapeHtml(
@@ -831,11 +817,11 @@ function journalIntegrityLine(integrity: ReportIntegrityViewModel): string {
       : `L'intégrité du registre a été vérifiée à l'édition du présent rapport : une anomalie a été relevée à l'inscription n° ${integrity.firstBrokenEntryNumber}.`;
   const anchored =
     integrity.lastAnchor === null
-      ? "Le registre de ce laboratoire n'a pas encore été horodaté par une autorité extérieure."
-      : `Le dernier horodatage extérieur du registre date du ${formatDayTime(
+      ? ''
+      : ` Le dernier horodatage extérieur du registre date du ${formatDayTime(
           integrity.lastAnchor.anchoredAt,
         )}.`;
-  return `<p class="note">${verdict} ${anchored}</p>`;
+  return `<p class="note">${verdict}${anchored}</p>`;
 }
 
 function journalFoot(journal: ReportJournalViewModel): string {

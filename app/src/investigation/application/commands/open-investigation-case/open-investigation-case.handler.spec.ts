@@ -8,20 +8,37 @@ import { InMemoryInvestigationCaseRepository } from '../../../infrastructure/per
 import { InvestigationCaseStatusEnum } from '../../../domain/investigation-case/value-objects/investigation-case-status.vo';
 import { CaseNumberAlreadyExistsError } from '../../../domain/investigation-case/errors/case-number-already-exists.error';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
+import { ChainAnchoringPort } from '../../../../shared/domain/ports/chain-anchoring.port';
 
 const MARIE = 'user-marie';
+
+/** Retient l'état de la chaîne au moment de chaque ancrage : l'ancre ne vaut
+ * que si elle est prise après l'inscription qu'elle doit couvrir. */
+class FakeAnchoring implements ChainAnchoringPort {
+  readonly chainLengthAtCall: number[] = [];
+  failure: Error | null = null;
+
+  constructor(private readonly auditTrail: InMemoryAuditTrailAppender) {}
+
+  anchor(): Promise<void> {
+    this.chainLengthAtCall.push(this.auditTrail.events.length);
+    return this.failure ? Promise.reject(this.failure) : Promise.resolve();
+  }
+}
 
 describe('OpenInvestigationCaseHandler', () => {
   let handler: OpenInvestigationCaseHandler;
   let repo: InMemoryInvestigationCaseRepository;
   let idGenerator: IdGenerator;
   let auditTrail: InMemoryAuditTrailAppender;
+  let anchoring: FakeAnchoring;
 
   beforeEach(() => {
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryInvestigationCaseRepository(auditTrail);
     idGenerator = { generate: jest.fn().mockReturnValue('test-uuid') };
-    handler = new OpenInvestigationCaseHandler(repo, idGenerator);
+    anchoring = new FakeAnchoring(auditTrail);
+    handler = new OpenInvestigationCaseHandler(repo, idGenerator, anchoring);
   });
 
   it("retourne l'id généré", async () => {
@@ -129,6 +146,60 @@ describe('OpenInvestigationCaseHandler', () => {
         ),
       ),
     ).rejects.toThrow(CaseNumberAlreadyExistsError);
+  });
+
+  it("fait horodater le registre par une autorité extérieure, une fois l'ouverture inscrite", async () => {
+    await handler.execute(
+      new OpenInvestigationCaseCommand(
+        EXPERT_ACTOR,
+        MARIE,
+        'AFF-001',
+        'PV-2024-001',
+      ),
+    );
+
+    expect(anchoring.chainLengthAtCall).toEqual([1]);
+  });
+
+  it("n'horodate rien quand l'ouverture est refusée", async () => {
+    await handler.execute(
+      new OpenInvestigationCaseCommand(
+        EXPERT_ACTOR,
+        MARIE,
+        'AFF-001',
+        'PV-2024-001',
+      ),
+    );
+    anchoring.chainLengthAtCall.length = 0;
+
+    await expect(
+      handler.execute(
+        new OpenInvestigationCaseCommand(
+          EXPERT_ACTOR,
+          MARIE,
+          'AFF-001',
+          'PV-2024-002',
+        ),
+      ),
+    ).rejects.toThrow(CaseNumberAlreadyExistsError);
+    expect(anchoring.chainLengthAtCall).toEqual([]);
+  });
+
+  it('ouvre le dossier quand même si l’autorité d’horodatage ne répond pas', async () => {
+    anchoring.failure = new Error('TSA injoignable');
+
+    const id = await handler.execute(
+      new OpenInvestigationCaseCommand(
+        EXPERT_ACTOR,
+        MARIE,
+        'AFF-001',
+        'PV-2024-001',
+      ),
+    );
+
+    expect(id).toBe('test-uuid');
+    expect(repo.store.get(id)).not.toBeNull();
+    expect(auditTrail.events).toHaveLength(1);
   });
 
   it("fait de l'auteur de l'ouverture l'opérateur du dossier", async () => {

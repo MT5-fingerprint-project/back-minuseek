@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { cloudflareClientIp } from '../shared/infrastructure/http/cloudflare-client-ip';
 import { AUDIT_TRAIL } from '../shared/domain/ports/audit-trail.port';
+import { CHAIN_ANCHORING } from '../shared/domain/ports/chain-anchoring.port';
 import { PUBLIC_SEAL_READER } from './application/ports/public-seal.reader';
 import { SEAL_REGISTRY } from '../shared/domain/ports/seal-registry.port';
 import { AnchorChainHandler } from './application/commands/anchor-chain/anchor-chain.handler';
@@ -27,6 +28,7 @@ import { PrismaChainAnchorStore } from './infrastructure/persistence/prisma-chai
 import { PrismaChainEventReader } from './infrastructure/persistence/prisma-chain-event.reader';
 import { Rfc3161TimestampVerifier } from './infrastructure/tsa/rfc3161-timestamp.verifier';
 import { Rfc3161TsaAdapter } from './infrastructure/tsa/rfc3161-tsa.adapter';
+import { CommandBusChainAnchoring } from './infrastructure/verification/command-bus-chain-anchoring.adapter';
 import { TenantChainAnchoringRunner } from './infrastructure/verification/tenant-chain-anchoring.runner';
 import { TenantChainVerificationRunner } from './infrastructure/verification/tenant-chain-verification.runner';
 import { TenantSealProjectionRunner } from './infrastructure/verification/tenant-seal-projection.runner';
@@ -60,6 +62,10 @@ import { TenantSealProjectionRunner } from './infrastructure/verification/tenant
       useExisting: AdminSealRegistry,
     },
     {
+      provide: CHAIN_ANCHORING,
+      useClass: CommandBusChainAnchoring,
+    },
+    {
       provide: PUBLIC_SEAL_READER,
       useClass: AdminPublicSealReader,
     },
@@ -88,6 +94,6 @@ import { TenantSealProjectionRunner } from './infrastructure/verification/tenant
       useClass: Rfc3161TimestampVerifier,
     },
   ],
-  exports: [AUDIT_TRAIL, SEAL_REGISTRY],
+  exports: [AUDIT_TRAIL, SEAL_REGISTRY, CHAIN_ANCHORING],
 })
 export class AuditTrailModule {}

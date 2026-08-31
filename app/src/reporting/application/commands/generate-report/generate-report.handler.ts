@@ -1,6 +1,11 @@
 import { Inject, Logger } from '@nestjs/common';
 import type { AuditLink } from '../../../../shared/domain/ports/audit-trail.port';
+import { anchorChainSafely } from '../../../../shared/application/anchor-chain-safely';
 import { recordSealSafely } from '../../../../shared/application/record-seal-safely';
+import {
+  CHAIN_ANCHORING,
+  type ChainAnchoringPort,
+} from '../../../../shared/domain/ports/chain-anchoring.port';
 import {
   SEAL_REGISTRY,
   type SealRegistryPort,
@@ -111,6 +116,8 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     private readonly idGenerator: IdGenerator,
     @Inject(SEAL_REGISTRY)
     private readonly sealRegistry: SealRegistryPort,
+    @Inject(CHAIN_ANCHORING)
+    private readonly anchoring: ChainAnchoringPort,
   ) {}
 
   async execute(command: GenerateReportCommand): Promise<GeneratedReport> {
@@ -126,6 +133,8 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
 
     const reportId = this.idGenerator.generate();
     const generatedAt = new Date();
+    // Avant le rendu : le document ne peut nommer que les ancres déjà posées.
+    await anchorChainSafely(this.anchoring, this.logger);
     const [chainHead, letterhead] = await Promise.all([
       this.chainHead.read(),
       this.letterhead.read(),
@@ -190,6 +199,8 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
       },
       this.logger,
     );
+    // Après le scellement : c'est cette seconde ancre qui date le rapport lui-même.
+    await anchorChainSafely(this.anchoring, this.logger);
 
     return { id: reportId, sha256 };
   }
