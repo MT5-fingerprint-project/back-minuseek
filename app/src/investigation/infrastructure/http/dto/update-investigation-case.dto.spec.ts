@@ -82,4 +82,61 @@ describe('UpdateInvestigationCaseDto', () => {
   ])('refuse %s', async (_refus, body, property) => {
     await expectRejection(body, property);
   });
+
+  describe("l'en-tête judiciaire", () => {
+    const A_FULL_JUDICIAL_HEADER = {
+      requestDate: '2026-06-04',
+      requesterQuality: 'Brigadier-Chef de Police',
+      requesterName: 'MARCHAND Claire',
+      requesterService:
+        '3e District de Police Judiciaire de la D.R.P.J de Paris',
+      offenseNature: 'Vol par effraction',
+      offenseLocation: '12 rue Léon Frot à Paris 11e',
+      offenseDateFrom: '2026-06-01',
+      offenseDateTo: '2026-06-03',
+      interventionDate: '2026-06-05',
+      caseAgainst: 'X',
+    };
+
+    it('accepte les dix champs judiciaires ensemble', async () => {
+      await expect(transform(A_FULL_JUDICIAL_HEADER)).resolves.toEqual(
+        A_FULL_JUDICIAL_HEADER,
+      );
+    });
+
+    it("n'en exige aucun : le corps vide reste accepté", async () => {
+      await expect(transform({})).resolves.toEqual({});
+    });
+
+    it.each(Object.keys(A_FULL_JUDICIAL_HEADER))(
+      'laisse passer %s à null, qui vide la colonne',
+      async (field) => {
+        await expect(transform({ [field]: null })).resolves.toEqual({
+          [field]: null,
+        });
+      },
+    );
+
+    it.each([
+      ['une qualité de requérant vide', { requesterQuality: '' }],
+      ['un nom de requérant vide', { requesterName: '' }],
+      ['un service de requérant vide', { requesterService: '' }],
+      ["une nature d'infraction vide", { offenseNature: '' }],
+      ['un lieu des faits vide', { offenseLocation: '' }],
+      ['un « affaire contre » vide', { caseAgainst: '' }],
+      ['une nature d’infraction qui n’est pas du texte', { offenseNature: 7 }],
+      ['une date de demande qui n’est pas une date', { requestDate: 'hier' }],
+      ['une date des faits qui n’est pas une date', { offenseDateFrom: 42 }],
+      [
+        'une fin de période qui n’est pas une date',
+        { offenseDateTo: '32/06/2026' },
+      ],
+      [
+        'une date d’intervention qui n’est pas une date',
+        { interventionDate: 'demain' },
+      ],
+    ])('refuse %s', async (_refus, body) => {
+      await expectRejection(body, Object.keys(body)[0]);
+    });
+  });
 });

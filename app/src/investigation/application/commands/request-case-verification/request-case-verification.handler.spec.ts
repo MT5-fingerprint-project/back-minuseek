@@ -9,7 +9,10 @@ import { SelfVerificationError } from '../../../domain/case-verification/errors/
 import { ServiceManagerAsVerifierError } from '../../../domain/case-verification/errors/service-manager-as-verifier.error';
 import { VerificationAlreadyPendingError } from '../../../domain/case-verification/errors/verification-already-pending.error';
 import { VerificationStatusEnum } from '../../../domain/case-verification/value-objects/verification-status.vo';
-import { InvestigationCase } from '../../../domain/investigation-case/entity/investigation-case';
+import {
+  InvestigationCase,
+  NO_JUDICIAL_HEADER,
+} from '../../../domain/investigation-case/entity/investigation-case';
 import { CaseNotFoundError } from '../../../domain/investigation-case/errors/case-not-found.error';
 import { DisabledOperatorError } from '../../../domain/investigation-case/errors/disabled-operator.error';
 import { UnknownOperatorError } from '../../../domain/investigation-case/errors/unknown-operator.error';
@@ -43,6 +46,8 @@ describe('RequestCaseVerificationHandler', () => {
         caseNumber: 'AFF-001',
         pvNumber: 'PV-2026-001',
         description: null,
+        ...NO_JUDICIAL_HEADER,
+        ...NO_JUDICIAL_HEADER,
         status,
         operatorUserId: MARIE,
         createdAt: new Date('2026-08-01T10:00:00.000Z'),

@@ -3,9 +3,13 @@ import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { UserRoleEnum } from '../../../../identity-access/domain/user/value-objects/user-role.vo';
-import { InvestigationCase } from '../../../domain/investigation-case/entity/investigation-case';
+import {
+  InvestigationCase,
+  NO_JUDICIAL_HEADER,
+} from '../../../domain/investigation-case/entity/investigation-case';
 import { CaseClosedError } from '../../../domain/investigation-case/errors/case-closed.error';
 import { CaseNotFoundError } from '../../../domain/investigation-case/errors/case-not-found.error';
+import { InvalidOffensePeriodError } from '../../../domain/investigation-case/errors/invalid-offense-period.error';
 import { DisabledOperatorError } from '../../../domain/investigation-case/errors/disabled-operator.error';
 import { OperatorChangeNotAllowedError } from '../../../domain/investigation-case/errors/operator-change-not-allowed.error';
 import { UnknownOperatorError } from '../../../domain/investigation-case/errors/unknown-operator.error';
@@ -74,6 +78,7 @@ describe('UpdateInvestigationCaseHandler', () => {
         caseNumber: 'AFF-001',
         pvNumber: PV,
         description: 'Vol à main armée',
+        ...NO_JUDICIAL_HEADER,
         status,
         operatorUserId: MARIE,
         createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -182,6 +187,96 @@ describe('UpdateInvestigationCaseHandler', () => {
     });
   });
 
+  describe("l'en-tête judiciaire", () => {
+    const JUNE_1ST = new Date('2026-06-01');
+    const JUNE_3RD = new Date('2026-06-03');
+
+    const A_FULL_JUDICIAL_HEADER = {
+      requestDate: new Date('2026-06-04'),
+      requesterQuality: 'Brigadier-Chef de Police',
+      requesterName: 'MARCHAND Claire',
+      requesterService:
+        '3e District de Police Judiciaire de la D.R.P.J de Paris',
+      offenseNature: 'Vol par effraction',
+      offenseLocation: '12 rue Léon Frot à Paris 11e',
+      offenseDateFrom: JUNE_1ST,
+      offenseDateTo: JUNE_3RD,
+      interventionDate: new Date('2026-06-05'),
+      caseAgainst: 'X',
+    };
+
+    it('enregistre les dix champs judiciaires', async () => {
+      await handler.execute(update(A_FULL_JUDICIAL_HEADER));
+
+      expect(stored().judicialHeader).toEqual(A_FULL_JUDICIAL_HEADER);
+    });
+
+    it('chaîne un CASE_UPDATED qui porte les dix champs avec leurs valeurs, dates en ISO-8601', async () => {
+      await handler.execute(update(A_FULL_JUDICIAL_HEADER));
+
+      expect(auditTrail.events).toHaveLength(1);
+      const [event] = auditTrail.events;
+      expect(event.eventType).toBe(AuditEventTypeEnum.CASE_UPDATED);
+      expect(event.payload).toStrictEqual({
+        changes: {
+          ...A_FULL_JUDICIAL_HEADER,
+          requestDate: '2026-06-04T00:00:00.000Z',
+          offenseDateFrom: '2026-06-01T00:00:00.000Z',
+          offenseDateTo: '2026-06-03T00:00:00.000Z',
+          interventionDate: '2026-06-05T00:00:00.000Z',
+        },
+      });
+    });
+
+    it('laisse les neuf autres champs intacts quand un seul est renvoyé', async () => {
+      await handler.execute(update(A_FULL_JUDICIAL_HEADER));
+
+      await handler.execute(update({ caseAgainst: 'MOREL Bruno' }));
+
+      expect(stored().judicialHeader).toEqual({
+        ...A_FULL_JUDICIAL_HEADER,
+        caseAgainst: 'MOREL Bruno',
+      });
+    });
+
+    it('ne perd aucune colonne sur deux modifications de suite', async () => {
+      await handler.execute(update({ offenseNature: 'Vol par effraction' }));
+      await handler.execute(update({ requesterName: 'MARCHAND Claire' }));
+
+      expect(stored().judicialHeader.offenseNature).toBe('Vol par effraction');
+      expect(stored().judicialHeader.requesterName).toBe('MARCHAND Claire');
+      expect(stored().pvNumber).toBe(PV);
+      expect(stored().description).toBe('Vol à main armée');
+    });
+
+    it('vide un champ envoyé à null, et le porte à null dans l’acte', async () => {
+      await handler.execute(update({ offenseLocation: 'Paris 11e' }));
+
+      await handler.execute(update({ offenseLocation: null }));
+
+      expect(stored().judicialHeader.offenseLocation).toBeNull();
+      expect(auditTrail.events[1].payload).toStrictEqual({
+        changes: { offenseLocation: null },
+      });
+    });
+
+    it('refuse une période inversée sans rien écrire ni chaîner', async () => {
+      await expect(
+        handler.execute(
+          update({
+            pvNumber: 'PV-2026-118',
+            offenseDateFrom: JUNE_3RD,
+            offenseDateTo: JUNE_1ST,
+          }),
+        ),
+      ).rejects.toThrow(InvalidOffensePeriodError);
+
+      expect(auditTrail.events).toHaveLength(0);
+      expect(stored().pvNumber).toBe(PV);
+      expect(stored().judicialHeader.offenseDateFrom).toBeNull();
+    });
+  });
+
   describe("l'opérateur du dossier", () => {
     it("confie le dossier au collègue désigné par l'opérateur en place", async () => {
       await handler.execute(update({ operatorUserId: PIERRE }));
@@ -228,6 +323,7 @@ describe('UpdateInvestigationCaseHandler', () => {
           caseNumber: 'AFF-001',
           pvNumber: PV,
           description: null,
+          ...NO_JUDICIAL_HEADER,
           status: InvestigationCaseStatusEnum.OPEN,
           operatorUserId: null,
           createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -255,6 +351,7 @@ describe('UpdateInvestigationCaseHandler', () => {
           caseNumber: 'AFF-001',
           pvNumber: PV,
           description: null,
+          ...NO_JUDICIAL_HEADER,
           status: InvestigationCaseStatusEnum.OPEN,
           operatorUserId: 'user-efface',
           createdAt: new Date('2026-01-01T10:00:00Z'),

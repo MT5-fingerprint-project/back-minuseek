@@ -6,8 +6,22 @@ model InvestigationCase {
   status          InvestigationCaseStatus @default(OPEN)
   operatorUserId  String?                 @db.Uuid
   lastTraceNumber Int                     @default(0)
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
+
+  // Une affaire s'ouvre avec ce qu'on sait et se complète ensuite : la nullité
+  // est structurelle, pas de la prudence.
+  requestDate       DateTime? @db.Date
+  requesterQuality  String?
+  requesterName     String?
+  requesterService  String?
+  offenseNature     String?
+  offenseLocation   String?
+  offenseDateFrom   DateTime? @db.Date
+  offenseDateTo     DateTime? @db.Date
+  interventionDate  DateTime? @db.Date
+  caseAgainst       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([operatorUserId])
 }

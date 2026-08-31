@@ -2,7 +2,10 @@ import { EXPERT_ACTOR } from '../../../../shared/domain/audit/audit-actor.fixtur
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
-import { InvestigationCase } from '../../../domain/investigation-case/entity/investigation-case';
+import {
+  InvestigationCase,
+  NO_JUDICIAL_HEADER,
+} from '../../../domain/investigation-case/entity/investigation-case';
 import { CaseNotFoundError } from '../../../domain/investigation-case/errors/case-not-found.error';
 import { InvalidCaseTransitionError } from '../../../domain/investigation-case/errors/invalid-case-transition.error';
 import { InvestigationCaseStatusEnum } from '../../../domain/investigation-case/value-objects/investigation-case-status.vo';
@@ -26,6 +29,8 @@ describe('CloseInvestigationCaseHandler', () => {
         caseNumber: 'AFF-001',
         pvNumber: 'PV-2026-001',
         description: null,
+        ...NO_JUDICIAL_HEADER,
+        ...NO_JUDICIAL_HEADER,
         status,
         operatorUserId: 'user-marie',
         createdAt: new Date('2026-01-01T10:00:00Z'),

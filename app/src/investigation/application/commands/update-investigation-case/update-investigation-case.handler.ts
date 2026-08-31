@@ -7,7 +7,9 @@ import { AuditEventDraft } from '../../../../shared/domain/ports/audit-trail.por
 import {
   CaseCorrection,
   InvestigationCase,
+  JUDICIAL_HEADER_FIELDS,
 } from '../../../domain/investigation-case/entity/investigation-case';
+import { correctionPayload } from '../../../domain/investigation-case/correction-payload';
 import { CaseClosedError } from '../../../domain/investigation-case/errors/case-closed.error';
 import { CaseNotFoundError } from '../../../domain/investigation-case/errors/case-not-found.error';
 import { DisabledOperatorError } from '../../../domain/investigation-case/errors/disabled-operator.error';
@@ -37,6 +39,11 @@ function correctionOf(changes: CaseUpdate): CaseCorrection | null {
   if (changes.pvNumber !== undefined) correction.pvNumber = changes.pvNumber;
   if (changes.description !== undefined)
     correction.description = changes.description;
+  for (const field of JUDICIAL_HEADER_FIELDS) {
+    if (changes[field] !== undefined) {
+      Object.assign(correction, { [field]: changes[field] });
+    }
+  }
   return Object.keys(correction).length > 0 ? correction : null;
 }
 
@@ -78,7 +85,7 @@ export class UpdateInvestigationCaseHandler implements ICommandHandler<
         evidenceClass: EvidenceClassEnum.OBSERVED,
         actor: cmd.actor,
         caseId: investigationCase.id,
-        payload: { changes: correction },
+        payload: { changes: correctionPayload(correction) },
       });
     }
     if (newOperatorUserId !== null && designatedOperator !== null) {

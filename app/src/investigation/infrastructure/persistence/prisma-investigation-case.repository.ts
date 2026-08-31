@@ -25,12 +25,16 @@ export class PrismaInvestigationCaseRepository implements InvestigationCaseRepos
   async save(c: InvestigationCase, ...acts: AuditEventDraft[]): Promise<void> {
     await this.transactionRunner.run(async () => {
       const prisma = await this.tenantConnection.getCurrentClient();
+      // Une seule liste pour les deux branches de l'upsert : une colonne
+      // oubliée ici serait écrite à la création puis perdue à la première
+      // modification, sans erreur.
       const columns = {
         caseNumber: c.caseNumber,
         pvNumber: c.pvNumber,
         description: c.description ?? null,
         status: c.status,
         operatorUserId: c.operatorUserId,
+        ...c.judicialHeader,
         updatedAt: c.updatedAt,
       };
       await prisma.investigationCase.upsert({
