@@ -1,5 +1,10 @@
-import { Inject } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { anchorChainSafely } from '../../../../shared/application/anchor-chain-safely';
+import {
+  CHAIN_ANCHORING,
+  type ChainAnchoringPort,
+} from '../../../../shared/domain/ports/chain-anchoring.port';
 import { InvestigationCase } from '../../../domain/investigation-case/entity/investigation-case';
 import { CaseNumberAlreadyExistsError } from '../../../domain/investigation-case/errors/case-number-already-exists.error';
 import {
@@ -19,11 +24,15 @@ export class OpenInvestigationCaseHandler implements ICommandHandler<
   OpenInvestigationCaseCommand,
   string
 > {
+  private readonly logger = new Logger(OpenInvestigationCaseHandler.name);
+
   constructor(
     @Inject(INVESTIGATION_CASE_REPOSITORY)
     private readonly repo: InvestigationCaseRepository,
     @Inject(ID_GENERATOR)
     private readonly idGenerator: IdGenerator,
+    @Inject(CHAIN_ANCHORING)
+    private readonly anchoring: ChainAnchoringPort,
   ) {}
 
   async execute(cmd: OpenInvestigationCaseCommand): Promise<string> {
@@ -49,6 +58,7 @@ export class OpenInvestigationCaseHandler implements ICommandHandler<
         operatorUserId: cmd.operatorUserId,
       },
     });
+    await anchorChainSafely(this.anchoring, this.logger);
     return id;
   }
 }

@@ -39,6 +39,7 @@ import type {
 } from '../../ports/service-letterhead.reader';
 import { ReportSequenceAlreadyTakenError } from '../../../domain/report/errors/report-sequence-already-taken.error';
 import { ReportTypeName } from '../../../domain/report/entity/report';
+import type { ChainAnchoringPort } from '../../../../shared/domain/ports/chain-anchoring.port';
 import type { ReportImageEmbedderPort } from '../../ports/report-image-embedder.port';
 import type { ReportImageViewModel } from '../../report-view-model';
 import { GenerateReportCommand } from './generate-report.command';
@@ -174,6 +175,7 @@ class FakeCaseDataReader implements CaseReportDataReader {
 
 class FakeTraceabilityReader implements TraceabilityDataReader {
   readonly caseEvents: AuditEventData[] = [];
+  readonly anchors: AnchorData[] = [];
   caseEventsReadFor: string[] = [];
 
   read(): Promise<TraceabilityData> {
@@ -186,7 +188,40 @@ class FakeTraceabilityReader implements TraceabilityDataReader {
   }
 
   readAnchors(): Promise<AnchorData[]> {
-    return Promise.resolve(TRACEABILITY_DATA.anchors);
+    return Promise.resolve([...this.anchors]);
+  }
+}
+
+/**
+ * Ancre pour de faux mais au bon moment : chaque appel note l'état de la chaîne
+ * et dépose une ancre, de sorte que le rapport ne peut la nommer que si
+ * l'horodatage a précédé la lecture des ancres.
+ */
+class FakeAnchoring implements ChainAnchoringPort {
+  readonly chainLengthAtCall: number[] = [];
+  readonly sealCountAtCall: number[] = [];
+  failure: Error | null = null;
+
+  constructor(
+    private readonly appender: InMemoryAuditTrailAppender,
+    private readonly traceability: FakeTraceabilityReader,
+    private readonly sealRegistry: InMemorySealRegistry,
+  ) {}
+
+  anchor(): Promise<void> {
+    this.chainLengthAtCall.push(this.appender.events.length);
+    this.sealCountAtCall.push(this.sealRegistry.seals.length);
+    if (this.failure) {
+      return Promise.reject(this.failure);
+    }
+    this.traceability.anchors.push({
+      headSeq: 90 + this.chainLengthAtCall.length,
+      headHash: 'd'.repeat(64),
+      tsaUrl: 'https://freetsa.org/tsr',
+      anchoredAt: new Date('2026-08-02T03:00:00.000Z'),
+      tsrSha256: 'e'.repeat(64),
+    });
+    return Promise.resolve();
   }
 }
 
@@ -280,6 +315,7 @@ describe('GenerateReportHandler', () => {
   let letterhead: FakeServiceLetterheadReader;
   let attestation: FakeAttestation;
   let sealRegistry: InMemorySealRegistry;
+  let anchoring: FakeAnchoring;
 
   beforeEach(() => {
     sealRegistry = new InMemorySealRegistry();
@@ -292,6 +328,7 @@ describe('GenerateReportHandler', () => {
     repository = new InMemoryReportRepository(appender);
     contributors = new FakeCaseContributorsReader();
     letterhead = new FakeServiceLetterheadReader();
+    anchoring = new FakeAnchoring(appender, traceability, sealRegistry);
     let issued = 0;
     attestation = new FakeAttestation();
     handler = new GenerateReportHandler(
@@ -309,6 +346,7 @@ describe('GenerateReportHandler', () => {
       repository,
       { generate: () => `report-${++issued}` },
       sealRegistry,
+      anchoring,
     );
   });
 
@@ -317,6 +355,41 @@ describe('GenerateReportHandler', () => {
       new GenerateReportCommand(EXPERT, CASE_ID, type, SIGNER),
     );
   }
+
+  it('horodate le registre avant le rendu, pour que le rapport puisse nommer l’ancre', async () => {
+    await generate();
+
+    const model = renderer.rendered[0];
+    if (model.kind !== 'TECHNICAL') throw new Error('modèle inattendu');
+    expect(model.integrity.lastAnchor).toEqual({
+      anchoredAt: new Date('2026-08-02T03:00:00.000Z'),
+      entryNumber: 91,
+    });
+  });
+
+  it('horodate de nouveau une fois le rapport scellé, pour dater son propre scellé', async () => {
+    await generate();
+
+    expect(anchoring.chainLengthAtCall).toEqual([0, 1]);
+  });
+
+  it('attend que le scellé du rapport soit projeté avant de l’horodater', async () => {
+    // L'ancre ne marque que les scellés déjà inscrits : projeté après elle, le
+    // rapport resterait sans date sur la page publique de vérification.
+    await generate();
+
+    expect(anchoring.sealCountAtCall).toEqual([0, 1]);
+  });
+
+  it('scelle le rapport même si l’autorité d’horodatage ne répond pas', async () => {
+    anchoring.failure = new Error('TSA injoignable');
+
+    const generated = await generate();
+
+    expect(repository.store).toHaveLength(1);
+    expect(storage.files.size).toBe(1);
+    expect(generated.sha256).toHaveLength(64);
+  });
 
   it('refuse de rapporter un dossier qui n existe pas', async () => {
     caseData.data = null;
@@ -507,6 +580,7 @@ describe('GenerateReportHandler', () => {
       repository,
       { generate: () => `report-${repository.store.length + 1}` },
       sealRegistry,
+      anchoring,
     );
 
     await generate();
