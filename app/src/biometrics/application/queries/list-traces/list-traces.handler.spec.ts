@@ -12,7 +12,7 @@ const traceRow = (
   reference: '3455-T1',
   path: 'media/investigation-case/case-9/traces/trace-1.png',
   status: 'RECEIVED',
-  score: null,
+  cote: null,
   caseId: 'case-9',
   identified: false,
   sha256: null,
@@ -244,7 +244,7 @@ describe('ListTracesHandler', () => {
 
   it("hides the operator's exploitability declaration from a verifier in mission", async () => {
     const reader = new InMemoryTraceReader([
-      traceRow({ status: 'EXPLOITABLE' }),
+      traceRow({ status: 'EXPLOITABLE', cote: 'A' }),
     ]);
     const handler = new ListTracesHandler(
       reader,
@@ -256,11 +256,12 @@ describe('ListTracesHandler', () => {
     );
 
     expect(data[0].status).toBeNull();
+    expect(data[0].cote).toBeNull();
   });
 
   it('leaves the rest of the trace visible to a verifier in mission', async () => {
     const reader = new InMemoryTraceReader([
-      traceRow({ status: 'EXPLOITABLE', score: 42, captureWidth: 3024 }),
+      traceRow({ status: 'EXPLOITABLE', captureWidth: 3024 }),
     ]);
     const handler = new ListTracesHandler(
       reader,
@@ -273,7 +274,6 @@ describe('ListTracesHandler', () => {
 
     expect(data[0]).toMatchObject({
       id: 'trace-1',
-      score: 42,
       captureWidth: 3024,
       url: '/media/investigation-case/case-9/traces/trace-1.png',
     });
@@ -281,7 +281,7 @@ describe('ListTracesHandler', () => {
 
   it('keeps the declaration for the case operator', async () => {
     const reader = new InMemoryTraceReader([
-      traceRow({ status: 'EXPLOITABLE' }),
+      traceRow({ status: 'EXPLOITABLE', cote: 'A' }),
     ]);
     const handler = new ListTracesHandler(
       reader,
@@ -291,5 +291,6 @@ describe('ListTracesHandler', () => {
     const { data } = await handler.execute(new ListTracesQuery('case-9'));
 
     expect(data[0].status).toBe('EXPLOITABLE');
+    expect(data[0].cote).toBe('A');
   });
 });

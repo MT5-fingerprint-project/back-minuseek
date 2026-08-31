@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
+import { assignCotes } from '../../../shared/domain/forensics/cote';
 import { MINUTIA_SETTINGS_TYPES } from '../../../shared/domain/forensics/minutiae';
 import type {
   CaseReportData,
@@ -85,6 +86,7 @@ function toPiece(
   layers: LayerData[],
   minutiae: MinutiaData[],
   number: number | null = null,
+  cote: string | null = null,
 ): PieceData {
   return {
     id: row.id,
@@ -106,7 +108,7 @@ function toPiece(
     origin: row.origin ?? null,
     location: row.location ?? null,
     revelationTechnique: row.revelationTechnique ?? null,
-    cote: null,
+    cote,
     notIdentifiedAt: null,
     locationPhoto: toLocationPhoto(row),
   };
@@ -206,6 +208,9 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
       hits.map((hit) => `${hit.traceId}:${hit.referencePrintId}`),
     );
     const verifications = await this.readVerifications(prisma, caseId);
+    const cotes = assignCotes(
+      traces.filter((trace) => trace.withdrawnAt === null),
+    );
 
     return {
       investigationCase: {
@@ -215,7 +220,6 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
         description: investigationCase.description,
         status: investigationCase.status,
         createdAt: investigationCase.createdAt,
-        // Colonnes judiciaires : L2-1a. Destinataire : L2-2.
         requestDate: null,
         requesterQuality: null,
         requesterName: null,
@@ -249,14 +253,13 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
             assistants: expertise.assistants,
           }
         : null,
-      // Rang provisoire dans l'ordre de dépôt, celui que la migration de L4-1a
-      // écrira en colonne : à remplacer par `trace.number` dès sa fusion.
-      traces: traces.map((trace, order) =>
+      traces: traces.map((trace) =>
         toPiece(
           trace,
           layersByPiece.get(trace.id) ?? [],
           minutiaeByPiece.get(trace.id) ?? [],
-          order + 1,
+          trace.number,
+          cotes.get(trace.number) ?? null,
         ),
       ),
       referencePrints: referencePrints.map((print) =>

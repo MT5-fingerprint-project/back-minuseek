@@ -15,7 +15,7 @@ const aTraceView = (
   path: 'media/investigation-case/case-9/traces/trace-1.png',
   url: 'https://storage.example/trace-1.png?signature=abc',
   status: 'RECEIVED',
-  score: null,
+  cote: null,
   caseId: 'case-9',
   identified: false,
   sha256: 'a'.repeat(64),

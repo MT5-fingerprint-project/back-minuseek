@@ -10,7 +10,6 @@ import { InvalidTraceLocationError } from '../../../domain/trace/errors/invalid-
 import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found.error';
 import { CaseNotOpenForWorkError } from '../../../domain/errors/case-not-open-for-work.error';
 import { InvalidRevelationTechniqueError } from '../../../domain/trace/value-objects/revelation-technique.vo';
-import { ExploitabilityScore } from '../../../domain/trace/value-objects/exploitability-score.vo';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
@@ -115,7 +114,7 @@ describe('DescribeTraceHandler', () => {
 
   it('still describes a trace already declared exploitable', async () => {
     const trace = seededTrace();
-    trace.evaluate(ExploitabilityScore.of(12));
+    trace.declareExploitability(true);
     repo.seed(trace);
 
     await handler.execute(describeTrace());

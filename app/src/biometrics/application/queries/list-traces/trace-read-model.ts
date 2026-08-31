@@ -6,7 +6,7 @@ export interface TraceReadModel {
   reference: string;
   path: string;
   status: string;
-  score: number | null;
+  cote: string | null;
   caseId: string;
   identified: boolean;
   sha256: string | null;

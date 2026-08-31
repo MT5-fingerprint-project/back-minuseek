@@ -59,10 +59,6 @@ interface Route {
   method: Method;
   url: string;
   body?: Record<string, unknown>;
-  /** Les routes qui relisent l'affaire après l'avoir changée en envoient deux ;
-   * les routes multipart n'en envoient aucune, leur contrôle de fichier tombe
-   * avant le handler faute de pouvoir charger « file-type » (ESM) sous Jest.
-   * Le garde, lui, passe avant les pipes : c'est ce que cette suite vérifie. */
   dispatches?: number;
 }
 
@@ -177,6 +173,13 @@ const ROUTES_GARDEES: Route[] = [
       location: "Sur l'extérieur de la porte d'entrée de l'appartement",
       revelationTechnique: 'FINGERPRINT_POWDER',
     },
+    dispatches: 2,
+  },
+  {
+    label: 'PUT /traces/:id/exploitability',
+    method: 'put',
+    url: `/traces/${TRACE}/exploitability`,
+    body: { exploitable: true },
     dispatches: 2,
   },
   {
@@ -668,6 +671,12 @@ const ROUTES_FERMEES_AU_VERIFICATEUR: Route[] = [
       location: "Sur l'extérieur de la porte d'entrée de l'appartement",
       revelationTechnique: 'FINGERPRINT_POWDER',
     },
+  },
+  {
+    label: 'PUT /traces/:id/exploitability',
+    method: 'put',
+    url: `/traces/${TRACE}/exploitability`,
+    body: { exploitable: true },
   },
   {
     label: 'POST /traces/:id/location-photo',
