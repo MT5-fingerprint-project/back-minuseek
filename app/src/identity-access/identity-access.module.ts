@@ -29,12 +29,13 @@ import { SUBJECT_REPOSITORY } from './domain/subject/repository/subject.reposito
 import { CASE_SUBJECTS_READER } from './application/queries/list-subjects-by-case/case-subjects.reader';
 import { SERVICE_ACCOUNT_IDENTITY } from './application/ports/service-account-identity.port';
 import { KeycloakServiceAccountIdentityAdapter } from './infrastructure/keycloak/keycloak-service-account-identity.adapter';
+import { AuditTrailModule } from '../audit-trail/audit-trail.module';
 import { OrganizationModule } from '../organization/organization.module';
 
 @Module({
   // OrganizationModule pour le seul IDENTITY_PROVIDER : le client admin Keycloak
   // y est déjà câblé, en dupliquer un second ouvrirait une seconde session.
-  imports: [CqrsModule, OrganizationModule],
+  imports: [CqrsModule, AuditTrailModule, OrganizationModule],
   controllers: [UserController, MeController, SubjectController],
   providers: [
     GetUserByProviderIdHandler,
