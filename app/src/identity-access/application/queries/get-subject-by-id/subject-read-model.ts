@@ -2,8 +2,8 @@ export interface SubjectReadModel {
   id: string;
   firstName: string;
   lastName: string;
-  birthDate: Date;
-  birthPlace: string;
+  birthDate: Date | null;
+  birthPlace: string | null;
   firstParentName: string | null;
   secondParentName: string | null;
   phoneNumber: string | null;

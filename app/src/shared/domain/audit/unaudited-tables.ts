@@ -6,9 +6,6 @@
  * instrumentation-coverage.spec.ts vérifie qu'ils existent.
  */
 export const UNAUDITED_TABLES: Record<string, string[]> = {
-  Subject: [
-    'identity-access/application/commands/register-subject/register-subject.handler.ts',
-  ],
   User: [
     'identity-access/application/commands/register-user/register-user.handler.ts',
     'identity-access/application/commands/deactivate-user/deactivate-user.handler.ts',

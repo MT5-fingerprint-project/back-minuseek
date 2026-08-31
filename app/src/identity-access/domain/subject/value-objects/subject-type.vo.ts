@@ -1,6 +1,7 @@
 export enum SubjectTypeEnum {
   CLOSE_ASSOCIATE = 'CLOSE_ASSOCIATE',
   PERSON_OF_INTEREST = 'PERSON_OF_INTEREST',
+  VICTIM = 'VICTIM',
 }
 
 export class InvalidSubjectTypeError extends Error {
@@ -25,6 +26,10 @@ export class SubjectType {
 
   static personOfInterest(): SubjectType {
     return new SubjectType(SubjectTypeEnum.PERSON_OF_INTEREST);
+  }
+
+  static victim(): SubjectType {
+    return new SubjectType(SubjectTypeEnum.VICTIM);
   }
 
   getValue(): SubjectTypeEnum {
