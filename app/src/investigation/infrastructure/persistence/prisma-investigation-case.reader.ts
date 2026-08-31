@@ -28,6 +28,9 @@ interface InvestigationCaseRow {
   offenseDateTo: Date | null;
   interventionDate: Date | null;
   caseAgainst: string | null;
+  recipientAuthority: string | null;
+  recipientAttentionQuality: string | null;
+  recipientAttentionName: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -130,6 +133,9 @@ export class PrismaInvestigationCaseReader implements InvestigationCaseReader {
       offenseDateTo: row.offenseDateTo,
       interventionDate: row.interventionDate,
       caseAgainst: row.caseAgainst,
+      recipientAuthority: row.recipientAuthority,
+      recipientAttentionQuality: row.recipientAttentionQuality,
+      recipientAttentionName: row.recipientAttentionName,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }));

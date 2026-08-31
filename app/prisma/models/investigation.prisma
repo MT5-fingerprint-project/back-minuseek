@@ -20,6 +20,12 @@ model InvestigationCase {
   interventionDate  DateTime? @db.Date
   caseAgainst       String?
 
+  // Une copie des trois lignes du destinataire, sans clé étrangère vers le
+  // carnet : le rapport les lit sans jointure.
+  recipientAuthority        String?
+  recipientAttentionQuality String?
+  recipientAttentionName    String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

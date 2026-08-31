@@ -6,6 +6,7 @@ import { UserRoleEnum } from '../../../../identity-access/domain/user/value-obje
 import {
   InvestigationCase,
   NO_JUDICIAL_HEADER,
+  NO_RECIPIENT,
 } from '../../../domain/investigation-case/entity/investigation-case';
 import { CaseClosedError } from '../../../domain/investigation-case/errors/case-closed.error';
 import { CaseNotFoundError } from '../../../domain/investigation-case/errors/case-not-found.error';
@@ -79,6 +80,7 @@ describe('UpdateInvestigationCaseHandler', () => {
         pvNumber: PV,
         description: 'Vol à main armée',
         ...NO_JUDICIAL_HEADER,
+        ...NO_RECIPIENT,
         status,
         operatorUserId: MARIE,
         createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -324,6 +326,7 @@ describe('UpdateInvestigationCaseHandler', () => {
           pvNumber: PV,
           description: null,
           ...NO_JUDICIAL_HEADER,
+          ...NO_RECIPIENT,
           status: InvestigationCaseStatusEnum.OPEN,
           operatorUserId: null,
           createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -352,6 +355,7 @@ describe('UpdateInvestigationCaseHandler', () => {
           pvNumber: PV,
           description: null,
           ...NO_JUDICIAL_HEADER,
+          ...NO_RECIPIENT,
           status: InvestigationCaseStatusEnum.OPEN,
           operatorUserId: 'user-efface',
           createdAt: new Date('2026-01-01T10:00:00Z'),

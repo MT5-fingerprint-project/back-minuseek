@@ -35,6 +35,7 @@ export class PrismaInvestigationCaseRepository implements InvestigationCaseRepos
         status: c.status,
         operatorUserId: c.operatorUserId,
         ...c.judicialHeader,
+        ...c.recipient,
         updatedAt: c.updatedAt,
       };
       await prisma.investigationCase.upsert({

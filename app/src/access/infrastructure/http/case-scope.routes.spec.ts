@@ -14,6 +14,7 @@ import { MeController } from '../../../identity-access/infrastructure/http/me.co
 import { SubjectController } from '../../../identity-access/infrastructure/http/subject.controller';
 import { UserController } from '../../../identity-access/infrastructure/http/user.controller';
 import { InvestigationController } from '../../../investigation/infrastructure/http/investigation.controller';
+import { RecipientBookController } from '../../../investigation/infrastructure/http/recipient-book.controller';
 import { VerificationsController } from '../../../investigation/infrastructure/http/verifications.controller';
 import { ListInvestigationCasesQuery } from '../../../investigation/application/queries/list-investigation-cases/list-investigation-cases.query';
 import { ReportsController } from '../../../reporting/infrastructure/http/reports.controller';
@@ -73,6 +74,13 @@ const ROUTES_GARDEES: Route[] = [
     method: 'patch',
     url: `/investigation-cases/${AFFAIRE}`,
     body: { pvNumber: 'PV-2026-118', operatorUserId: PERSONNE },
+  },
+  {
+    label: 'PUT /investigation-cases/:id/recipient',
+    method: 'put',
+    url: `/investigation-cases/${AFFAIRE}/recipient`,
+    body: { authority: 'Le Procureur de la République' },
+    dispatches: 2,
   },
   {
     label: 'POST /investigation-cases/:id/closure',
@@ -278,6 +286,7 @@ async function bootFor(
   const moduleRef = await Test.createTestingModule({
     controllers: [
       InvestigationController,
+      RecipientBookController,
       VerificationsController,
       AuditTrailController,
       ReportsController,
@@ -400,6 +409,20 @@ describe("Le garde d'accès — les routes qui ne touchent aucune affaire", () =
     const response = await request(server)
       .post('/investigation-cases')
       .send({ caseNumber: 'AFF-001', pvNumber: 'PV-001' });
+
+    expect(response.status).toBe(201);
+  });
+
+  it('laisse lire le carnet de destinataires du service', async () => {
+    const response = await request(server).get('/report-recipients');
+
+    expect(response.status).toBe(200);
+  });
+
+  it('laisse enregistrer un destinataire au carnet du service', async () => {
+    const response = await request(server)
+      .post('/report-recipients')
+      .send({ authority: 'Le Procureur de la République' });
 
     expect(response.status).toBe(201);
   });
@@ -570,6 +593,12 @@ const ROUTES_FERMEES_AU_VERIFICATEUR: Route[] = [
     method: 'patch',
     url: `/investigation-cases/${AFFAIRE}`,
     body: { pvNumber: 'PV-2026-118' },
+  },
+  {
+    label: 'PUT /investigation-cases/:id/recipient',
+    method: 'put',
+    url: `/investigation-cases/${AFFAIRE}/recipient`,
+    body: { authority: 'Le Procureur de la République' },
   },
   {
     label: 'POST /investigation-cases/:id/closure',
