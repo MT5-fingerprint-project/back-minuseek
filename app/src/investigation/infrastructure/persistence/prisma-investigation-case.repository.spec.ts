@@ -8,7 +8,10 @@ import type {
 import type { TransactionRunner } from '../../../shared/domain/ports/transaction-runner';
 import type { PrismaClient } from '../../../../generated/prisma/client';
 import type { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
-import { InvestigationCase } from '../../domain/investigation-case/entity/investigation-case';
+import {
+  InvestigationCase,
+  NO_JUDICIAL_HEADER,
+} from '../../domain/investigation-case/entity/investigation-case';
 import { InvestigationCaseStatusEnum } from '../../domain/investigation-case/value-objects/investigation-case-status.vo';
 import { PrismaInvestigationCaseRepository } from './prisma-investigation-case.repository';
 
@@ -105,6 +108,7 @@ describe('PrismaInvestigationCaseRepository', () => {
         caseNumber: 'AFF-001',
         pvNumber: 'PV-2024-001',
         description: null,
+        ...NO_JUDICIAL_HEADER,
         status: InvestigationCaseStatusEnum.IN_PROGRESS,
         operatorUserId: MARIE,
         createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -127,6 +131,7 @@ describe('PrismaInvestigationCaseRepository', () => {
         caseNumber: 'AFF-001',
         pvNumber: 'PV-2026-118',
         description: 'Vol avec effraction',
+        ...NO_JUDICIAL_HEADER,
         status: InvestigationCaseStatusEnum.IN_PROGRESS,
         operatorUserId: MARIE,
         createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -142,12 +147,61 @@ describe('PrismaInvestigationCaseRepository', () => {
       description: 'Vol avec effraction',
       status: InvestigationCaseStatusEnum.IN_PROGRESS,
       operatorUserId: MARIE,
+      ...NO_JUDICIAL_HEADER,
       updatedAt: new Date('2026-01-02T10:00:00Z'),
     });
     const colonnesDeCreation = Object.keys(create).filter(
       (column) => column !== 'id' && column !== 'createdAt',
     );
     expect(colonnesDeCreation.every((column) => column in update)).toBe(true);
+  });
+
+  it("porte l'en-tête judiciaire dans les deux branches de l'upsert", async () => {
+    const { repository, prisma } = build();
+
+    const investigationCase = InvestigationCase.reconstitute({
+      id: 'case-1',
+      caseNumber: 'AFF-001',
+      pvNumber: 'PV-2024-001',
+      description: null,
+      ...NO_JUDICIAL_HEADER,
+      status: InvestigationCaseStatusEnum.OPEN,
+      operatorUserId: MARIE,
+      createdAt: new Date('2026-01-01T10:00:00Z'),
+      updatedAt: new Date('2026-01-01T10:00:00Z'),
+    });
+    investigationCase.correct({
+      requestDate: new Date('2026-06-04'),
+      requesterQuality: 'Brigadier-Chef de Police',
+      requesterName: 'MARCHAND Claire',
+      requesterService:
+        '3e District de Police Judiciaire de la D.R.P.J de Paris',
+      offenseNature: 'Vol par effraction',
+      offenseLocation: '12 rue Léon Frot à Paris 11e',
+      offenseDateFrom: new Date('2026-06-01'),
+      offenseDateTo: new Date('2026-06-03'),
+      interventionDate: new Date('2026-06-05'),
+      caseAgainst: 'X',
+    });
+
+    await repository.save(investigationCase, CASE_OPENED);
+
+    const [{ create, update }] = prisma.upsertArgs;
+    const enTete = {
+      requestDate: new Date('2026-06-04'),
+      requesterQuality: 'Brigadier-Chef de Police',
+      requesterName: 'MARCHAND Claire',
+      requesterService:
+        '3e District de Police Judiciaire de la D.R.P.J de Paris',
+      offenseNature: 'Vol par effraction',
+      offenseLocation: '12 rue Léon Frot à Paris 11e',
+      offenseDateFrom: new Date('2026-06-01'),
+      offenseDateTo: new Date('2026-06-03'),
+      interventionDate: new Date('2026-06-05'),
+      caseAgainst: 'X',
+    };
+    expect(create).toMatchObject(enTete);
+    expect(update).toMatchObject(enTete);
   });
 
   it('écrit null quand la description a été vidée, au lieu de la laisser en place', async () => {
@@ -158,6 +212,7 @@ describe('PrismaInvestigationCaseRepository', () => {
       caseNumber: 'AFF-001',
       pvNumber: 'PV-2024-001',
       description: 'Vol à main armée',
+      ...NO_JUDICIAL_HEADER,
       status: InvestigationCaseStatusEnum.OPEN,
       operatorUserId: MARIE,
       createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -197,6 +252,7 @@ describe('PrismaInvestigationCaseRepository', () => {
       caseNumber: 'AFF-001',
       pvNumber: 'PV-2024-001',
       description: null,
+      ...NO_JUDICIAL_HEADER,
       status: InvestigationCaseStatusEnum.CLOSED,
       operatorUserId: MARIE,
       createdAt: new Date('2026-01-01T10:00:00Z'),

@@ -10,6 +10,7 @@ import type { UserReadModel } from '../../../identity-access/application/queries
 import { UserRoleEnum } from '../../../identity-access/domain/user/value-objects/user-role.vo';
 import { UpdateInvestigationCaseCommand } from '../../application/commands/update-investigation-case/update-investigation-case.command';
 import { OpenInvestigationCaseCommand } from '../../application/commands/open-investigation-case/open-investigation-case.command';
+import { InvalidOffensePeriodError } from '../../domain/investigation-case/errors/invalid-offense-period.error';
 import { CaseClosedError } from '../../domain/investigation-case/errors/case-closed.error';
 import { CaseNotFoundError } from '../../domain/investigation-case/errors/case-not-found.error';
 import { OperatorChangeNotAllowedError } from '../../domain/investigation-case/errors/operator-change-not-allowed.error';
@@ -147,6 +148,7 @@ describe("InvestigationController — modification d'une affaire", () => {
     [new UnknownOperatorError(PIERRE_ID), BadRequestException],
     [new DisabledOperatorError(PIERRE_ID), BadRequestException],
     [new CaseClosedError(CASE_ID), ConflictException],
+    [new InvalidOffensePeriodError(), BadRequestException],
   ])('traduit %s à la frontière HTTP', async (domainError, httpError) => {
     const { controller } = build(domainError);
 
@@ -161,5 +163,71 @@ describe("InvestigationController — modification d'une affaire", () => {
     await expect(
       controller.update(CASE_ID, { pvNumber: 'PV-2026-118' }, JETON, MARIE),
     ).rejects.toThrow('base injoignable');
+  });
+
+  it('convertit les quatre dates judiciaires et passe les six textes tels quels', async () => {
+    const { controller, dispatched } = build();
+
+    await controller.update(
+      CASE_ID,
+      {
+        requestDate: '2026-06-04',
+        requesterQuality: 'Brigadier-Chef de Police',
+        requesterName: 'MARCHAND Claire',
+        requesterService:
+          '3e District de Police Judiciaire de la D.R.P.J de Paris',
+        offenseNature: 'Vol par effraction',
+        offenseLocation: '12 rue Léon Frot à Paris 11e',
+        offenseDateFrom: '2026-06-01',
+        offenseDateTo: '2026-06-03',
+        interventionDate: '2026-06-05',
+        caseAgainst: 'X',
+      },
+      JETON,
+      MARIE,
+    );
+
+    expect(dispatched[0]).toMatchObject({
+      changes: {
+        requestDate: new Date('2026-06-04'),
+        requesterQuality: 'Brigadier-Chef de Police',
+        requesterName: 'MARCHAND Claire',
+        requesterService:
+          '3e District de Police Judiciaire de la D.R.P.J de Paris',
+        offenseNature: 'Vol par effraction',
+        offenseLocation: '12 rue Léon Frot à Paris 11e',
+        offenseDateFrom: new Date('2026-06-01'),
+        offenseDateTo: new Date('2026-06-03'),
+        interventionDate: new Date('2026-06-05'),
+        caseAgainst: 'X',
+      },
+    });
+  });
+
+  it('passe une date judiciaire vidée à null, sans la transformer en époque', async () => {
+    const { controller, dispatched } = build();
+
+    await controller.update(CASE_ID, { offenseDateTo: null }, JETON, MARIE);
+
+    expect(dispatched[0]).toMatchObject({ changes: { offenseDateTo: null } });
+  });
+
+  it("n'inscrit dans la commande aucun champ judiciaire absent du corps", async () => {
+    const { controller, dispatched } = build();
+
+    await controller.update(
+      CASE_ID,
+      { offenseNature: 'Vol par effraction' },
+      JETON,
+      MARIE,
+    );
+
+    const { changes } = dispatched[0] as UpdateInvestigationCaseCommand;
+    expect(Object.keys(changes).sort()).toEqual([
+      'description',
+      'offenseNature',
+      'operatorUserId',
+      'pvNumber',
+    ]);
   });
 });

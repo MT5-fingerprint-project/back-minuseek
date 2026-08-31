@@ -19,6 +19,16 @@ export interface InvestigationCaseReadModel {
   status: string;
   operator: CaseUserReadModel | null;
   expertise: CaseExpertiseReadModel | null;
+  requestDate: Date | null;
+  requesterQuality: string | null;
+  requesterName: string | null;
+  requesterService: string | null;
+  offenseNature: string | null;
+  offenseLocation: string | null;
+  offenseDateFrom: Date | null;
+  offenseDateTo: Date | null;
+  interventionDate: Date | null;
+  caseAgainst: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

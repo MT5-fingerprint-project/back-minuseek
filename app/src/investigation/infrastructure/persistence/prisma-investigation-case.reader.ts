@@ -18,6 +18,16 @@ interface InvestigationCaseRow {
   description: string | null;
   status: string;
   operatorUserId: string | null;
+  requestDate: Date | null;
+  requesterQuality: string | null;
+  requesterName: string | null;
+  requesterService: string | null;
+  offenseNature: string | null;
+  offenseLocation: string | null;
+  offenseDateFrom: Date | null;
+  offenseDateTo: Date | null;
+  interventionDate: Date | null;
+  caseAgainst: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -110,6 +120,16 @@ export class PrismaInvestigationCaseReader implements InvestigationCaseReader {
         ? (accountsById.get(row.operatorUserId) ?? null)
         : null,
       expertise: expertiseOf(expertiseByCaseId.get(row.id), accountsById),
+      requestDate: row.requestDate,
+      requesterQuality: row.requesterQuality,
+      requesterName: row.requesterName,
+      requesterService: row.requesterService,
+      offenseNature: row.offenseNature,
+      offenseLocation: row.offenseLocation,
+      offenseDateFrom: row.offenseDateFrom,
+      offenseDateTo: row.offenseDateTo,
+      interventionDate: row.interventionDate,
+      caseAgainst: row.caseAgainst,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }));

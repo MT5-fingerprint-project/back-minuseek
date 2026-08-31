@@ -24,6 +24,7 @@ import { CaseClosedError } from '../../domain/investigation-case/errors/case-clo
 import { CaseNumberAlreadyExistsError } from '../../domain/investigation-case/errors/case-number-already-exists.error';
 import { CaseNotFoundError } from '../../domain/investigation-case/errors/case-not-found.error';
 import { InvalidCaseTransitionError } from '../../domain/investigation-case/errors/invalid-case-transition.error';
+import { InvalidOffensePeriodError } from '../../domain/investigation-case/errors/invalid-offense-period.error';
 import { OperatorChangeNotAllowedError } from '../../domain/investigation-case/errors/operator-change-not-allowed.error';
 import { DisabledOperatorError } from '../../domain/investigation-case/errors/disabled-operator.error';
 import { UnknownOperatorError } from '../../domain/investigation-case/errors/unknown-operator.error';
@@ -63,6 +64,42 @@ const NO_SERVICE_ACCOUNT_MESSAGE =
  * surtout pas la totalité. */
 const caseRequesterOf = (user?: UserReadModel): CaseRequester | null =>
   user ? { id: user.id, role: user.role as UserRoleEnum } : null;
+
+const statedDate = (value: string | null): Date | null =>
+  value === null ? null : new Date(value);
+
+/** Un champ absent du corps n'entre pas dans la commande ; un champ à `null` y
+ * entre pour vider la colonne. Les deux se distinguent jusqu'au domaine. */
+const judicialHeaderOf = (dto: UpdateInvestigationCaseDto) => ({
+  ...(dto.requestDate !== undefined && {
+    requestDate: statedDate(dto.requestDate),
+  }),
+  ...(dto.requesterQuality !== undefined && {
+    requesterQuality: dto.requesterQuality,
+  }),
+  ...(dto.requesterName !== undefined && {
+    requesterName: dto.requesterName,
+  }),
+  ...(dto.requesterService !== undefined && {
+    requesterService: dto.requesterService,
+  }),
+  ...(dto.offenseNature !== undefined && {
+    offenseNature: dto.offenseNature,
+  }),
+  ...(dto.offenseLocation !== undefined && {
+    offenseLocation: dto.offenseLocation,
+  }),
+  ...(dto.offenseDateFrom !== undefined && {
+    offenseDateFrom: statedDate(dto.offenseDateFrom),
+  }),
+  ...(dto.offenseDateTo !== undefined && {
+    offenseDateTo: statedDate(dto.offenseDateTo),
+  }),
+  ...(dto.interventionDate !== undefined && {
+    interventionDate: statedDate(dto.interventionDate),
+  }),
+  ...(dto.caseAgainst !== undefined && { caseAgainst: dto.caseAgainst }),
+});
 
 @ApiTags('investigation-cases')
 @Controller('investigation-cases')
@@ -159,7 +196,7 @@ export class InvestigationController {
   @ApiResponse({
     status: 400,
     description:
-      "Le compte désigné comme opérateur n'existe pas dans ce service, ou y est désactivé",
+      "Le compte désigné comme opérateur n'existe pas dans ce service ou y est désactivé, ou la période des faits est inversée",
   })
   @ApiResponse({
     status: 403,
@@ -186,12 +223,15 @@ export class InvestigationController {
             pvNumber: dto.pvNumber,
             description: dto.description,
             operatorUserId: dto.operatorUserId,
+            ...judicialHeaderOf(dto),
           },
         ),
       );
     } catch (e) {
       if (e instanceof CaseNotFoundError)
         throw new NotFoundException(e.message);
+      if (e instanceof InvalidOffensePeriodError)
+        throw new BadRequestException(e.message);
       if (e instanceof OperatorChangeNotAllowedError)
         throw new ForbiddenException(e.message);
       if (e instanceof UnknownOperatorError)
