@@ -22,6 +22,10 @@ import { PrismaRecipientBookEntryRepository } from './infrastructure/persistence
 import { PrismaRecipientBookEntriesReader } from './infrastructure/persistence/prisma-recipient-book-entries.reader';
 import { RECIPIENT_BOOK_ENTRY_REPOSITORY } from './domain/recipient-book-entry/repository/recipient-book-entry.repository';
 import { RECIPIENT_BOOK_ENTRIES_READER } from './application/queries/list-recipient-book-entries/recipient-book-entries.reader';
+import { GetServiceActivityHandler } from './application/queries/get-service-activity/get-service-activity.handler';
+import { SERVICE_ACTIVITY_READER } from './application/queries/get-service-activity/service-activity.reader';
+import { ServiceActivityController } from './infrastructure/http/service-activity.controller';
+import { PrismaServiceActivityReader } from './infrastructure/persistence/prisma-service-activity.reader';
 import { PrismaCaseExpertiseRepository } from './infrastructure/persistence/prisma-case-expertise.repository';
 import { ListCaseVerificationsHandler } from './application/queries/list-case-verifications/list-case-verifications.handler';
 import { ListMyVerificationsHandler } from './application/queries/list-my-verifications/list-my-verifications.handler';
@@ -46,9 +50,13 @@ import { BiometricsModule } from '../biometrics/biometrics.module';
 @Module({
   imports: [CqrsModule, AuditTrailModule, AccessModule, BiometricsModule],
   controllers: [
+    
     InvestigationController,
     RecipientBookController,
+   
     VerificationsController,
+  ,
+    ServiceActivityController,
   ],
   providers: [
     OpenInvestigationCaseHandler,
@@ -59,6 +67,7 @@ import { BiometricsModule } from '../biometrics/biometrics.module';
     ReopenInvestigationCaseHandler,
     ListInvestigationCasesHandler,
     GetInvestigationCaseHandler,
+    GetServiceActivityHandler,
     RequestCaseVerificationHandler,
     RecordVerificationConclusionHandler,
     CompleteCaseVerificationHandler,
@@ -80,6 +89,10 @@ import { BiometricsModule } from '../biometrics/biometrics.module';
     {
       provide: INVESTIGATION_CASE_READER,
       useClass: PrismaInvestigationCaseReader,
+    },
+    {
+      provide: SERVICE_ACTIVITY_READER,
+      useClass: PrismaServiceActivityReader,
     },
     {
       provide: SERVICE_USER_DIRECTORY,
