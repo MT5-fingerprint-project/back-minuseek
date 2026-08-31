@@ -23,6 +23,8 @@ import { CompareTraceHandler } from './application/commands/compare-trace/compar
 import { RecordHitHandler } from './application/commands/record-hit/record-hit.handler';
 import { RemoveHitHandler } from './application/commands/remove-hit/remove-hit.handler';
 import { ListHitsHandler } from './application/queries/list-hits/list-hits.handler';
+import { DepositExportedImageHandler } from './application/commands/deposit-exported-image/deposit-exported-image.handler';
+import { ListExportedImagesHandler } from './application/queries/list-exported-images/list-exported-images.handler';
 import { IMAGE_STORAGE } from './application/ports/image-storage.port';
 import { IMAGE_CONVERTER } from './application/ports/image-converter.port';
 import { CASE_STATUS } from './application/ports/case-status.port';
@@ -40,14 +42,17 @@ import { TRACE_READER } from './application/queries/list-traces/trace.reader';
 import { REFERENCE_PRINT_READER } from './application/queries/list-reference-prints/reference-print.reader';
 import { LAYER_READER } from './application/queries/list-layers/layer.reader';
 import { HIT_READER } from './application/queries/list-hits/hit.reader';
+import { EXPORTED_IMAGE_READER } from './application/queries/list-exported-images/exported-image.reader';
 import { REFERENCE_PRINT_REPOSITORY } from './domain/reference-print/repository/reference-print.repository';
 import { TRACE_REPOSITORY } from './domain/trace/repository/trace.repository';
 import { TRACE_LOCATION_PHOTO_REPOSITORY } from './domain/trace-location-photo/repository/trace-location-photo.repository';
 import { LAYER_REPOSITORY } from './domain/layer/repository/layer.repository';
 import { MATCHING_REPOSITORY } from './domain/matching/repository/matching.repository';
 import { HIT_REPOSITORY } from './domain/hit/repository/hit.repository';
+import { EXPORTED_IMAGE_REPOSITORY } from './domain/exported-image/repository/exported-image.repository';
 import { BiometricsController } from './infrastructure/http/biometrics.controller';
 import { LayersController } from './infrastructure/http/layers.controller';
+import { ExportsController } from './infrastructure/http/exports.controller';
 import { PrismaReferencePrintRepository } from './infrastructure/persistence/prisma-reference-print.repository';
 import { PrismaTraceRepository } from './infrastructure/persistence/prisma-trace.repository';
 import { PrismaTraceLocationPhotoRepository } from './infrastructure/persistence/prisma-trace-location-photo.repository';
@@ -62,6 +67,8 @@ import { PrismaLayerReader } from './infrastructure/persistence/prisma-layer.rea
 import { PrismaMatchingRepository } from './infrastructure/persistence/prisma-matching.repository';
 import { PrismaHitRepository } from './infrastructure/persistence/prisma-hit.repository';
 import { PrismaHitReader } from './infrastructure/persistence/prisma-hit.reader';
+import { PrismaExportedImageRepository } from './infrastructure/persistence/prisma-exported-image.repository';
+import { PrismaExportedImageReader } from './infrastructure/persistence/prisma-exported-image.reader';
 import { SharpImageConverterAdapter } from './infrastructure/conversion/sharp-image-converter.adapter';
 import { GcsImageStorageAdapter } from './infrastructure/storage/gcs-image-storage.adapter';
 import { InMemoryImageStorageAdapter } from './infrastructure/storage/in-memory-image-storage.adapter';
@@ -71,7 +78,7 @@ import { AccessModule } from '../access/access.module';
 
 @Module({
   imports: [CqrsModule, AuditTrailModule, AccessModule],
-  controllers: [BiometricsController, LayersController],
+  controllers: [BiometricsController, LayersController, ExportsController],
   providers: [
     UploadTraceHandler,
     UploadReferencePrintHandler,
@@ -96,6 +103,8 @@ import { AccessModule } from '../access/access.module';
     RecordHitHandler,
     RemoveHitHandler,
     ListHitsHandler,
+    DepositExportedImageHandler,
+    ListExportedImagesHandler,
     { provide: TRACE_REPOSITORY, useClass: PrismaTraceRepository },
     {
       provide: TRACE_LOCATION_PHOTO_REPOSITORY,
@@ -119,6 +128,10 @@ import { AccessModule } from '../access/access.module';
     { provide: MATCHING_REPOSITORY, useClass: PrismaMatchingRepository },
     { provide: HIT_REPOSITORY, useClass: PrismaHitRepository },
     {
+      provide: EXPORTED_IMAGE_REPOSITORY,
+      useClass: PrismaExportedImageRepository,
+    },
+    {
       provide: FAMILIAR_REFERENCE_PRINT_READER,
       useClass: PrismaFamiliarReferencePrintReader,
     },
@@ -134,6 +147,7 @@ import { AccessModule } from '../access/access.module';
     { provide: REFERENCE_PRINT_READER, useClass: PrismaReferencePrintReader },
     { provide: LAYER_READER, useClass: PrismaLayerReader },
     { provide: HIT_READER, useClass: PrismaHitReader },
+    { provide: EXPORTED_IMAGE_READER, useClass: PrismaExportedImageReader },
     { provide: IMAGE_CONVERTER, useClass: SharpImageConverterAdapter },
     {
       provide: IMAGE_STORAGE,

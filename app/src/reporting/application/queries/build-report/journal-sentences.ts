@@ -278,6 +278,16 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
           designationOf(named, identified, UNNAMED_PRINT_FALLBACK).full
         }`;
   },
+  [AuditEventTypeEnum.EXPORTED_IMAGE_DEPOSITED]: (event, named) => {
+    const pieceId = text(event, 'sourcePieceId');
+    const isPrint = text(event, 'sourceKind') === 'REFERENCE_PRINT';
+    const designation = designationOf(
+      named,
+      pieceId,
+      isPrint ? UNNAMED_PRINT_FALLBACK : UNNAMED_TRACE_FALLBACK,
+    );
+    return `Dépôt de l'image exportée de ${designation.full} et mise sous scellé`;
+  },
   [AuditEventTypeEnum.CASE_VERIFICATION_COMPLETED]: (event) => {
     const verdict = text(event, 'verdict');
     if (verdict === 'CONCORDANT') {

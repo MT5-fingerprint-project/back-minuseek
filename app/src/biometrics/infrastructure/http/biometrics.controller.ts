@@ -4,13 +4,10 @@ import {
   Controller,
   ConflictException,
   Delete,
-  FileTypeValidator,
   Get,
-  MaxFileSizeValidator,
   HttpCode,
   NotFoundException,
   Param,
-  ParseFilePipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -22,7 +19,6 @@ import {
   UseInterceptors,
   ValidationPipe,
 } from '@nestjs/common';
-import type { FileValidator } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import {
   FileFieldsInterceptor,
@@ -98,9 +94,11 @@ import { UserRoleEnum } from '../../../identity-access/domain/user/value-objects
 import type { CaseRequester } from '../../../access/application/case-access.service';
 import { CaseAccessDeniedError } from '../../../access/application/case-access-denied.error';
 import { CASE_NOT_FOUND_MESSAGE } from '../../../access/infrastructure/http/case-access.guard';
-
-const IMAGE_MIME = /^image\/(png|jpe?g|tiff)$/;
-const MAX_IMAGE_SIZE_BYTES = 20 * 1024 * 1024;
+import {
+  assertUsableImage,
+  imageFileValidator,
+  UploadedImage,
+} from './image-upload.validators';
 
 /** Le corps multipart échappe au garde : c'est le handler qui contrôle, et un
  * jeton sans compte dans le service ne dépose rien. */
@@ -116,31 +114,6 @@ const captureMetadataPipe = () =>
     whitelist: true,
     forbidNonWhitelisted: true,
   });
-
-const imageValidators = (): FileValidator[] => [
-  new FileTypeValidator({ fileType: IMAGE_MIME }),
-  new MaxFileSizeValidator({ maxSize: MAX_IMAGE_SIZE_BYTES }),
-];
-
-const imageFileValidator = () =>
-  new ParseFilePipe({ validators: imageValidators(), fileIsRequired: true });
-
-interface UploadedImage {
-  buffer: Buffer;
-  mimetype: string;
-  size: number;
-}
-
-// `ParseFilePipe` ne valide qu'un fichier ou un tableau de fichiers : avec
-// `FileFieldsInterceptor` il reçoit un objet de champs et le laisse filer.
-// `FileTypeValidator.isValid` lit les octets de tête, donc rend une promesse.
-async function assertUsableImage(file: UploadedImage): Promise<void> {
-  for (const validator of imageValidators()) {
-    if (!(await validator.isValid(file))) {
-      throw new BadRequestException(validator.buildErrorMessage(file));
-    }
-  }
-}
 
 @ApiTags('biometrics')
 @Controller()

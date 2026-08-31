@@ -55,6 +55,20 @@ describe('sealsFromEvents', () => {
     expect(seal.kind).toBe('REFERENCE_PRINT');
   });
 
+  it('projette le dépôt d’une image exportée', () => {
+    const [seal] = sealsFromEvents(
+      [
+        event(AuditEventTypeEnum.EXPORTED_IMAGE_DEPOSITED, {
+          sourcePieceId: 'trace-1',
+          fileSha256: DIGEST,
+        }),
+      ],
+      [],
+    );
+
+    expect(seal.kind).toBe('EXPORTED_IMAGE');
+  });
+
   it('projette l’édition d’un rapport avec la nature du document', () => {
     const [seal] = sealsFromEvents(
       [

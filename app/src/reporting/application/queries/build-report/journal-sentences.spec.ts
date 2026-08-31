@@ -136,6 +136,60 @@ describe('journalSentence — les pièces', () => {
     );
   });
 
+  it("désigne la pièce d'origine d'un export exporté depuis une trace", () => {
+    expect(
+      say(AuditEventTypeEnum.EXPORTED_IMAGE_DEPOSITED, {
+        sourcePieceId: 'trace-7',
+        sourceKind: 'TRACE',
+        fileSha256: 'a'.repeat(64),
+        storagePath: 'media/case-1/exports/export-1.png',
+        sizeBytes: 1024,
+        mimeType: 'image/png',
+      }),
+    ).toBe(
+      "Dépôt de l'image exportée de la trace 3455-T7 cotée « B » et mise sous scellé",
+    );
+  });
+
+  it("désigne la pièce d'origine d'un export exporté depuis une empreinte de référence", () => {
+    expect(
+      say(AuditEventTypeEnum.EXPORTED_IMAGE_DEPOSITED, {
+        sourcePieceId: 'ref-1',
+        sourceKind: 'REFERENCE_PRINT',
+        fileSha256: 'a'.repeat(64),
+        storagePath: 'media/case-1/exports/export-1.png',
+        sizeBytes: 1024,
+        mimeType: 'image/png',
+      }),
+    ).toBe(
+      "Dépôt de l'image exportée de l'empreinte de l'index droit de Madame BERGER Hélène et mise sous scellé",
+    );
+  });
+
+  it("replie sur « une trace papillaire » quand la pièce d'origine (une trace) est inconnue", () => {
+    expect(
+      say(AuditEventTypeEnum.EXPORTED_IMAGE_DEPOSITED, {
+        sourcePieceId: 'trace-unknown',
+        sourceKind: 'TRACE',
+        fileSha256: 'a'.repeat(64),
+      }),
+    ).toBe(
+      "Dépôt de l'image exportée de une trace papillaire et mise sous scellé",
+    );
+  });
+
+  it("replie sur « une empreinte de référence » quand la pièce d'origine (une empreinte) est inconnue", () => {
+    expect(
+      say(AuditEventTypeEnum.EXPORTED_IMAGE_DEPOSITED, {
+        sourcePieceId: 'ref-unknown',
+        sourceKind: 'REFERENCE_PRINT',
+        fileSha256: 'a'.repeat(64),
+      }),
+    ).toBe(
+      "Dépôt de l'image exportée de une empreinte de référence et mise sous scellé",
+    );
+  });
+
   it('dit le retrait et son motif', () => {
     expect(
       say(
