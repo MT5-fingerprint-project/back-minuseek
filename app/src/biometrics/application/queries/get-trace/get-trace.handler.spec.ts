@@ -13,7 +13,7 @@ const traceRow = (
   reference: '3455-T7',
   path: 'media/investigation-case/case-9/traces/trace-1.png',
   status: 'RECEIVED',
-  score: null,
+  cote: null,
   caseId: 'case-9',
   identified: false,
   sha256: 'a'.repeat(64),
@@ -115,7 +115,7 @@ describe('GetTraceHandler', () => {
   it("cache l'identification et l'exploitabilité au vérificateur en mission", async () => {
     const handler = handlerOver(
       new InMemoryTraceReader([
-        traceRow({ identified: true, status: 'EXPLOITABLE' }),
+        traceRow({ identified: true, status: 'EXPLOITABLE', cote: 'A' }),
       ]),
     );
 
@@ -123,12 +123,12 @@ describe('GetTraceHandler', () => {
       new GetTraceQuery('trace-1', 'user-lucie'),
     );
 
-    expect(trace).toMatchObject({ identified: null, status: null });
+    expect(trace).toMatchObject({ identified: null, status: null, cote: null });
   });
 
   it('laisse le reste de la trace visible au vérificateur en mission', async () => {
     const handler = handlerOver(
-      new InMemoryTraceReader([traceRow({ score: 42 })]),
+      new InMemoryTraceReader([traceRow({ captureWidth: 3024 })]),
     );
 
     const trace = await handler.execute(
@@ -137,7 +137,7 @@ describe('GetTraceHandler', () => {
 
     expect(trace).toMatchObject({
       reference: '3455-T7',
-      score: 42,
+      captureWidth: 3024,
       url: '/media/investigation-case/case-9/traces/trace-1.png',
     });
   });

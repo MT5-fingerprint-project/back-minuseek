@@ -27,6 +27,7 @@ export class ListTracesHandler implements IQueryHandler<ListTracesQuery> {
       traces.map(async (trace) => ({
         ...trace,
         status: blind ? null : trace.status,
+        cote: blind ? null : trace.cote,
         identified: blind ? null : trace.identified,
         url: await this.storage.getUrl(trace.path),
       })),

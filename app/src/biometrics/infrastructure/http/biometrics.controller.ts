@@ -34,6 +34,7 @@ import {
 import { UploadTraceCommand } from '../../application/commands/upload-trace/upload-trace.command';
 import { CalibrateTraceCommand } from '../../application/commands/calibrate-trace/calibrate-trace.command';
 import { DescribeTraceCommand } from '../../application/commands/describe-trace/describe-trace.command';
+import { DeclareTraceExploitabilityCommand } from '../../application/commands/declare-trace-exploitability/declare-trace-exploitability.command';
 import { CalibrateReferencePrintCommand } from '../../application/commands/calibrate-reference-print/calibrate-reference-print.command';
 import { UploadReferencePrintCommand } from '../../application/commands/upload-reference-print/upload-reference-print.command';
 import { WithdrawTraceCommand } from '../../application/commands/withdraw-trace/withdraw-trace.command';
@@ -76,6 +77,7 @@ import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapp
 import { WithdrawPieceDto } from './dto/withdraw-piece.dto';
 import { CalibrateImageDto } from './dto/calibrate-image.dto';
 import { DescribeTraceDto } from './dto/describe-trace.dto';
+import { DeclareTraceExploitabilityDto } from './dto/declare-trace-exploitability.dto';
 import { UploadTraceDto } from './dto/upload-trace.dto';
 import { UploadReferencePrintDto } from './dto/upload-reference-print.dto';
 import { ListTracesDto } from './dto/list-traces.dto';
@@ -149,14 +151,7 @@ export class BiometricsController {
     @Param('id', ParseUUIDPipe) id: string,
     @BlindVerifierId() blindVerifierUserId: string | null,
   ): Promise<TraceDetailView> {
-    const trace = await this.queryBus.execute<
-      GetTraceQuery,
-      TraceDetailView | null
-    >(new GetTraceQuery(id, blindVerifierUserId));
-    if (trace === null) {
-      throw new NotFoundException(new TraceNotFoundError(id).message);
-    }
-    return trace;
+    return this.readTrace(id, blindVerifierUserId);
   }
 
   @Get('reference-prints')
@@ -394,14 +389,45 @@ export class BiometricsController {
       throw e;
     }
 
-    const trace = await this.queryBus.execute<
-      GetTraceQuery,
-      TraceDetailView | null
-    >(new GetTraceQuery(id));
-    if (trace === null) {
-      throw new NotFoundException(new TraceNotFoundError(id).message);
+    return this.readTrace(id);
+  }
+
+  @Put('traces/:id/exploitability')
+  @CaseAdministration()
+  @ApiOperation({
+    summary: 'Déclarer une trace exploitable ou inexploitable',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Fiche de la trace, cote comprise',
+  })
+  @ApiResponse({ status: 400, description: 'Corps invalide' })
+  @ApiResponse({ status: 404, description: 'Trace non trouvée' })
+  @ApiResponse({ status: 409, description: 'Dossier clos' })
+  async declareTraceExploitability(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DeclareTraceExploitabilityDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<TraceDetailView> {
+    try {
+      await this.commandBus.execute(
+        new DeclareTraceExploitabilityCommand(
+          toAuditActor(user),
+          id,
+          dto.exploitable,
+        ),
+      );
+    } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
+      if (e instanceof TraceNotFoundError)
+        throw new NotFoundException(e.message);
+      if (e instanceof CaseUnavailableForTraceError)
+        throw new NotFoundException(e.message);
+      throw e;
     }
-    return trace;
+
+    return this.readTrace(id);
   }
 
   @Patch('reference-prints/:id/calibration')
@@ -886,5 +912,19 @@ export class BiometricsController {
     return this.queryBus.execute(
       new ListHitsQuery(traceId, blindVerifierUserId),
     );
+  }
+
+  private async readTrace(
+    id: string,
+    blindVerifierUserId: string | null = null,
+  ): Promise<TraceDetailView> {
+    const trace = await this.queryBus.execute<
+      GetTraceQuery,
+      TraceDetailView | null
+    >(new GetTraceQuery(id, blindVerifierUserId));
+    if (trace === null) {
+      throw new NotFoundException(new TraceNotFoundError(id).message);
+    }
+    return trace;
   }
 }

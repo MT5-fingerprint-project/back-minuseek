@@ -39,6 +39,7 @@ export class GetTraceHandler implements IQueryHandler<GetTraceQuery> {
     return {
       ...columns,
       status: blind ? null : trace.status,
+      cote: blind ? null : trace.cote,
       identified: blind ? null : trace.identified,
       url: await this.storage.getUrl(trace.path),
       locationPhoto: photo,

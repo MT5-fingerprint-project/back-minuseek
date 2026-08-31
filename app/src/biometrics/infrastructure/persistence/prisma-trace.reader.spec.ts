@@ -8,7 +8,6 @@ interface TraceRow {
   caseId: string;
   path: string;
   status: string;
-  score: number | null;
   sha256: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -29,7 +28,6 @@ function aTraceRow(overrides: Partial<TraceRow> = {}): TraceRow {
     caseId: 'case-9',
     path: 'media/investigation-case/case-9/traces/trace-1.png',
     status: 'RECEIVED',
-    score: null,
     sha256: 'a'.repeat(64),
     createdAt: new Date('2026-07-01T10:00:00.000Z'),
     updatedAt: new Date('2026-07-02T10:00:00.000Z'),
@@ -273,6 +271,44 @@ describe('PrismaTraceReader', () => {
           take: 1,
         },
       },
+    });
+  });
+
+  it('cote les traces exploitables du dossier, dans l’ordre des numéros', async () => {
+    const { reader } = build([
+      aTraceRow({ id: 'trace-1', number: 1, status: 'EXPLOITABLE' }),
+      aTraceRow({ id: 'trace-2', number: 2, status: 'NOT_EXPLOITABLE' }),
+      aTraceRow({ id: 'trace-3', number: 3, status: 'EXPLOITABLE' }),
+    ]);
+
+    const traces = await reader.findByCaseId('case-9');
+
+    expect(traces.map((trace) => trace.cote)).toEqual(['A', null, 'B']);
+  });
+
+  it('cote la trace seule au rang qu’elle tient parmi ses voisines', async () => {
+    const { reader } = build([
+      aTraceRow({ id: 'trace-1', number: 1, status: 'EXPLOITABLE' }),
+      aTraceRow({ id: 'trace-2', number: 2, status: 'EXPLOITABLE' }),
+    ]);
+
+    expect((await reader.findById('trace-2'))?.cote).toBe('B');
+  });
+
+  it('ne cote pas une trace que rien ne déclare', async () => {
+    const { reader } = build();
+
+    expect((await reader.findByCaseId('case-9'))[0].cote).toBeNull();
+  });
+
+  it('écarte les traces retirées du calcul de la cote', async () => {
+    const { reader, prisma } = build();
+
+    await reader.findByCaseId('case-9');
+
+    expect(prisma.findManyArgs[1]).toEqual({
+      where: { caseId: 'case-9', withdrawnAt: null },
+      select: { number: true, status: true },
     });
   });
 

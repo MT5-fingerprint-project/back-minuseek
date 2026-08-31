@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import type { PrismaClient } from '../../../../generated/prisma/client';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
 import {
   NOT_WITHDRAWN,
   WITHDRAWN_ONLY,
 } from '../../../shared/infrastructure/persistence/withdrawal';
+import { assignCotes } from '../../../shared/domain/forensics/cote';
 import { traceReference } from '../../../shared/domain/forensics/trace-reference';
 import { CaptureQualityProps } from '../../domain/trace/value-objects/capture-quality.vo';
 import {
@@ -42,10 +44,12 @@ export class PrismaTraceReader implements TraceReader {
         locationPhoto: { select: { id: true } },
       },
     });
+    const cotes = await this.cotesOf(prisma, caseId);
     return rows.map(({ hits, locationPhoto, ...row }) => ({
       ...row,
       captureQuality: row.captureQuality as CaptureQualityProps | null,
       reference: traceReference(investigationCase.caseNumber, row.number),
+      cote: cotes.get(row.number) ?? null,
       identified: hits.length > 0,
       hasLocationPhoto: locationPhoto !== null,
     }));
@@ -75,10 +79,12 @@ export class PrismaTraceReader implements TraceReader {
       return null;
     }
     const { hits, locationPhoto, ...trace } = row;
+    const cotes = await this.cotesOf(prisma, trace.caseId);
     return {
       ...trace,
       captureQuality: trace.captureQuality as CaptureQualityProps | null,
       reference: traceReference(investigationCase.caseNumber, trace.number),
+      cote: cotes.get(trace.number) ?? null,
       identified: hits.length > 0,
       hasLocationPhoto: locationPhoto !== null,
       locationPhoto:
@@ -91,5 +97,18 @@ export class PrismaTraceReader implements TraceReader {
               sealedAt: locationPhoto.createdAt,
             },
     };
+  }
+
+  // La cote d'une trace ne se lit jamais seule : elle dépend du statut et du
+  // numéro de ses voisines, y compris celles que la liste demandée écarte.
+  private async cotesOf(
+    prisma: PrismaClient,
+    caseId: string,
+  ): Promise<Map<number, string>> {
+    const siblings = await prisma.trace.findMany({
+      where: { caseId, ...NOT_WITHDRAWN },
+      select: { number: true, status: true },
+    });
+    return assignCotes(siblings);
   }
 }

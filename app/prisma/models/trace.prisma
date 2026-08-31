@@ -3,7 +3,6 @@ model Trace {
   number            Int
   path              String
   status            TraceStatus @default(RECEIVED)
-  score             Int?
   caseId            String      @db.Uuid
   sha256            String?     @db.Char(64)
   displayableSha256 String?     @db.Char(64)

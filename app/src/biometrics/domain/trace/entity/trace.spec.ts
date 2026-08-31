@@ -3,11 +3,9 @@ import { InvalidImageResolutionError } from '../../image-resolution.vo';
 import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-trace.error';
 import { CaseNotOpenForWorkError } from '../../errors/case-not-open-for-work.error';
 import { InvalidTraceLocationError } from '../errors/invalid-trace-location.error';
-import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
 import { CaptureMetadata } from '../value-objects/capture-metadata.vo';
 import { CaptureQuality } from '../value-objects/capture-quality.vo';
 import { InvalidCaptureQualityError } from '../errors/invalid-capture-quality.error';
-import { ExploitabilityScore } from '../value-objects/exploitability-score.vo';
 import { InvalidRevelationTechniqueError } from '../value-objects/revelation-technique.vo';
 import { InvalidTraceOriginError } from '../value-objects/trace-origin.vo';
 import { TraceStatusEnum } from '../value-objects/trace-status.vo';
@@ -32,12 +30,11 @@ describe('Trace', () => {
   };
 
   describe('upload', () => {
-    it('starts in RECEIVED status with no score', () => {
+    it('starts in RECEIVED status, undeclared', () => {
       const trace = Trace.upload(baseProps);
 
       expect(trace.id).toBe('t-1');
       expect(trace.status).toBe(TraceStatusEnum.RECEIVED);
-      expect(trace.score).toBeNull();
       expect(trace.caseId).toBe('case-9');
     });
 
@@ -55,7 +52,6 @@ describe('Trace', () => {
         number: 3,
         path: 'media/case-9/traces/t-1.png',
         status: TraceStatusEnum.RECEIVED,
-        score: null,
         caseId: 'case-9',
         sha256: TEST_IMAGE_SHA256,
         displayableSha256: TEST_IMAGE_SHA256,
@@ -94,7 +90,6 @@ describe('Trace', () => {
         number: 3,
         path: 'media/case-9/traces/t-1.png',
         status: TraceStatusEnum.RECEIVED,
-        score: null,
         caseId: 'case-9',
         sha256: TEST_IMAGE_SHA256,
         displayableSha256: TEST_IMAGE_SHA256,
@@ -252,32 +247,41 @@ describe('Trace', () => {
     });
   });
 
-  describe('evaluate', () => {
-    it('transitions to EXPLOITABLE when the score meets the threshold', () => {
+  describe('declareExploitability', () => {
+    it('passe en EXPLOITABLE sur une déclaration positive', () => {
       const trace = Trace.upload(baseProps);
 
-      trace.evaluate(ExploitabilityScore.of(12));
+      trace.declareExploitability(true);
 
       expect(trace.status).toBe(TraceStatusEnum.EXPLOITABLE);
-      expect(trace.score).toBe(12);
     });
 
-    it('transitions to NOT_EXPLOITABLE when the score is below the threshold', () => {
+    it('passe en NOT_EXPLOITABLE sur une déclaration négative', () => {
       const trace = Trace.upload(baseProps);
 
-      trace.evaluate(ExploitabilityScore.of(5));
+      trace.declareExploitability(false);
 
       expect(trace.status).toBe(TraceStatusEnum.NOT_EXPLOITABLE);
-      expect(trace.score).toBe(5);
     });
 
-    it('refuses to evaluate twice', () => {
+    it('accepte la même déclaration deux fois de suite', () => {
       const trace = Trace.upload(baseProps);
-      trace.evaluate(ExploitabilityScore.of(12));
 
-      expect(() => trace.evaluate(ExploitabilityScore.of(20))).toThrow(
-        InvalidTraceTransitionError,
-      );
+      trace.declareExploitability(true);
+      trace.declareExploitability(true);
+
+      expect(trace.status).toBe(TraceStatusEnum.EXPLOITABLE);
+    });
+
+    it('accepte une requalification, dans les deux sens', () => {
+      const trace = Trace.upload(baseProps);
+
+      trace.declareExploitability(true);
+      trace.declareExploitability(false);
+      expect(trace.status).toBe(TraceStatusEnum.NOT_EXPLOITABLE);
+
+      trace.declareExploitability(true);
+      expect(trace.status).toBe(TraceStatusEnum.EXPLOITABLE);
     });
   });
 
@@ -288,7 +292,6 @@ describe('Trace', () => {
         number: 3,
         path: 'media/case-9/traces/t-1.png',
         status: TraceStatusEnum.EXPLOITABLE,
-        score: 18,
         caseId: 'case-9',
         sha256: TEST_IMAGE_SHA256,
         displayableSha256: TEST_IMAGE_SHA256,
@@ -309,7 +312,6 @@ describe('Trace', () => {
       });
 
       expect(trace.status).toBe(TraceStatusEnum.EXPLOITABLE);
-      expect(trace.score).toBe(18);
       expect(trace.caseId).toBe('case-9');
       expect(trace.sha256).toBe(TEST_IMAGE_SHA256);
     });
@@ -320,7 +322,6 @@ describe('Trace', () => {
         number: 3,
         path: 'media/case-9/traces/t-1.png',
         status: TraceStatusEnum.RECEIVED,
-        score: null,
         caseId: 'case-9',
         sha256: null,
         displayableSha256: null,
@@ -349,7 +350,6 @@ describe('Trace', () => {
         number: 3,
         path: 'media/case-9/traces/t-1.png',
         status: TraceStatusEnum.RECEIVED,
-        score: null,
         caseId: 'case-9',
         sha256: null,
         displayableSha256: null,
@@ -380,7 +380,6 @@ describe('Trace', () => {
           number: 3,
           path: 'media/case-9/traces/t-1.png',
           status: TraceStatusEnum.RECEIVED,
-          score: null,
           caseId: 'case-9',
           sha256: null,
           displayableSha256: null,
@@ -409,7 +408,6 @@ describe('Trace', () => {
           number: 3,
           path: 'media/case-9/traces/t-1.png',
           status: TraceStatusEnum.RECEIVED,
-          score: null,
           caseId: 'case-9',
           sha256: 'not-a-hash',
           displayableSha256: 'not-a-hash',
@@ -439,7 +437,6 @@ describe('Trace', () => {
         number: 3,
         path: 'media/case-9/traces/t-1.png',
         status: TraceStatusEnum.RECEIVED,
-        score: null,
         caseId: 'case-9',
         sha256: TEST_IMAGE_SHA256,
         displayableSha256: TEST_IMAGE_SHA256,
@@ -466,7 +463,6 @@ describe('Trace', () => {
         number: 3,
         path: 'media/case-9/traces/t-1.png',
         status: TraceStatusEnum.RECEIVED,
-        score: null,
         caseId: 'case-9',
         sha256: null,
         displayableSha256: null,
@@ -672,7 +668,7 @@ describe('Trace', () => {
 
     it('still accepts a correction on a trace already declared exploitable', () => {
       const trace = Trace.upload(baseProps);
-      trace.evaluate(ExploitabilityScore.of(12));
+      trace.declareExploitability(true);
 
       trace.describe(FILLED_IN);
 

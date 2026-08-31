@@ -5,13 +5,11 @@ import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn
 import { NotWithdrawnError } from '../../withdrawal/errors/not-withdrawn.error';
 import { Withdrawal } from '../../withdrawal/withdrawal.vo';
 import { InvalidTraceLocationError } from '../errors/invalid-trace-location.error';
-import { InvalidTraceTransitionError } from '../errors/invalid-trace-transition.error';
 import { CaptureMetadata } from '../value-objects/capture-metadata.vo';
 import {
   CaptureQuality,
   CaptureQualityProps,
 } from '../value-objects/capture-quality.vo';
-import { ExploitabilityScore } from '../value-objects/exploitability-score.vo';
 import {
   RevelationTechnique,
   RevelationTechniqueEnum,
@@ -26,7 +24,6 @@ export interface TracePrimitives {
   number: number;
   path: string;
   status: TraceStatusEnum;
-  score: number | null;
   caseId: string;
   sha256: string | null;
   displayableSha256: string | null;
@@ -78,7 +75,6 @@ export class Trace {
     private readonly _number: number,
     private readonly _path: string,
     private _status: TraceStatus,
-    private _score: ExploitabilityScore | null,
     private readonly _caseId: string,
     private readonly _sha256: FileDigest | null,
     private readonly _displayableSha256: FileDigest | null,
@@ -118,7 +114,6 @@ export class Trace {
       props.number,
       props.path,
       TraceStatus.received(),
-      null,
       props.caseId,
       props.sha256,
       props.displayableSha256 ?? props.sha256,
@@ -137,7 +132,6 @@ export class Trace {
     number: number;
     path: string;
     status: string;
-    score: number | null;
     caseId: string;
     sha256: string | null;
     displayableSha256?: string | null;
@@ -161,7 +155,6 @@ export class Trace {
       payload.number,
       payload.path,
       TraceStatus.from(payload.status),
-      payload.score === null ? null : ExploitabilityScore.of(payload.score),
       payload.caseId,
       payload.sha256 === null ? null : FileDigest.from(payload.sha256),
       payload.displayableSha256
@@ -208,12 +201,8 @@ export class Trace {
     this._revelationTechnique = revelationTechnique;
   }
 
-  evaluate(score: ExploitabilityScore): void {
-    if (this._status.getValue() !== TraceStatusEnum.RECEIVED) {
-      throw new InvalidTraceTransitionError(this._status, 'evaluate');
-    }
-    this._score = score;
-    this._status = score.isExploitable()
+  declareExploitability(isExploitable: boolean): void {
+    this._status = isExploitable
       ? TraceStatus.exploitable()
       : TraceStatus.notExploitable();
   }
@@ -238,7 +227,6 @@ export class Trace {
       number: this._number,
       path: this._path,
       status: this._status.getValue(),
-      score: this._score?.getValue() ?? null,
       caseId: this._caseId,
       sha256: this._sha256?.getValue() ?? null,
       displayableSha256: this._displayableSha256?.getValue() ?? null,
@@ -273,10 +261,6 @@ export class Trace {
 
   get status(): TraceStatusEnum {
     return this._status.getValue();
-  }
-
-  get score(): number | null {
-    return this._score?.getValue() ?? null;
   }
 
   get caseId(): string {
