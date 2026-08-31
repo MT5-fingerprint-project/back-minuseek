@@ -1,8 +1,14 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
+import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { Subject } from '../../../domain/subject/entity/subject';
+import { victimShortLabel } from '../../../domain/subject/victim-designation';
 import { Sex } from '../../../domain/subject/value-objects/sex.vo';
-import { SubjectType } from '../../../domain/subject/value-objects/subject-type.vo';
+import {
+  SubjectType,
+  SubjectTypeEnum,
+} from '../../../domain/subject/value-objects/subject-type.vo';
 import {
   SUBJECT_REPOSITORY,
   SubjectRepository,
@@ -12,6 +18,14 @@ import {
   IdGenerator,
 } from '../../../../shared/domain/ports/id-generator';
 import { RegisterSubjectCommand } from './register-subject.command';
+
+/** Le journal porte les valeurs en clair, sauf le nom d'une victime : lui n'y
+ * entre qu'abrégé, parce que cette table refuse `UPDATE` et `DELETE`. */
+function designationOf(subject: Subject): string {
+  return subject.type.getValue() === SubjectTypeEnum.VICTIM
+    ? victimShortLabel(subject)
+    : `${subject.lastName} ${subject.firstName}`;
+}
 
 @CommandHandler(RegisterSubjectCommand)
 export class RegisterSubjectHandler implements ICommandHandler<
@@ -41,7 +55,17 @@ export class RegisterSubjectHandler implements ICommandHandler<
       color: cmd.color,
       caseId: cmd.caseId,
     });
-    await this.repo.save(subject);
+    await this.repo.save(subject, {
+      eventType: AuditEventTypeEnum.SUBJECT_REGISTERED,
+      evidenceClass: EvidenceClassEnum.OBSERVED,
+      actor: cmd.actor,
+      caseId: subject.caseId,
+      payload: {
+        designation: designationOf(subject),
+        sex: subject.sex.getValue(),
+        type: subject.type.getValue(),
+      },
+    });
     return id;
   }
 }

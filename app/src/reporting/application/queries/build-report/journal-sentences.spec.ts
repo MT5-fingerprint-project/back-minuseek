@@ -46,6 +46,37 @@ function say(
   return journalSentence(event(eventType, payload, traceId), NAMED);
 }
 
+describe('journalSentence — la déclaration d’une personne', () => {
+  it('nomme la personne, sa civilité et son type', () => {
+    expect(
+      say(AuditEventTypeEnum.SUBJECT_REGISTERED, {
+        designation: 'BERGER Hélène',
+        sex: 'FEMALE',
+        type: 'CLOSE_ASSOCIATE',
+      }),
+    ).toBe('Personne déclarée au dossier : Madame BERGER Hélène, familier');
+  });
+
+  it('n’écrit d’une victime que la désignation abrégée reçue', () => {
+    const sentence = say(AuditEventTypeEnum.SUBJECT_REGISTERED, {
+      designation: 'Hélène B.',
+      sex: 'FEMALE',
+      type: 'VICTIM',
+    });
+
+    expect(sentence).toBe(
+      'Personne déclarée au dossier : Madame Hélène B., victime',
+    );
+    expect(sentence).not.toContain('BERGER');
+  });
+
+  it('se contente de l’acte quand le payload ne porte rien', () => {
+    expect(say(AuditEventTypeEnum.SUBJECT_REGISTERED)).toBe(
+      'Personne déclarée au dossier',
+    );
+  });
+});
+
 describe('journalSentence — le catalogue', () => {
   it('donne une phrase à chaque type du catalogue, sans jamais tomber sur le repli', () => {
     for (const eventType of Object.values(AuditEventTypeEnum)) {

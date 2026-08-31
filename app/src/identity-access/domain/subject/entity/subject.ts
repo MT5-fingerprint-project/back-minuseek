@@ -5,8 +5,8 @@ interface RegisterSubjectProps {
   id: string;
   firstName: string;
   lastName: string;
-  birthDate: Date;
-  birthPlace: string;
+  birthDate?: Date | null;
+  birthPlace?: string | null;
   firstParentName?: string | null;
   secondParentName?: string | null;
   phoneNumber?: string | null;
@@ -20,8 +20,8 @@ export interface SubjectPrimitives {
   id: string;
   firstName: string;
   lastName: string;
-  birthDate: Date;
-  birthPlace: string;
+  birthDate: Date | null;
+  birthPlace: string | null;
   firstParentName: string | null;
   secondParentName: string | null;
   phoneNumber: string | null;
@@ -38,8 +38,8 @@ export class Subject {
     private readonly _id: string,
     private readonly _firstName: string,
     private readonly _lastName: string,
-    private readonly _birthDate: Date,
-    private readonly _birthPlace: string,
+    private readonly _birthDate: Date | null,
+    private readonly _birthPlace: string | null,
     private readonly _firstParentName: string | null,
     private readonly _secondParentName: string | null,
     private readonly _phoneNumber: string | null,
@@ -61,11 +61,11 @@ export class Subject {
     if (!props.lastName?.trim()) {
       throw new Error('Subject lastName is required');
     }
-    if (!props.birthPlace?.trim()) {
-      throw new Error('Subject birthPlace is required');
-    }
+    // Ni date ni lieu de naissance exigés : les rapports de référence nomment
+    // une personne sans, et une victime n'est pas toujours interrogée.
     if (
-      !(props.birthDate instanceof Date) ||
+      props.birthDate !== undefined &&
+      props.birthDate !== null &&
       Number.isNaN(props.birthDate.getTime())
     ) {
       throw new Error('Subject birthDate is invalid');
@@ -78,8 +78,8 @@ export class Subject {
       props.id,
       props.firstName.trim(),
       props.lastName.trim(),
-      props.birthDate,
-      props.birthPlace.trim(),
+      props.birthDate ?? null,
+      Subject.normalizeOptional(props.birthPlace),
       Subject.normalizeOptional(props.firstParentName),
       Subject.normalizeOptional(props.secondParentName),
       Subject.normalizeOptional(props.phoneNumber),
@@ -147,11 +147,11 @@ export class Subject {
     return this._lastName;
   }
 
-  get birthDate(): Date {
+  get birthDate(): Date | null {
     return this._birthDate;
   }
 
-  get birthPlace(): string {
+  get birthPlace(): string | null {
     return this._birthPlace;
   }
 

@@ -3,7 +3,9 @@ import { MINUTIA_SETTINGS_TYPES } from '../../../../shared/domain/forensics/minu
 import { AuditEventData } from '../../ports/traceability-data.reader';
 import {
   caseStatusLabel,
+  civilityLabel,
   revelationTechniqueLabel,
+  subjectTypeLabel,
   traceOriginLabel,
   withdrawalMotiveLabel,
 } from './action-labels';
@@ -156,6 +158,20 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
   },
   [AuditEventTypeEnum.CASE_SAISINE_UPDATED]: () =>
     'Saisine du dossier complétée',
+  [AuditEventTypeEnum.SUBJECT_REGISTERED]: (event) => {
+    const opening = 'Personne déclarée au dossier';
+    const designation = text(event, 'designation');
+    if (designation === null) {
+      return opening;
+    }
+    const sex = text(event, 'sex');
+    const named =
+      sex === null ? designation : `${civilityLabel(sex)} ${designation}`;
+    const type = text(event, 'type');
+    return type === null
+      ? `${opening} : ${named}`
+      : `${opening} : ${named}, ${subjectTypeLabel(type)}`;
+  },
   [AuditEventTypeEnum.TRACE_UPLOADED]: (event, named) =>
     `Dépôt de ${trace(event, named).full} et mise sous scellé`,
   [AuditEventTypeEnum.TRACE_QUALIFIED]: (event, named) => {

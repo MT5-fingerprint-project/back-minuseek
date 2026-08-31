@@ -22,17 +22,20 @@ export class RegisterSubjectDto {
   @IsNotEmpty()
   lastName: string;
 
-  @ApiProperty({
-    description: 'Date de naissance (ISO 8601)',
+  @ApiPropertyOptional({
+    description:
+      'Date de naissance (ISO 8601) ; les rapports nomment une personne sans',
     example: '1990-05-14',
   })
+  @IsOptional()
   @IsDateString()
-  birthDate: string;
+  birthDate?: string;
 
-  @ApiProperty({ description: 'Lieu de naissance', example: 'Lyon' })
+  @ApiPropertyOptional({ description: 'Lieu de naissance', example: 'Lyon' })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  birthPlace: string;
+  birthPlace?: string;
 
   @ApiProperty({ description: 'Sexe', enum: SexEnum })
   @IsEnum(SexEnum)
