@@ -12,6 +12,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
@@ -32,12 +33,14 @@ import { DeclareCaseExpertiseCommand } from '../../application/commands/declare-
 import { UpdateCaseSaisineCommand } from '../../application/commands/update-case-saisine/update-case-saisine.command';
 import { OpenInvestigationCaseCommand } from '../../application/commands/open-investigation-case/open-investigation-case.command';
 import { UpdateInvestigationCaseCommand } from '../../application/commands/update-investigation-case/update-investigation-case.command';
+import { UpdateCaseRecipientCommand } from '../../application/commands/update-case-recipient/update-case-recipient.command';
 import { CloseInvestigationCaseCommand } from '../../application/commands/close-investigation-case/close-investigation-case.command';
 import { ReopenInvestigationCaseCommand } from '../../application/commands/reopen-investigation-case/reopen-investigation-case.command';
 import { DeclareCaseExpertiseDto } from './dto/declare-case-expertise.dto';
 import { UpdateCaseSaisineDto } from './dto/update-case-saisine.dto';
 import { OpenInvestigationCaseDto } from './dto/open-investigation-case.dto';
 import { UpdateInvestigationCaseDto } from './dto/update-investigation-case.dto';
+import { UpdateCaseRecipientDto } from './dto/update-case-recipient.dto';
 import { ReopenInvestigationCaseDto } from './dto/reopen-investigation-case.dto';
 import { ListInvestigationCasesDto } from './dto/list-investigation-cases.dto';
 import { ListInvestigationCasesQuery } from '../../application/queries/list-investigation-cases/list-investigation-cases.query';
@@ -242,6 +245,38 @@ export class InvestigationController {
       throw e;
     }
   }
+  @Put(':id/recipient')
+  @CaseAdministration()
+  @ApiOperation({ summary: "Nommer le destinataire du rapport d'une affaire" })
+  @ApiResponse({ status: 200, description: "Détail de l'affaire à jour" })
+  @ApiResponse({ status: 400, description: 'Ligne de destinataire vide' })
+  @ApiResponse({ status: 404, description: 'Affaire non trouvée' })
+  @ApiResponse({ status: 409, description: 'Affaire close' })
+  async updateRecipient(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCaseRecipientDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<InvestigationCaseReadModel> {
+    try {
+      await this.commandBus.execute<UpdateCaseRecipientCommand, void>(
+        new UpdateCaseRecipientCommand(toAuditActor(user), id, {
+          authority: dto.authority,
+          attentionQuality: dto.attentionQuality,
+          attentionName: dto.attentionName,
+        }),
+      );
+      return await this.queryBus.execute<
+        GetInvestigationCaseQuery,
+        InvestigationCaseReadModel
+      >(new GetInvestigationCaseQuery(id));
+    } catch (e) {
+      if (e instanceof CaseNotFoundError)
+        throw new NotFoundException(e.message);
+      if (e instanceof CaseClosedError) throw new ConflictException(e.message);
+      throw e;
+    }
+  }
+
   @Post(':id/closure')
   @CaseAdministration()
   @ApiOperation({

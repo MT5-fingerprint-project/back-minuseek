@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { InvestigationController } from './infrastructure/http/investigation.controller';
+import { RecipientBookController } from './infrastructure/http/recipient-book.controller';
 import { DeclareCaseExpertiseHandler } from './application/commands/declare-case-expertise/declare-case-expertise.handler';
 import { UpdateCaseSaisineHandler } from './application/commands/update-case-saisine/update-case-saisine.handler';
 import { VerificationsController } from './infrastructure/http/verifications.controller';
@@ -13,6 +14,14 @@ import { RecordVerificationConclusionHandler } from './application/commands/reco
 import { CompleteCaseVerificationHandler } from './application/commands/complete-case-verification/complete-case-verification.handler';
 import { ListInvestigationCasesHandler } from './application/queries/list-investigation-cases/list-investigation-cases.handler';
 import { GetInvestigationCaseHandler } from './application/queries/get-investigation-case/get-investigation-case.handler';
+import { AddRecipientBookEntryHandler } from './application/commands/add-recipient-book-entry/add-recipient-book-entry.handler';
+import { RemoveRecipientBookEntryHandler } from './application/commands/remove-recipient-book-entry/remove-recipient-book-entry.handler';
+import { UpdateCaseRecipientHandler } from './application/commands/update-case-recipient/update-case-recipient.handler';
+import { ListRecipientBookEntriesHandler } from './application/queries/list-recipient-book-entries/list-recipient-book-entries.handler';
+import { PrismaRecipientBookEntryRepository } from './infrastructure/persistence/prisma-recipient-book-entry.repository';
+import { PrismaRecipientBookEntriesReader } from './infrastructure/persistence/prisma-recipient-book-entries.reader';
+import { RECIPIENT_BOOK_ENTRY_REPOSITORY } from './domain/recipient-book-entry/repository/recipient-book-entry.repository';
+import { RECIPIENT_BOOK_ENTRIES_READER } from './application/queries/list-recipient-book-entries/recipient-book-entries.reader';
 import { PrismaCaseExpertiseRepository } from './infrastructure/persistence/prisma-case-expertise.repository';
 import { ListCaseVerificationsHandler } from './application/queries/list-case-verifications/list-case-verifications.handler';
 import { ListMyVerificationsHandler } from './application/queries/list-my-verifications/list-my-verifications.handler';
@@ -36,7 +45,11 @@ import { BiometricsModule } from '../biometrics/biometrics.module';
 
 @Module({
   imports: [CqrsModule, AuditTrailModule, AccessModule, BiometricsModule],
-  controllers: [InvestigationController, VerificationsController],
+  controllers: [
+    InvestigationController,
+    RecipientBookController,
+    VerificationsController,
+  ],
   providers: [
     OpenInvestigationCaseHandler,
     DeclareCaseExpertiseHandler,
@@ -52,6 +65,10 @@ import { BiometricsModule } from '../biometrics/biometrics.module';
     ListCaseVerificationsHandler,
     ListMyVerificationsHandler,
     GetVerificationHandler,
+    AddRecipientBookEntryHandler,
+    RemoveRecipientBookEntryHandler,
+    UpdateCaseRecipientHandler,
+    ListRecipientBookEntriesHandler,
     {
       provide: INVESTIGATION_CASE_REPOSITORY,
       useClass: PrismaInvestigationCaseRepository,
@@ -79,6 +96,14 @@ import { BiometricsModule } from '../biometrics/biometrics.module';
     {
       provide: VERIFICATION_DECISION_REPOSITORY,
       useClass: PrismaVerificationDecisionRepository,
+    },
+    {
+      provide: RECIPIENT_BOOK_ENTRY_REPOSITORY,
+      useClass: PrismaRecipientBookEntryRepository,
+    },
+    {
+      provide: RECIPIENT_BOOK_ENTRIES_READER,
+      useClass: PrismaRecipientBookEntriesReader,
     },
   ],
 })

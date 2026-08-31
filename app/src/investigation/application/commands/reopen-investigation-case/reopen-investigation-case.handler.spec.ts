@@ -5,6 +5,7 @@ import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructu
 import {
   InvestigationCase,
   NO_JUDICIAL_HEADER,
+  NO_RECIPIENT,
 } from '../../../domain/investigation-case/entity/investigation-case';
 import { CaseNotFoundError } from '../../../domain/investigation-case/errors/case-not-found.error';
 import { InvalidCaseTransitionError } from '../../../domain/investigation-case/errors/invalid-case-transition.error';
@@ -29,7 +30,9 @@ describe('ReopenInvestigationCaseHandler', () => {
         pvNumber: 'PV-2026-001',
         description: null,
         ...NO_JUDICIAL_HEADER,
+        ...NO_RECIPIENT,
         ...NO_JUDICIAL_HEADER,
+        ...NO_RECIPIENT,
         status,
         operatorUserId: 'user-marie',
         createdAt: new Date('2026-01-01T10:00:00Z'),

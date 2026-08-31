@@ -2,6 +2,7 @@ import {
   InvestigationCase,
   InvestigationCasePrimitives,
   NO_JUDICIAL_HEADER,
+  NO_RECIPIENT,
 } from './investigation-case';
 import { InvestigationCaseStatusEnum } from '../value-objects/investigation-case-status.vo';
 import { CaseClosedError } from '../errors/case-closed.error';
@@ -43,6 +44,7 @@ function aCaseIn(status: InvestigationCaseStatusEnum) {
     pvNumber: 'PV-2024-001',
     description: null,
     ...NO_JUDICIAL_HEADER,
+    ...NO_RECIPIENT,
     status,
     operatorUserId: OPENED_BY,
     createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -57,6 +59,7 @@ function aClosedCase() {
     pvNumber: 'PV-2024-001',
     description: null,
     ...NO_JUDICIAL_HEADER,
+    ...NO_RECIPIENT,
     status: InvestigationCaseStatusEnum.CLOSED,
     operatorUserId: OPENED_BY,
     createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -103,6 +106,7 @@ describe('InvestigationCase', () => {
       pvNumber: 'PV-2024-001',
       description: null,
       ...NO_JUDICIAL_HEADER,
+      ...NO_RECIPIENT,
       status: InvestigationCaseStatusEnum.OPEN,
       operatorUserId: null,
       createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -149,6 +153,7 @@ describe('InvestigationCase', () => {
       pvNumber: 'PV-2024-001',
       description: null,
       ...NO_JUDICIAL_HEADER,
+      ...NO_RECIPIENT,
       status: InvestigationCaseStatusEnum.OPEN,
       operatorUserId: OPENED_BY,
       createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -186,6 +191,7 @@ describe('InvestigationCase', () => {
       pvNumber: 'PV-2024-001',
       description: null,
       ...NO_JUDICIAL_HEADER,
+      ...NO_RECIPIENT,
       status: InvestigationCaseStatusEnum.OPEN,
       operatorUserId: OPENED_BY,
       createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -257,6 +263,7 @@ describe('InvestigationCase', () => {
         pvNumber: 'PV-2024-001',
         description: null,
         ...NO_JUDICIAL_HEADER,
+        ...NO_RECIPIENT,
         status: InvestigationCaseStatusEnum.OPEN,
         operatorUserId: OPENED_BY,
         createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -365,11 +372,114 @@ describe('InvestigationCase', () => {
       expect(c.updatedAt).toEqual(new Date('2026-01-01T10:00:00Z'));
     });
 
+    it('ne se laisse pas corrompre par ce qu’il rend', () => {
+      const c = aCaseWithHeader({ offenseNature: 'Vol par effraction' });
+
+      c.judicialHeader.offenseNature = 'Assassinat';
+
+      expect(c.judicialHeader.offenseNature).toBe('Vol par effraction');
+    });
+
     it("refuse de renseigner l'en-tête judiciaire d'une affaire close", () => {
       const c = aCaseWithHeader({ status: InvestigationCaseStatusEnum.CLOSED });
 
       expect(() => c.correct({ caseAgainst: 'X' })).toThrow(CaseClosedError);
       expect(c.judicialHeader.caseAgainst).toBeNull();
+    });
+  });
+  describe('le destinataire du rapport', () => {
+    const UN_DESTINATAIRE = {
+      authority:
+        'Le Commissaire Général, chef du 3e District de Police Judiciaire',
+      attentionQuality: 'Brigadier-Chef de Police',
+      attentionName: 'MARCHAND Claire',
+    };
+
+    it('ouvre une affaire sans destinataire', () => {
+      expect(anOpenCase().recipient).toEqual(NO_RECIPIENT);
+    });
+
+    it('enregistre les trois lignes du destinataire', () => {
+      const c = anOpenCase();
+
+      c.replaceRecipient(UN_DESTINATAIRE);
+
+      expect(c.recipient).toEqual({
+        recipientAuthority: UN_DESTINATAIRE.authority,
+        recipientAttentionQuality: 'Brigadier-Chef de Police',
+        recipientAttentionName: 'MARCHAND Claire',
+      });
+    });
+
+    it('remplace le bloc entier : ce qui n’est pas renvoyé est vidé', () => {
+      const c = anOpenCase();
+      c.replaceRecipient(UN_DESTINATAIRE);
+
+      c.replaceRecipient({ authority: 'Le Procureur de la République' });
+
+      expect(c.recipient).toEqual({
+        recipientAuthority: 'Le Procureur de la République',
+        recipientAttentionQuality: null,
+        recipientAttentionName: null,
+      });
+    });
+
+    it('efface le destinataire quand rien n’est renvoyé', () => {
+      const c = anOpenCase();
+      c.replaceRecipient(UN_DESTINATAIRE);
+
+      c.replaceRecipient({});
+
+      expect(c.recipient).toEqual(NO_RECIPIENT);
+    });
+
+    it('date la modification', () => {
+      const c = aCaseIn(InvestigationCaseStatusEnum.OPEN);
+
+      c.replaceRecipient(UN_DESTINATAIRE);
+
+      expect(c.updatedAt.getTime()).toBeGreaterThan(
+        new Date('2026-01-01T10:00:00Z').getTime(),
+      );
+    });
+
+    it('refuse de nommer le destinataire d’une affaire close, et n’en change rien', () => {
+      const c = aClosedCase();
+
+      expect(() => c.replaceRecipient(UN_DESTINATAIRE)).toThrow(
+        CaseClosedError,
+      );
+      expect(c.recipient).toEqual(NO_RECIPIENT);
+    });
+
+    it('ne se laisse pas corrompre par ce qu’il rend', () => {
+      const c = anOpenCase();
+      c.replaceRecipient({ authority: 'Le Procureur de la République' });
+
+      c.recipient.recipientAuthority = 'Le Préfet';
+
+      expect(c.recipient.recipientAuthority).toBe(
+        'Le Procureur de la République',
+      );
+    });
+
+    it('relit le destinataire enregistré', () => {
+      const c = InvestigationCase.reconstitute({
+        id: 'uuid-test',
+        caseNumber: 'AFF-001',
+        pvNumber: 'PV-2024-001',
+        description: null,
+        ...NO_JUDICIAL_HEADER,
+        recipientAuthority: UN_DESTINATAIRE.authority,
+        recipientAttentionQuality: 'Brigadier-Chef de Police',
+        recipientAttentionName: 'MARCHAND Claire',
+        status: InvestigationCaseStatusEnum.OPEN,
+        operatorUserId: OPENED_BY,
+        createdAt: new Date('2026-01-01T10:00:00Z'),
+        updatedAt: new Date('2026-01-01T10:00:00Z'),
+      });
+
+      expect(c.recipient.recipientAttentionName).toBe('MARCHAND Claire');
     });
   });
 });

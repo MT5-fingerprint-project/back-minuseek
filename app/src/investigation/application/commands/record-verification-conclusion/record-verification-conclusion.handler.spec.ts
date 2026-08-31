@@ -13,6 +13,7 @@ import { VerificationStatusEnum } from '../../../domain/case-verification/value-
 import {
   InvestigationCase,
   NO_JUDICIAL_HEADER,
+  NO_RECIPIENT,
 } from '../../../domain/investigation-case/entity/investigation-case';
 import { InvestigationCaseStatusEnum } from '../../../domain/investigation-case/value-objects/investigation-case-status.vo';
 import { InMemoryCaseExploitationReader } from '../../../infrastructure/persistence/in-memory-case-exploitation.reader';
@@ -46,7 +47,9 @@ describe('RecordVerificationConclusionHandler', () => {
         pvNumber: 'PV-2026-001',
         description: null,
         ...NO_JUDICIAL_HEADER,
+        ...NO_RECIPIENT,
         ...NO_JUDICIAL_HEADER,
+        ...NO_RECIPIENT,
         status,
         operatorUserId: 'user-marie',
         createdAt: new Date('2026-08-01T10:00:00.000Z'),

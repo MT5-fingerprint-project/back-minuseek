@@ -55,12 +55,36 @@ export const NO_JUDICIAL_HEADER: CaseJudicialHeader = {
   caseAgainst: null,
 };
 
+/** Ce que le dossier porte du destinataire : une copie des trois lignes, jamais
+ * une référence au carnet — retirer une fiche du carnet ne réécrit aucun
+ * dossier déjà adressé. */
+export interface CaseRecipient {
+  recipientAuthority: string | null;
+  recipientAttentionQuality: string | null;
+  recipientAttentionName: string | null;
+}
+
+export const NO_RECIPIENT: CaseRecipient = {
+  recipientAuthority: null,
+  recipientAttentionQuality: null,
+  recipientAttentionName: null,
+};
+
+/** Les trois lignes telles que la route les reçoit : un bloc, remplacé en
+ * entier. */
+export interface StatedRecipient {
+  authority?: string | null;
+  attentionQuality?: string | null;
+  attentionName?: string | null;
+}
+
 export interface CaseCorrection extends Partial<CaseJudicialHeader> {
   pvNumber?: string;
   description?: string | null;
 }
 
-export interface InvestigationCasePrimitives extends CaseJudicialHeader {
+export interface InvestigationCasePrimitives
+  extends CaseJudicialHeader, CaseRecipient {
   id: string;
   caseNumber: string;
   pvNumber: string;
@@ -85,6 +109,7 @@ export class InvestigationCase {
     private _status: InvestigationCaseStatus,
     private _operatorUserId: string | null,
     private _judicialHeader: CaseJudicialHeader,
+    private _recipient: CaseRecipient,
     private readonly _createdAt: Date,
     private _updatedAt: Date,
   ) {}
@@ -99,6 +124,7 @@ export class InvestigationCase {
       InvestigationCaseStatus.open(),
       props.operatorUserId,
       { ...NO_JUDICIAL_HEADER },
+      { ...NO_RECIPIENT },
       now,
       now,
     );
@@ -125,6 +151,11 @@ export class InvestigationCase {
         offenseDateTo: primitives.offenseDateTo,
         interventionDate: primitives.interventionDate,
         caseAgainst: primitives.caseAgainst,
+      },
+      {
+        recipientAuthority: primitives.recipientAuthority,
+        recipientAttentionQuality: primitives.recipientAttentionQuality,
+        recipientAttentionName: primitives.recipientAttentionName,
       },
       primitives.createdAt,
       primitives.updatedAt,
@@ -193,6 +224,20 @@ export class InvestigationCase {
     return stated;
   }
 
+  /** Le destinataire se remplace en bloc : le dialogue renvoie les trois lignes
+   * ensemble, et ce qu'il n'a pas rempli n'est pas adressé. */
+  replaceRecipient(stated: StatedRecipient): void {
+    if (this.status === InvestigationCaseStatusEnum.CLOSED) {
+      throw new CaseClosedError(this._id);
+    }
+    this._recipient = {
+      recipientAuthority: stated.authority ?? null,
+      recipientAttentionQuality: stated.attentionQuality ?? null,
+      recipientAttentionName: stated.attentionName ?? null,
+    };
+    this._updatedAt = new Date();
+  }
+
   close(): void {
     if (this._status.isClosed()) {
       throw new InvalidCaseTransitionError(
@@ -257,5 +302,9 @@ export class InvestigationCase {
 
   get judicialHeader(): CaseJudicialHeader {
     return { ...this._judicialHeader };
+  }
+
+  get recipient(): CaseRecipient {
+    return { ...this._recipient };
   }
 }

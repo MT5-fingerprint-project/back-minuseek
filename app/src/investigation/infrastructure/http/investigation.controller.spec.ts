@@ -90,6 +90,65 @@ describe("InvestigationController — ouverture d'une affaire", () => {
   });
 });
 
+describe('InvestigationController — le destinataire du rapport', () => {
+  it('passe les trois lignes à la commande', async () => {
+    const { controller, dispatched } = build();
+
+    await controller.updateRecipient(
+      CASE_ID,
+      {
+        authority: 'Le Procureur de la République',
+        attentionQuality: 'Brigadier-Chef de Police',
+        attentionName: 'MARCHAND Claire',
+      },
+      JETON,
+    );
+
+    expect(dispatched).toHaveLength(1);
+    expect(dispatched[0]).toMatchObject({
+      caseId: CASE_ID,
+      recipient: {
+        authority: 'Le Procureur de la République',
+        attentionQuality: 'Brigadier-Chef de Police',
+        attentionName: 'MARCHAND Claire',
+      },
+    });
+  });
+
+  it('laisse partir une ligne absente, que le domaine efface', async () => {
+    const { controller, dispatched } = build();
+
+    await controller.updateRecipient(
+      CASE_ID,
+      { authority: 'Le Procureur de la République' },
+      JETON,
+    );
+
+    expect(dispatched[0]).toMatchObject({
+      recipient: {
+        authority: 'Le Procureur de la République',
+        attentionQuality: undefined,
+        attentionName: undefined,
+      },
+    });
+  });
+
+  it.each([
+    [new CaseNotFoundError(CASE_ID), NotFoundException],
+    [new CaseClosedError(CASE_ID), ConflictException],
+  ])('traduit %s à la frontière HTTP', async (domainError, httpError) => {
+    const { controller } = build(domainError);
+
+    await expect(
+      controller.updateRecipient(
+        CASE_ID,
+        { authority: 'Le Procureur de la République' },
+        JETON,
+      ),
+    ).rejects.toThrow(httpError);
+  });
+});
+
 describe("InvestigationController — modification d'une affaire", () => {
   it("passe le compte de l'appelant, son rôle et les seuls champs envoyés", async () => {
     const { controller, dispatched } = build();

@@ -11,6 +11,7 @@ import type { TenantConnectionService } from '../../../tenancy/infrastructure/pe
 import {
   InvestigationCase,
   NO_JUDICIAL_HEADER,
+  NO_RECIPIENT,
 } from '../../domain/investigation-case/entity/investigation-case';
 import { InvestigationCaseStatusEnum } from '../../domain/investigation-case/value-objects/investigation-case-status.vo';
 import { PrismaInvestigationCaseRepository } from './prisma-investigation-case.repository';
@@ -109,6 +110,7 @@ describe('PrismaInvestigationCaseRepository', () => {
         pvNumber: 'PV-2024-001',
         description: null,
         ...NO_JUDICIAL_HEADER,
+        ...NO_RECIPIENT,
         status: InvestigationCaseStatusEnum.IN_PROGRESS,
         operatorUserId: MARIE,
         createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -132,6 +134,7 @@ describe('PrismaInvestigationCaseRepository', () => {
         pvNumber: 'PV-2026-118',
         description: 'Vol avec effraction',
         ...NO_JUDICIAL_HEADER,
+        ...NO_RECIPIENT,
         status: InvestigationCaseStatusEnum.IN_PROGRESS,
         operatorUserId: MARIE,
         createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -148,6 +151,7 @@ describe('PrismaInvestigationCaseRepository', () => {
       status: InvestigationCaseStatusEnum.IN_PROGRESS,
       operatorUserId: MARIE,
       ...NO_JUDICIAL_HEADER,
+      ...NO_RECIPIENT,
       updatedAt: new Date('2026-01-02T10:00:00Z'),
     });
     const colonnesDeCreation = Object.keys(create).filter(
@@ -165,6 +169,7 @@ describe('PrismaInvestigationCaseRepository', () => {
       pvNumber: 'PV-2024-001',
       description: null,
       ...NO_JUDICIAL_HEADER,
+      ...NO_RECIPIENT,
       status: InvestigationCaseStatusEnum.OPEN,
       operatorUserId: MARIE,
       createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -213,6 +218,7 @@ describe('PrismaInvestigationCaseRepository', () => {
       pvNumber: 'PV-2024-001',
       description: 'Vol à main armée',
       ...NO_JUDICIAL_HEADER,
+      ...NO_RECIPIENT,
       status: InvestigationCaseStatusEnum.OPEN,
       operatorUserId: MARIE,
       createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -253,6 +259,7 @@ describe('PrismaInvestigationCaseRepository', () => {
       pvNumber: 'PV-2024-001',
       description: null,
       ...NO_JUDICIAL_HEADER,
+      ...NO_RECIPIENT,
       status: InvestigationCaseStatusEnum.CLOSED,
       operatorUserId: MARIE,
       createdAt: new Date('2026-01-01T10:00:00Z'),

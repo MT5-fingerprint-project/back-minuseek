@@ -12,6 +12,7 @@ import { VerificationStatusEnum } from '../../../domain/case-verification/value-
 import {
   InvestigationCase,
   NO_JUDICIAL_HEADER,
+  NO_RECIPIENT,
 } from '../../../domain/investigation-case/entity/investigation-case';
 import { CaseNotFoundError } from '../../../domain/investigation-case/errors/case-not-found.error';
 import { DisabledOperatorError } from '../../../domain/investigation-case/errors/disabled-operator.error';
@@ -47,7 +48,9 @@ describe('RequestCaseVerificationHandler', () => {
         pvNumber: 'PV-2026-001',
         description: null,
         ...NO_JUDICIAL_HEADER,
+        ...NO_RECIPIENT,
         ...NO_JUDICIAL_HEADER,
+        ...NO_RECIPIENT,
         status,
         operatorUserId: MARIE,
         createdAt: new Date('2026-08-01T10:00:00.000Z'),

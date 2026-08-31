@@ -1,0 +1,11 @@
+/// Le carnet de destinataires du service : un catalogue réutilisable d'un
+/// dossier à l'autre. Ce qu'un dossier porte du destinataire en est une copie,
+/// pas une référence — retirer une fiche ne réécrit aucun dossier déjà adressé.
+model RecipientBookEntry {
+  id               String   @id @default(uuid()) @db.Uuid
+  authority        String
+  attentionQuality String?
+  attentionName    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}

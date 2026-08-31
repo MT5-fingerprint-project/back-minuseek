@@ -29,6 +29,9 @@ export interface InvestigationCaseReadModel {
   offenseDateTo: Date | null;
   interventionDate: Date | null;
   caseAgainst: string | null;
+  recipientAuthority: string | null;
+  recipientAttentionQuality: string | null;
+  recipientAttentionName: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
