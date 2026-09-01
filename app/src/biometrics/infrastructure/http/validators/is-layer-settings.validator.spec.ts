@@ -84,6 +84,14 @@ describe('IsLayerSettings (CreateLayerDto)', () => {
     schemaVersion: ANNOTATION_SCHEMA_VERSION,
   };
   const validFilter = { filterKey: 'brightness', value: 50 };
+  const validPair = {
+    type: 'pair',
+    referencePrintId: FP,
+    traceMinutiaId: '22222222-2222-4222-8222-222222222222',
+    referenceMinutiaId: '33333333-3333-4333-8333-333333333333',
+    frame: ANNOTATION_FRAME,
+    schemaVersion: ANNOTATION_SCHEMA_VERSION,
+  };
 
   it.each<[string, unknown, string]>([
     ['circle', validCircle, 'ANNOTATION'],
@@ -95,6 +103,7 @@ describe('IsLayerSettings (CreateLayerDto)', () => {
       'ANNOTATION',
     ],
     ['minutia', validMinutia, 'ANNOTATION'],
+    ['pair', validPair, 'ANNOTATION'],
     [
       'minutia avec angle à la borne basse (0)',
       { ...validMinutia, angle: 0 },
@@ -154,6 +163,16 @@ describe('IsLayerSettings (CreateLayerDto)', () => {
     ['minutie avec un angle négatif', { ...validMinutia, angle: -1 }],
     ['minutie avec un type inconnu', { ...validMinutia, minutiaType: 'SCAR' }],
     ['minutie sans type de minutie', omit(validMinutia, 'minutiaType')],
+    ['paire sans identifiant d’empreinte', omit(validPair, 'referencePrintId')],
+    [
+      'paire avec un identifiant d’empreinte non UUID',
+      { ...validPair, referencePrintId: 'not-a-uuid' },
+    ],
+    ['paire sans minutie de trace', omit(validPair, 'traceMinutiaId')],
+    ['paire sans minutie de référence', omit(validPair, 'referenceMinutiaId')],
+    ['paire avec un champ en trop', { ...validPair, evil: true }],
+    ['paire sans repère (frame)', omit(validPair, 'frame')],
+    ['paire sans version de schéma', omit(validPair, 'schemaVersion')],
   ])(
     'rejette un payload ANNOTATION invalide (%s)',
     async (_label, settings) => {
@@ -204,6 +223,20 @@ describe('IsLayerSettings (UpdateLayerDto, type inféré du contenu)', () => {
         color: '#22c55e',
         angle: 180,
         minutiaType: MinutiaTypeEnum.RIDGE_ENDING,
+        frame: ANNOTATION_FRAME,
+        schemaVersion: ANNOTATION_SCHEMA_VERSION,
+      },
+    });
+    expect(await settingsHasError(dto)).toBe(false);
+  });
+
+  it('accepte une mise à jour de paire valide sans type de calque explicite', async () => {
+    const dto = plainToInstance(UpdateLayerDto, {
+      settings: {
+        type: 'pair',
+        referencePrintId: FP,
+        traceMinutiaId: '22222222-2222-4222-8222-222222222222',
+        referenceMinutiaId: '33333333-3333-4333-8333-333333333333',
         frame: ANNOTATION_FRAME,
         schemaVersion: ANNOTATION_SCHEMA_VERSION,
       },
