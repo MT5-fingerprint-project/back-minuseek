@@ -17,13 +17,13 @@ export class PaginationQueryDto {
   @ApiPropertyOptional({
     description: "Nombre d'éléments par page",
     minimum: 1,
-    maximum: 100,
+    maximum: 200,
     default: 20,
   })
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(100)
+  @Max(200)
   @IsOptional()
   limit?: number = 20;
 }
