@@ -12,6 +12,7 @@ interface TraceRow {
   createdAt: Date;
   updatedAt: Date;
   captureQuality: unknown;
+  notIdentifiedAt: Date | null;
   hits: { id: string }[];
   locationPhoto: {
     id: string;
@@ -32,6 +33,7 @@ function aTraceRow(overrides: Partial<TraceRow> = {}): TraceRow {
     createdAt: new Date('2026-07-01T10:00:00.000Z'),
     updatedAt: new Date('2026-07-02T10:00:00.000Z'),
     captureQuality: null,
+    notIdentifiedAt: null,
     hits: [],
     locationPhoto: null,
     ...overrides,
@@ -210,6 +212,37 @@ describe('PrismaTraceReader', () => {
     expect(trace.identified).toBe(false);
   });
 
+  it('laisse non identifiée une trace jamais déclarée non identifiée', async () => {
+    const { reader } = build();
+
+    const [trace] = await reader.findByCaseId('case-9');
+
+    expect(trace.notIdentified).toBe(false);
+  });
+
+  it('rend non identifiée une trace déclarée non identifiée, sans correspondance', async () => {
+    const { reader } = build([
+      aTraceRow({ notIdentifiedAt: new Date('2026-07-03T10:00:00.000Z') }),
+    ]);
+
+    const [trace] = await reader.findByCaseId('case-9');
+
+    expect(trace.notIdentified).toBe(true);
+  });
+
+  it('efface la non-identification quand une correspondance existe', async () => {
+    const { reader } = build([
+      aTraceRow({
+        notIdentifiedAt: new Date('2026-07-03T10:00:00.000Z'),
+        hits: [{ id: 'hit-1' }],
+      }),
+    ]);
+
+    const [trace] = await reader.findByCaseId('case-9');
+
+    expect(trace.notIdentified).toBe(false);
+  });
+
   it("ne rend rien quand l'affaire n'existe pas", async () => {
     const { reader, prisma } = build([aTraceRow()], null);
 
@@ -256,6 +289,29 @@ describe('PrismaTraceReader', () => {
     const trace = await reader.findById('trace-1');
 
     expect(trace?.identified).toBe(true);
+  });
+
+  it('rend non identifiée une trace seule déclarée non identifiée, sans correspondance', async () => {
+    const { reader } = build([
+      aTraceRow({ notIdentifiedAt: new Date('2026-07-03T10:00:00.000Z') }),
+    ]);
+
+    const trace = await reader.findById('trace-1');
+
+    expect(trace?.notIdentified).toBe(true);
+  });
+
+  it('efface la non-identification de la trace seule quand une correspondance existe', async () => {
+    const { reader } = build([
+      aTraceRow({
+        notIdentifiedAt: new Date('2026-07-03T10:00:00.000Z'),
+        hits: [{ id: 'hit-1' }],
+      }),
+    ]);
+
+    const trace = await reader.findById('trace-1');
+
+    expect(trace?.notIdentified).toBe(false);
   });
 
   it('ignore les correspondances retirées pour dire si la trace seule est identifiée', async () => {

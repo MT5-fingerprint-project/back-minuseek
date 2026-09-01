@@ -51,6 +51,7 @@ export class PrismaTraceReader implements TraceReader {
       reference: traceReference(investigationCase.caseNumber, row.number),
       cote: cotes.get(row.number) ?? null,
       identified: hits.length > 0,
+      notIdentified: row.notIdentifiedAt !== null && hits.length === 0,
       hasLocationPhoto: locationPhoto !== null,
     }));
   }
@@ -86,6 +87,7 @@ export class PrismaTraceReader implements TraceReader {
       reference: traceReference(investigationCase.caseNumber, trace.number),
       cote: cotes.get(trace.number) ?? null,
       identified: hits.length > 0,
+      notIdentified: trace.notIdentifiedAt !== null && hits.length === 0,
       hasLocationPhoto: locationPhoto !== null,
       locationPhoto:
         locationPhoto === null

@@ -41,6 +41,7 @@ export class GetTraceHandler implements IQueryHandler<GetTraceQuery> {
       status: blind ? null : trace.status,
       cote: blind ? null : trace.cote,
       identified: blind ? null : trace.identified,
+      notIdentified: blind ? null : trace.notIdentified,
       url: await this.storage.getUrl(trace.path),
       locationPhoto: photo,
     };

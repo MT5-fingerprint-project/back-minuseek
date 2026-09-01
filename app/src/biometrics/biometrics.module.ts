@@ -8,6 +8,8 @@ import { RemoveLocationPhotoHandler } from './application/commands/remove-locati
 import { CalibrateTraceHandler } from './application/commands/calibrate-trace/calibrate-trace.handler';
 import { DescribeTraceHandler } from './application/commands/describe-trace/describe-trace.handler';
 import { DeclareTraceExploitabilityHandler } from './application/commands/declare-trace-exploitability/declare-trace-exploitability.handler';
+import { DeclareTraceNotIdentifiedHandler } from './application/commands/declare-trace-not-identified/declare-trace-not-identified.handler';
+import { WithdrawTraceNotIdentifiedHandler } from './application/commands/withdraw-trace-not-identified/withdraw-trace-not-identified.handler';
 import { CalibrateReferencePrintHandler } from './application/commands/calibrate-reference-print/calibrate-reference-print.handler';
 import { RestoreTraceHandler } from './application/commands/restore-trace/restore-trace.handler';
 import { RestoreReferencePrintHandler } from './application/commands/restore-reference-print/restore-reference-print.handler';
@@ -90,6 +92,8 @@ import { AccessModule } from '../access/access.module';
     CalibrateReferencePrintHandler,
     DescribeTraceHandler,
     DeclareTraceExploitabilityHandler,
+    DeclareTraceNotIdentifiedHandler,
+    WithdrawTraceNotIdentifiedHandler,
     RestoreTraceHandler,
     RestoreReferencePrintHandler,
     ListTracesHandler,

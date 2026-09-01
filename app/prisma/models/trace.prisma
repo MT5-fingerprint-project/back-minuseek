@@ -41,6 +41,12 @@ model Trace {
   location            String?
   revelationTechnique RevelationTechnique?
 
+  // Date de déclaration de non-identification (L7-1c) : une trace comparée à
+  // toutes les empreintes de référence sans concordance relevée. `null` tant
+  // que rien n'a été déclaré, ou après retrait. Le journal reste la source des
+  // faits ; cette colonne ne fait que projeter l'état courant pour la lecture.
+  notIdentifiedAt DateTime?
+
   matchings     Matching[]
   hits          Hit[]
   locationPhoto TraceLocationPhoto?

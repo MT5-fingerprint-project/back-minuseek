@@ -304,6 +304,12 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
     );
     return `Dépôt de l'image exportée de ${designation.full} et mise sous scellé`;
   },
+  [AuditEventTypeEnum.TRACE_NOT_IDENTIFIED]: (event, named) => {
+    const designation = trace(event, named).bare;
+    return event.payload.notIdentified === false
+      ? `Non-identification de ${designation} retirée`
+      : `${designation} déclarée non identifiée`;
+  },
   [AuditEventTypeEnum.CASE_VERIFICATION_COMPLETED]: (event) => {
     const verdict = text(event, 'verdict');
     if (verdict === 'CONCORDANT') {

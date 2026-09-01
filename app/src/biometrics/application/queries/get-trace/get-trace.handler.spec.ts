@@ -16,6 +16,7 @@ const traceRow = (
   cote: null,
   caseId: 'case-9',
   identified: false,
+  notIdentified: false,
   sha256: 'a'.repeat(64),
   createdAt: new Date('2026-07-01T00:00:00.000Z'),
   updatedAt: new Date('2026-07-02T00:00:00.000Z'),
@@ -124,6 +125,18 @@ describe('GetTraceHandler', () => {
     );
 
     expect(trace).toMatchObject({ identified: null, status: null, cote: null });
+  });
+
+  it('cache la non-identification au vérificateur en mission', async () => {
+    const handler = handlerOver(
+      new InMemoryTraceReader([traceRow({ notIdentified: true })]),
+    );
+
+    const trace = await handler.execute(
+      new GetTraceQuery('trace-1', 'user-lucie'),
+    );
+
+    expect(trace?.notIdentified).toBeNull();
   });
 
   it('laisse le reste de la trace visible au vérificateur en mission', async () => {
