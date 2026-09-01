@@ -103,6 +103,11 @@ describe('IsLayerSettings (CreateLayerDto)', () => {
       'ANNOTATION',
     ],
     ['minutia', validMinutia, 'ANNOTATION'],
+    [
+      'circle portant un type de minutie',
+      { ...validCircle, minutiaType: MinutiaTypeEnum.BIFURCATION },
+      'ANNOTATION',
+    ],
     ['pair', validPair, 'ANNOTATION'],
     [
       'minutia avec angle à la borne basse (0)',
@@ -130,6 +135,17 @@ describe('IsLayerSettings (CreateLayerDto)', () => {
     },
   );
 
+  it.each(Object.values(MinutiaTypeEnum))(
+    'accepte chaque type de minutie sur un point simple (%s)',
+    async (minutiaType) => {
+      expect(
+        await settingsHasError(
+          createDto('ANNOTATION', { ...validCircle, minutiaType }),
+        ),
+      ).toBe(false);
+    },
+  );
+
   it.each<[string, unknown]>([
     ['cercle sans x', { ...validCircle, x: undefined }],
     ['couleur non hexadécimale', { ...validCircle, color: 'rouge' }],
@@ -141,6 +157,10 @@ describe('IsLayerSettings (CreateLayerDto)', () => {
       { ...validPencil, points: [0, 0, 5, 5.5] },
     ],
     ['cercle avec un angle en trop', { ...validCircle, angle: 45 }],
+    [
+      'cercle avec un type de minutie inconnu',
+      { ...validCircle, minutiaType: 'SCAR' },
+    ],
     ['settings null', null],
     ['settings tableau', [1, 2, 3]],
     ['annotation sans repère (frame)', omit(validCircle, 'frame')],
@@ -206,6 +226,22 @@ describe('IsLayerSettings (UpdateLayerDto, type inféré du contenu)', () => {
         y: 2,
         radius: 4,
         color: '#22c55e',
+        frame: ANNOTATION_FRAME,
+        schemaVersion: ANNOTATION_SCHEMA_VERSION,
+      },
+    });
+    expect(await settingsHasError(dto)).toBe(false);
+  });
+
+  it('accepte une mise à jour de cercle portant un type de minutie', async () => {
+    const dto = plainToInstance(UpdateLayerDto, {
+      settings: {
+        type: 'circle',
+        x: 1,
+        y: 2,
+        radius: 4,
+        color: '#22c55e',
+        minutiaType: MinutiaTypeEnum.ISLAND,
         frame: ANNOTATION_FRAME,
         schemaVersion: ANNOTATION_SCHEMA_VERSION,
       },

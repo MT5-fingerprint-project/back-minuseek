@@ -1,5 +1,13 @@
-import { Equals, IsHexColor, IsInt, IsPositive } from 'class-validator';
+import {
+  Equals,
+  IsEnum,
+  IsHexColor,
+  IsInt,
+  IsOptional,
+  IsPositive,
+} from 'class-validator';
 import { AnnotationSettingsDto } from './annotation-settings.dto';
+import { MinutiaTypeEnum } from '../../../../../shared/domain/forensics/minutiae';
 
 export class CircleSettingsDto extends AnnotationSettingsDto {
   @Equals('circle')
@@ -17,4 +25,9 @@ export class CircleSettingsDto extends AnnotationSettingsDto {
 
   @IsHexColor()
   color: string;
+
+  /** Absent des points posés avant l'ajout du type : ils valent UNDETERMINED à la lecture. */
+  @IsOptional()
+  @IsEnum(MinutiaTypeEnum)
+  minutiaType?: MinutiaTypeEnum;
 }
