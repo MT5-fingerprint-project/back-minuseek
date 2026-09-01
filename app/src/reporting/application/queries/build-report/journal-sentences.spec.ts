@@ -587,6 +587,28 @@ describe('journalSentence — la qualification', () => {
   });
 });
 
+describe('journalSentence — la non-identification', () => {
+  it('dit la non-identification', () => {
+    expect(
+      say(
+        AuditEventTypeEnum.TRACE_NOT_IDENTIFIED,
+        { notIdentified: true },
+        'trace-7',
+      ),
+    ).toBe('la trace 3455-T7 déclarée non identifiée');
+  });
+
+  it('dit le retrait de la non-identification', () => {
+    expect(
+      say(
+        AuditEventTypeEnum.TRACE_NOT_IDENTIFIED,
+        { notIdentified: false },
+        'trace-7',
+      ),
+    ).toBe('Non-identification de la trace 3455-T7 retirée');
+  });
+});
+
 describe('journalSentence — une calibration', () => {
   it('dit la résolution fixée quand la pièce n’en avait pas', () => {
     expect(

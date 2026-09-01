@@ -15,6 +15,7 @@ const traceRow = (
   cote: null,
   caseId: 'case-9',
   identified: false,
+  notIdentified: false,
   sha256: null,
   createdAt: new Date('2026-07-01T00:00:00.000Z'),
   updatedAt: new Date('2026-07-01T00:00:00.000Z'),
@@ -220,6 +221,21 @@ describe('ListTracesHandler', () => {
 
     expect(data[0].identified).toBeNull();
   });
+
+  it('cache la non-identification du titulaire au vérificateur en mission', async () => {
+    const reader = new InMemoryTraceReader([traceRow({ notIdentified: true })]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(
+      new ListTracesQuery('case-9', false, 'user-lucie'),
+    );
+
+    expect(data[0].notIdentified).toBeNull();
+  });
+
   it('ne liste que les traces retirées quand on les demande', async () => {
     const reader = new InMemoryTraceReader([
       traceRow(),

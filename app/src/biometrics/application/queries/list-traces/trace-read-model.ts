@@ -9,6 +9,7 @@ export interface TraceReadModel {
   cote: string | null;
   caseId: string;
   identified: boolean;
+  notIdentified: boolean;
   sha256: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -40,10 +41,14 @@ export interface TraceDetailReadModel extends TraceReadModel {
   locationPhoto: TraceLocationPhotoReadModel | null;
 }
 
-export type TraceView = Omit<TraceReadModel, 'status' | 'identified'> & {
+export type TraceView = Omit<
+  TraceReadModel,
+  'status' | 'identified' | 'notIdentified'
+> & {
   url: string;
   status: string | null;
   identified: boolean | null;
+  notIdentified: boolean | null;
 };
 
 export interface TraceLocationPhotoView {

@@ -41,6 +41,7 @@ export interface TracePrimitives {
   origin: TraceOriginEnum | null;
   location: string | null;
   revelationTechnique: RevelationTechniqueEnum | null;
+  notIdentifiedAt: Date | null;
 }
 
 export interface TraceDescription {
@@ -85,6 +86,7 @@ export class Trace {
     private _origin: TraceOrigin | null,
     private _location: string | null,
     private _revelationTechnique: RevelationTechnique | null,
+    private _notIdentifiedAt: Date | null,
   ) {}
 
   static assertCaseCanReceiveTrace(
@@ -124,6 +126,7 @@ export class Trace {
       null,
       location.length === 0 ? null : location,
       null,
+      null,
     );
   }
 
@@ -149,6 +152,7 @@ export class Trace {
     origin: string | null;
     location: string | null;
     revelationTechnique: string | null;
+    notIdentifiedAt: Date | null;
   }): Trace {
     return new Trace(
       payload.id,
@@ -178,6 +182,7 @@ export class Trace {
       TraceOrigin.fromPersistence(payload.origin),
       payload.location,
       RevelationTechnique.fromPersistence(payload.revelationTechnique),
+      payload.notIdentifiedAt,
     );
   }
 
@@ -205,6 +210,14 @@ export class Trace {
     this._status = isExploitable
       ? TraceStatus.exploitable()
       : TraceStatus.notExploitable();
+  }
+
+  declareNotIdentified(at: Date): void {
+    this._notIdentifiedAt = at;
+  }
+
+  withdrawNotIdentified(): void {
+    this._notIdentifiedAt = null;
   }
 
   withdraw(motive: string, at: Date, motiveDetail?: string | null): void {
@@ -244,6 +257,7 @@ export class Trace {
       origin: this._origin?.getValue() ?? null,
       location: this._location,
       revelationTechnique: this._revelationTechnique?.getValue() ?? null,
+      notIdentifiedAt: this._notIdentifiedAt,
     };
   }
 
@@ -309,5 +323,9 @@ export class Trace {
 
   get revelationTechnique(): RevelationTechniqueEnum | null {
     return this._revelationTechnique?.getValue() ?? null;
+  }
+
+  get notIdentifiedAt(): Date | null {
+    return this._notIdentifiedAt;
   }
 }

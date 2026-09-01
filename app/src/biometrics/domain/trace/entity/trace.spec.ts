@@ -69,6 +69,7 @@ describe('Trace', () => {
         origin: null,
         location: null,
         revelationTechnique: null,
+        notIdentifiedAt: null,
       });
     });
 
@@ -107,6 +108,7 @@ describe('Trace', () => {
         origin: null,
         location: null,
         revelationTechnique: null,
+        notIdentifiedAt: null,
       });
     });
 
@@ -285,6 +287,44 @@ describe('Trace', () => {
     });
   });
 
+  describe('declareNotIdentified', () => {
+    const DECLARED_AT = new Date('2026-08-20T09:00:00.000Z');
+
+    it('pose la date de déclaration', () => {
+      const trace = Trace.upload(baseProps);
+
+      trace.declareNotIdentified(DECLARED_AT);
+
+      expect(trace.notIdentifiedAt).toEqual(DECLARED_AT);
+    });
+
+    it('remplace la date sur une nouvelle déclaration', () => {
+      const trace = Trace.upload(baseProps);
+      const laterDeclaration = new Date('2026-08-21T09:00:00.000Z');
+
+      trace.declareNotIdentified(DECLARED_AT);
+      trace.declareNotIdentified(laterDeclaration);
+
+      expect(trace.notIdentifiedAt).toEqual(laterDeclaration);
+    });
+
+    it('efface la date au retrait', () => {
+      const trace = Trace.upload(baseProps);
+      trace.declareNotIdentified(DECLARED_AT);
+
+      trace.withdrawNotIdentified();
+
+      expect(trace.notIdentifiedAt).toBeNull();
+    });
+
+    it('accepte un retrait alors que rien n’a été déclaré', () => {
+      const trace = Trace.upload(baseProps);
+
+      expect(() => trace.withdrawNotIdentified()).not.toThrow();
+      expect(trace.notIdentifiedAt).toBeNull();
+    });
+  });
+
   describe('reconstitute', () => {
     it('rebuilds a trace from primitives', () => {
       const trace = Trace.reconstitute({
@@ -309,6 +349,7 @@ describe('Trace', () => {
         origin: null,
         location: null,
         revelationTechnique: null,
+        notIdentifiedAt: null,
       });
 
       expect(trace.status).toBe(TraceStatusEnum.EXPLOITABLE);
@@ -339,6 +380,7 @@ describe('Trace', () => {
         origin: null,
         location: null,
         revelationTechnique: null,
+        notIdentifiedAt: null,
       });
 
       expect(trace.sha256).toBeNull();
@@ -367,6 +409,7 @@ describe('Trace', () => {
         origin: null,
         location: null,
         revelationTechnique: null,
+        notIdentifiedAt: null,
       });
 
       expect(trace.captureQuality?.blurScore).toBe(128.4);
@@ -397,6 +440,7 @@ describe('Trace', () => {
           origin: null,
           location: null,
           revelationTechnique: null,
+          notIdentifiedAt: null,
         }),
       ).toThrow(InvalidCaptureQualityError);
     });
@@ -425,6 +469,7 @@ describe('Trace', () => {
           origin: null,
           location: null,
           revelationTechnique: null,
+          notIdentifiedAt: null,
         }),
       ).toThrow(InvalidFileDigestError);
     });
@@ -454,6 +499,7 @@ describe('Trace', () => {
         origin: null,
         location: null,
         revelationTechnique: null,
+        notIdentifiedAt: null,
       });
     });
 
@@ -480,6 +526,7 @@ describe('Trace', () => {
         origin: null,
         location: null,
         revelationTechnique: null,
+        notIdentifiedAt: null,
       });
 
       expect(trace.captureMetadata.width).toBeUndefined();
@@ -636,6 +683,7 @@ describe('Trace', () => {
         origin: null,
         location: null,
         revelationTechnique: null,
+        notIdentifiedAt: null,
       });
     });
 
@@ -649,6 +697,7 @@ describe('Trace', () => {
         origin: null,
         location: null,
         revelationTechnique: null,
+        notIdentifiedAt: null,
       });
     });
 

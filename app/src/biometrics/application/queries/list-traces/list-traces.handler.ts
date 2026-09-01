@@ -29,6 +29,7 @@ export class ListTracesHandler implements IQueryHandler<ListTracesQuery> {
         status: blind ? null : trace.status,
         cote: blind ? null : trace.cote,
         identified: blind ? null : trace.identified,
+        notIdentified: blind ? null : trace.notIdentified,
         url: await this.storage.getUrl(trace.path),
       })),
     );

@@ -35,6 +35,8 @@ import { UploadTraceCommand } from '../../application/commands/upload-trace/uplo
 import { CalibrateTraceCommand } from '../../application/commands/calibrate-trace/calibrate-trace.command';
 import { DescribeTraceCommand } from '../../application/commands/describe-trace/describe-trace.command';
 import { DeclareTraceExploitabilityCommand } from '../../application/commands/declare-trace-exploitability/declare-trace-exploitability.command';
+import { DeclareTraceNotIdentifiedCommand } from '../../application/commands/declare-trace-not-identified/declare-trace-not-identified.command';
+import { WithdrawTraceNotIdentifiedCommand } from '../../application/commands/withdraw-trace-not-identified/withdraw-trace-not-identified.command';
 import { CalibrateReferencePrintCommand } from '../../application/commands/calibrate-reference-print/calibrate-reference-print.command';
 import { UploadReferencePrintCommand } from '../../application/commands/upload-reference-print/upload-reference-print.command';
 import { WithdrawTraceCommand } from '../../application/commands/withdraw-trace/withdraw-trace.command';
@@ -423,6 +425,60 @@ export class BiometricsController {
       if (e instanceof TraceNotFoundError)
         throw new NotFoundException(e.message);
       if (e instanceof CaseUnavailableForTraceError)
+        throw new NotFoundException(e.message);
+      throw e;
+    }
+
+    return this.readTrace(id);
+  }
+
+  @Put('traces/:id/not-identified')
+  @CaseAdministration()
+  @ApiOperation({
+    summary: 'Déclarer une trace non identifiée',
+  })
+  @ApiResponse({ status: 200, description: 'Fiche de la trace' })
+  @ApiResponse({ status: 404, description: 'Trace non trouvée' })
+  @ApiResponse({ status: 409, description: 'Dossier clos' })
+  async declareTraceNotIdentified(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<TraceDetailView> {
+    try {
+      await this.commandBus.execute(
+        new DeclareTraceNotIdentifiedCommand(toAuditActor(user), id),
+      );
+    } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
+      if (e instanceof TraceNotFoundError)
+        throw new NotFoundException(e.message);
+      throw e;
+    }
+
+    return this.readTrace(id);
+  }
+
+  @Delete('traces/:id/not-identified')
+  @CaseAdministration()
+  @ApiOperation({
+    summary: 'Retirer la déclaration de non-identification',
+  })
+  @ApiResponse({ status: 200, description: 'Fiche de la trace' })
+  @ApiResponse({ status: 404, description: 'Trace non trouvée' })
+  @ApiResponse({ status: 409, description: 'Dossier clos' })
+  async withdrawTraceNotIdentified(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<TraceDetailView> {
+    try {
+      await this.commandBus.execute(
+        new WithdrawTraceNotIdentifiedCommand(toAuditActor(user), id),
+      );
+    } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
+      if (e instanceof TraceNotFoundError)
         throw new NotFoundException(e.message);
       throw e;
     }
