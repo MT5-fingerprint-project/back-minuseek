@@ -9,6 +9,7 @@ import { CircleSettingsDto } from '../dto/settings/circle-settings.dto';
 import { CircleArrowSettingsDto } from '../dto/settings/circle-arrow-settings.dto';
 import { PencilSettingsDto } from '../dto/settings/pencil-settings.dto';
 import { MinutiaSettingsDto } from '../dto/settings/minutia-settings.dto';
+import { PairSettingsDto } from '../dto/settings/pair-settings.dto';
 import { FilterSettingsDto } from '../dto/settings/filter-settings.dto';
 import {
   ANNOTATION_FRAME,
@@ -22,6 +23,7 @@ const ANNOTATION_DTOS: Record<string, SettingsDto> = {
   circleArrow: CircleArrowSettingsDto,
   pencil: PencilSettingsDto,
   minutia: MinutiaSettingsDto,
+  pair: PairSettingsDto,
 };
 
 /**
