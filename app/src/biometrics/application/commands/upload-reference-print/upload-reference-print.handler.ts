@@ -85,6 +85,7 @@ export class UploadReferencePrintHandler implements ICommandHandler<
       caseId: cmd.caseId,
       sha256: FileDigest.from(stored.receivedSha256),
       displayableSha256: FileDigest.from(stored.displayableSha256),
+      thumbPath: stored.thumbPath,
 
       subjectId: cmd.subjectId ?? null,
       position: cmd.position ? FingerPosition.from(cmd.position) : null,

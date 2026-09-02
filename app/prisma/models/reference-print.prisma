@@ -4,6 +4,7 @@ model ReferencePrint {
   caseId    String          @db.Uuid
   sha256    String?         @db.Char(64)
   displayableSha256 String?         @db.Char(64)
+  thumbPath String?
   subjectId String?         @db.Uuid
   position  FingerPosition?
   createdAt DateTime        @default(now())

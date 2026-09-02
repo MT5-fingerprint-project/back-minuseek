@@ -70,6 +70,7 @@ describe('Trace', () => {
         location: null,
         revelationTechnique: null,
         notIdentifiedAt: null,
+        thumbPath: null,
       });
     });
 
@@ -109,6 +110,7 @@ describe('Trace', () => {
         location: null,
         revelationTechnique: null,
         notIdentifiedAt: null,
+        thumbPath: null,
       });
     });
 
@@ -325,6 +327,34 @@ describe('Trace', () => {
     });
   });
 
+  describe('la vignette d’affichage', () => {
+    const THUMB = 'media/case-9/traces/t-1_thumb.webp';
+
+    it('carries the display thumbnail stored alongside the piece', () => {
+      const trace = Trace.upload({ ...baseProps, thumbPath: THUMB });
+
+      expect(trace.thumbPath).toBe(THUMB);
+      expect(trace.toPrimitives().thumbPath).toBe(THUMB);
+    });
+
+    it('carries no thumbnail when the deposit could not build one', () => {
+      const trace = Trace.upload(baseProps);
+
+      expect(trace.thumbPath).toBeNull();
+    });
+
+    it.each([
+      ['a stored thumbnail', THUMB],
+      ['no thumbnail', null],
+    ])('round-trips %s through primitives', (_label, thumbPath) => {
+      const trace = Trace.upload({ ...baseProps, thumbPath });
+
+      const reloaded = Trace.reconstitute(trace.toPrimitives());
+
+      expect(reloaded.thumbPath).toBe(thumbPath);
+    });
+  });
+
   describe('reconstitute', () => {
     it('rebuilds a trace from primitives', () => {
       const trace = Trace.reconstitute({
@@ -350,6 +380,7 @@ describe('Trace', () => {
         location: null,
         revelationTechnique: null,
         notIdentifiedAt: null,
+        thumbPath: null,
       });
 
       expect(trace.status).toBe(TraceStatusEnum.EXPLOITABLE);
@@ -381,6 +412,7 @@ describe('Trace', () => {
         location: null,
         revelationTechnique: null,
         notIdentifiedAt: null,
+        thumbPath: null,
       });
 
       expect(trace.sha256).toBeNull();
@@ -410,6 +442,7 @@ describe('Trace', () => {
         location: null,
         revelationTechnique: null,
         notIdentifiedAt: null,
+        thumbPath: null,
       });
 
       expect(trace.captureQuality?.blurScore).toBe(128.4);
@@ -441,6 +474,7 @@ describe('Trace', () => {
           location: null,
           revelationTechnique: null,
           notIdentifiedAt: null,
+          thumbPath: null,
         }),
       ).toThrow(InvalidCaptureQualityError);
     });
@@ -470,6 +504,7 @@ describe('Trace', () => {
           location: null,
           revelationTechnique: null,
           notIdentifiedAt: null,
+          thumbPath: null,
         }),
       ).toThrow(InvalidFileDigestError);
     });
@@ -500,6 +535,7 @@ describe('Trace', () => {
         location: null,
         revelationTechnique: null,
         notIdentifiedAt: null,
+        thumbPath: null,
       });
     });
 
@@ -527,6 +563,7 @@ describe('Trace', () => {
         location: null,
         revelationTechnique: null,
         notIdentifiedAt: null,
+        thumbPath: null,
       });
 
       expect(trace.captureMetadata.width).toBeUndefined();
@@ -684,6 +721,7 @@ describe('Trace', () => {
         location: null,
         revelationTechnique: null,
         notIdentifiedAt: null,
+        thumbPath: null,
       });
     });
 
@@ -698,6 +736,7 @@ describe('Trace', () => {
         location: null,
         revelationTechnique: null,
         notIdentifiedAt: null,
+        thumbPath: null,
       });
     });
 

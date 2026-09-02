@@ -94,6 +94,54 @@ describe('ReferencePrint', () => {
     });
   });
 
+  describe('la vignette d’affichage', () => {
+    const THUMB = 'media/case-9/reference-prints/rp-1_thumb.webp';
+
+    it('carries the display thumbnail stored alongside the piece', () => {
+      const print = ReferencePrint.create({
+        id: 'rp-1',
+        path: 'media/case-9/reference-prints/rp-1.png',
+        caseId: 'case-9',
+        sha256: seal(),
+        displayableSha256: seal(),
+        thumbPath: THUMB,
+      });
+
+      expect(print.thumbPath).toBe(THUMB);
+      expect(print.toPrimitives().thumbPath).toBe(THUMB);
+    });
+
+    it('carries no thumbnail when the deposit could not build one', () => {
+      const print = ReferencePrint.create({
+        id: 'rp-1',
+        path: 'media/case-9/reference-prints/rp-1.png',
+        caseId: 'case-9',
+        sha256: seal(),
+        displayableSha256: seal(),
+      });
+
+      expect(print.thumbPath).toBeNull();
+    });
+
+    it.each([
+      ['a stored thumbnail', THUMB],
+      ['no thumbnail', null],
+    ])('round-trips %s through primitives', (_label, thumbPath) => {
+      const print = ReferencePrint.create({
+        id: 'rp-1',
+        path: 'media/case-9/reference-prints/rp-1.png',
+        caseId: 'case-9',
+        sha256: seal(),
+        displayableSha256: seal(),
+        thumbPath,
+      });
+
+      const reloaded = ReferencePrint.reconstitute(print.toPrimitives());
+
+      expect(reloaded.thumbPath).toBe(thumbPath);
+    });
+  });
+
   describe('reconstitute', () => {
     it('rebuilds a reference print from primitives', () => {
       const rp = ReferencePrint.reconstitute({
@@ -109,6 +157,7 @@ describe('ReferencePrint', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        thumbPath: null,
       });
 
       expect(rp.id).toBe('r-1');
@@ -132,6 +181,7 @@ describe('ReferencePrint', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        thumbPath: null,
       });
 
       expect(rp.sha256).toBeNull();
@@ -152,6 +202,7 @@ describe('ReferencePrint', () => {
           withdrawalMotiveDetail: null,
           imageDestroyedAt: null,
           resolutionDpi: null,
+          thumbPath: null,
         }),
       ).toThrow(InvalidFileDigestError);
     });
@@ -180,6 +231,7 @@ describe('ReferencePrint', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        thumbPath: null,
       });
     });
   });
@@ -273,6 +325,7 @@ describe('ReferencePrint', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        thumbPath: null,
       });
     });
 
@@ -296,6 +349,7 @@ describe('ReferencePrint', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        thumbPath: null,
       });
     });
 
@@ -325,6 +379,7 @@ describe('ReferencePrint', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        thumbPath: null,
       });
 
       expect(rp.isWithdrawn).toBe(true);

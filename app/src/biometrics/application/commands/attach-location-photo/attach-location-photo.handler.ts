@@ -96,6 +96,7 @@ export class AttachLocationPhotoHandler implements ICommandHandler<
       caseId: trace.caseId,
       path: stored.path,
       sha256: FileDigest.from(stored.receivedSha256),
+      thumbPath: stored.thumbPath,
     });
 
     let sealedAt: Date;

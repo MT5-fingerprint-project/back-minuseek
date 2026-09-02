@@ -37,6 +37,7 @@ const aTraceView = (
   location: null,
   revelationTechnique: null,
   hasLocationPhoto: false,
+  thumbPath: null,
   locationPhoto: null,
   ...overrides,
 });

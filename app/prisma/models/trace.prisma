@@ -6,6 +6,7 @@ model Trace {
   caseId            String      @db.Uuid
   sha256            String?     @db.Char(64)
   displayableSha256 String?     @db.Char(64)
+  thumbPath         String?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 

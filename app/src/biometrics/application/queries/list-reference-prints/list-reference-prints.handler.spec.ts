@@ -45,6 +45,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        thumbPath: null,
       },
     ]);
     const handler = new ListReferencePrintsHandler(
@@ -77,6 +78,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: 1207.34,
+        thumbPath: null,
       },
     ]);
     const handler = new ListReferencePrintsHandler(
@@ -106,6 +108,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        thumbPath: null,
       },
     ]);
     const handler = new ListReferencePrintsHandler(
@@ -135,6 +138,7 @@ describe('ListReferencePrintsHandler', () => {
       withdrawalMotiveDetail: null,
       imageDestroyedAt: null,
       resolutionDpi: null,
+      thumbPath: null,
     });
     const reader = new InMemoryReferencePrintReader([
       referencePrint('ref-a'),
@@ -167,6 +171,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        thumbPath: null,
       },
       {
         id: 'ref-2',
@@ -181,6 +186,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        thumbPath: null,
       },
     ]);
     const handler = new ListReferencePrintsHandler(
@@ -211,6 +217,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: new Date('2026-09-01T09:00:00.000Z'),
         resolutionDpi: null,
+        thumbPath: null,
       },
     ]);
     const handler = new ListReferencePrintsHandler(

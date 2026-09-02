@@ -28,12 +28,14 @@ export interface TraceReadModel {
   location: string | null;
   revelationTechnique: string | null;
   hasLocationPhoto: boolean;
+  thumbPath: string | null;
 }
 
 export interface TraceLocationPhotoReadModel {
   id: string;
   path: string;
   sha256: string;
+  thumbPath: string | null;
   sealedAt: Date;
 }
 

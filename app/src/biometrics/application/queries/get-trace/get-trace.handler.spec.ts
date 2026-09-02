@@ -35,6 +35,7 @@ const traceRow = (
   location: null,
   revelationTechnique: null,
   hasLocationPhoto: false,
+  thumbPath: null,
   locationPhoto: null,
   ...overrides,
 });
@@ -71,6 +72,7 @@ describe('GetTraceHandler', () => {
             id: 'photo-1',
             path: 'media/investigation-case/case-9/location-photos/photo-1.png',
             sha256: 'b'.repeat(64),
+            thumbPath: null,
             sealedAt,
           },
         }),

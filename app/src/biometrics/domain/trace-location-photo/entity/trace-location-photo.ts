@@ -6,6 +6,7 @@ export interface TraceLocationPhotoPrimitives {
   caseId: string;
   path: string;
   sha256: string;
+  thumbPath: string | null;
 }
 
 interface AttachTraceLocationPhotoProps {
@@ -14,6 +15,7 @@ interface AttachTraceLocationPhotoProps {
   caseId: string;
   path: string;
   sha256: FileDigest;
+  thumbPath?: string | null;
 }
 
 export class TraceLocationPhoto {
@@ -23,6 +25,7 @@ export class TraceLocationPhoto {
     private readonly _caseId: string,
     private readonly _path: string,
     private readonly _sha256: FileDigest,
+    private readonly _thumbPath: string | null,
   ) {}
 
   static attach(props: AttachTraceLocationPhotoProps): TraceLocationPhoto {
@@ -44,6 +47,7 @@ export class TraceLocationPhoto {
       props.caseId,
       props.path,
       props.sha256,
+      props.thumbPath ?? null,
     );
   }
 
@@ -56,6 +60,7 @@ export class TraceLocationPhoto {
       primitives.caseId,
       primitives.path,
       FileDigest.from(primitives.sha256),
+      primitives.thumbPath,
     );
   }
 
@@ -66,6 +71,7 @@ export class TraceLocationPhoto {
       caseId: this._caseId,
       path: this._path,
       sha256: this._sha256.getValue(),
+      thumbPath: this._thumbPath,
     };
   }
 
@@ -87,5 +93,9 @@ export class TraceLocationPhoto {
 
   get sha256(): string {
     return this._sha256.getValue();
+  }
+
+  get thumbPath(): string | null {
+    return this._thumbPath;
   }
 }

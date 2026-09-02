@@ -82,6 +82,27 @@ describe('AttachLocationPhotoHandler', () => {
     );
   });
 
+  it('garde le chemin de la vignette sur la photographie versée', async () => {
+    await attach();
+
+    expect((await locationPhotos.findByTraceId('trace-1'))?.thumbPath).toBe(
+      'media/investigation-case/case-9/location-photos/photo-1_thumb.webp',
+    );
+  });
+
+  it('verse la photographie sans vignette quand la vignette échoue', async () => {
+    const undecodableThumbnail = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+      Buffer.from('invalid'),
+    ]);
+
+    await attach('trace-1', undecodableThumbnail);
+
+    const photo = await locationPhotos.findByTraceId('trace-1');
+    expect(photo?.thumbPath).toBeNull();
+    expect(photo?.path).toBe(`media/${PHOTO_KEY}`);
+  });
+
   it('inscrit un LOCATION_PHOTO_UPLOADED constaté', async () => {
     await attach();
 

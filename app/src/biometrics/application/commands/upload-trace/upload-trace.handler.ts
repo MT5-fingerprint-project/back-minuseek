@@ -153,6 +153,7 @@ export class UploadTraceHandler implements ICommandHandler<
           captureMetadata,
           captureQuality,
           location: cmd.location,
+          thumbPath: stored.thumbPath,
         });
         const uploaded = await this.repo.save(trace, {
           eventType: AuditEventTypeEnum.TRACE_UPLOADED,
@@ -177,6 +178,7 @@ export class UploadTraceHandler implements ICommandHandler<
             caseId: cmd.caseId,
             path: locationPhoto.stored.path,
             sha256: FileDigest.from(locationPhoto.stored.receivedSha256),
+            thumbPath: locationPhoto.stored.thumbPath,
           });
           await this.locationPhotos.save(photo, {
             eventType: AuditEventTypeEnum.LOCATION_PHOTO_UPLOADED,

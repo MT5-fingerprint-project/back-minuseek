@@ -34,6 +34,7 @@ const traceRow = (
   location: null,
   revelationTechnique: null,
   hasLocationPhoto: false,
+  thumbPath: null,
   locationPhoto: null,
   ...overrides,
 });
@@ -48,6 +49,7 @@ describe('ListTracesHandler', () => {
           id: 'photo-1',
           path: 'media/investigation-case/case-9/location-photos/photo-1.png',
           sha256: 'b'.repeat(64),
+          thumbPath: null,
           sealedAt: new Date('2026-07-01T11:00:00.000Z'),
         },
       }),
