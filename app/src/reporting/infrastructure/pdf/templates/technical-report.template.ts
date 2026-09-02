@@ -821,7 +821,7 @@ function journalSection(model: TechnicalReportViewModel): string {
   const rows = journalRows(journal);
 
   return `
-    <h2>Annexe C — Journal des actes</h2>
+    ${annexTitlePage('Annexe C — Journal des actes', model)}
     ${journalIntroduction(journal, model.caseHeader.caseNumber)}
     ${
       rows.length === 0

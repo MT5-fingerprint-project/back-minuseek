@@ -107,6 +107,23 @@ describe('StorageReportImageEmbedder', () => {
     expect(printed).toMatchObject({ width: 2102, height: 1720 });
   });
 
+  it('redresse une pièce couchée par son orientation EXIF', async () => {
+    const couchee = await sharp(gradient(2200, 1800), {
+      raw: { width: 2200, height: 1800, channels: 1 },
+    })
+      .withMetadata({ orientation: 8 })
+      .jpeg()
+      .toBuffer();
+    const embedder = new StorageReportImageEmbedder(storage(couchee));
+
+    const image = await embedder.embed('media/case-1/traces/trace-1.jpg', null);
+
+    expect(image).toMatchObject({ width: 1800, height: 2200 });
+    const printed = await sharp(decoded(image!.dataUrl)).metadata();
+    expect(printed.width).toBeLessThan(printed.height);
+    expect(printed.orientation ?? 1).toBe(1);
+  });
+
   it('laisse intacte la pièce qui tient déjà dans la planche', async () => {
     const embedder = new StorageReportImageEmbedder(storage(fittingPng));
 
@@ -121,6 +138,23 @@ describe('StorageReportImageEmbedder', () => {
     const image = await embedder.embed('media/case-1/traces/trace-1.png', null);
 
     expect(image).toMatchObject(OVER_PLATE);
+  });
+
+  it('rend null sur une pièce calibrée trop grande pour la planche', async () => {
+    const embedder = new StorageReportImageEmbedder(storage(overPlatePng));
+
+    await expect(
+      embedder.embed('media/case-1/traces/trace-1.png', 300),
+    ).resolves.toBeNull();
+  });
+
+  it('porte la taille imposée d’une pièce calibrée qui tient dans la planche', async () => {
+    const embedder = new StorageReportImageEmbedder(storage(overPlatePng));
+
+    const image = await embedder.embed('media/case-1/traces/trace-1.png', 600);
+
+    expect(image!.lifeSizeMm!.width).toBeCloseTo(93.13, 1);
+    expect(image!.lifeSizeMm!.height).toBeCloseTo(76.2, 1);
   });
 
   it('scelle le fichier conservé, pas la reproduction imprimée', async () => {

@@ -6,12 +6,8 @@ import {
   type ReportStoragePort,
 } from '../../application/ports/report-storage.port';
 import { ReportImageViewModel } from '../../application/report-view-model';
-import { readImageSize, type ImageSize } from './image-size';
-import {
-  resampleAtLifeSize,
-  resampleForPrint,
-  type PrintedImage,
-} from './print-resampling';
+import { readImageSize } from './image-size';
+import { prepareForPlate, type PrintedImage } from './print-resampling';
 
 const MIME_TYPES: Record<string, string> = {
   png: 'image/png',
@@ -50,28 +46,23 @@ export class StorageReportImageEmbedder implements ReportImageEmbedderPort {
     }
 
     const mimeType = mimeTypeOf(storedPath);
-    const size = readImageSize(bytes);
-    const printed =
-      size === null
-        ? null
-        : await this.printedCopy(
-            bytes,
-            size,
-            mimeType,
-            resolutionDpi,
-            storedPath,
-          );
-
+    const printed = await this.printedCopy(
+      bytes,
+      mimeType,
+      resolutionDpi,
+      storedPath,
+    );
     if (printed === null && resolutionDpi !== null) {
       return null;
     }
 
+    const stored = readImageSize(bytes);
     return {
-      // Les dimensions restent celles du fichier conservé : c'est le repère dans
-      // lequel les minuties sont relevées, et la planche y étire la reproduction.
       dataUrl: `data:${mimeType};base64,${(printed?.bytes ?? bytes).toString('base64')}`,
-      width: size?.width ?? null,
-      height: size?.height ?? null,
+      // Dimensions de la reproduction embarquée, orientation comprise : c'est le
+      // repère dans lequel la planche replace les minuties.
+      width: printed?.width ?? stored?.width ?? null,
+      height: printed?.height ?? stored?.height ?? null,
       // Empreinte du fichier conservé, jamais de la reproduction imprimée : c'est
       // elle que le chapitre intégrité confronte au registre.
       observedSha256: createHash('sha256').update(bytes).digest('hex'),
@@ -84,30 +75,18 @@ export class StorageReportImageEmbedder implements ReportImageEmbedderPort {
 
   private async printedCopy(
     bytes: Buffer,
-    size: ImageSize,
     mimeType: string,
     resolutionDpi: number | null,
     storedPath: string,
   ): Promise<PrintedImage | null> {
     try {
-      if (resolutionDpi !== null) {
-        const lifeSize = await resampleAtLifeSize(
-          bytes,
-          size,
-          mimeType,
-          resolutionDpi,
+      const printed = await prepareForPlate(bytes, mimeType, resolutionDpi);
+      if (printed === null && resolutionDpi !== null) {
+        this.logger.warn(
+          `Pièce non imprimée, sa taille réelle dépasse la planche: ${storedPath} (${resolutionDpi} dpi)`,
         );
-        if (lifeSize === null) {
-          this.logger.warn(
-            `Pièce non imprimée, sa taille réelle dépasse la planche: ${storedPath} (${resolutionDpi} dpi)`,
-          );
-        }
-        return lifeSize;
       }
-      const fitted = await resampleForPrint(bytes, size, mimeType);
-      return fitted === null
-        ? null
-        : { bytes: fitted, widthMm: null, heightMm: null };
+      return printed;
     } catch (error) {
       this.logger.warn(
         `Rééchantillonnage impossible: ${storedPath} (${String(error)})`,

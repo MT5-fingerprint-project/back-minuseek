@@ -1001,6 +1001,32 @@ const PLATE = {
   sealedAt: new Date('2026-08-16T17:03:00.000Z'),
 };
 
+describe('renderTechnicalReportHtml — séparation des annexes', () => {
+  it('ouvre l’annexe C sur sa propre page de titre, comme les autres annexes', () => {
+    const html = renderTechnicalReportHtml(
+      model({ annexA: [PLATE], annexB: [demonstration()] }),
+    );
+
+    const titles = [
+      ...html.matchAll(/<div class="annexe-titre">\s*<h2>([^<]+)</g),
+    ].map((match) => match[1]);
+    expect(titles).toEqual([
+      'Annexe A — Localisation des traces papillaires',
+      'Annexe B — Démonstrations d&#39;identité',
+      'Annexe C — Journal des actes',
+    ]);
+  });
+
+  it('rappelle le dossier et le procès-verbal sur la page de titre de l’annexe C', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    const opening = html.slice(
+      html.indexOf('Annexe C — Journal des actes') - 400,
+    );
+    expect(opening).toContain('Dossier 3455 — procès-verbal PV-2026-001');
+  });
+});
+
 describe('renderTechnicalReportHtml — annexe A', () => {
   it('ouvre l’annexe par sa page de titre, dossier et procès-verbal', () => {
     const html = renderTechnicalReportHtml(model({ annexA: [PLATE] }));
