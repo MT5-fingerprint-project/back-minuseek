@@ -1,5 +1,8 @@
 import { PrismaCaseReportDataReader } from '../../src/reporting/infrastructure/persistence/prisma-case-report-data.reader';
-import { discriminationOf, verdictsByTraceId } from '../../src/reporting/application/queries/build-report/trace-verdicts';
+import {
+  discriminationOf,
+  verdictsByTraceId,
+} from '../../src/reporting/application/queries/build-report/trace-verdicts';
 import {
   AuditChainHarness,
   openAuditChainHarness,

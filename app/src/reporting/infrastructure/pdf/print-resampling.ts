@@ -14,6 +14,7 @@ const SWAPS_AXES = 5;
 const UPRIGHT = 1;
 
 export interface PrintedImage {
+  bytes: Buffer;
   width: number;
   height: number;
   widthMm: number | null;

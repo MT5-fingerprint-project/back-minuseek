@@ -739,7 +739,9 @@ describe('renderTechnicalReportHtml — section 7', () => {
   it('imprime le préambule d’intégrité', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
 
-    expect(html).toContain('selon la méthode publique dite SHA-256');
+    expect(html).toContain(
+      'son empreinte numérique est inscrite au registre chronologique du laboratoire dans la même opération indivisible',
+    );
     expect(html).toContain(
       "Le logiciel ne comporte aucune fonction permettant de remplacer le fichier d'une pièce.",
     );
