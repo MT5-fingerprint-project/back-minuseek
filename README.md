@@ -153,6 +153,7 @@ make provision SLUG=demo2 NAME="Labo 2"
 | `make migrate-admin-setup`          | Crée `minuseek_admin` + migration initiale du registre                   |
 | `make migrate-admin NAME=<nom>`     | Crée + applique une migration sur le schéma admin                        |
 | `make migrate-reset`                | ⚠️ **DEV only, destructif** — remet la base à zéro et rejoue les migrations |
+| `make backfill-thumbnails TENANT_DB=<base>` | Fabrique la vignette d'affichage des images déposées avant la colonne `thumbPath` (rejouable) |
 
 Exemple :
 
