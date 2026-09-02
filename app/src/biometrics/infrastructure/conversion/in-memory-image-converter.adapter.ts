@@ -12,4 +12,11 @@ export class InMemoryImageConverter implements ImageConverterPort {
     }
     return Promise.resolve(Buffer.concat([Buffer.from('png:'), tiff]));
   }
+
+  toDisplayThumbnail(source: Buffer): Promise<Buffer> {
+    if (source.toString().includes('invalid')) {
+      return Promise.reject(new InvalidImageError());
+    }
+    return Promise.resolve(Buffer.concat([Buffer.from('thumb:'), source]));
+  }
 }
