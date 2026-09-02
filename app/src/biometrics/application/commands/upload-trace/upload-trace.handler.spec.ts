@@ -418,6 +418,9 @@ describe('UploadTraceHandler', () => {
     expect(
       storage.getSaved('investigation-case/case-9/traces/trace-123.png'),
     ).toBeUndefined();
+    expect(
+      storage.getSaved('investigation-case/case-9/traces/trace-123_thumb.webp'),
+    ).toBeUndefined();
   });
 
   it('keeps the upload when the compensating delete itself fails', async () => {
@@ -648,6 +651,14 @@ describe('UploadTraceHandler', () => {
         storage.getSaved('investigation-case/case-9/traces/trace-123.png'),
       ).toBeUndefined();
       expect(storage.getSaved(PHOTO_KEY)).toBeUndefined();
+      expect(
+        storage.getSaved(
+          'investigation-case/case-9/traces/trace-123_thumb.webp',
+        ),
+      ).toBeUndefined();
+      expect(
+        storage.getSaved(PHOTO_KEY.replace('.png', '_thumb.webp')),
+      ).toBeUndefined();
     });
   });
 

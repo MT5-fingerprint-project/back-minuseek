@@ -45,7 +45,7 @@ export class ReferencePrint {
     private _withdrawal: Withdrawal | null,
     private _imageDestroyedAt: Date | null,
     private _resolution: ImageResolution | null,
-    private readonly _thumbPath: string | null,
+    private _thumbPath: string | null,
   ) {}
 
   static create(props: CreateReferencePrintProps): ReferencePrint {
@@ -107,6 +107,10 @@ export class ReferencePrint {
       throw new ReferencePrintImageAlreadyDestroyedError(this._id);
     }
     this._imageDestroyedAt = destroyedAt;
+    // La colonne ne peut pas continuer d'annoncer une vignette supprimée : le
+    // prochain lecteur qui oublierait la garde signerait une URL sur un objet
+    // effacé.
+    this._thumbPath = null;
   }
 
   withdraw(motive: string, at: Date, motiveDetail?: string | null): void {

@@ -14,6 +14,8 @@ const CASE_ID = 'case-1';
 const FAMILIAR_KEY = 'investigation-case/case-1/reference-prints/familiar.png';
 const FAMILIAR_ARCHIVE =
   'investigation-case/case-1/reference-prints/familiar_original.tif';
+const FAMILIAR_THUMB =
+  'investigation-case/case-1/reference-prints/familiar_thumb.webp';
 
 class SeededFamiliarReader implements FamiliarReferencePrintReader {
   constructor(private readonly repo: InMemoryReferencePrintRepository) {}
@@ -57,6 +59,7 @@ describe('FamiliarPrintDestructionService', () => {
     id: string,
     subjectId: string | null,
     key: string,
+    thumbPath: string | null = null,
   ): ReferencePrint =>
     ReferencePrint.create({
       id,
@@ -65,6 +68,7 @@ describe('FamiliarPrintDestructionService', () => {
       sha256: ANY_SEAL,
       subjectId,
       position: FingerPosition.from('RIGHT_INDEX'),
+      thumbPath,
     });
 
   const build = (withStorage: InMemoryImageStorageAdapter = storage) =>
@@ -79,7 +83,9 @@ describe('FamiliarPrintDestructionService', () => {
     repo = new InMemoryReferencePrintRepository(auditTrail);
     storage = new InMemoryImageStorageAdapter();
 
-    repo.seed(print('familiar-1', 'familier', FAMILIAR_KEY));
+    repo.seed(
+      print('familiar-1', 'familier', FAMILIAR_KEY, `media/${FAMILIAR_THUMB}`),
+    );
     repo.seed(
       print(
         'suspect-1',
@@ -96,6 +102,7 @@ describe('FamiliarPrintDestructionService', () => {
     );
     await storage.save(Buffer.from('familier'), FAMILIAR_KEY);
     await storage.save(Buffer.from('tif'), FAMILIAR_ARCHIVE);
+    await storage.save(Buffer.from('webp'), FAMILIAR_THUMB);
     await storage.save(
       Buffer.from('suspect'),
       'investigation-case/case-1/reference-prints/suspect.png',
@@ -116,6 +123,28 @@ describe('FamiliarPrintDestructionService', () => {
         'investigation-case/case-1/reference-prints/suspect.png',
       ),
     ).toBeDefined();
+  });
+
+  it('détruit la vignette avec l’image qu’elle montre', async () => {
+    await build().destroyForCase(CASE_ID, EXPERT_ACTOR);
+
+    expect(storage.getSaved(FAMILIAR_THUMB)).toBeUndefined();
+  });
+
+  it('efface la colonne qui annonçait la vignette', async () => {
+    await build().destroyForCase(CASE_ID, EXPERT_ACTOR);
+
+    expect((await repo.findById('familiar-1'))?.thumbPath).toBeNull();
+  });
+
+  it('supprime la vignette même quand la colonne ne la connaît pas', async () => {
+    const orphanKey = 'investigation-case/case-1/reference-prints/familiar-2';
+    repo.seed(print('familiar-2', 'familier', `${orphanKey}.png`, null));
+    await storage.save(Buffer.from('webp'), `${orphanKey}_thumb.webp`);
+
+    await build().destroyForCase(CASE_ID, EXPERT_ACTOR);
+
+    expect(storage.getSaved(`${orphanKey}_thumb.webp`)).toBeUndefined();
   });
 
   it('laisse la fiche en base, marquée de sa date de destruction', async () => {
@@ -171,7 +200,7 @@ describe('FamiliarPrintDestructionService', () => {
       ),
     );
     const failure = new Error('stockage injoignable');
-    const failing = new FailingStorage(3, failure);
+    const failing = new FailingStorage(4, failure);
 
     await expect(
       build(failing).destroyForCase(CASE_ID, EXPERT_ACTOR),

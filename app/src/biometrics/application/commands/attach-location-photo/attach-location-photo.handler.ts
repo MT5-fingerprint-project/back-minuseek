@@ -32,6 +32,7 @@ import {
   archivedOriginalPath,
   detectImageMimeType,
   storeDisplayableImage,
+  thumbnailPath,
 } from '../../services/displayable-image';
 import { AttachLocationPhotoCommand } from './attach-location-photo.command';
 
@@ -123,6 +124,7 @@ export class AttachLocationPhotoHandler implements ICommandHandler<
       if (archived) {
         await this.discardStoredFile(archived);
       }
+      await this.discardStoredFile(thumbnailPath(stored.path));
       throw error;
     }
 

@@ -1,4 +1,5 @@
 import { ReferencePrint } from './reference-print';
+import { ReferencePrintImageAlreadyDestroyedError } from '../errors/reference-print-image-already-destroyed.error';
 import { FileDigest, InvalidFileDigestError } from '../../file-digest.vo';
 import { InvalidImageResolutionError } from '../../image-resolution.vo';
 import { FingerPosition } from '../value-objects/finger-position.vo';
@@ -139,6 +140,46 @@ describe('ReferencePrint', () => {
       const reloaded = ReferencePrint.reconstitute(print.toPrimitives());
 
       expect(reloaded.thumbPath).toBe(thumbPath);
+    });
+
+    const printWithThumbnail = () =>
+      ReferencePrint.create({
+        id: 'rp-1',
+        path: 'media/case-9/reference-prints/rp-1.png',
+        caseId: 'case-9',
+        sha256: seal(),
+        displayableSha256: seal(),
+        thumbPath: THUMB,
+      });
+
+    it('forgets its thumbnail when the image is destroyed', () => {
+      const print = printWithThumbnail();
+
+      print.markImageDestroyed(new Date('2026-09-01T10:00:00.000Z'));
+
+      expect(print.thumbPath).toBeNull();
+      expect(print.toPrimitives().thumbPath).toBeNull();
+    });
+
+    it('keeps the thumbnail of a piece that is only withdrawn', () => {
+      const print = printWithThumbnail();
+
+      print.withdraw('DUPLICATE', WITHDRAWN_AT);
+
+      expect(print.thumbPath).toBe(THUMB);
+    });
+
+    it('refuses a second destruction and leaves the erased column alone', () => {
+      const print = printWithThumbnail();
+      print.markImageDestroyed(new Date('2026-09-01T10:00:00.000Z'));
+
+      expect(() =>
+        print.markImageDestroyed(new Date('2026-09-02T10:00:00.000Z')),
+      ).toThrow(ReferencePrintImageAlreadyDestroyedError);
+      expect(print.imageDestroyedAt).toEqual(
+        new Date('2026-09-01T10:00:00.000Z'),
+      );
+      expect(print.thumbPath).toBeNull();
     });
   });
 

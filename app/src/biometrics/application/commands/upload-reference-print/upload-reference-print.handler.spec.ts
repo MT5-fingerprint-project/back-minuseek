@@ -285,6 +285,11 @@ describe('UploadReferencePrintHandler', () => {
         'investigation-case/case-9/reference-prints/ref-456_original.tif',
       ),
     ).toBeUndefined();
+    expect(
+      storage.getSaved(
+        'investigation-case/case-9/reference-prints/ref-456_thumb.webp',
+      ),
+    ).toBeUndefined();
   });
 
   it('keeps the upload when the compensating delete itself fails', async () => {

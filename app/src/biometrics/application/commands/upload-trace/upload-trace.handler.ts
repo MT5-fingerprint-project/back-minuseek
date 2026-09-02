@@ -47,6 +47,7 @@ import {
   detectImageMimeType,
   StoredImage,
   storeDisplayableImage,
+  thumbnailPath,
 } from '../../services/displayable-image';
 import { CaseAccessService } from '../../../../access/application/case-access.service';
 import { UploadTraceCommand } from './upload-trace.command';
@@ -247,6 +248,7 @@ export class UploadTraceHandler implements ICommandHandler<
     if (archived) {
       await this.discardStoredFile(archived);
     }
+    await this.discardStoredFile(thumbnailPath(image.path));
   }
 
   private async discardStoredFile(storedPath: string): Promise<void> {

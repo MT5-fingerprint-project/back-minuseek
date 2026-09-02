@@ -166,5 +166,8 @@ describe('AttachLocationPhotoHandler', () => {
     await expect(attach()).rejects.toBe(failure);
 
     expect(storage.getSaved(PHOTO_KEY)).toBeUndefined();
+    expect(
+      storage.getSaved(PHOTO_KEY.replace('.png', '_thumb.webp')),
+    ).toBeUndefined();
   });
 });

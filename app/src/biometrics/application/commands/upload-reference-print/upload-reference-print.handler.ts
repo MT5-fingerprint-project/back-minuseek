@@ -31,6 +31,7 @@ import {
   archivedOriginalPath,
   detectImageMimeType,
   storeDisplayableImage,
+  thumbnailPath,
 } from '../../services/displayable-image';
 import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
 import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
@@ -116,6 +117,7 @@ export class UploadReferencePrintHandler implements ICommandHandler<
       if (archived) {
         await this.discardStoredFile(archived);
       }
+      await this.discardStoredFile(thumbnailPath(stored.path));
       throw error;
     }
 
