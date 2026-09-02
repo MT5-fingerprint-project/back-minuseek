@@ -48,6 +48,7 @@ export type TraceView = Omit<
   'status' | 'identified' | 'notIdentified'
 > & {
   url: string;
+  thumbUrl: string | null;
   status: string | null;
   identified: boolean | null;
   notIdentified: boolean | null;
@@ -56,6 +57,7 @@ export type TraceView = Omit<
 export interface TraceLocationPhotoView {
   id: string;
   url: string;
+  thumbUrl: string | null;
   sha256: string;
   sealedAt: Date;
 }

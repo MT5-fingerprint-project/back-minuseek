@@ -74,6 +74,7 @@ describe('AttachLocationPhotoHandler', () => {
     expect(attached).toEqual({
       id: 'photo-1',
       url: `/media/${PHOTO_KEY}`,
+      thumbUrl: `/media/${PHOTO_KEY.replace('.png', '_thumb.webp')}`,
       sealedAt: auditTrail.events[0].occurredAt,
     });
     expect(storage.getSaved(PHOTO_KEY)?.equals(photoBuffer)).toBe(true);

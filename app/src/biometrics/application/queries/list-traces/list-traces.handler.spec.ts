@@ -84,6 +84,39 @@ describe('ListTracesHandler', () => {
     );
   });
 
+  it('signe l’adresse de la vignette de chaque trace', async () => {
+    const reader = new InMemoryTraceReader([
+      traceRow({
+        thumbPath: 'media/investigation-case/case-9/traces/trace-1_thumb.webp',
+      }),
+    ]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0].thumbUrl).toBe(
+      '/media/investigation-case/case-9/traces/trace-1_thumb.webp',
+    );
+  });
+
+  it('ne signe aucune vignette quand la trace n’en porte pas', async () => {
+    const reader = new InMemoryTraceReader([traceRow()]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0].thumbUrl).toBeNull();
+    expect(data[0].url).toBe(
+      '/media/investigation-case/case-9/traces/trace-1.png',
+    );
+  });
+
   it('exposes the capture metadata of each trace', async () => {
     const reader = new InMemoryTraceReader([
       traceRow({

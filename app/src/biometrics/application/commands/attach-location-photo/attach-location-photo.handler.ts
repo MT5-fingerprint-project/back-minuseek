@@ -38,6 +38,7 @@ import { AttachLocationPhotoCommand } from './attach-location-photo.command';
 export interface AttachedLocationPhoto {
   id: string;
   url: string;
+  thumbUrl: string | null;
   sealedAt: Date;
 }
 
@@ -125,7 +126,11 @@ export class AttachLocationPhotoHandler implements ICommandHandler<
       throw error;
     }
 
-    return { id, url: await this.storage.getUrl(stored.path), sealedAt };
+    const [url, thumbUrl] = await Promise.all([
+      this.storage.getUrl(stored.path),
+      stored.thumbPath === null ? null : this.storage.getUrl(stored.thumbPath),
+    ]);
+    return { id, url, thumbUrl, sealedAt };
   }
 
   private async discardStoredFile(storedPath: string): Promise<void> {

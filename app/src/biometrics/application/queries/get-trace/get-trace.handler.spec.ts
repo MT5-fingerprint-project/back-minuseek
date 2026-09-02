@@ -85,9 +85,58 @@ describe('GetTraceHandler', () => {
     expect(trace?.locationPhoto).toEqual({
       id: 'photo-1',
       url: '/media/investigation-case/case-9/location-photos/photo-1.png',
+      thumbUrl: null,
       sha256: 'b'.repeat(64),
       sealedAt,
     });
+  });
+
+  it('signe l’adresse de la vignette de la trace', async () => {
+    const handler = handlerOver(
+      new InMemoryTraceReader([
+        traceRow({
+          thumbPath:
+            'media/investigation-case/case-9/traces/trace-1_thumb.webp',
+        }),
+      ]),
+    );
+
+    const trace = await handler.execute(new GetTraceQuery('trace-1'));
+
+    expect(trace?.thumbUrl).toBe(
+      '/media/investigation-case/case-9/traces/trace-1_thumb.webp',
+    );
+  });
+
+  it('ne signe aucune vignette quand la trace n’en porte pas', async () => {
+    const handler = handlerOver(new InMemoryTraceReader([traceRow()]));
+
+    const trace = await handler.execute(new GetTraceQuery('trace-1'));
+
+    expect(trace?.thumbUrl).toBeNull();
+  });
+
+  it('signe l’adresse de la vignette de la photographie de localisation', async () => {
+    const handler = handlerOver(
+      new InMemoryTraceReader([
+        traceRow({
+          locationPhoto: {
+            id: 'photo-1',
+            path: 'media/investigation-case/case-9/location-photos/photo-1.png',
+            sha256: 'b'.repeat(64),
+            thumbPath:
+              'media/investigation-case/case-9/location-photos/photo-1_thumb.webp',
+            sealedAt: new Date('2026-07-01T11:00:00.000Z'),
+          },
+        }),
+      ]),
+    );
+
+    const trace = await handler.execute(new GetTraceQuery('trace-1'));
+
+    expect(trace?.locationPhoto?.thumbUrl).toBe(
+      '/media/investigation-case/case-9/location-photos/photo-1_thumb.webp',
+    );
   });
 
   it("rend une photographie nulle quand la trace n'en porte aucune", async () => {

@@ -150,6 +150,7 @@ describe('UploadReferencePrintHandler', () => {
       id: 'ref-456',
       path: STORED_PATH,
       url: `/${STORED_PATH}`,
+      thumbUrl: `/${STORED_PATH.replace('.png', '_thumb.webp')}`,
     });
 
     const saved = await repo.findById('ref-456');
