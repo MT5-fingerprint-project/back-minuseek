@@ -76,6 +76,7 @@ export class UploadReferencePrintHandler implements ICommandHandler<
       this.converter,
       cmd.fileBuffer,
       `investigation-case/${cmd.caseId}/reference-prints/${id}`,
+      this.logger,
     );
 
     const referencePrint = ReferencePrint.create({

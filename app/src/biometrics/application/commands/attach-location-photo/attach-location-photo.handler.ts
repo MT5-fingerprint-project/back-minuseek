@@ -87,6 +87,7 @@ export class AttachLocationPhotoHandler implements ICommandHandler<
       this.converter,
       cmd.fileBuffer,
       `investigation-case/${trace.caseId}/location-photos/${id}`,
+      this.logger,
     );
 
     const photo = TraceLocationPhoto.attach({

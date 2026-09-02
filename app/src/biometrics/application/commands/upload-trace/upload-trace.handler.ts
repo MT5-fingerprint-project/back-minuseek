@@ -109,6 +109,7 @@ export class UploadTraceHandler implements ICommandHandler<
       this.converter,
       cmd.fileBuffer,
       `investigation-case/${cmd.caseId}/traces/${id}`,
+      this.logger,
     );
 
     let locationPhoto: {
@@ -127,6 +128,7 @@ export class UploadTraceHandler implements ICommandHandler<
             this.converter,
             locationPhotoBuffer,
             `investigation-case/${cmd.caseId}/location-photos/${locationPhotoId}`,
+            this.logger,
           ),
           sizeBytes: locationPhotoBuffer.length,
           mimeType: locationPhotoMimeType,

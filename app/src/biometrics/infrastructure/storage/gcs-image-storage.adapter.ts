@@ -25,6 +25,8 @@ function contentTypeFor(key: string): string {
     case 'tif':
     case 'tiff':
       return 'image/tiff';
+    case 'webp':
+      return 'image/webp';
     default:
       return 'application/octet-stream';
   }

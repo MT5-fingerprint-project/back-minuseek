@@ -34,6 +34,17 @@ describe('GcsImageStorageAdapter', () => {
     expect(key).toBe('media/traces/abc.png');
   });
 
+  it('save() infers image/webp for a display thumbnail', async () => {
+    const adapter = new GcsImageStorageAdapter('minuseek-media-dev', 900);
+
+    await adapter.save(Buffer.from('x'), 'traces/abc_thumb.webp');
+
+    expect(mockSave).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      expect.objectContaining({ contentType: 'image/webp' }),
+    );
+  });
+
   it('save() refuses to overwrite an existing key', async () => {
     const adapter = new GcsImageStorageAdapter('minuseek-media-dev', 900);
 
