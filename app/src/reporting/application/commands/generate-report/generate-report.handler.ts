@@ -72,7 +72,10 @@ import {
   TRACEABILITY_DATA_READER,
   type TraceabilityDataReader,
 } from '../../ports/traceability-data.reader';
-import { printedImagePaths } from '../../queries/build-report/printed-pieces';
+import {
+  printedImages,
+  type PrintedImageRequest,
+} from '../../queries/build-report/printed-pieces';
 import { buildTechnicalReport } from '../../queries/build-report/technical-report.builder';
 import { buildTraceabilityReport } from '../../queries/build-report/traceability-report.builder';
 import { ReportImageViewModel, ReportViewModel } from '../../report-view-model';
@@ -221,7 +224,7 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
     if (command.type === 'TECHNICAL') {
       const [images, chainEvents, anchors, contributors, attestation] =
         await Promise.all([
-          this.imagesOf(printedImagePaths(data)),
+          this.imagesOf(printedImages(data)),
           this.traceabilityData.readCaseEvents(command.caseId),
           this.traceabilityData.readAnchors(),
           this.contributors.read(command.caseId),
@@ -269,11 +272,15 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
   }
 
   private async imagesOf(
-    paths: string[],
+    requests: PrintedImageRequest[],
   ): Promise<Map<string, ReportImageViewModel | null>> {
     const entries = await Promise.all(
-      paths.map(
-        async (path) => [path, await this.imageEmbedder.embed(path)] as const,
+      requests.map(
+        async (request) =>
+          [
+            request.key,
+            await this.imageEmbedder.embed(request.path, request.resolutionDpi),
+          ] as const,
       ),
     );
     return new Map(entries);

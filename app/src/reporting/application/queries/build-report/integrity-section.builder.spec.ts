@@ -22,6 +22,7 @@ function read(observedSha256: string | null) {
             width: 800,
             height: 1200,
             observedSha256,
+            lifeSizeMm: null,
           },
     ],
   ]);
@@ -70,6 +71,7 @@ function trace(overrides: Partial<PieceData> = {}): PieceData {
     revelationTechnique: null,
     cote: 'B',
     notIdentifiedAt: null,
+    resolutionDpi: null,
     locationPhoto: null,
     ...overrides,
   };

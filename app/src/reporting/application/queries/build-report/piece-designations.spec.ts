@@ -29,6 +29,7 @@ function piece(overrides: Partial<PieceData> & { id: string }): PieceData {
     revelationTechnique: null,
     cote: null,
     notIdentifiedAt: null,
+    resolutionDpi: null,
     locationPhoto: null,
     ...overrides,
   };

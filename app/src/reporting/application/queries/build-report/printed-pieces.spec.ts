@@ -3,7 +3,12 @@ import type {
   DeclaredHitData,
   PieceData,
 } from '../../ports/case-report-data.reader';
-import { printedImagePaths, printedPieces } from './printed-pieces';
+import {
+  lifeSizeKey,
+  locatedTraces,
+  printedImages,
+  printedPieces,
+} from './printed-pieces';
 
 const AT = new Date('2026-08-01T09:00:00.000Z');
 
@@ -29,6 +34,7 @@ function piece(overrides: Partial<PieceData> & { id: string }): PieceData {
     revelationTechnique: null,
     cote: 'A',
     notIdentifiedAt: null,
+    resolutionDpi: null,
     locationPhoto: null,
     ...overrides,
   };
@@ -160,49 +166,116 @@ const LOCATION_PHOTO = {
   sealedAt: AT,
 };
 
-describe('printedImagePaths', () => {
-  it('embarque la photographie de localisation d’une trace identifiée', () => {
-    expect(
-      printedImagePaths(
-        caseData({
-          traces: [piece({ id: 't1', locationPhoto: LOCATION_PHOTO })],
-          referencePrints: [piece({ id: 'ref-1', status: null, cote: null })],
-          declaredHits: [hit()],
-        }),
-      ),
-    ).toEqual([
-      'media/case-1/t1.png',
-      'media/case-1/ref-1.png',
-      LOCATION_PHOTO.path,
-    ]);
+describe('printedImages', () => {
+  function keysOf(data: Parameters<typeof printedImages>[0]): string[] {
+    return printedImages(data).map((request) => request.key);
+  }
+
+  it('embarque la photographie de localisation de toute trace exploitable photographiée', () => {
+    const keys = keysOf(
+      caseData({
+        traces: [piece({ id: 't1', locationPhoto: LOCATION_PHOTO })],
+      }),
+    );
+
+    expect(keys).toContain(LOCATION_PHOTO.path);
   });
 
-  it('n’embarque pas la photographie d’une trace exploitable que personne n’a identifiée', () => {
-    expect(
-      printedImagePaths(
-        caseData({
-          traces: [piece({ id: 't1', locationPhoto: LOCATION_PHOTO })],
-        }),
-      ),
-    ).toEqual(['media/case-1/t1.png']);
-  });
+  it('embarque en plus la trace à l’échelle 1 quand elle est calibrée', () => {
+    const keys = keysOf(
+      caseData({
+        traces: [
+          piece({
+            id: 't1',
+            locationPhoto: LOCATION_PHOTO,
+            resolutionDpi: 3555,
+          }),
+        ],
+      }),
+    );
 
-  it('n’embarque pas la photographie d’une trace retirée du dossier', () => {
+    expect(keys).toContain(lifeSizeKey('media/case-1/t1.png'));
     expect(
-      printedImagePaths(
+      printedImages(
         caseData({
           traces: [
             piece({
               id: 't1',
-              withdrawnAt: AT,
-              withdrawalMotive: 'MISFILED',
               locationPhoto: LOCATION_PHOTO,
+              resolutionDpi: 3555,
             }),
           ],
-          referencePrints: [piece({ id: 'ref-1', status: null, cote: null })],
-          declaredHits: [hit()],
         }),
-      ),
-    ).not.toContain(LOCATION_PHOTO.path);
+      ).find((request) => request.key === lifeSizeKey('media/case-1/t1.png')),
+    ).toMatchObject({ path: 'media/case-1/t1.png', resolutionDpi: 3555 });
+  });
+
+  it('n’embarque aucune échelle 1 pour une trace non calibrée', () => {
+    const keys = keysOf(
+      caseData({
+        traces: [
+          piece({
+            id: 't1',
+            locationPhoto: LOCATION_PHOTO,
+            resolutionDpi: null,
+          }),
+        ],
+      }),
+    );
+
+    expect(keys).not.toContain(lifeSizeKey('media/case-1/t1.png'));
+  });
+
+  it('n’embarque pas la photographie d’une trace retirée du dossier', () => {
+    const keys = keysOf(
+      caseData({
+        traces: [
+          piece({
+            id: 't1',
+            withdrawnAt: AT,
+            withdrawalMotive: 'MISFILED',
+            locationPhoto: LOCATION_PHOTO,
+            resolutionDpi: 3555,
+          }),
+        ],
+      }),
+    );
+
+    expect(keys).not.toContain(LOCATION_PHOTO.path);
+    expect(keys).not.toContain(lifeSizeKey('media/case-1/t1.png'));
+  });
+
+  it('demande les pièces de l’inventaire sans échelle imposée', () => {
+    const requests = printedImages(
+      caseData({
+        traces: [piece({ id: 't1', resolutionDpi: 3555 })],
+      }),
+    );
+
+    expect(requests).toContainEqual({
+      key: 'media/case-1/t1.png',
+      path: 'media/case-1/t1.png',
+      resolutionDpi: null,
+    });
+  });
+});
+
+describe('locatedTraces', () => {
+  it('ne retient que les traces exploitables, cotées et photographiées', () => {
+    const data = caseData({
+      traces: [
+        piece({ id: 'photographiee', locationPhoto: LOCATION_PHOTO }),
+        piece({ id: 'sans-photo' }),
+        piece({
+          id: 'non-exploitable',
+          status: 'RECEIVED',
+          locationPhoto: LOCATION_PHOTO,
+        }),
+      ],
+    });
+
+    expect(locatedTraces(data).map((trace) => trace.id)).toEqual([
+      'photographiee',
+    ]);
   });
 });

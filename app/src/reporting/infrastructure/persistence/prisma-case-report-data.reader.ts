@@ -31,6 +31,8 @@ interface PieceRow {
   origin?: string | null;
   location?: string | null;
   revelationTechnique?: string | null;
+  notIdentifiedAt?: Date | null;
+  resolutionDpi?: number | null;
   locationPhoto?: { path: string; sha256: string; createdAt: Date } | null;
 }
 
@@ -109,7 +111,8 @@ function toPiece(
     location: row.location ?? null,
     revelationTechnique: row.revelationTechnique ?? null,
     cote,
-    notIdentifiedAt: null,
+    notIdentifiedAt: row.notIdentifiedAt ?? null,
+    resolutionDpi: row.resolutionDpi ?? null,
     locationPhoto: toLocationPhoto(row),
   };
 }

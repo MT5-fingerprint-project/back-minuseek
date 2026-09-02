@@ -77,6 +77,7 @@ export interface PieceData {
   revelationTechnique: string | null;
   cote: string | null;
   notIdentifiedAt: Date | null;
+  resolutionDpi: number | null;
   locationPhoto: LocationPhotoData | null;
 }
 

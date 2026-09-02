@@ -27,7 +27,7 @@ import {
 import { escapeHtml } from '../html';
 import { toRoman } from '../roman-numerals';
 import { renderLetterhead } from './letterhead-block';
-import { renderPlate } from './plate-block';
+import { renderLocationPlate, renderPlate } from './plate-block';
 import { REPORT_STYLES } from './report-styles';
 import { REVELATION_TECHNIQUE_TEXTS } from './revelation-techniques';
 
@@ -217,7 +217,7 @@ function summarySection(model: TechnicalReportViewModel): string {
   const annexes = [
     model.annexA.length === 0
       ? null
-      : 'Annexe A — Inventaire des traces papillaires exploitables',
+      : 'Annexe A — Localisation des traces papillaires',
     model.annexB.length === 0 ? null : "Annexe B — Démonstrations d'identité",
     'Annexe C — Journal des actes',
     model.verifications.length === 0
@@ -265,11 +265,10 @@ function annexASection(model: TechnicalReportViewModel): string {
   }
   const plates = model.annexA
     .map((plate, order) =>
-      renderPlate({
+      renderLocationPlate({
         title: `Planche ${toRoman(order + 1)}`,
-        subtitle: null,
-        image: plate.image,
-        marks: [],
+        locationPhoto: plate.locationPhoto,
+        trace: plate.trace,
         cote: plate.cote,
         caption: locationCaption(plate.cote, plate.location),
       }),
@@ -277,10 +276,7 @@ function annexASection(model: TechnicalReportViewModel): string {
     .join('');
 
   return `
-    ${annexTitlePage(
-      'Annexe A — Inventaire des traces papillaires exploitables',
-      model,
-    )}
+    ${annexTitlePage('Annexe A — Localisation des traces papillaires', model)}
     ${plates}`;
 }
 
@@ -317,22 +313,6 @@ function annexBSection(model: TechnicalReportViewModel): string {
       )}`;
       const marked = demonstration.trace.marks.length;
       const pages: string[] = [];
-
-      if (demonstration.localisationPhoto !== null) {
-        pages.push(
-          renderPlate({
-            title: `Planche ${toRoman(++rank)} — localisation`,
-            subtitle,
-            image: demonstration.localisationPhoto,
-            marks: [],
-            cote: demonstration.cote,
-            caption: locationCaption(
-              demonstration.cote,
-              demonstration.location,
-            ),
-          }),
-        );
-      }
 
       pages.push(
         renderPlate({
@@ -580,9 +560,11 @@ function comparisonsSection(model: TechnicalReportViewModel): string {
 }
 
 const INTEGRITY_PREAMBLE = [
-  "Les images de ce dossier sont conservées dans l'état où elles ont été reçues. Au moment du dépôt, chaque fichier est enregistré sous une désignation qui lui est propre, et son empreinte numérique — le résultat d'un calcul portant sur l'intégralité de son contenu, selon la méthode publique dite SHA-256 — est inscrite au registre chronologique du laboratoire dans la même opération indivisible. Deux fichiers différents, ne serait-ce que d'un point, donnent deux empreintes différentes ; l'empreinte, elle, ne permet pas de reconstituer l'image.",
+  "Les images de ce dossier sont conservées dans l'état où elles ont été reçues. Au moment du dépôt, chaque fichier est enregistré sous une désignation qui lui est propre, et son empreinte numérique est inscrite au registre chronologique du laboratoire dans la même opération indivisible. Deux fichiers différents, ne serait-ce que d'un point, donnent deux empreintes différentes ; l'empreinte, elle, ne permet pas de reconstituer l'image.",
   "Le logiciel ne comporte aucune fonction permettant de remplacer le fichier d'une pièce. L'enregistrement est refusé si la désignation est déjà occupée, et aucune commande de l'application ne modifie ni le fichier, ni l'empreinte inscrite. Une pièce peut être retirée du dossier, et ce retrait est lui-même inscrit au registre ; elle ne peut pas être échangée contre une autre.",
-  "Les traitements destinés à améliorer la lisibilité — luminosité, contraste, saturation, rotation, inversion, effet miroir — ne sont pas appliqués au fichier. Ils sont enregistrés comme des réglages, avec leur valeur, la date à laquelle ils ont été posés et le nom de l'agent qui les a posés, puis rejoués à l'écran par-dessus l'image reçue. Il en va de même des repères tracés par l'expert. L'affirmation selon laquelle ces opérations n'ont pas modifié le contenu de l'image d'origine n'est donc pas ici une déclaration de l'opérateur : elle se contrôle en recalculant l'empreinte numérique du fichier, qui doit rendre exactement la valeur imprimée ci-dessous.",
+  "Les traitements effectués ne sont destinés qu'à améliorer la lisibilité. Ils ne sont pas appliqués au fichier original. Les modifications apportées sont enregistrées sous forme de réglages, avec leur valeur, la date à laquelle ils ont été posés et le nom de l'agent qui les a posés.",
+  'Les images originales sont fournies en pièce jointe du présent rapport.Elles peuvent être communiquées à toute autorité judiciaire ou administrative sur demande.',
+
   "Le registre chronologique est en écriture seule : la base de données refuse la modification comme la suppression d'une inscription déjà faite, et chaque inscription reprend l'empreinte de la précédente, de sorte qu'une inscription retouchée rendrait toutes les suivantes incohérentes. Les dates ci-dessous sont exprimées en temps universel (UTC).",
 ];
 

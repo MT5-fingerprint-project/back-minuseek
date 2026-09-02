@@ -6,7 +6,12 @@ import {
   type ReportStoragePort,
 } from '../../application/ports/report-storage.port';
 import { ReportImageViewModel } from '../../application/report-view-model';
-import { readImageSize } from './image-size';
+import { readImageSize, type ImageSize } from './image-size';
+import {
+  resampleAtLifeSize,
+  resampleForPrint,
+  type PrintedImage,
+} from './print-resampling';
 
 const MIME_TYPES: Record<string, string> = {
   png: 'image/png',
@@ -30,7 +35,10 @@ export class StorageReportImageEmbedder implements ReportImageEmbedderPort {
     private readonly storage: ReportStoragePort,
   ) {}
 
-  async embed(storedPath: string): Promise<ReportImageViewModel | null> {
+  async embed(
+    storedPath: string,
+    resolutionDpi: number | null,
+  ): Promise<ReportImageViewModel | null> {
     let bytes: Buffer;
     try {
       bytes = await this.storage.read(storedPath);
@@ -41,12 +49,70 @@ export class StorageReportImageEmbedder implements ReportImageEmbedderPort {
       return null;
     }
 
+    const mimeType = mimeTypeOf(storedPath);
     const size = readImageSize(bytes);
+    const printed =
+      size === null
+        ? null
+        : await this.printedCopy(
+            bytes,
+            size,
+            mimeType,
+            resolutionDpi,
+            storedPath,
+          );
+
+    if (printed === null && resolutionDpi !== null) {
+      return null;
+    }
+
     return {
-      dataUrl: `data:${mimeTypeOf(storedPath)};base64,${bytes.toString('base64')}`,
+      // Les dimensions restent celles du fichier conservé : c'est le repère dans
+      // lequel les minuties sont relevées, et la planche y étire la reproduction.
+      dataUrl: `data:${mimeType};base64,${(printed?.bytes ?? bytes).toString('base64')}`,
       width: size?.width ?? null,
       height: size?.height ?? null,
+      // Empreinte du fichier conservé, jamais de la reproduction imprimée : c'est
+      // elle que le chapitre intégrité confronte au registre.
       observedSha256: createHash('sha256').update(bytes).digest('hex'),
+      lifeSizeMm:
+        printed?.widthMm != null && printed.heightMm != null
+          ? { width: printed.widthMm, height: printed.heightMm }
+          : null,
     };
+  }
+
+  private async printedCopy(
+    bytes: Buffer,
+    size: ImageSize,
+    mimeType: string,
+    resolutionDpi: number | null,
+    storedPath: string,
+  ): Promise<PrintedImage | null> {
+    try {
+      if (resolutionDpi !== null) {
+        const lifeSize = await resampleAtLifeSize(
+          bytes,
+          size,
+          mimeType,
+          resolutionDpi,
+        );
+        if (lifeSize === null) {
+          this.logger.warn(
+            `Pièce non imprimée, sa taille réelle dépasse la planche: ${storedPath} (${resolutionDpi} dpi)`,
+          );
+        }
+        return lifeSize;
+      }
+      const fitted = await resampleForPrint(bytes, size, mimeType);
+      return fitted === null
+        ? null
+        : { bytes: fitted, widthMm: null, heightMm: null };
+    } catch (error) {
+      this.logger.warn(
+        `Rééchantillonnage impossible: ${storedPath} (${String(error)})`,
+      );
+      return null;
+    }
   }
 }

@@ -65,7 +65,6 @@ export const REPORT_STYLES = `
   .sign { margin-top: 12mm; text-align: right; break-inside: avoid; }
   .sign .vide { height: 18mm; }
 
-     mention dégradée se voit sans être lue. */
   .piece { break-inside: avoid; margin-bottom: 5mm; }
   .alerte {
     border: 0.4mm solid #111; padding: 2mm 3mm; margin: 3px 0 6px;
