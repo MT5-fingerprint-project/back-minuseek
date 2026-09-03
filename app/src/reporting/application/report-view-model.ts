@@ -48,6 +48,11 @@ export interface ReportImageViewModel {
   width: number | null;
   height: number | null;
   observedSha256: string | null;
+  /**
+   * Taille d'impression imposée à la planche, en millimètres, quand la pièce
+   * s'imprime à l'échelle 1. `null` : la planche l'ajuste à sa boîte.
+   */
+  lifeSizeMm: { width: number; height: number } | null;
 }
 
 export interface ReportMinutiaViewModel {
@@ -138,7 +143,9 @@ export interface ReportPlateViewModel {
   reference: string;
   cote: string;
   location: string | null;
-  image: ReportImageViewModel | null;
+  locationPhoto: ReportImageViewModel | null;
+  /** Trace à l'échelle 1 ; `null` quand aucune échelle n'est établie. */
+  trace: ReportImageViewModel | null;
   sealedAt: Date;
 }
 
@@ -165,7 +172,6 @@ export interface ReportDemonstrationViewModel {
     lastName: string;
   } | null;
   position: string | null;
-  localisationPhoto: ReportImageViewModel | null;
   trace: ReportDemonstrationPlateViewModel;
   referencePrint: ReportDemonstrationPlateViewModel;
 }

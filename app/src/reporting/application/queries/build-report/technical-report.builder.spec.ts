@@ -51,6 +51,7 @@ function trace(overrides: Partial<PieceData> & { id: string }): PieceData {
     revelationTechnique: 'FINGERPRINT_POWDER',
     cote: 'A',
     notIdentifiedAt: null,
+    resolutionDpi: null,
     locationPhoto: null,
     ...overrides,
   };
@@ -198,36 +199,52 @@ describe('buildTechnicalReport — en-tête du service', () => {
   });
 });
 
-describe('buildTechnicalReport — annexe A', () => {
-  it('ne retient que les traces exploitables, dans l’ordre des traces', () => {
+describe('buildTechnicalReport — annexe A (localisation)', () => {
+  const PHOTO = {
+    path: 'media/case-1/loc.jpg',
+    sha256: 'c'.repeat(64),
+    sealedAt: OPENED_AT,
+  };
+
+  function located(overrides: Partial<PieceData> & { id: string }): PieceData {
+    return trace({ locationPhoto: PHOTO, cote: 'A', ...overrides });
+  }
+
+  it('ne retient que les traces exploitables photographiées, dans l’ordre des traces', () => {
     const model = build(
       caseData({
         traces: [
-          trace({ id: 't2', number: 2, cote: 'B' }),
-          trace({
+          located({ id: 't2', number: 2, cote: 'B' }),
+          located({
             id: 't3',
             number: 3,
             status: 'NOT_EXPLOITABLE',
             cote: null,
           }),
-          trace({ id: 't1', number: 1, cote: 'A' }),
+          located({ id: 't1', number: 1, cote: 'A' }),
         ],
       }),
     );
 
-    expect(model.annexA.map((plate) => plate.reference)).toEqual([
-      '3455-T1',
-      '3455-T2',
-    ]);
-    expect(model.annexA.map((plate) => plate.cote)).toEqual(['A', 'B']);
+    expect(model.annexA.map((plate) => plate.cote)).toEqual(['B', 'A']);
   });
 
-  it('écarte une trace déclarée inexploitable, même si une cote lui traîne', () => {
+  it('écarte une trace exploitable qu’on n’a pas photographiée', () => {
     const model = build(
       caseData({
         traces: [
-          trace({ id: 't1', number: 1, status: 'NOT_EXPLOITABLE', cote: 'A' }),
+          trace({ id: 't1', number: 1, cote: 'A', locationPhoto: null }),
         ],
+      }),
+    );
+
+    expect(model.annexA).toEqual([]);
+  });
+
+  it('écarte une trace déclarée inexploitable, même photographiée', () => {
+    const model = build(
+      caseData({
+        traces: [located({ id: 't1', number: 1, status: 'NOT_EXPLOITABLE' })],
       }),
     );
 
@@ -238,7 +255,7 @@ describe('buildTechnicalReport — annexe A', () => {
     const model = build(
       caseData({
         traces: [
-          trace({
+          located({
             id: 't1',
             number: 1,
             withdrawnAt: new Date('2026-08-12T10:00:00.000Z'),
@@ -254,26 +271,24 @@ describe('buildTechnicalReport — annexe A', () => {
 
   it('porte la localisation et la date de mise sous scellé de chaque planche', () => {
     const model = build(
-      caseData({ traces: [trace({ id: 't1', number: 1, cote: 'A' })] }),
+      caseData({ traces: [located({ id: 't1', number: 1 })] }),
     );
 
     expect(model.annexA[0]).toMatchObject({
       location: 'Sur la porte-fenêtre du séjour',
       sealedAt: OPENED_AT,
-      image: null,
+      cote: 'A',
     });
   });
 
-  it('n’a pas d’annexe A sur un dossier sans trace exploitable', () => {
+  it('laisse la trace absente de la planche quand aucune échelle n’est établie', () => {
     const model = build(
       caseData({
-        traces: [
-          trace({ id: 't1', number: 1, status: 'NOT_EXPLOITABLE', cote: null }),
-        ],
+        traces: [located({ id: 't1', number: 1, resolutionDpi: null })],
       }),
     );
 
-    expect(model.annexA).toEqual([]);
+    expect(model.annexA[0].trace).toBeNull();
   });
 });
 
