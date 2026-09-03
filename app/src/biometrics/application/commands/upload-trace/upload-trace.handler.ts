@@ -47,6 +47,7 @@ import {
   detectImageMimeType,
   StoredImage,
   storeDisplayableImage,
+  thumbnailPath,
 } from '../../services/displayable-image';
 import { CaseAccessService } from '../../../../access/application/case-access.service';
 import { UploadTraceCommand } from './upload-trace.command';
@@ -54,7 +55,7 @@ import { UploadTraceCommand } from './upload-trace.command';
 @CommandHandler(UploadTraceCommand)
 export class UploadTraceHandler implements ICommandHandler<
   UploadTraceCommand,
-  { id: string; path: string; url: string }
+  { id: string; path: string; url: string; thumbUrl: string | null }
 > {
   private readonly logger = new Logger(UploadTraceHandler.name);
 
@@ -80,9 +81,12 @@ export class UploadTraceHandler implements ICommandHandler<
     private readonly locationPhotos: TraceLocationPhotoRepository,
   ) {}
 
-  async execute(
-    cmd: UploadTraceCommand,
-  ): Promise<{ id: string; path: string; url: string }> {
+  async execute(cmd: UploadTraceCommand): Promise<{
+    id: string;
+    path: string;
+    url: string;
+    thumbUrl: string | null;
+  }> {
     await this.caseAccess.assertAccessToCase(cmd.requester, cmd.caseId);
 
     const caseStatus = await this.caseStatus.findStatus(cmd.caseId);
@@ -109,6 +113,7 @@ export class UploadTraceHandler implements ICommandHandler<
       this.converter,
       cmd.fileBuffer,
       `investigation-case/${cmd.caseId}/traces/${id}`,
+      this.logger,
     );
 
     let locationPhoto: {
@@ -127,6 +132,7 @@ export class UploadTraceHandler implements ICommandHandler<
             this.converter,
             locationPhotoBuffer,
             `investigation-case/${cmd.caseId}/location-photos/${locationPhotoId}`,
+            this.logger,
           ),
           sizeBytes: locationPhotoBuffer.length,
           mimeType: locationPhotoMimeType,
@@ -151,6 +157,7 @@ export class UploadTraceHandler implements ICommandHandler<
           captureMetadata,
           captureQuality,
           location: cmd.location,
+          thumbPath: stored.thumbPath,
         });
         const uploaded = await this.repo.save(trace, {
           eventType: AuditEventTypeEnum.TRACE_UPLOADED,
@@ -175,6 +182,7 @@ export class UploadTraceHandler implements ICommandHandler<
             caseId: cmd.caseId,
             path: locationPhoto.stored.path,
             sha256: FileDigest.from(locationPhoto.stored.receivedSha256),
+            thumbPath: locationPhoto.stored.thumbPath,
           });
           await this.locationPhotos.save(photo, {
             eventType: AuditEventTypeEnum.LOCATION_PHOTO_UPLOADED,
@@ -227,8 +235,11 @@ export class UploadTraceHandler implements ICommandHandler<
       this.logger,
     );
 
-    const url = await this.storage.getUrl(stored.path);
-    return { id, path: stored.path, url };
+    const [url, thumbUrl] = await Promise.all([
+      this.storage.getUrl(stored.path),
+      stored.thumbPath === null ? null : this.storage.getUrl(stored.thumbPath),
+    ]);
+    return { id, path: stored.path, url, thumbUrl };
   }
 
   private async discardStoredImage(image: StoredImage): Promise<void> {
@@ -237,6 +248,7 @@ export class UploadTraceHandler implements ICommandHandler<
     if (archived) {
       await this.discardStoredFile(archived);
     }
+    await this.discardStoredFile(thumbnailPath(image.path));
   }
 
   private async discardStoredFile(storedPath: string): Promise<void> {

@@ -13,7 +13,7 @@ import {
   FamiliarReferencePrintReader,
 } from '../ports/familiar-reference-print.reader';
 import { IMAGE_STORAGE, ImageStoragePort } from '../ports/image-storage.port';
-import { archivedOriginalPath } from './displayable-image';
+import { archivedOriginalPath, thumbnailPath } from './displayable-image';
 
 @Injectable()
 export class FamiliarPrintDestructionService implements FamiliarPrintDestructionPort {
@@ -55,6 +55,10 @@ export class FamiliarPrintDestructionService implements FamiliarPrintDestruction
     if (archived) {
       await this.storage.delete(archived);
     }
+    // La vignette se supprime par convention et non par la colonne : un acte
+    // qui affirme la destruction ne doit pas laisser d'image, même si la
+    // colonne a été perdue entre le stockage de la vignette et son écriture.
+    await this.storage.delete(thumbnailPath(print.path));
 
     print.markImageDestroyed(new Date());
     await this.repository.save(print, {

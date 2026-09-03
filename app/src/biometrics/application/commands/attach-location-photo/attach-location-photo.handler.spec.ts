@@ -74,12 +74,34 @@ describe('AttachLocationPhotoHandler', () => {
     expect(attached).toEqual({
       id: 'photo-1',
       url: `/media/${PHOTO_KEY}`,
+      thumbUrl: `/media/${PHOTO_KEY.replace('.png', '_thumb.webp')}`,
       sealedAt: auditTrail.events[0].occurredAt,
     });
     expect(storage.getSaved(PHOTO_KEY)?.equals(photoBuffer)).toBe(true);
     expect((await locationPhotos.findByTraceId('trace-1'))?.sha256).toBe(
       PHOTO_SHA256,
     );
+  });
+
+  it('garde le chemin de la vignette sur la photographie versée', async () => {
+    await attach();
+
+    expect((await locationPhotos.findByTraceId('trace-1'))?.thumbPath).toBe(
+      'media/investigation-case/case-9/location-photos/photo-1_thumb.webp',
+    );
+  });
+
+  it('verse la photographie sans vignette quand la vignette échoue', async () => {
+    const undecodableThumbnail = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+      Buffer.from('invalid'),
+    ]);
+
+    await attach('trace-1', undecodableThumbnail);
+
+    const photo = await locationPhotos.findByTraceId('trace-1');
+    expect(photo?.thumbPath).toBeNull();
+    expect(photo?.path).toBe(`media/${PHOTO_KEY}`);
   });
 
   it('inscrit un LOCATION_PHOTO_UPLOADED constaté', async () => {
@@ -144,5 +166,8 @@ describe('AttachLocationPhotoHandler', () => {
     await expect(attach()).rejects.toBe(failure);
 
     expect(storage.getSaved(PHOTO_KEY)).toBeUndefined();
+    expect(
+      storage.getSaved(PHOTO_KEY.replace('.png', '_thumb.webp')),
+    ).toBeUndefined();
   });
 });

@@ -47,7 +47,25 @@ describe('TraceLocationPhoto', () => {
       caseId: 'case-9',
       path: 'media/investigation-case/case-9/location-photos/photo-1.png',
       sha256: SEAL.getValue(),
+      thumbPath: null,
     });
+  });
+
+  it('carries the display thumbnail stored alongside the photograph', () => {
+    const THUMB =
+      'media/investigation-case/case-9/location-photos/photo-1_thumb.webp';
+
+    const photo = TraceLocationPhoto.attach({
+      ...baseProps,
+      thumbPath: THUMB,
+    });
+
+    expect(photo.thumbPath).toBe(THUMB);
+    expect(photo.toPrimitives().thumbPath).toBe(THUMB);
+  });
+
+  it('carries no thumbnail when the deposit could not build one', () => {
+    expect(TraceLocationPhoto.attach(baseProps).thumbPath).toBeNull();
   });
 
   it('survives a round-trip through the persisted primitives', () => {

@@ -34,6 +34,7 @@ const traceRow = (
   location: null,
   revelationTechnique: null,
   hasLocationPhoto: false,
+  thumbPath: null,
   locationPhoto: null,
   ...overrides,
 });
@@ -48,6 +49,7 @@ describe('ListTracesHandler', () => {
           id: 'photo-1',
           path: 'media/investigation-case/case-9/location-photos/photo-1.png',
           sha256: 'b'.repeat(64),
+          thumbPath: null,
           sealedAt: new Date('2026-07-01T11:00:00.000Z'),
         },
       }),
@@ -77,6 +79,39 @@ describe('ListTracesHandler', () => {
     expect(data[0].path).toBe(
       'media/investigation-case/case-9/traces/trace-1.png',
     );
+    expect(data[0].url).toBe(
+      '/media/investigation-case/case-9/traces/trace-1.png',
+    );
+  });
+
+  it('signe l’adresse de la vignette de chaque trace', async () => {
+    const reader = new InMemoryTraceReader([
+      traceRow({
+        thumbPath: 'media/investigation-case/case-9/traces/trace-1_thumb.webp',
+      }),
+    ]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0].thumbUrl).toBe(
+      '/media/investigation-case/case-9/traces/trace-1_thumb.webp',
+    );
+  });
+
+  it('ne signe aucune vignette quand la trace n’en porte pas', async () => {
+    const reader = new InMemoryTraceReader([traceRow()]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0].thumbUrl).toBeNull();
     expect(data[0].url).toBe(
       '/media/investigation-case/case-9/traces/trace-1.png',
     );

@@ -96,6 +96,7 @@ export class PrismaTraceReader implements TraceReader {
               id: locationPhoto.id,
               path: locationPhoto.path,
               sha256: locationPhoto.sha256,
+              thumbPath: locationPhoto.thumbPath,
               sealedAt: locationPhoto.createdAt,
             },
     };

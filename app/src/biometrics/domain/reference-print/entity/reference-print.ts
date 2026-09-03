@@ -19,6 +19,7 @@ export interface ReferencePrintPrimitives {
   withdrawalMotiveDetail: string | null;
   imageDestroyedAt: Date | null;
   resolutionDpi: number | null;
+  thumbPath: string | null;
 }
 
 interface CreateReferencePrintProps {
@@ -29,6 +30,7 @@ interface CreateReferencePrintProps {
   displayableSha256?: FileDigest;
   subjectId?: string | null;
   position?: FingerPosition | null;
+  thumbPath?: string | null;
 }
 
 export class ReferencePrint {
@@ -43,6 +45,7 @@ export class ReferencePrint {
     private _withdrawal: Withdrawal | null,
     private _imageDestroyedAt: Date | null,
     private _resolution: ImageResolution | null,
+    private _thumbPath: string | null,
   ) {}
 
   static create(props: CreateReferencePrintProps): ReferencePrint {
@@ -66,6 +69,7 @@ export class ReferencePrint {
       null,
       null,
       null,
+      props.thumbPath ?? null,
     );
   }
 
@@ -87,6 +91,7 @@ export class ReferencePrint {
       ),
       primitives.imageDestroyedAt,
       ImageResolution.fromPersistence(primitives.resolutionDpi),
+      primitives.thumbPath,
     );
   }
 
@@ -102,6 +107,10 @@ export class ReferencePrint {
       throw new ReferencePrintImageAlreadyDestroyedError(this._id);
     }
     this._imageDestroyedAt = destroyedAt;
+    // La colonne ne peut pas continuer d'annoncer une vignette supprimée : le
+    // prochain lecteur qui oublierait la garde signerait une URL sur un objet
+    // effacé.
+    this._thumbPath = null;
   }
 
   withdraw(motive: string, at: Date, motiveDetail?: string | null): void {
@@ -132,6 +141,7 @@ export class ReferencePrint {
       withdrawalMotiveDetail: this._withdrawal?.getDetail() ?? null,
       imageDestroyedAt: this._imageDestroyedAt,
       resolutionDpi: this._resolution?.getValue() ?? null,
+      thumbPath: this._thumbPath,
     };
   }
 
@@ -185,5 +195,9 @@ export class ReferencePrint {
 
   get resolutionDpi(): number | null {
     return this._resolution?.getValue() ?? null;
+  }
+
+  get thumbPath(): string | null {
+    return this._thumbPath;
   }
 }

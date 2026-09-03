@@ -13,11 +13,13 @@ interface TraceRow {
   updatedAt: Date;
   captureQuality: unknown;
   notIdentifiedAt: Date | null;
+  thumbPath: string | null;
   hits: { id: string }[];
   locationPhoto: {
     id: string;
     path: string;
     sha256: string;
+    thumbPath: string | null;
     createdAt: Date;
   } | null;
 }
@@ -34,6 +36,7 @@ function aTraceRow(overrides: Partial<TraceRow> = {}): TraceRow {
     updatedAt: new Date('2026-07-02T10:00:00.000Z'),
     captureQuality: null,
     notIdentifiedAt: null,
+    thumbPath: null,
     hits: [],
     locationPhoto: null,
     ...overrides,
@@ -147,6 +150,7 @@ describe('PrismaTraceReader', () => {
           id: 'photo-1',
           path: 'media/investigation-case/case-9/location-photos/photo-1.png',
           sha256: 'b'.repeat(64),
+          thumbPath: null,
           createdAt: new Date('2026-07-01T11:00:00.000Z'),
         },
       }),
@@ -174,6 +178,8 @@ describe('PrismaTraceReader', () => {
           id: 'photo-1',
           path: 'media/investigation-case/case-9/location-photos/photo-1.png',
           sha256: 'b'.repeat(64),
+          thumbPath:
+            'media/investigation-case/case-9/location-photos/photo-1_thumb.webp',
           createdAt: sealedAt,
         },
       }),
@@ -186,6 +192,8 @@ describe('PrismaTraceReader', () => {
       id: 'photo-1',
       path: 'media/investigation-case/case-9/location-photos/photo-1.png',
       sha256: 'b'.repeat(64),
+      thumbPath:
+        'media/investigation-case/case-9/location-photos/photo-1_thumb.webp',
       sealedAt,
     });
   });
@@ -366,6 +374,20 @@ describe('PrismaTraceReader', () => {
       where: { caseId: 'case-9', withdrawnAt: null },
       select: { number: true, status: true },
     });
+  });
+
+  it('projette le chemin de la vignette de la trace', async () => {
+    const { reader } = build([
+      aTraceRow({
+        thumbPath: 'media/investigation-case/case-9/traces/trace-1_thumb.webp',
+      }),
+    ]);
+
+    const [trace] = await reader.findByCaseId('case-9');
+
+    expect(trace.thumbPath).toBe(
+      'media/investigation-case/case-9/traces/trace-1_thumb.webp',
+    );
   });
 
   it("rend le contrôle de netteté tel que le domaine l'a écrit", async () => {

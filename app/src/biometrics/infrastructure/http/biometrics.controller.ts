@@ -613,7 +613,7 @@ export class BiometricsController {
     try {
       return await this.commandBus.execute<
         UploadTraceCommand,
-        { id: string; path: string; url: string }
+        { id: string; path: string; url: string; thumbUrl: string | null }
       >(
         new UploadTraceCommand(
           toAuditActor(user),
@@ -788,7 +788,7 @@ export class BiometricsController {
     try {
       return await this.commandBus.execute<
         UploadReferencePrintCommand,
-        { id: string; path: string; url: string }
+        { id: string; path: string; url: string; thumbUrl: string | null }
       >(
         new UploadReferencePrintCommand(
           toAuditActor(user),

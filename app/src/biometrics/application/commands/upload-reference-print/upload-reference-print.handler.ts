@@ -31,6 +31,7 @@ import {
   archivedOriginalPath,
   detectImageMimeType,
   storeDisplayableImage,
+  thumbnailPath,
 } from '../../services/displayable-image';
 import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
 import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
@@ -40,7 +41,7 @@ import { UploadReferencePrintCommand } from './upload-reference-print.command';
 @CommandHandler(UploadReferencePrintCommand)
 export class UploadReferencePrintHandler implements ICommandHandler<
   UploadReferencePrintCommand,
-  { id: string; path: string; url: string }
+  { id: string; path: string; url: string; thumbUrl: string | null }
 > {
   private readonly logger = new Logger(UploadReferencePrintHandler.name);
 
@@ -60,9 +61,12 @@ export class UploadReferencePrintHandler implements ICommandHandler<
     private readonly sealRegistry: SealRegistryPort,
   ) {}
 
-  async execute(
-    cmd: UploadReferencePrintCommand,
-  ): Promise<{ id: string; path: string; url: string }> {
+  async execute(cmd: UploadReferencePrintCommand): Promise<{
+    id: string;
+    path: string;
+    url: string;
+    thumbUrl: string | null;
+  }> {
     await this.caseAccess.assertAccessToCase(cmd.requester, cmd.caseId);
     assertCaseAcceptsWork(
       cmd.caseId,
@@ -76,6 +80,7 @@ export class UploadReferencePrintHandler implements ICommandHandler<
       this.converter,
       cmd.fileBuffer,
       `investigation-case/${cmd.caseId}/reference-prints/${id}`,
+      this.logger,
     );
 
     const referencePrint = ReferencePrint.create({
@@ -84,6 +89,7 @@ export class UploadReferencePrintHandler implements ICommandHandler<
       caseId: cmd.caseId,
       sha256: FileDigest.from(stored.receivedSha256),
       displayableSha256: FileDigest.from(stored.displayableSha256),
+      thumbPath: stored.thumbPath,
 
       subjectId: cmd.subjectId ?? null,
       position: cmd.position ? FingerPosition.from(cmd.position) : null,
@@ -111,6 +117,7 @@ export class UploadReferencePrintHandler implements ICommandHandler<
       if (archived) {
         await this.discardStoredFile(archived);
       }
+      await this.discardStoredFile(thumbnailPath(stored.path));
       throw error;
     }
 
@@ -126,8 +133,11 @@ export class UploadReferencePrintHandler implements ICommandHandler<
       this.logger,
     );
 
-    const url = await this.storage.getUrl(stored.path);
-    return { id, path: stored.path, url };
+    const [url, thumbUrl] = await Promise.all([
+      this.storage.getUrl(stored.path),
+      stored.thumbPath === null ? null : this.storage.getUrl(stored.thumbPath),
+    ]);
+    return { id, path: stored.path, url, thumbUrl };
   }
 
   private async discardStoredFile(storedPath: string): Promise<void> {

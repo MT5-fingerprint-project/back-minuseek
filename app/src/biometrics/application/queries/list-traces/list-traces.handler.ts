@@ -24,14 +24,23 @@ export class ListTracesHandler implements IQueryHandler<ListTracesQuery> {
     );
     const blind = query.blindVerifierUserId !== null;
     const data = await Promise.all(
-      traces.map(async (trace) => ({
-        ...trace,
-        status: blind ? null : trace.status,
-        cote: blind ? null : trace.cote,
-        identified: blind ? null : trace.identified,
-        notIdentified: blind ? null : trace.notIdentified,
-        url: await this.storage.getUrl(trace.path),
-      })),
+      traces.map(async (trace) => {
+        const [url, thumbUrl] = await Promise.all([
+          this.storage.getUrl(trace.path),
+          trace.thumbPath === null
+            ? null
+            : this.storage.getUrl(trace.thumbPath),
+        ]);
+        return {
+          ...trace,
+          status: blind ? null : trace.status,
+          cote: blind ? null : trace.cote,
+          identified: blind ? null : trace.identified,
+          notIdentified: blind ? null : trace.notIdentified,
+          url,
+          thumbUrl,
+        };
+      }),
     );
     return { data };
   }

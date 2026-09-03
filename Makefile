@@ -18,7 +18,7 @@ INTEGRATION_DB_PORT ?= 5433
 INTEGRATION_DATABASE_URL ?= postgresql://$(DB_USER):$(DB_PASSWORD)@localhost:$(INTEGRATION_DB_PORT)/$(INTEGRATION_DB_NAME)
 COMPOSE_TEST = $(COMPOSE) --profile test
 
-.PHONY: setup-dev bootstrap wait-postgres keycloak-relax-ssl network dev dev-build up-watch down reset db exec install keycloak-setup system-realm provision seed-demo-users migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all test test-watch test-integration test-integration-down logs
+.PHONY: setup-dev bootstrap wait-postgres keycloak-relax-ssl network dev dev-build up-watch down reset db exec install keycloak-setup system-realm provision seed-demo-users migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all backfill-thumbnails test test-watch test-integration test-integration-down logs
 
 ## Setup local complet : install + stack + bootstrap + hot-reload. Rejouable sans danger. Ou a faire apres un reset de la DB. (make setup-dev)
 setup-dev:
@@ -149,6 +149,15 @@ migrate-deploy:
 ## Réparation ponctuelle : remet la DB à zéro et rejoue toutes les migrations (DEV ONLY, destructif)
 migrate-reset:
 	$(COMPOSE) run --rm app pnpm prisma migrate reset --force
+
+## Fabrique la vignette d'affichage des images déposées avant que la colonne existe,
+## sur la base d'un tenant (make backfill-thumbnails TENANT_DB=minuseek_tenant_demo)
+## Rejouable : ne reprend que les lignes sans vignette. Le nom de base se lit dans le registre admin.
+backfill-thumbnails:
+	@test -n "$(TENANT_DB)" || { echo "❌ TENANT_DB manquant : make backfill-thumbnails TENANT_DB=minuseek_tenant_demo"; exit 1; }
+	$(COMPOSE) run --rm \
+		-e DATABASE_URL=postgresql://$(DB_USER):$(DB_PASSWORD)@postgres:5432/$(TENANT_DB) \
+		app pnpm ts-node scripts/backfill-image-thumbnails.ts
 
 ## Lance les tests — tous par défaut, ou un fichier spécifique (make test FILE=src/foo/foo.spec.ts)
 test:

@@ -28,12 +28,14 @@ export interface TraceReadModel {
   location: string | null;
   revelationTechnique: string | null;
   hasLocationPhoto: boolean;
+  thumbPath: string | null;
 }
 
 export interface TraceLocationPhotoReadModel {
   id: string;
   path: string;
   sha256: string;
+  thumbPath: string | null;
   sealedAt: Date;
 }
 
@@ -46,6 +48,7 @@ export type TraceView = Omit<
   'status' | 'identified' | 'notIdentified'
 > & {
   url: string;
+  thumbUrl: string | null;
   status: string | null;
   identified: boolean | null;
   notIdentified: boolean | null;
@@ -54,6 +57,7 @@ export type TraceView = Omit<
 export interface TraceLocationPhotoView {
   id: string;
   url: string;
+  thumbUrl: string | null;
   sha256: string;
   sealedAt: Date;
 }

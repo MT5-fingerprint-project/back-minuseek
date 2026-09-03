@@ -32,12 +32,14 @@ import {
   archivedOriginalPath,
   detectImageMimeType,
   storeDisplayableImage,
+  thumbnailPath,
 } from '../../services/displayable-image';
 import { AttachLocationPhotoCommand } from './attach-location-photo.command';
 
 export interface AttachedLocationPhoto {
   id: string;
   url: string;
+  thumbUrl: string | null;
   sealedAt: Date;
 }
 
@@ -87,6 +89,7 @@ export class AttachLocationPhotoHandler implements ICommandHandler<
       this.converter,
       cmd.fileBuffer,
       `investigation-case/${trace.caseId}/location-photos/${id}`,
+      this.logger,
     );
 
     const photo = TraceLocationPhoto.attach({
@@ -95,6 +98,7 @@ export class AttachLocationPhotoHandler implements ICommandHandler<
       caseId: trace.caseId,
       path: stored.path,
       sha256: FileDigest.from(stored.receivedSha256),
+      thumbPath: stored.thumbPath,
     });
 
     let sealedAt: Date;
@@ -120,10 +124,15 @@ export class AttachLocationPhotoHandler implements ICommandHandler<
       if (archived) {
         await this.discardStoredFile(archived);
       }
+      await this.discardStoredFile(thumbnailPath(stored.path));
       throw error;
     }
 
-    return { id, url: await this.storage.getUrl(stored.path), sealedAt };
+    const [url, thumbUrl] = await Promise.all([
+      this.storage.getUrl(stored.path),
+      stored.thumbPath === null ? null : this.storage.getUrl(stored.thumbPath),
+    ]);
+    return { id, url, thumbUrl, sealedAt };
   }
 
   private async discardStoredFile(storedPath: string): Promise<void> {

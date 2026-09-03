@@ -46,6 +46,40 @@ export interface StoredImage {
   path: string;
   receivedSha256: string;
   displayableSha256: string;
+  thumbPath: string | null;
+}
+
+/**
+ * Chemin de la variante réduite servie à l'affichage. Le suffixe se pose AVANT
+ * le point : data-minuseek résout la pièce à comparer en listant le préfixe
+ * `{id}.` et prend le premier blob, donc `{id}.thumb.webp` la ferait comparer.
+ */
+export function thumbnailPath(storedPath: string): string {
+  return `${storedPath.replace(/\.[^./]*$/, '')}_thumb.webp`;
+}
+
+async function storeThumbnail(
+  storage: ImageStoragePort,
+  converter: ImageConverterPort,
+  displayable: Buffer,
+  relativePath: string,
+  logger: { warn(message: string): void },
+): Promise<string | null> {
+  const thumbnailKey = thumbnailPath(relativePath);
+  try {
+    return await storage.save(
+      await converter.toDisplayThumbnail(displayable),
+      thumbnailKey,
+    );
+  } catch (error) {
+    // Rien de décoratif ne peut refuser une pièce : sans vignette, l'affichage
+    // retombe sur l'original. Journalisé parce qu'un droit d'écriture perdu sur
+    // le préfixe tarirait toutes les vignettes sans faire échouer un seul dépôt.
+    logger.warn(
+      `Vignette d'affichage non fabriquée pour la pièce ${relativePath} (${String(error)}) — « make backfill-thumbnails TENANT_DB=<base> » répare`,
+    );
+    return null;
+  }
 }
 
 function digestOf(bytes: Buffer): string {
@@ -61,22 +95,44 @@ export async function storeDisplayableImage(
   converter: ImageConverterPort,
   fileBuffer: Buffer,
   pathWithoutExtension: string,
+  logger: { warn(message: string): void },
 ): Promise<StoredImage> {
   const extension = detectImageExtension(fileBuffer);
   const receivedSha256 = digestOf(fileBuffer);
 
   if (extension !== '.tif') {
-    const path = await storage.save(
-      fileBuffer,
-      `${pathWithoutExtension}${extension}`,
-    );
-    return { path, receivedSha256, displayableSha256: receivedSha256 };
+    const relativePath = `${pathWithoutExtension}${extension}`;
+    const path = await storage.save(fileBuffer, relativePath);
+    return {
+      path,
+      receivedSha256,
+      displayableSha256: receivedSha256,
+      thumbPath: await storeThumbnail(
+        storage,
+        converter,
+        fileBuffer,
+        relativePath,
+        logger,
+      ),
+    };
   }
 
   const png = await converter.tiffToPng(fileBuffer);
   await storage.save(fileBuffer, `${pathWithoutExtension}_original.tif`);
-  const path = await storage.save(png, `${pathWithoutExtension}.png`);
-  return { path, receivedSha256, displayableSha256: digestOf(png) };
+  const relativePath = `${pathWithoutExtension}.png`;
+  const path = await storage.save(png, relativePath);
+  return {
+    path,
+    receivedSha256,
+    displayableSha256: digestOf(png),
+    thumbPath: await storeThumbnail(
+      storage,
+      converter,
+      png,
+      relativePath,
+      logger,
+    ),
+  };
 }
 
 /**

@@ -7,6 +7,12 @@ export class InvalidImageError extends Error {
 export interface ImageConverterPort {
   /** @throws InvalidImageError si le buffer n'est pas une image décodable */
   tiffToPng(tiff: Buffer): Promise<Buffer>;
+
+  /**
+   * Variante réduite servie à l'affichage, jamais au canevas de comparaison.
+   * @throws InvalidImageError si le buffer n'est pas une image décodable
+   */
+  toDisplayThumbnail(source: Buffer): Promise<Buffer>;
 }
 
 export const IMAGE_CONVERTER = 'ImageConverter';

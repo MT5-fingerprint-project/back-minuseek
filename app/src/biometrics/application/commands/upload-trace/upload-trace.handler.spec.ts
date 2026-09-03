@@ -132,6 +132,37 @@ describe('UploadTraceHandler', () => {
       captureQuality,
     );
 
+  it('garde le chemin de la vignette sur la trace déposée', async () => {
+    caseStatus.set('case-9', 'OPEN');
+
+    await handler.execute(command());
+
+    expect((await repo.findById('trace-123'))?.thumbPath).toBe(
+      'media/investigation-case/case-9/traces/trace-123_thumb.webp',
+    );
+  });
+
+  it('dépose la trace sans vignette quand la vignette échoue', async () => {
+    caseStatus.set('case-9', 'OPEN');
+    const undecodableThumbnail = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+      Buffer.from('invalid'),
+    ]);
+
+    await handler.execute(
+      new UploadTraceCommand(
+        EXPERT_ACTOR,
+        MARIE,
+        undecodableThumbnail,
+        'case-9',
+      ),
+    );
+
+    const trace = await repo.findById('trace-123');
+    expect(trace?.thumbPath).toBeNull();
+    expect(trace?.path).toBe(STORED_PATH);
+  });
+
   it("refuse le dépôt sur une affaire dont l'appelant n'est pas titulaire, sans écrire ni stocker", async () => {
     caseStatus.set('case-9', 'OPEN');
 
@@ -168,6 +199,7 @@ describe('UploadTraceHandler', () => {
       id: 'trace-123',
       path: STORED_PATH,
       url: `/${STORED_PATH}`,
+      thumbUrl: `/${STORED_PATH.replace('.png', '_thumb.webp')}`,
     });
 
     const saved = await repo.findById('trace-123');
@@ -386,6 +418,9 @@ describe('UploadTraceHandler', () => {
     expect(
       storage.getSaved('investigation-case/case-9/traces/trace-123.png'),
     ).toBeUndefined();
+    expect(
+      storage.getSaved('investigation-case/case-9/traces/trace-123_thumb.webp'),
+    ).toBeUndefined();
   });
 
   it('keeps the upload when the compensating delete itself fails', async () => {
@@ -531,6 +566,14 @@ describe('UploadTraceHandler', () => {
       expect(storage.getSaved(PHOTO_KEY)?.equals(photoBuffer)).toBe(true);
     });
 
+    it('garde le chemin de la vignette sur la photographie déposée', async () => {
+      await handler.execute(upload(undefined, photoBuffer));
+
+      expect((await locationPhotos.findByTraceId('trace-123'))?.thumbPath).toBe(
+        `media/${PHOTO_KEY.replace('.png', '_thumb.webp')}`,
+      );
+    });
+
     it('scelle la photographie sur les octets reçus', async () => {
       await handler.execute(upload(undefined, photoBuffer));
 
@@ -608,6 +651,14 @@ describe('UploadTraceHandler', () => {
         storage.getSaved('investigation-case/case-9/traces/trace-123.png'),
       ).toBeUndefined();
       expect(storage.getSaved(PHOTO_KEY)).toBeUndefined();
+      expect(
+        storage.getSaved(
+          'investigation-case/case-9/traces/trace-123_thumb.webp',
+        ),
+      ).toBeUndefined();
+      expect(
+        storage.getSaved(PHOTO_KEY.replace('.png', '_thumb.webp')),
+      ).toBeUndefined();
     });
   });
 

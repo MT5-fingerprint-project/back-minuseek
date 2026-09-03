@@ -14,6 +14,7 @@ const aTraceView = (
   reference: '3455-T7',
   path: 'media/investigation-case/case-9/traces/trace-1.png',
   url: 'https://storage.example/trace-1.png?signature=abc',
+  thumbUrl: 'https://storage.example/trace-1_thumb.webp?signature=abc',
   status: 'RECEIVED',
   cote: null,
   caseId: 'case-9',
@@ -37,6 +38,7 @@ const aTraceView = (
   location: null,
   revelationTechnique: null,
   hasLocationPhoto: false,
+  thumbPath: null,
   locationPhoto: null,
   ...overrides,
 });
@@ -66,6 +68,7 @@ describe('BiometricsController — la fiche d’une trace seule', () => {
     await expect(controller.getTrace(TRACE, null)).resolves.toMatchObject({
       reference: '3455-T7',
       url: 'https://storage.example/trace-1.png?signature=abc',
+      thumbUrl: 'https://storage.example/trace-1_thumb.webp?signature=abc',
     });
   });
 

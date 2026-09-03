@@ -42,6 +42,7 @@ export interface TracePrimitives {
   location: string | null;
   revelationTechnique: RevelationTechniqueEnum | null;
   notIdentifiedAt: Date | null;
+  thumbPath: string | null;
 }
 
 export interface TraceDescription {
@@ -60,6 +61,7 @@ interface UploadTraceProps {
   captureMetadata?: CaptureMetadata;
   captureQuality?: CaptureQuality;
   location?: string;
+  thumbPath?: string | null;
 }
 
 function assertLocationFitsColumn(location: string): void {
@@ -87,6 +89,7 @@ export class Trace {
     private _location: string | null,
     private _revelationTechnique: RevelationTechnique | null,
     private _notIdentifiedAt: Date | null,
+    private readonly _thumbPath: string | null,
   ) {}
 
   static assertCaseCanReceiveTrace(
@@ -127,6 +130,7 @@ export class Trace {
       location.length === 0 ? null : location,
       null,
       null,
+      props.thumbPath ?? null,
     );
   }
 
@@ -153,6 +157,7 @@ export class Trace {
     location: string | null;
     revelationTechnique: string | null;
     notIdentifiedAt: Date | null;
+    thumbPath: string | null;
   }): Trace {
     return new Trace(
       payload.id,
@@ -183,6 +188,7 @@ export class Trace {
       payload.location,
       RevelationTechnique.fromPersistence(payload.revelationTechnique),
       payload.notIdentifiedAt,
+      payload.thumbPath,
     );
   }
 
@@ -258,6 +264,7 @@ export class Trace {
       location: this._location,
       revelationTechnique: this._revelationTechnique?.getValue() ?? null,
       notIdentifiedAt: this._notIdentifiedAt,
+      thumbPath: this._thumbPath,
     };
   }
 
@@ -327,5 +334,9 @@ export class Trace {
 
   get notIdentifiedAt(): Date | null {
     return this._notIdentifiedAt;
+  }
+
+  get thumbPath(): string | null {
+    return this._thumbPath;
   }
 }

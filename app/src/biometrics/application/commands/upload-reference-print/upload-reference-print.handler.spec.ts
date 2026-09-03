@@ -115,6 +115,34 @@ describe('UploadReferencePrintHandler', () => {
     expect(await repo.findById('ref-456')).toBeNull();
   });
 
+  it('garde le chemin de la vignette sur l’empreinte déposée', async () => {
+    await handler.execute(command());
+
+    expect((await repo.findById('ref-456'))?.thumbPath).toBe(
+      'media/investigation-case/case-9/reference-prints/ref-456_thumb.webp',
+    );
+  });
+
+  it('dépose l’empreinte sans vignette quand la vignette échoue', async () => {
+    const undecodableThumbnail = Buffer.concat([
+      PNG_MAGIC,
+      Buffer.from('invalid'),
+    ]);
+
+    await handler.execute(
+      new UploadReferencePrintCommand(
+        EXPERT_ACTOR,
+        MARIE,
+        undecodableThumbnail,
+        'case-9',
+      ),
+    );
+
+    const saved = await repo.findById('ref-456');
+    expect(saved?.thumbPath).toBeNull();
+    expect(saved?.path).toBe(STORED_PATH);
+  });
+
   it('converts a TIFF to PNG for display, archives the original under <id>_original.tif and persists the PNG path', async () => {
     const result = await handler.execute(command());
 
@@ -122,6 +150,7 @@ describe('UploadReferencePrintHandler', () => {
       id: 'ref-456',
       path: STORED_PATH,
       url: `/${STORED_PATH}`,
+      thumbUrl: `/${STORED_PATH.replace('.png', '_thumb.webp')}`,
     });
 
     const saved = await repo.findById('ref-456');
@@ -254,6 +283,11 @@ describe('UploadReferencePrintHandler', () => {
     expect(
       storage.getSaved(
         'investigation-case/case-9/reference-prints/ref-456_original.tif',
+      ),
+    ).toBeUndefined();
+    expect(
+      storage.getSaved(
+        'investigation-case/case-9/reference-prints/ref-456_thumb.webp',
       ),
     ).toBeUndefined();
   });
