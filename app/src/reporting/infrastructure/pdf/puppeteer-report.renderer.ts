@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import puppeteer, { type Browser } from 'puppeteer';
 import type { ReportRendererPort } from '../../application/ports/report-renderer.port';
 import { ReportViewModel } from '../../application/report-view-model';
@@ -27,6 +27,7 @@ function footerTemplate(reportNumber: string): string {
 export class PuppeteerReportRenderer
   implements ReportRendererPort, OnModuleDestroy
 {
+  private readonly logger = new Logger(PuppeteerReportRenderer.name);
   private browser: Browser | null = null;
 
   async render(model: ReportViewModel): Promise<Buffer> {
@@ -44,7 +45,9 @@ export class PuppeteerReportRenderer
       });
       return Buffer.from(pdf);
     } finally {
-      await page.close();
+      await page.close().catch((error: unknown) => {
+        this.logger.warn(`Onglet de rendu non refermé: ${String(error)}`);
+      });
     }
   }
 

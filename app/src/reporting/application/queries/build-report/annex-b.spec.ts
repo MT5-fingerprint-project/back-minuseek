@@ -46,6 +46,7 @@ function piece(overrides: Partial<PieceData> & { id: string }): PieceData {
     revelationTechnique: null,
     cote: 'A',
     notIdentifiedAt: null,
+    resolutionDpi: null,
     locationPhoto: null,
     ...overrides,
   };
@@ -129,6 +130,7 @@ const PHOTO: ReportImageViewModel = {
   width: 800,
   height: 600,
   observedSha256: null,
+  lifeSizeMm: null,
 };
 
 function build(
@@ -342,19 +344,7 @@ describe('buildAnnexB', () => {
     expect(demonstrations[0].position).toBeNull();
   });
 
-  it('laisse la photographie de localisation vide tant qu’elle n’existe pas', () => {
-    const demonstrations = build(
-      caseData({
-        traces: [piece({ id: 't1' })],
-        referencePrints: [piece({ id: 'ref-1', status: null, cote: null })],
-        declaredHits: [hit()],
-      }),
-    );
-
-    expect(demonstrations[0].localisationPhoto).toBeNull();
-  });
-
-  it('ouvre la démonstration sur la photographie de localisation scellée', () => {
+  it('porte la localisation en clair de la trace démontrée', () => {
     const demonstrations = build(
       caseData({
         traces: [
@@ -374,32 +364,9 @@ describe('buildAnnexB', () => {
       new Map([['media/case-1/t1-location.jpg', PHOTO]]),
     );
 
-    expect(demonstrations[0].localisationPhoto).toEqual(PHOTO);
     expect(demonstrations[0].location).toBe(
       'sur la face extérieure de la porte-fenêtre du séjour',
     );
-  });
-
-  it('laisse la planche vide quand la photographie n’a pas pu être relue', () => {
-    const demonstrations = build(
-      caseData({
-        traces: [
-          piece({
-            id: 't1',
-            locationPhoto: {
-              path: 'media/case-1/t1-location.jpg',
-              sha256: 'b'.repeat(64),
-              sealedAt: AT,
-            },
-          }),
-        ],
-        referencePrints: [piece({ id: 'ref-1', status: null, cote: null })],
-        declaredHits: [hit()],
-      }),
-      new Map([['media/case-1/t1-location.jpg', null]]),
-    );
-
-    expect(demonstrations[0].localisationPhoto).toBeNull();
   });
 
   it('n’ouvre aucune démonstration pour une trace non identifiée qui porte une photographie', () => {

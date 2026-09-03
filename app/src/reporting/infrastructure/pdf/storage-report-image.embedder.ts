@@ -7,6 +7,7 @@ import {
 } from '../../application/ports/report-storage.port';
 import { ReportImageViewModel } from '../../application/report-view-model';
 import { readImageSize } from './image-size';
+import { prepareForPlate, type PrintedImage } from './print-resampling';
 
 const MIME_TYPES: Record<string, string> = {
   png: 'image/png',
@@ -30,7 +31,10 @@ export class StorageReportImageEmbedder implements ReportImageEmbedderPort {
     private readonly storage: ReportStoragePort,
   ) {}
 
-  async embed(storedPath: string): Promise<ReportImageViewModel | null> {
+  async embed(
+    storedPath: string,
+    resolutionDpi: number | null,
+  ): Promise<ReportImageViewModel | null> {
     let bytes: Buffer;
     try {
       bytes = await this.storage.read(storedPath);
@@ -41,12 +45,53 @@ export class StorageReportImageEmbedder implements ReportImageEmbedderPort {
       return null;
     }
 
-    const size = readImageSize(bytes);
+    const mimeType = mimeTypeOf(storedPath);
+    const printed = await this.printedCopy(
+      bytes,
+      mimeType,
+      resolutionDpi,
+      storedPath,
+    );
+    if (printed === null && resolutionDpi !== null) {
+      return null;
+    }
+
+    const stored = readImageSize(bytes);
     return {
-      dataUrl: `data:${mimeTypeOf(storedPath)};base64,${bytes.toString('base64')}`,
-      width: size?.width ?? null,
-      height: size?.height ?? null,
+      dataUrl: `data:${mimeType};base64,${(printed?.bytes ?? bytes).toString('base64')}`,
+      // Dimensions de la reproduction embarquée, orientation comprise : c'est le
+      // repère dans lequel la planche replace les minuties.
+      width: printed?.width ?? stored?.width ?? null,
+      height: printed?.height ?? stored?.height ?? null,
+      // Empreinte du fichier conservé, jamais de la reproduction imprimée : c'est
+      // elle que le chapitre intégrité confronte au registre.
       observedSha256: createHash('sha256').update(bytes).digest('hex'),
+      lifeSizeMm:
+        printed?.widthMm != null && printed.heightMm != null
+          ? { width: printed.widthMm, height: printed.heightMm }
+          : null,
     };
+  }
+
+  private async printedCopy(
+    bytes: Buffer,
+    mimeType: string,
+    resolutionDpi: number | null,
+    storedPath: string,
+  ): Promise<PrintedImage | null> {
+    try {
+      const printed = await prepareForPlate(bytes, mimeType, resolutionDpi);
+      if (printed === null && resolutionDpi !== null) {
+        this.logger.warn(
+          `Pièce non imprimée, sa taille réelle dépasse la planche: ${storedPath} (${resolutionDpi} dpi)`,
+        );
+      }
+      return printed;
+    } catch (error) {
+      this.logger.warn(
+        `Rééchantillonnage impossible: ${storedPath} (${String(error)})`,
+      );
+      return null;
+    }
   }
 }

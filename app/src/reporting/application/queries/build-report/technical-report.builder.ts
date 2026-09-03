@@ -322,7 +322,7 @@ export function buildTechnicalReport(
       (print) => pieceViewModels.get(print.id) as ReportPieceViewModel,
     ),
     identityDemonstrations: buildDemonstrations(data, pieceViewModels),
-    annexA: buildAnnexA(caseNumber, orderedTraces, images),
+    annexA: buildAnnexA(caseNumber, data, images),
     annexB: buildAnnexB(caseNumber, data, images),
     verifications: buildVerificationAnnexes(
       data,

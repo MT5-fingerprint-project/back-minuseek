@@ -115,6 +115,7 @@ const CASE_DATA: CaseReportData = {
       revelationTechnique: null,
       cote: null,
       notIdentifiedAt: null,
+      resolutionDpi: null,
       locationPhoto: null,
     },
   ],
@@ -141,6 +142,7 @@ const CASE_DATA: CaseReportData = {
       revelationTechnique: null,
       cote: null,
       notIdentifiedAt: null,
+      resolutionDpi: null,
       locationPhoto: null,
     },
   ],
@@ -228,9 +230,16 @@ class FakeAnchoring implements ChainAnchoringPort {
 class FakeImageEmbedder implements ReportImageEmbedderPort {
   readonly images = new Map<string, ReportImageViewModel>();
   readonly embedded: string[] = [];
+  readonly lifeSizeRequests: { path: string; resolutionDpi: number }[] = [];
 
-  embed(storedPath: string): Promise<ReportImageViewModel | null> {
+  embed(
+    storedPath: string,
+    resolutionDpi: number | null,
+  ): Promise<ReportImageViewModel | null> {
     this.embedded.push(storedPath);
+    if (resolutionDpi !== null) {
+      this.lifeSizeRequests.push({ path: storedPath, resolutionDpi });
+    }
     return Promise.resolve(this.images.get(storedPath) ?? null);
   }
 }
@@ -440,6 +449,7 @@ describe('GenerateReportHandler', () => {
       width: 800,
       height: 1200,
       observedSha256: 'e'.repeat(64),
+      lifeSizeMm: null,
     });
 
     await generate();
@@ -451,6 +461,7 @@ describe('GenerateReportHandler', () => {
       width: 800,
       height: 1200,
       observedSha256: 'e'.repeat(64),
+      lifeSizeMm: null,
     });
     expect(model.referencePrints[0].image).toBeNull();
   });
@@ -670,6 +681,7 @@ describe('GenerateReportHandler', () => {
       width: 800,
       height: 1200,
       observedSha256: null,
+      lifeSizeMm: null,
     });
 
     await generate();
@@ -680,21 +692,25 @@ describe('GenerateReportHandler', () => {
     expect(model.traces[0].image).toBeNull();
   });
 
-  it('n’embarque pas la photographie de localisation d’une trace que personne n’a identifiée', async () => {
+  it('embarque la photographie de localisation même sans identification', async () => {
     caseData.data = {
       ...CASE_DATA,
-      traces: [{ ...CASE_DATA.traces[0], locationPhoto: LOCATION_PHOTO }],
+      traces: [
+        { ...CASE_DATA.traces[0], cote: 'A', locationPhoto: LOCATION_PHOTO },
+      ],
     };
 
     await generate();
 
-    expect(imageEmbedder.embedded).toEqual([TRACE_PATH]);
+    expect(imageEmbedder.embedded).toContain(LOCATION_PHOTO.path);
   });
 
   it('embarque la photographie de localisation d’une trace identifiée', async () => {
     caseData.data = {
       ...CASE_DATA,
-      traces: [{ ...CASE_DATA.traces[0], locationPhoto: LOCATION_PHOTO }],
+      traces: [
+        { ...CASE_DATA.traces[0], cote: 'A', locationPhoto: LOCATION_PHOTO },
+      ],
       declaredHits: [
         {
           traceId: 'trace-1',
@@ -713,6 +729,44 @@ describe('GenerateReportHandler', () => {
       REF_PATH,
       LOCATION_PHOTO.path,
     ]);
+  });
+
+  it('demande la trace à l’échelle 1 pour la planche de localisation', async () => {
+    caseData.data = {
+      ...CASE_DATA,
+      traces: [
+        {
+          ...CASE_DATA.traces[0],
+          cote: 'A',
+          resolutionDpi: 3555,
+          locationPhoto: LOCATION_PHOTO,
+        },
+      ],
+    };
+
+    await generate();
+
+    expect(imageEmbedder.lifeSizeRequests).toEqual([
+      { path: TRACE_PATH, resolutionDpi: 3555 },
+    ]);
+  });
+
+  it('ne demande aucune échelle 1 pour une trace non calibrée', async () => {
+    caseData.data = {
+      ...CASE_DATA,
+      traces: [
+        {
+          ...CASE_DATA.traces[0],
+          cote: 'A',
+          resolutionDpi: null,
+          locationPhoto: LOCATION_PHOTO,
+        },
+      ],
+    };
+
+    await generate();
+
+    expect(imageEmbedder.lifeSizeRequests).toEqual([]);
   });
 
   it('projette le scellé du rapport au registre public, avec sa nature', async () => {
