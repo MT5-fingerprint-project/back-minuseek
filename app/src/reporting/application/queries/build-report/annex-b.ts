@@ -8,9 +8,8 @@ import {
   ReportDemonstrationViewModel,
   ReportImageViewModel,
 } from '../../report-view-model';
-import { ImageGeometry } from '../../ports/report-image-embedder.port';
 import { civilityLabel, positionLabel } from './action-labels';
-import { geometryOf, movedByGeometry } from './image-treatments';
+import { movedByGeometry, treatmentOf } from './image-treatments';
 import { treatedKey } from './printed-pieces';
 import { isWithdrawn } from './report-pieces';
 import { isExclusionSubject } from './trace-verdicts';
@@ -63,18 +62,22 @@ function printedPiece(
   images: Map<string, ReportImageViewModel | null>,
 ): PrintedPiece {
   const sealed = images.get(piece.path) ?? null;
-  const geometry: ImageGeometry | null = geometryOf(piece);
+  const treatment = treatmentOf(piece);
   const treated =
-    geometry === null ? null : (images.get(treatedKey(piece.path)) ?? null);
+    treatment === null ? null : (images.get(treatedKey(piece.path)) ?? null);
+  if (treatment === null || treated === null) {
+    return { image: sealed, sealed: null, move: STILL };
+  }
+
+  const { geometry } = treatment;
+  if (geometry === null) {
+    // Repeinte sans être retournée : aucune minutie n'a changé de place.
+    return { image: treated, sealed, move: STILL };
+  }
+
   const source = measured(sealed);
   const printed = measured(treated);
-
-  if (
-    geometry === null ||
-    treated === null ||
-    source === null ||
-    printed === null
-  ) {
+  if (source === null || printed === null) {
     return { image: sealed, sealed: null, move: STILL };
   }
   return {

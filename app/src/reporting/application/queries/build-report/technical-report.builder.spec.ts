@@ -553,7 +553,11 @@ describe('buildTechnicalReport — discrimination', () => {
       caseData({
         traces: [trace({ id: 't1', number: 1, cote: 'A' })],
         referencePrints: [
-          referencePrint({ id: 'r1', subjectId: 's1', position: 'RIGHT_INDEX' }),
+          referencePrint({
+            id: 'r1',
+            subjectId: 's1',
+            position: 'RIGHT_INDEX',
+          }),
           referencePrint({ id: 'r2', subjectId: 's2' }),
         ],
         subjects: [

@@ -226,8 +226,8 @@ describe('StorageReportImageEmbedder — géométrie de l’atelier', () => {
       'media/case-1/traces/trace-1.png',
       null,
       {
-        rotationDeg: 90,
-        mirrored: false,
+        geometry: { rotationDeg: 90, mirrored: false },
+        pixels: [],
       },
     );
 
@@ -241,8 +241,8 @@ describe('StorageReportImageEmbedder — géométrie de l’atelier', () => {
       'media/case-1/traces/trace-1.png',
       null,
       {
-        rotationDeg: 0,
-        mirrored: true,
+        geometry: { rotationDeg: 0, mirrored: true },
+        pixels: [],
       },
     );
 
@@ -272,8 +272,8 @@ describe('StorageReportImageEmbedder — géométrie de l’atelier', () => {
       'media/case-1/traces/trace-1.png',
       null,
       {
-        rotationDeg: 90,
-        mirrored: false,
+        geometry: { rotationDeg: 90, mirrored: false },
+        pixels: [],
       },
     );
 

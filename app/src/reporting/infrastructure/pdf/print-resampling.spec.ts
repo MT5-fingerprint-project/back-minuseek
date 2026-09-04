@@ -33,12 +33,27 @@ function jpeg(
 let upright: Buffer;
 let quarterTurn: Buffer;
 let smallQuarterTurn: Buffer;
+let coloured: Buffer;
+
+/** Aplat orangé, assez petit pour tenir dans la planche sans rééchantillonnage. */
+function orange(width: number, height: number): Promise<Buffer> {
+  const pixels = Buffer.alloc(width * height * 3);
+  for (let index = 0; index < width * height; index += 1) {
+    pixels[index * 3] = 200;
+    pixels[index * 3 + 1] = 100;
+    pixels[index * 3 + 2] = 50;
+  }
+  return sharp(pixels, { raw: { width, height, channels: 3 } })
+    .png()
+    .toBuffer();
+}
 
 beforeAll(async () => {
-  [upright, quarterTurn, smallQuarterTurn] = await Promise.all([
+  [upright, quarterTurn, smallQuarterTurn, coloured] = await Promise.all([
     jpeg(OVER_PLATE),
     jpeg(OVER_PLATE, 8),
     jpeg(FITS_PLATE, 8),
+    orange(8, 6),
   ]);
 }, 60000);
 
@@ -177,5 +192,65 @@ describe('prepareForPlate — ajustement à la planche', () => {
     await expect(
       prepareForPlate(Buffer.from('pas une image'), 'image/jpeg', null, null),
     ).rejects.toThrow();
+  });
+});
+
+describe('prepareForPlate — traitements de l’atelier', () => {
+  async function firstPixel(printed: Buffer): Promise<number[]> {
+    const { data } = await sharp(printed)
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    return [data[0], data[1], data[2]];
+  }
+
+  it('imprime la pièce repeinte, désaturée comme à l’écran', async () => {
+    const printed = await prepareForPlate(coloured, 'image/png', null, {
+      geometry: null,
+      pixels: [{ kind: 'SATURATION', amount: -1 }],
+    });
+
+    expect(await firstPixel(printed!.bytes)).toEqual([124, 124, 124]);
+  });
+
+  it('reproduit la pièce même quand elle tenait déjà telle quelle dans la planche', async () => {
+    await expect(
+      prepareForPlate(coloured, 'image/png', null, null),
+    ).resolves.toBeNull();
+
+    await expect(
+      prepareForPlate(coloured, 'image/png', null, {
+        geometry: null,
+        pixels: [{ kind: 'INVERSION' }],
+      }),
+    ).resolves.not.toBeNull();
+  });
+
+  it('repeint sans déplacer un pixel : les minuties gardent leur place', async () => {
+    const printed = await prepareForPlate(coloured, 'image/png', null, {
+      geometry: null,
+      pixels: [{ kind: 'SATURATION', amount: -1 }],
+    });
+
+    expect(printed).toMatchObject({ width: 8, height: 6 });
+  });
+
+  it('compose la géométrie par-dessus la pièce repeinte', async () => {
+    const printed = await prepareForPlate(coloured, 'image/png', null, {
+      geometry: { rotationDeg: 90, mirrored: false },
+      pixels: [{ kind: 'SATURATION', amount: -1 }],
+    });
+
+    expect(printed).toMatchObject({ width: 6, height: 8 });
+    expect(await firstPixel(printed!.bytes)).toEqual([124, 124, 124]);
+  });
+
+  it('repeint avant de tourner : le fond ajouté par la rotation reste blanc', async () => {
+    const printed = await prepareForPlate(coloured, 'image/png', null, {
+      geometry: { rotationDeg: 45, mirrored: false },
+      pixels: [{ kind: 'INVERSION' }],
+    });
+
+    // Tourner d'abord puis inverser noircirait ce coin, que la rotation a peint en blanc.
+    expect(await firstPixel(printed!.bytes)).toEqual([255, 255, 255]);
   });
 });
