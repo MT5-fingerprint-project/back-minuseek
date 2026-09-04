@@ -67,6 +67,7 @@ function model(
       offenseDateTo: null,
       interventionDate: new Date('2026-03-14T00:00:00.000Z'),
       caseAgainst: 'X',
+      description: null,
       victims: ['Madame BERGER Hélène, née le 04/09/1958'],
       recipient: {
         authority: 'Le Commissaire Général',
@@ -120,9 +121,14 @@ function model(
       {
         cote: 'A',
         position: "à l'index droit",
-        civility: 'Monsieur',
-        firstName: 'Samir',
-        lastName: 'Sadik',
+        subject: {
+          civility: 'Monsieur',
+          firstName: 'Samir',
+          lastName: 'Sadik',
+          sex: 'MALE',
+          birthDate: null,
+          birthPlace: null,
+        },
       },
     ],
     negativeCotes: [],
@@ -1207,14 +1213,13 @@ describe('renderTechnicalReportHtml — annexe A', () => {
     );
   });
 
-  it('le dit plutôt que de laisser un blanc quand la localisation manque', () => {
+  it('ne mentionne pas la localisation quand elle manque', () => {
     const html = renderTechnicalReportHtml(
       model({ annexA: [{ ...PLATE, location: null }] }),
     );
 
-    expect(html).toContain(
-      'Trace papillaire cotée « A », localisation non renseignée.',
-    );
+    expect(html).toContain('Trace papillaire cotée « A ».');
+    expect(html).not.toContain('localisation non renseignée');
   });
 
   it('écrit le repli quand la photographie de localisation est illisible, sans perdre la trace', () => {
@@ -1771,5 +1776,89 @@ describe('renderTechnicalReportHtml — annexe D, la vérification', () => {
     expect(html.indexOf('Annexe C — Journal des actes')).toBeLessThan(
       html.indexOf('Annexe D — Vérification par un second regard'),
     );
+  });
+});
+
+describe('renderTechnicalReportHtml — la garde et les champs renseignés', () => {
+  it('porte la date d’intervention sous les références', () => {
+    const html = renderTechnicalReportHtml(model());
+    const garde = html.slice(0, html.indexOf('<div class="sommaire">'));
+
+    expect(garde).toContain('Date d’intervention');
+    expect(garde).toContain('14 mars 2026');
+  });
+
+  it('omet la rubrique du destinataire quand elle n’est pas renseignée', () => {
+    const html = renderTechnicalReportHtml(
+      model({ caseHeader: { ...model().caseHeader, recipient: null } }),
+    );
+
+    expect(html).not.toContain('Destinataire');
+    expect(html).not.toContain('Non renseigné');
+  });
+
+  it('omet « Affaire contre » quand il n’est pas renseigné', () => {
+    const html = renderTechnicalReportHtml(
+      model({ caseHeader: { ...model().caseHeader, caseAgainst: null } }),
+    );
+
+    expect(html).not.toContain('Affaire contre');
+  });
+
+  it('imprime le résumé des faits en sous-section de la saisine', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        caseHeader: {
+          ...model().caseHeader,
+          description: 'Effraction de la porte-fenêtre du séjour.',
+        },
+      }),
+    );
+
+    expect(html).toContain('<h3>Résumé des faits</h3>');
+    expect(html).toContain('Effraction de la porte-fenêtre du séjour.');
+    expect(html.indexOf('<h3>Résumé des faits</h3>')).toBeGreaterThan(
+      html.indexOf('<h2>1. Saisine</h2>'),
+    );
+    expect(html.indexOf('<h3>Résumé des faits</h3>')).toBeLessThan(
+      html.indexOf('<h2>2.'),
+    );
+  });
+
+  it('n’ouvre pas de sous-section quand le résumé des faits est absent', () => {
+    expect(renderTechnicalReportHtml(model())).not.toContain(
+      'Résumé des faits',
+    );
+  });
+
+  it('complète l’état civil de la personne identifiée quand la fiche le porte', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        identifications: [
+          {
+            cote: 'A',
+            position: "à l'index droit",
+            subject: {
+              civility: 'Monsieur',
+              firstName: 'Samir',
+              lastName: 'Sadik',
+              sex: 'MALE',
+              birthDate: new Date('1979-04-02T00:00:00.000Z'),
+              birthPlace: 'Paris',
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('Monsieur SADIK Samir, né le 02/04/1979 à Paris');
+  });
+
+  it('n’écrit rien sur l’état civil que la fiche ne porte pas', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html).toContain('Monsieur SADIK Samir,');
+    expect(html).not.toContain('né le');
+    expect(html).not.toContain('non renseigné');
   });
 });

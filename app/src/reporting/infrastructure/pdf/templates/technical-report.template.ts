@@ -4,6 +4,7 @@ import {
   ReportContributorViewModel,
   ReportDemonstrationViewModel,
   ReportExploitabilityViewModel,
+  ReportIdentificationViewModel,
   ReportIntegrityViewModel,
   ReportJournalSummaryViewModel,
   ReportJournalViewModel,
@@ -22,6 +23,7 @@ import {
   NEGATIVE_MENTION,
   NOT_EXAMINED_MENTION,
 } from '../../../application/queries/build-report/trace-verdicts';
+import { bornPhrase } from '../../../application/queries/build-report/civil-identity';
 import { frenchCardinal } from '../french-numbers';
 import {
   formatDay,
@@ -46,7 +48,6 @@ export function reportFooterText(reportNumber: string): string {
 function withDefiniteArticle(grade: string): string {
   return /^[aàâäeéèêëiîïoôöuùûüy]/i.test(grade) ? `l'${grade}` : `le ${grade}`;
 }
-const NOT_STATED = 'Non renseigné';
 
 function spelled(count: number): string {
   return `${frenchCardinal(count)} (${count})`;
@@ -104,6 +105,13 @@ function referencesSection(model: TechnicalReportViewModel): string {
   return `
     <h2>Références</h2>
     ${request}
+    ${
+      header.interventionDate === null
+        ? ''
+        : `<p class="champ"><span class="k">Date d’intervention</span> : ${formatLongDay(
+            header.interventionDate,
+          )}</p>`
+    }
     <p class="champ"><span class="k">Procès-verbal n°</span> : ${escapeHtml(header.pvNumber)}</p>
     <p class="champ"><span class="k">Dossier</span> : ${escapeHtml(header.caseNumber)}</p>
     <p class="champ"><span class="k">Rapport n°</span> : ${escapeHtml(model.header.reportNumber)}</p>
@@ -188,41 +196,42 @@ function offenceSection(header: ReportCaseHeaderViewModel): string {
           )
           .join('');
 
+  const against =
+    header.caseAgainst === null
+      ? ''
+      : `<p class="champ"><span class="k">Affaire contre</span> : ${escapeHtml(
+          header.caseAgainst,
+        )}</p>`;
+  const nature =
+    parts.length === 0 ? '' : `<p class="champ">${parts.join(', ')}.</p>`;
+  if (nature.length === 0 && against.length === 0 && victims.length === 0) {
+    return '';
+  }
+
   return `
     <h2>Nature de l'infraction</h2>
-    ${
-      parts.length === 0
-        ? '<p class="champ">La nature de l\'infraction n\'est pas renseignée.</p>'
-        : `<p class="champ">${parts.join(', ')}.</p>`
-    }
-    <p class="champ"><span class="k">Affaire contre</span> : ${
-      header.caseAgainst === null ? NOT_STATED : escapeHtml(header.caseAgainst)
-    }</p>
+    ${nature}
+    ${against}
     ${victims}`;
 }
 
 function recipientSection(header: ReportCaseHeaderViewModel): string {
   const { recipient } = header;
+  if (recipient === null) {
+    return '';
+  }
   return `
     <h2>Destinataire</h2>
+    <p class="champ">${escapeHtml(recipient.authority)}</p>
     ${
-      recipient === null
-        ? `<p class="champ">${NOT_STATED}</p>`
-        : `<p class="champ">${escapeHtml(recipient.authority)}</p>${
-            recipient.attention === null
-              ? ''
-              : `<p class="champ" style="margin-top:6px">À l'attention du ${escapeHtml(
-                  recipient.attention,
-                )}</p>`
-          }`
+      recipient.attention === null
+        ? ''
+        : `<p class="champ" style="margin-top:6px">À l'attention du ${escapeHtml(
+            recipient.attention,
+          )}</p>`
     }`;
 }
 
-/**
- * Le corps du rapport, dans l'ordre. Les titres et le sommaire dérivent tous
- * deux de cette liste : une section qui n'a pas lieu d'être imprimée en sort, et
- * la numérotation suit sans intervention.
- */
 interface ReportBodySection {
   title: string;
   content: string;
@@ -304,9 +313,9 @@ function annexTitlePage(
 }
 
 function locationCaption(cote: string, location: string | null): string {
-  return `Trace papillaire cotée ${quoted(cote)}, ${
-    location === null ? 'localisation non renseignée' : `révélée ${location}`
-  }.`;
+  return location === null
+    ? `Trace papillaire cotée ${quoted(cote)}.`
+    : `Trace papillaire cotée ${quoted(cote)}, révélée ${location}.`;
 }
 
 function annexASection(model: TechnicalReportViewModel): string {
@@ -330,24 +339,27 @@ function annexASection(model: TechnicalReportViewModel): string {
     ${plates}`;
 }
 
-function demonstratedPerson(
+function referencePrintCaption(
   demonstration: ReportDemonstrationViewModel,
 ): string {
-  const { subject } = demonstration;
-  return subject === null
-    ? 'personne non renseignée au dossier'
-    : `${subject.civility} ${subject.lastName.toLocaleUpperCase('fr')} ${
-        subject.firstName
-      }`;
-}
+  const { subject, position } = demonstration;
+  const named =
+    subject === null
+      ? null
+      : `${subject.civility} ${subject.lastName.toLocaleUpperCase('fr')} ${
+          subject.firstName
+        }`;
+  const where =
+    position === null
+      ? null
+      : position.charAt(0).toLocaleUpperCase('fr') + position.slice(1);
 
-function demonstratedPosition(
-  demonstration: ReportDemonstrationViewModel,
-): string {
-  const { position } = demonstration;
-  return position === null
-    ? 'Position non renseignée'
-    : position.charAt(0).toLocaleUpperCase('fr') + position.slice(1);
+  if (where !== null) {
+    return named === null ? `${where}.` : `${where} de ${named}.`;
+  }
+  return named === null
+    ? 'Empreinte de référence.'
+    : `Empreinte de référence de ${named}.`;
 }
 
 function annexBSection(model: TechnicalReportViewModel): string {
@@ -401,9 +413,7 @@ function annexBSection(model: TechnicalReportViewModel): string {
         }),
       );
 
-      const who = `${demonstratedPosition(demonstration)} de ${demonstratedPerson(
-        demonstration,
-      )}.`;
+      const who = referencePrintCaption(demonstration);
       pages.push(
         renderPlate({
           title: `Planche ${toRoman(++rank)}`,
@@ -425,6 +435,28 @@ function annexBSection(model: TechnicalReportViewModel): string {
   return `
     ${annexTitlePage("Annexe B — Démonstrations d'identité", model)}
     ${plates}`;
+}
+
+function identifiedPerson(
+  identification: ReportIdentificationViewModel,
+): string {
+  const { subject } = identification;
+  if (subject === null) {
+    return "d'une empreinte de référence non rattachée à une personne";
+  }
+  const named = `${escapeHtml(subject.civility)} ${escapeHtml(
+    subject.lastName.toLocaleUpperCase('fr'),
+  )} ${escapeHtml(subject.firstName)}`;
+  const born = bornPhrase(subject.sex, subject.birthDate, subject.birthPlace);
+  return born === null ? `de ${named}` : `de ${named}, ${escapeHtml(born)}`;
+}
+
+function identifiedAs(identification: ReportIdentificationViewModel): string {
+  const where =
+    identification.position === null
+      ? 'à une empreinte'
+      : `<b>${escapeHtml(identification.position)}</b>`;
+  return `${where} ${identifiedPerson(identification)}`;
 }
 
 function objectSection(model: TechnicalReportViewModel): string {
@@ -624,11 +656,9 @@ function comparisonsSection(model: TechnicalReportViewModel): string {
             .map(
               (identification, order) => `
           <li>la trace papillaire cotée <b>${quoted(identification.cote)}</b> est identifiée
-          <b>${escapeHtml(identification.position)}</b> de ${escapeHtml(
-            identification.civility,
-          )} ${escapeHtml(identification.lastName.toUpperCase())} ${escapeHtml(
-            identification.firstName,
-          )}, ${minutiae}${order === identifications.length - 1 ? '.' : ' ;'}</li>`,
+          ${identifiedAs(identification)}, ${minutiae}${
+            order === identifications.length - 1 ? '.' : ' ;'
+          }</li>`,
             )
             .join('')}
         </ul>`
@@ -789,11 +819,9 @@ function conclusionSection(model: TechnicalReportViewModel): string {
   const identifiedDetail = identifications
     .map(
       (identification) =>
-        `la trace cotée ${quoted(identification.cote)}, identifiée ${escapeHtml(
-          identification.position,
-        )} de ${escapeHtml(identification.civility)} ${escapeHtml(
-          identification.lastName.toUpperCase(),
-        )} ${escapeHtml(identification.firstName)}`,
+        `la trace cotée ${quoted(identification.cote)}, identifiée ${identifiedAs(
+          identification,
+        )}`,
     )
     .join(', et ');
 
@@ -1051,10 +1079,17 @@ function oathBylineOf(saisine: ReportSaisineViewModel): string {
   return `Serment prêté le ${formatLongDay(saisine.swornAt)}${by}.`;
 }
 
+function factsSummary(description: string | null): string {
+  return description === null || description.length === 0
+    ? ''
+    : `<h3>Résumé des faits</h3><p>${escapeHtml(description)}</p>`;
+}
+
 function saisineSection(model: TechnicalReportViewModel): string {
   const { saisine } = model;
+  const facts = factsSummary(model.caseHeader.description);
   if (!saisine) {
-    return requisitionParagraph();
+    return `${requisitionParagraph()}${facts}`;
   }
   return `
     ${commissionParagraph(saisine)}
@@ -1062,7 +1097,8 @@ function saisineSection(model: TechnicalReportViewModel): string {
     <p class="champ">${oathBylineOf(saisine)}</p>
     ${assistantsParagraph(saisine)}
     ${prorogationParagraph(saisine)}
-    ${biologicalPrecautionsParagraph(saisine)}`;
+    ${biologicalPrecautionsParagraph(saisine)}
+    ${facts}`;
 }
 
 export function renderTechnicalReportHtml(

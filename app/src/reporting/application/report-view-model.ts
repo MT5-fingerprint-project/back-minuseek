@@ -39,6 +39,7 @@ export interface ReportCaseHeaderViewModel {
   offenseDateTo: Date | null;
   interventionDate: Date | null;
   caseAgainst: string | null;
+  description: string | null;
   victims: string[];
   recipient: ReportRecipientViewModel | null;
 }
@@ -131,12 +132,19 @@ export interface ReportReferenceSubjectViewModel {
   quality: string;
 }
 
-export interface ReportIdentificationViewModel {
-  cote: string;
-  position: string;
+export interface ReportIdentifiedSubjectViewModel {
   civility: string;
   firstName: string;
   lastName: string;
+  sex: string;
+  birthDate: Date | null;
+  birthPlace: string | null;
+}
+
+export interface ReportIdentificationViewModel {
+  cote: string;
+  position: string | null;
+  subject: ReportIdentifiedSubjectViewModel | null;
 }
 
 export interface ReportPlateViewModel {

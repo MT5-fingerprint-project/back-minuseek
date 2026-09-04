@@ -79,7 +79,6 @@ export interface TechnicalReportInput {
   images: Map<string, ReportImageViewModel | null>;
 }
 
-const NOT_STATED = 'Non renseignée';
 const EXPLOITABILITY_LABELS: Record<string, string> = {
   EXPLOITABLE: 'EXPLOITABLE',
   NOT_EXPLOITABLE: 'INEXPLOITABLE',
@@ -100,10 +99,10 @@ function buildExaminedTraces(
     })),
   ).map((group) => ({
     label: group.label,
-    origin: traceOriginLabel(group.origin) ?? NOT_STATED,
-    location: group.location ?? NOT_STATED,
+    origin: traceOriginLabel(group.origin) ?? NOT_APPLICABLE,
+    location: group.location ?? NOT_APPLICABLE,
     revelationTechnique:
-      revelationTechniqueLabel(group.revelationTechnique) ?? NOT_STATED,
+      revelationTechniqueLabel(group.revelationTechnique) ?? NOT_APPLICABLE,
   }));
 }
 
@@ -170,12 +169,18 @@ function buildIdentifications(
     return [
       {
         cote: trace.cote,
-        position:
-          positionWithArticle(verdict.identifiedPosition) ??
-          'à une position non renseignée',
-        civility: subject ? civilityLabel(subject.sex) : '',
-        firstName: subject?.firstName ?? '',
-        lastName: subject?.lastName ?? 'personne non renseignée au dossier',
+        position: positionWithArticle(verdict.identifiedPosition),
+        subject:
+          subject === null
+            ? null
+            : {
+                civility: civilityLabel(subject.sex),
+                firstName: subject.firstName,
+                lastName: subject.lastName,
+                sex: subject.sex,
+                birthDate: subject.birthDate,
+                birthPlace: subject.birthPlace,
+              },
       },
     ];
   });

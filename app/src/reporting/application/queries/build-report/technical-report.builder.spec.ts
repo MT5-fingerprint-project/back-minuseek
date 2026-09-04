@@ -469,9 +469,14 @@ describe('buildTechnicalReport — discrimination', () => {
       {
         cote: 'A',
         position: "à l'index droit",
-        civility: 'Monsieur',
-        firstName: 'Samir',
-        lastName: 'Sadik',
+        subject: {
+          civility: 'Monsieur',
+          firstName: 'Samir',
+          lastName: 'Sadik',
+          sex: 'MALE',
+          birthDate: new Date('1979-04-02T00:00:00.000Z'),
+          birthPlace: 'Paris',
+        },
       },
     ]);
   });
@@ -679,8 +684,8 @@ describe('buildTechnicalReport — en-tête et personnes', () => {
     );
 
     expect(model.caseHeader.victims).toEqual([
-      'Madame BERGER Hélène, née le 04/09/1958',
-      'Monsieur LE GOFF Jean-Pierre',
+      'Madame BERGER Hélène, née le 04/09/1958 à Paris',
+      'Monsieur LE GOFF Jean-Pierre, né à Paris',
     ]);
   });
 
@@ -876,7 +881,7 @@ describe('buildTechnicalReport — traces examinées', () => {
     ]);
   });
 
-  it('dit qu’une description manque plutôt que d’imprimer un trou', () => {
+  it('marque d’un tiret les cases d’une description manquante', () => {
     const model = build(
       caseData({
         traces: [
@@ -892,9 +897,9 @@ describe('buildTechnicalReport — traces examinées', () => {
     );
 
     expect(model.examinedTraces[0]).toMatchObject({
-      origin: 'Non renseignée',
-      location: 'Non renseignée',
-      revelationTechnique: 'Non renseignée',
+      origin: '/',
+      location: '/',
+      revelationTechnique: '/',
     });
   });
 });

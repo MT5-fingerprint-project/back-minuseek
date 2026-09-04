@@ -76,14 +76,13 @@ export function discriminationOf(
 ): string {
   if (verdict?.identified) {
     const position = positionLabel(verdict.identifiedPosition);
-    const who = verdict.identifiedBy
-      ? surname(verdict.identifiedBy)
-      : 'personne non renseignée au dossier';
-    const where =
+    const stated = [
       position === null
-        ? 'Position non renseignée'
-        : position.charAt(0).toUpperCase() + position.slice(1);
-    return `${where} — ${who}`;
+        ? null
+        : position.charAt(0).toUpperCase() + position.slice(1),
+      verdict.identifiedBy === null ? null : surname(verdict.identifiedBy),
+    ].filter((part): part is string => part !== null);
+    return stated.length === 0 ? NOT_APPLICABLE : stated.join(' — ');
   }
   if (trace.status !== 'EXPLOITABLE') {
     return NOT_APPLICABLE;

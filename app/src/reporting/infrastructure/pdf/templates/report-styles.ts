@@ -48,8 +48,6 @@ export const REPORT_STYLES = `
     .pied { display: none; }
   }
     
-  /* La garde et le sommaire tiennent chacun leur page ; à l'écran ces coupures
-     n'ont aucun effet et le document reste un seul flux. */
   .garde { break-after: page; }
   .sommaire { break-after: page; }
 

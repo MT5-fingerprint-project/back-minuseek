@@ -6,17 +6,14 @@ import {
   ReportCaseHeaderViewModel,
   ReportRecipientViewModel,
 } from '../../report-view-model';
-import { formatDay } from '../../report-dates';
 import { civilityLabel } from './action-labels';
+import { bornPhrase } from './civil-identity';
 import { surname } from './trace-verdicts';
 
 function victimSentence(subject: SubjectData): string {
   const identity = `${civilityLabel(subject.sex)} ${surname(subject)}`;
-  if (subject.birthDate === null) {
-    return identity;
-  }
-  const born = subject.sex === 'FEMALE' ? 'née le' : 'né le';
-  return `${identity}, ${born} ${formatDay(subject.birthDate)}`;
+  const born = bornPhrase(subject.sex, subject.birthDate, subject.birthPlace);
+  return born === null ? identity : `${identity}, ${born}`;
 }
 
 function buildRecipient(data: CaseReportData): ReportRecipientViewModel | null {
@@ -48,6 +45,7 @@ export function buildCaseHeader(
     offenseDateTo: investigationCase.offenseDateTo,
     interventionDate: investigationCase.interventionDate,
     caseAgainst: investigationCase.caseAgainst,
+    description: investigationCase.description,
     victims: data.subjects
       .filter((subject) => subject.type === 'VICTIM')
       .map(victimSentence),
