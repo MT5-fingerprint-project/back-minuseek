@@ -23,6 +23,17 @@ export interface TraceVerdict {
   identification: TraceConcordance | null;
 }
 
+/**
+ * Les verdicts d'un dossier portent avec eux ce que le dossier contient : la
+ * colonne « Discrimination » n'a de sens qu'au regard des empreintes de
+ * familiers versées, et aucune fonction ne peut donc être appelée sans elles.
+ */
+export interface CaseVerdicts {
+  byTraceId: Map<string, TraceVerdict>;
+  exclusionPrintCount: number;
+  personOfInterestPrintCount: number;
+}
+
 export function surname(subject: SubjectData): string {
   return `${subject.lastName.toUpperCase()} ${subject.firstName}`;
 }
@@ -31,17 +42,34 @@ export function isExclusionSubject(subject: SubjectData | null): boolean {
   return subject !== null && EXCLUSION_SUBJECT_TYPES.has(subject.type);
 }
 
-export function verdictsByTraceId(
-  data: CaseReportData,
-): Map<string, TraceVerdict> {
+export function caseVerdicts(data: CaseReportData): CaseVerdicts {
   const subjectsById = new Map(
     data.subjects.map((subject) => [subject.id, subject]),
   );
+  const subjectOf = (print: PieceData): SubjectData | null =>
+    print.subjectId ? (subjectsById.get(print.subjectId) ?? null) : null;
+
+  const verdicts: CaseVerdicts = {
+    byTraceId: new Map<string, TraceVerdict>(),
+    exclusionPrintCount: 0,
+    personOfInterestPrintCount: 0,
+  };
+
+  for (const print of data.referencePrints) {
+    const subject = subjectOf(print);
+    if (isWithdrawn(print) || subject === null) {
+      continue;
+    }
+    if (isExclusionSubject(subject)) {
+      verdicts.exclusionPrintCount += 1;
+    } else {
+      verdicts.personOfInterestPrintCount += 1;
+    }
+  }
+
   const referencePrintsById = new Map(
     data.referencePrints.map((print) => [print.id, print]),
   );
-  const verdicts = new Map<string, TraceVerdict>();
-
   for (const hit of data.declaredHits) {
     if (hit.withdrawnAt !== null) {
       continue;
@@ -50,13 +78,12 @@ export function verdictsByTraceId(
     if (!referencePrint || isWithdrawn(referencePrint)) {
       continue;
     }
-    const subjectId = referencePrint.subjectId;
-    const subject = subjectId ? (subjectsById.get(subjectId) ?? null) : null;
+    const subject = subjectOf(referencePrint);
     const concordance: TraceConcordance = {
       subject,
       position: referencePrint.position,
     };
-    const verdict = verdicts.get(hit.traceId) ?? {
+    const verdict = verdicts.byTraceId.get(hit.traceId) ?? {
       discrimination: null,
       identification: null,
     };
@@ -65,29 +92,43 @@ export function verdictsByTraceId(
     } else {
       verdict.identification = concordance;
     }
-    verdicts.set(hit.traceId, verdict);
+    verdicts.byTraceId.set(hit.traceId, verdict);
   }
   return verdicts;
 }
 
+function verdictOf(
+  trace: PieceData,
+  verdicts: CaseVerdicts,
+): TraceVerdict | undefined {
+  return verdicts.byTraceId.get(trace.id);
+}
+
+export function identificationOf(
+  trace: PieceData,
+  verdicts: CaseVerdicts,
+): TraceConcordance | null {
+  return verdictOf(trace, verdicts)?.identification ?? null;
+}
+
 export function isIdentified(
   trace: PieceData,
-  verdicts: Map<string, TraceVerdict>,
+  verdicts: CaseVerdicts,
 ): boolean {
-  return verdicts.get(trace.id)?.identification != null;
+  return verdictOf(trace, verdicts)?.identification != null;
 }
 
 export function isDiscriminated(
   trace: PieceData,
-  verdicts: Map<string, TraceVerdict>,
+  verdicts: CaseVerdicts,
 ): boolean {
-  const verdict = verdicts.get(trace.id);
+  const verdict = verdictOf(trace, verdicts);
   return verdict?.identification == null && verdict?.discrimination != null;
 }
 
 export function isDeclaredNegative(
   trace: PieceData,
-  verdicts: Map<string, TraceVerdict>,
+  verdicts: CaseVerdicts,
 ): boolean {
   return (
     !isIdentified(trace, verdicts) &&
@@ -98,7 +139,7 @@ export function isDeclaredNegative(
 
 export function isNotExamined(
   trace: PieceData,
-  verdicts: Map<string, TraceVerdict>,
+  verdicts: CaseVerdicts,
 ): boolean {
   return (
     !isIdentified(trace, verdicts) &&
@@ -120,24 +161,22 @@ function concordanceLabel(concordance: TraceConcordance): string {
 
 export function discriminationOf(
   trace: PieceData,
-  verdict: TraceVerdict | undefined,
-  caseHoldsExclusionPrints: boolean,
+  verdicts: CaseVerdicts,
 ): string {
-  if (verdict?.discrimination) {
-    return concordanceLabel(verdict.discrimination);
+  const discrimination = verdictOf(trace, verdicts)?.discrimination;
+  if (discrimination) {
+    return concordanceLabel(discrimination);
   }
-  if (trace.status !== 'EXPLOITABLE' || !caseHoldsExclusionPrints) {
+  if (trace.status !== 'EXPLOITABLE' || verdicts.exclusionPrintCount === 0) {
     return NOT_APPLICABLE;
   }
   return trace.notIdentifiedAt === null ? NOT_EXAMINED_MENTION : NOT_APPLICABLE;
 }
 
-export function comparisonOf(
-  trace: PieceData,
-  verdict: TraceVerdict | undefined,
-): string {
-  if (verdict?.identification) {
-    return concordanceLabel(verdict.identification);
+export function comparisonOf(trace: PieceData, verdicts: CaseVerdicts): string {
+  const identification = verdictOf(trace, verdicts)?.identification;
+  if (identification) {
+    return concordanceLabel(identification);
   }
   return trace.notIdentifiedAt === null
     ? NOT_EXAMINED_MENTION
