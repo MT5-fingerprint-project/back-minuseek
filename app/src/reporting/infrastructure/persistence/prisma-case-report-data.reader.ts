@@ -290,9 +290,9 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
         interventionDate: null,
         caseAgainst: null,
         recipient: {
-          authority: null,
-          attentionQuality: null,
-          attentionName: null,
+          authority: investigationCase.recipientAuthority,
+          attentionQuality: investigationCase.recipientAttentionQuality,
+          attentionName: investigationCase.recipientAttentionName,
         },
       },
       expertise: expertise

@@ -199,6 +199,54 @@ describe('buildTechnicalReport — en-tête du service', () => {
   });
 });
 
+describe('buildTechnicalReport — destinataire', () => {
+  it('adresse le rapport à l’autorité saisie, à l’attention de la personne nommée', () => {
+    const model = build(
+      caseData({
+        investigationCase: {
+          ...caseData().investigationCase,
+          recipient: {
+            authority: 'Tribunal judiciaire de Paris',
+            attentionQuality: 'Madame la juge d’instruction',
+            attentionName: 'CHEVALIER Anne',
+          },
+        },
+      }),
+    );
+
+    expect(model.caseHeader.recipient).toEqual({
+      authority: 'Tribunal judiciaire de Paris',
+      attention: 'Madame la juge d’instruction CHEVALIER Anne',
+    });
+  });
+
+  it('adresse le rapport sans attention quand seule l’autorité est saisie', () => {
+    const model = build(
+      caseData({
+        investigationCase: {
+          ...caseData().investigationCase,
+          recipient: {
+            authority: 'Tribunal judiciaire de Paris',
+            attentionQuality: null,
+            attentionName: null,
+          },
+        },
+      }),
+    );
+
+    expect(model.caseHeader.recipient).toEqual({
+      authority: 'Tribunal judiciaire de Paris',
+      attention: null,
+    });
+  });
+
+  it('n’adresse le rapport à personne quand aucune autorité n’est saisie', () => {
+    const model = build(caseData());
+
+    expect(model.caseHeader.recipient).toBeNull();
+  });
+});
+
 describe('buildTechnicalReport — annexe A (localisation)', () => {
   const PHOTO = {
     path: 'media/case-1/loc.jpg',

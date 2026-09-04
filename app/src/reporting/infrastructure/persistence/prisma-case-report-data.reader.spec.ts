@@ -23,6 +23,12 @@ interface PairSeed {
   createdAt?: Date;
 }
 
+interface CaseSeed {
+  recipientAuthority?: string | null;
+  recipientAttentionQuality?: string | null;
+  recipientAttentionName?: string | null;
+}
+
 interface PieceSeed {
   id: string;
   number?: number;
@@ -32,6 +38,7 @@ interface PieceSeed {
 
 class FakePrismaClient {
   minutiaPairFindManyArgs: unknown[] = [];
+  caseSeed: CaseSeed = {};
   traceSeeds: PieceSeed[] = [];
   printSeeds: PieceSeed[] = [];
   layerSeeds: LayerSeed[] = [];
@@ -46,6 +53,10 @@ class FakePrismaClient {
         description: null,
         status: 'OPEN',
         createdAt: AT,
+        recipientAuthority: null,
+        recipientAttentionQuality: null,
+        recipientAttentionName: null,
+        ...this.caseSeed,
       }),
   };
 
@@ -593,5 +604,36 @@ describe('PrismaCaseReportDataReader — appariements', () => {
     const data = await readCase(prisma, reader);
 
     expect(data.minutiaPairs.map((pair) => pair.number)).toEqual([2]);
+  });
+});
+
+describe('PrismaCaseReportDataReader — destinataire', () => {
+  it('sert l’autorité destinataire enregistrée sur le dossier', async () => {
+    const { prisma, reader } = build();
+    prisma.caseSeed = {
+      recipientAuthority: 'Tribunal judiciaire de Paris',
+      recipientAttentionQuality: 'Madame la juge d’instruction',
+      recipientAttentionName: 'CHEVALIER Anne',
+    };
+
+    const data = await readCase(prisma, reader);
+
+    expect(data.investigationCase.recipient).toEqual({
+      authority: 'Tribunal judiciaire de Paris',
+      attentionQuality: 'Madame la juge d’instruction',
+      attentionName: 'CHEVALIER Anne',
+    });
+  });
+
+  it('n’invente aucun destinataire quand le dossier n’en porte pas', async () => {
+    const { prisma, reader } = build();
+
+    const data = await readCase(prisma, reader);
+
+    expect(data.investigationCase.recipient).toEqual({
+      authority: null,
+      attentionQuality: null,
+      attentionName: null,
+    });
   });
 });
