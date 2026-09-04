@@ -373,6 +373,110 @@ describe('renderTechnicalReportHtml — les conclusions', () => {
   });
 });
 
+describe('renderTechnicalReportHtml — les mentions du tableau d’exploitabilité', () => {
+  it('n’explique la mention « NÉGATIVE » que si une trace la porte', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        exploitability: [
+          {
+            reference: '3455-T1',
+            exploitability: 'EXPLOITABLE',
+            cote: 'A',
+            discrimination: 'NÉGATIVE',
+            withdrawal: null,
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('La mention « NÉGATIVE » indique');
+    expect(html).not.toContain('La mention « non examinée » indique');
+  });
+
+  it('n’explique la mention « non examinée » que si une trace la porte', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        exploitability: [
+          {
+            reference: '3455-T1',
+            exploitability: 'EXPLOITABLE',
+            cote: 'A',
+            discrimination: 'Non examinée',
+            withdrawal: null,
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('La mention « non examinée » indique');
+    expect(html).not.toContain('La mention « NÉGATIVE » indique');
+  });
+
+  it('explique les deux mentions quand les deux figurent au tableau', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        exploitability: [
+          {
+            reference: '3455-T1',
+            exploitability: 'EXPLOITABLE',
+            cote: 'A',
+            discrimination: 'NÉGATIVE',
+            withdrawal: null,
+          },
+          {
+            reference: '3455-T2',
+            exploitability: 'EXPLOITABLE',
+            cote: 'B',
+            discrimination: 'Non examinée',
+            withdrawal: null,
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('La mention « NÉGATIVE » indique');
+    expect(html).toContain('La mention « non examinée » indique');
+  });
+
+  it('n’explique rien quand aucune des deux mentions ne figure au tableau', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        exploitability: [
+          {
+            reference: '3455-T1',
+            exploitability: 'EXPLOITABLE',
+            cote: 'A',
+            discrimination: 'Index droit — SADIK Samir',
+            withdrawal: null,
+          },
+        ],
+      }),
+    );
+
+    expect(html).not.toContain('La mention « NÉGATIVE » indique');
+    expect(html).not.toContain('La mention « non examinée » indique');
+  });
+
+  it('ignore la mention d’une trace retirée, que le tableau n’imprime pas', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        exploitability: [
+          {
+            reference: '3455-T1',
+            exploitability: 'EXPLOITABLE',
+            cote: '/',
+            discrimination: 'NÉGATIVE',
+            withdrawal:
+              "Retirée du dossier le 12 août 2026 — doublon d'une pièce déjà versée",
+          },
+        ],
+      }),
+    );
+
+    expect(html).not.toContain('La mention « NÉGATIVE » indique');
+  });
+});
+
 describe('renderTechnicalReportHtml — numéro, filiation et signature', () => {
   it('imprime le numéro du rapport dans le bloc Références', () => {
     const html = renderTechnicalReportHtml(model());

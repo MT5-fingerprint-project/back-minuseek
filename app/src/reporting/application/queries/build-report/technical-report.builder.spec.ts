@@ -753,7 +753,11 @@ describe('buildTechnicalReport — méthodes de révélation', () => {
       }),
     );
 
-    expect(model.revelationTechniques).toEqual(['FINGERPRINT_POWDER', 'DFO']);
+    expect(model.revelationTechniques).toEqual([
+      'OPTICAL_PROCESS',
+      'FINGERPRINT_POWDER',
+      'DFO',
+    ]);
   });
 
   it('les sort dans l’ordre de la séquence de traitement, pas dans celui des traces', () => {
@@ -800,17 +804,47 @@ describe('buildTechnicalReport — méthodes de révélation', () => {
       }),
     );
 
-    expect(model.revelationTechniques).toEqual(['NINHYDRIN']);
+    expect(model.revelationTechniques).toEqual([
+      'OPTICAL_PROCESS',
+      'NINHYDRIN',
+    ]);
   });
 
-  it('ne retient rien quand aucune trace ne porte de technique', () => {
+  it('inscrit la détection optique alors qu’aucune trace ne la déclare', () => {
     const model = build(
       caseData({
         traces: [trace({ id: 't1', number: 1, revelationTechnique: null })],
       }),
     );
 
-    expect(model.revelationTechniques).toEqual([]);
+    expect(model.revelationTechniques).toEqual(['OPTICAL_PROCESS']);
+  });
+
+  it('ne la répète pas quand une trace la déclare déjà', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            revelationTechnique: 'OPTICAL_PROCESS',
+          }),
+          trace({
+            id: 't2',
+            number: 2,
+            revelationTechnique: 'OPTICAL_PROCESS',
+          }),
+        ],
+      }),
+    );
+
+    expect(model.revelationTechniques).toEqual(['OPTICAL_PROCESS']);
+  });
+
+  it('l’inscrit encore sur un dossier sans aucune trace', () => {
+    const model = build(caseData({ traces: [] }));
+
+    expect(model.revelationTechniques).toEqual(['OPTICAL_PROCESS']);
   });
 });
 

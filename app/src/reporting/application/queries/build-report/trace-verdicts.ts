@@ -7,6 +7,8 @@ import { positionLabel } from './action-labels';
 import { isWithdrawn } from './report-pieces';
 
 export const NOT_APPLICABLE = '/';
+export const NEGATIVE_MENTION = 'NÉGATIVE';
+export const NOT_EXAMINED_MENTION = 'Non examinée';
 
 export interface TraceVerdict {
   identifiedBy: SubjectData | null;
@@ -86,5 +88,7 @@ export function discriminationOf(
   if (trace.status !== 'EXPLOITABLE') {
     return NOT_APPLICABLE;
   }
-  return trace.notIdentifiedAt === null ? 'Non examinée' : 'NÉGATIVE';
+  return trace.notIdentifiedAt === null
+    ? NOT_EXAMINED_MENTION
+    : NEGATIVE_MENTION;
 }

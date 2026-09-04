@@ -30,6 +30,7 @@ import {
   civilityLabel,
   positionWithArticle,
   REVELATION_TECHNIQUE_SEQUENCE,
+  SYSTEMATIC_REVELATION_TECHNIQUE,
   revelationTechniqueLabel,
   subjectTypeLabel,
   traceOriginLabel,
@@ -107,7 +108,10 @@ function buildExaminedTraces(
 }
 
 function buildRevelationTechniques(traces: PieceData[]): string[] {
-  const employed = new Set(traces.map((trace) => trace.revelationTechnique));
+  const employed = new Set<string | null>([
+    SYSTEMATIC_REVELATION_TECHNIQUE,
+    ...traces.map((trace) => trace.revelationTechnique),
+  ]);
   return REVELATION_TECHNIQUE_SEQUENCE.filter((technique) =>
     employed.has(technique),
   );

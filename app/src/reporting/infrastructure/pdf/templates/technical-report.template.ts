@@ -3,6 +3,7 @@ import {
   ReportCaseHeaderViewModel,
   ReportContributorViewModel,
   ReportDemonstrationViewModel,
+  ReportExploitabilityViewModel,
   ReportIntegrityViewModel,
   ReportJournalSummaryViewModel,
   ReportJournalViewModel,
@@ -17,6 +18,10 @@ import {
   journalRows,
   JournalRow,
 } from '../../../application/queries/build-report/journal-annex.builder';
+import {
+  NEGATIVE_MENTION,
+  NOT_EXAMINED_MENTION,
+} from '../../../application/queries/build-report/trace-verdicts';
 import { frenchCardinal } from '../french-numbers';
 import {
   formatDay,
@@ -453,6 +458,27 @@ function examinedTracesSection(model: TechnicalReportViewModel): string {
     }`;
 }
 
+function mentionsNote(exploitability: ReportExploitabilityViewModel[]): string {
+  const mentioned = new Set(
+    exploitability
+      .filter((row) => row.withdrawal === null)
+      .map((row) => row.discrimination),
+  );
+  const notes = [
+    mentioned.has(NEGATIVE_MENTION)
+      ? `La mention « NÉGATIVE » indique que l'expert a comparé la trace papillaire
+    à l'ensemble des empreintes de référence du dossier et a déclaré n'y relever aucune
+    concordance.`
+      : null,
+    mentioned.has(NOT_EXAMINED_MENTION)
+      ? `La mention « non examinée » indique qu'aucune comparaison n'a encore été
+    déclarée sur cette trace : elle ne vaut pas résultat négatif.`
+      : null,
+  ].filter((note): note is string => note !== null);
+
+  return notes.length === 0 ? '' : `<p class="note">${notes.join(' ')}</p>`;
+}
+
 function exploitabilitySection(model: TechnicalReportViewModel): string {
   const { exploitability, counts } = model;
   if (exploitability.length === 0) {
@@ -487,10 +513,7 @@ function exploitabilitySection(model: TechnicalReportViewModel): string {
         )
         .join('')}
     </table>
-    <p class="note">La mention « NÉGATIVE » indique que l'expert a comparé la trace papillaire
-    à l'ensemble des empreintes de référence du dossier et a déclaré n'y relever aucune
-    concordance. La mention « non examinée » indique qu'aucune comparaison n'a encore été
-    déclarée sur cette trace : elle ne vaut pas résultat négatif.</p>`;
+    ${mentionsNote(exploitability)}`;
 }
 
 const COMPARATOR_PARAGRAPH = `Le comparateur automatique de la plateforme a été employé dans le
