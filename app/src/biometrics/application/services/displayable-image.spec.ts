@@ -1,5 +1,8 @@
 import { createHash } from 'node:crypto';
-import { InMemoryImageConverter } from '../../infrastructure/conversion/in-memory-image-converter.adapter';
+import {
+  IN_MEMORY_DISPLAYED_SIZE,
+  InMemoryImageConverter,
+} from '../../infrastructure/conversion/in-memory-image-converter.adapter';
 import { InMemoryImageStorageAdapter } from '../../infrastructure/storage/in-memory-image-storage.adapter';
 import { storeDisplayableImage, thumbnailPath } from './displayable-image';
 
@@ -278,6 +281,7 @@ describe('storeDisplayableImage — journal de la vignette manquante', () => {
 
     expect(logger.warnings).toEqual([
       "Vignette d'affichage non fabriquée pour la pièce investigation-case/case-9/traces/trace-1.png (Error: Image illisible : impossible de la décoder pour la conversion) — « make backfill-thumbnails TENANT_DB=<base> » répare",
+      'Dimensions source non mesurées pour la pièce investigation-case/case-9/traces/trace-1.png (Error: Image illisible : impossible de la décoder pour la conversion)',
     ]);
   });
 
@@ -294,6 +298,69 @@ describe('storeDisplayableImage — journal de la vignette manquante', () => {
 
     expect(logger.warnings).toEqual([
       "Vignette d'affichage non fabriquée pour la pièce investigation-case/case-9/traces/trace-1.png (Error: stockage injoignable) — « make backfill-thumbnails TENANT_DB=<base> » répare",
+    ]);
+  });
+});
+
+class MeasuringConverter extends InMemoryImageConverter {
+  readonly measured: Buffer[] = [];
+
+  displayedSize(source: Buffer) {
+    this.measured.push(source);
+    return super.displayedSize(source);
+  }
+}
+
+class UnmeasurableConverter extends InMemoryImageConverter {
+  displayedSize(): Promise<never> {
+    return Promise.reject(new Error('métadonnées illisibles'));
+  }
+}
+
+describe('storeDisplayableImage — dimensions source', () => {
+  const png = Buffer.concat([PNG_MAGIC, Buffer.from('image')]);
+  const tiff = Buffer.concat([TIFF_MAGIC, Buffer.from('trace')]);
+
+  it('porte les dimensions du fichier servi', async () => {
+    const stored = await store(png);
+
+    expect(stored.sourceSize).toEqual(IN_MEMORY_DISPLAYED_SIZE);
+  });
+
+  it('mesure le PNG servi, pas le TIFF reçu', async () => {
+    const converter = new MeasuringConverter();
+
+    await storeDisplayableImage(
+      new InMemoryImageStorageAdapter(),
+      converter,
+      tiff,
+      'investigation-case/case-9/traces/trace-1',
+      new RecordingLogger(),
+    );
+
+    expect(converter.measured).toEqual([
+      Buffer.concat([Buffer.from('png:'), tiff]),
+    ]);
+  });
+
+  it('dépose la pièce quand même si la mesure échoue, et nomme la pièce', async () => {
+    const logger = new RecordingLogger();
+    const storage = new InMemoryImageStorageAdapter();
+
+    const stored = await storeDisplayableImage(
+      storage,
+      new UnmeasurableConverter(),
+      png,
+      'investigation-case/case-9/traces/trace-1',
+      logger,
+    );
+
+    expect(stored.sourceSize).toBeNull();
+    expect(stored.path).toBe(
+      'media/investigation-case/case-9/traces/trace-1.png',
+    );
+    expect(logger.warnings).toEqual([
+      'Dimensions source non mesurées pour la pièce investigation-case/case-9/traces/trace-1.png (Error: métadonnées illisibles)',
     ]);
   });
 });

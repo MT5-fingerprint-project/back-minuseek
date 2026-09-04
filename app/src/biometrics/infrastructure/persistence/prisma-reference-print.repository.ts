@@ -30,20 +30,15 @@ export class PrismaReferencePrintRepository implements ReferencePrintRepository 
   async save(rp: ReferencePrint, act: AuditEventDraft): Promise<AuditLink> {
     return this.transactionRunner.run(async () => {
       const prisma = await this.tenantConnection.getCurrentClient();
-      const p = rp.toPrimitives();
+      const { position, withdrawalMotive, displayableSha256, ...columns } =
+        rp.toPrimitives();
+      // `displayableSha256` est facultatif dans les primitives : sans ce `?? null`,
+      // la branche `update` laisserait la colonne inchangée au lieu de l'effacer.
       const data = {
-        id: p.id,
-        path: p.path,
-        caseId: p.caseId,
-        sha256: p.sha256,
-        displayableSha256: p.displayableSha256 ?? null,
-        subjectId: p.subjectId,
-        position: p.position as PrismaFingerPosition | null,
-        withdrawnAt: p.withdrawnAt,
-        withdrawalMotive: p.withdrawalMotive as PrismaWithdrawalMotive | null,
-        imageDestroyedAt: p.imageDestroyedAt,
-        resolutionDpi: p.resolutionDpi,
-        thumbPath: p.thumbPath,
+        ...columns,
+        displayableSha256: displayableSha256 ?? null,
+        position: position as PrismaFingerPosition | null,
+        withdrawalMotive: withdrawalMotive as PrismaWithdrawalMotive | null,
       };
       await prisma.referencePrint.upsert({
         where: { id: data.id },

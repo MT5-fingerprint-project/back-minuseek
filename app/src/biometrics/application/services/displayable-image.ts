@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { ImageSize } from '../../domain/image-size';
 import { ImageConverterPort } from '../ports/image-converter.port';
 import { ImageStoragePort } from '../ports/image-storage.port';
 
@@ -8,8 +9,6 @@ export class UnsupportedImageFormatError extends Error {
   }
 }
 
-// Le format est lu dans le contenu (magic bytes), jamais depuis le nom de
-// fichier ni le mimetype, tous deux fournis par le client (ADR-0012).
 const SIGNATURES: ReadonlyArray<[Buffer, '.png' | '.jpg' | '.tif']> = [
   [Buffer.from([0x89, 0x50, 0x4e, 0x47]), '.png'],
   [Buffer.from([0xff, 0xd8, 0xff]), '.jpg'],
@@ -47,13 +46,9 @@ export interface StoredImage {
   receivedSha256: string;
   displayableSha256: string;
   thumbPath: string | null;
+  sourceSize: ImageSize | null;
 }
 
-/**
- * Chemin de la variante réduite servie à l'affichage. Le suffixe se pose AVANT
- * le point : data-minuseek résout la pièce à comparer en listant le préfixe
- * `{id}.` et prend le premier blob, donc `{id}.thumb.webp` la ferait comparer.
- */
 export function thumbnailPath(storedPath: string): string {
   return `${storedPath.replace(/\.[^./]*$/, '')}_thumb.webp`;
 }
@@ -72,11 +67,24 @@ async function storeThumbnail(
       thumbnailKey,
     );
   } catch (error) {
-    // Rien de décoratif ne peut refuser une pièce : sans vignette, l'affichage
-    // retombe sur l'original. Journalisé parce qu'un droit d'écriture perdu sur
-    // le préfixe tarirait toutes les vignettes sans faire échouer un seul dépôt.
     logger.warn(
       `Vignette d'affichage non fabriquée pour la pièce ${relativePath} (${String(error)}) — « make backfill-thumbnails TENANT_DB=<base> » répare`,
+    );
+    return null;
+  }
+}
+
+async function measureDisplayed(
+  converter: ImageConverterPort,
+  displayable: Buffer,
+  relativePath: string,
+  logger: { warn(message: string): void },
+): Promise<ImageSize | null> {
+  try {
+    return await converter.displayedSize(displayable);
+  } catch (error) {
+    logger.warn(
+      `Dimensions source non mesurées pour la pièce ${relativePath} (${String(error)})`,
     );
     return null;
   }
@@ -86,10 +94,6 @@ function digestOf(bytes: Buffer): string {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
-/**
- * Un TIFF est converti en PNG (lossless) pour l'affichage navigateur ;
- * l'original est archivé sous `<id>_original.tif`.
- */
 export async function storeDisplayableImage(
   storage: ImageStoragePort,
   converter: ImageConverterPort,
@@ -114,6 +118,12 @@ export async function storeDisplayableImage(
         relativePath,
         logger,
       ),
+      sourceSize: await measureDisplayed(
+        converter,
+        fileBuffer,
+        relativePath,
+        logger,
+      ),
     };
   }
 
@@ -132,13 +142,10 @@ export async function storeDisplayableImage(
       relativePath,
       logger,
     ),
+    sourceSize: await measureDisplayed(converter, png, relativePath, logger),
   };
 }
 
-/**
- * Chemin de l'original TIFF archivé à côté d'un PNG affichable.
- * Null si l'image stockée n'est pas un PNG (pas d'archive possible).
- */
 export function archivedOriginalPath(storedPath: string): string | null {
   return storedPath.endsWith('.png')
     ? `${storedPath.slice(0, -'.png'.length)}_original.tif`
