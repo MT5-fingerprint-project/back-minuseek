@@ -2,6 +2,7 @@ import {
   ReportDemonstrationViewModel,
   TechnicalReportViewModel,
 } from '../../../application/report-view-model';
+import { REPORT_STYLES } from './report-styles';
 import { renderTechnicalReportHtml } from './technical-report.template';
 
 const IMAGE = {
@@ -1862,5 +1863,51 @@ describe('renderTechnicalReportHtml — la garde et les champs renseignés', () 
     expect(html).toContain('Monsieur SADIK Samir,');
     expect(html).not.toContain('né le');
     expect(html).not.toContain('non renseigné');
+  });
+});
+
+describe('renderTechnicalReportHtml — encarts et alertes', () => {
+  it('distingue l’encart d’information de l’alerte d’anomalie', () => {
+    expect(REPORT_STYLES).toContain('.alerte');
+    expect(REPORT_STYLES).toContain('.encart');
+    const alerte = REPORT_STYLES.slice(REPORT_STYLES.indexOf('.alerte {'));
+    const encart = REPORT_STYLES.slice(REPORT_STYLES.indexOf('.encart {'));
+
+    expect(alerte.slice(0, alerte.indexOf('}'))).toContain('border');
+    expect(encart.slice(0, encart.indexOf('}'))).not.toContain('border');
+    expect(encart.slice(0, encart.indexOf('}'))).toContain('background');
+  });
+
+  it('pose le paragraphe du comparateur en encart', () => {
+    const html = renderTechnicalReportHtml(
+      model({ automaticComparatorUsed: true }),
+    );
+
+    expect(html).toContain(
+      '<p class="encart">Le comparateur automatique de la plateforme',
+    );
+  });
+
+  it('pose les mentions du tableau de comparaison en encart', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        comparisons: [{ reference: '3455-T1', cote: 'A', result: 'NÉGATIVE' }],
+      }),
+    );
+
+    expect(html).toContain('<p class="encart">La mention « NÉGATIVE » indique');
+  });
+
+  it('laisse une anomalie de pièce en alerte encadrée', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        traces: [{ ...PIECE_INTEGRITY, observedMatchesRecord: false }],
+      }),
+    );
+
+    expect(html).toContain('<p class="alerte">');
+    expect(html).not.toContain(
+      '<p class="encart">La trace 3455-T2 cotée « B » :',
+    );
   });
 });

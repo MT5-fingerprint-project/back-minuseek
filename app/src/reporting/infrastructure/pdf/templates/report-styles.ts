@@ -74,6 +74,12 @@ export const REPORT_STYLES = `
     background: #f4f2ee;
   }
 
+  /* Sans filet : un encart d'information ne doit pas se lire comme une anomalie. */
+  .encart {
+    padding: 2mm 3mm; margin: 3px 0 6px;
+    background: #f1f0ed; font-size: 8.5pt;
+  }
+
   /* Annexe de traçabilité : document technique, pas pièce de procédure. */
   .facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5mm 6mm; margin-bottom: 4mm; }
   .fact-label { color: #55606f; }

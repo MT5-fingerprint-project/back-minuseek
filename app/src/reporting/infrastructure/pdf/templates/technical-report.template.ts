@@ -620,7 +620,7 @@ function mentionsNote(comparisons: ReportComparisonViewModel[]): string {
       : null,
   ].filter((note): note is string => note !== null);
 
-  return notes.length === 0 ? '' : `<p class="note">${notes.join(' ')}</p>`;
+  return notes.length === 0 ? '' : `<p class="encart">${notes.join(' ')}</p>`;
 }
 
 function exploitabilitySection(model: TechnicalReportViewModel): string {
@@ -652,7 +652,7 @@ function exploitabilitySection(model: TechnicalReportViewModel): string {
         )
         .join('')}
     </table>
-    <p class="note">La colonne « Discrimination » ne rend compte que des concordances
+    <p class="encart">La colonne « Discrimination » ne rend compte que des concordances
     relevées avec les empreintes des personnes familières des lieux, dont la présence
     s'explique. Les comparaisons avec les personnes mises en cause font l'objet du
     chapitre suivant.</p>`;
@@ -717,7 +717,11 @@ function comparisonsSection(model: TechnicalReportViewModel): string {
     et les empreintes de référence des personnes mises en cause.</p>
     ${comparisons.length === 0 ? '' : comparisonsTable(comparisons)}
     ${mentionsNote(comparisons)}
-    ${model.automaticComparatorUsed ? `<p class="note">${COMPARATOR_PARAGRAPH}</p>` : ''}
+    ${
+      model.automaticComparatorUsed
+        ? `<p class="encart">${COMPARATOR_PARAGRAPH}</p>`
+        : ''
+    }
     ${identified}`;
 }
 
