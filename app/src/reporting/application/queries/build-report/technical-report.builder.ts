@@ -377,6 +377,9 @@ export function buildTechnicalReport(
     personOfInterestPrintCount: printCounts.personOfInterest,
     comparisons: buildComparisons(caseNumber, exploitableTraces, verdicts),
     identifications: buildIdentifications(workingTraces, verdicts),
+    discriminatedCotes: cotesOf(
+      exploitableTraces.filter((trace) => isDiscriminated(trace, verdicts)),
+    ),
     negativeCotes: cotesOf(
       exploitableTraces.filter((trace) => isDeclaredNegative(trace, verdicts)),
     ),

@@ -354,6 +354,7 @@ export interface TechnicalReportViewModel {
   personOfInterestPrintCount: number;
   comparisons: ReportComparisonViewModel[];
   identifications: ReportIdentificationViewModel[];
+  discriminatedCotes: string[];
   negativeCotes: string[];
   notExaminedCotes: string[];
   independentTimestampAt: Date | null;

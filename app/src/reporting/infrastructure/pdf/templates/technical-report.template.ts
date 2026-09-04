@@ -839,8 +839,17 @@ function integritySection(model: TechnicalReportViewModel): string {
     <p>Le détail acte par acte figure en Annexe C.</p>`;
 }
 
-function conclusionSection(model: TechnicalReportViewModel): string {
-  const { counts, identifications, negativeCotes, notExaminedCotes } = model;
+function punctuated(items: string[]): string {
+  return items
+    .map(
+      (item, order) =>
+        `<li>${item}${order === items.length - 1 ? '.' : ' ;'}</li>`,
+    )
+    .join('');
+}
+
+function examinationFindings(model: TechnicalReportViewModel): string[] {
+  const { counts } = model;
   const cotes = model.exploitability
     .filter((row) => row.cote !== '/')
     .map((row) => row.cote);
@@ -851,6 +860,22 @@ function conclusionSection(model: TechnicalReportViewModel): string {
         ? `, cotée ${quoted(cotes[0])}`
         : `, cotées de ${quoted(cotes[0])} à ${quoted(cotes[cotes.length - 1])}`;
 
+  return [
+    counts.exploitable === 0
+      ? "aucune trace exploitable au terme de l'examen"
+      : `${tracesCount(counts.exploitable)} exploitable${plural(
+          counts.exploitable,
+        )}${cotedRange}`,
+    counts.notExploitable === 0
+      ? null
+      : `${tracesCount(counts.notExploitable)} déclarée${plural(
+          counts.notExploitable,
+        )} inexploitable${plural(counts.notExploitable)}`,
+  ].filter((finding): finding is string => finding !== null);
+}
+
+function comparisonFindings(model: TechnicalReportViewModel): string[] {
+  const { counts, identifications, discriminatedCotes } = model;
   const identifiedDetail = identifications
     .map(
       (identification) =>
@@ -860,40 +885,62 @@ function conclusionSection(model: TechnicalReportViewModel): string {
     )
     .join(', et ');
 
+  return [
+    counts.identified === 0
+      ? null
+      : `${tracesCount(counts.identified)} identifiée${plural(
+          counts.identified,
+        )}${identifiedDetail.length === 0 ? '' : ` : ${identifiedDetail}`}`,
+    counts.discriminated === 0
+      ? null
+      : `${tracesCount(counts.discriminated)} discriminée${plural(
+          counts.discriminated,
+        )}${
+          discriminatedCotes.length === 0
+            ? ''
+            : `, ${cotedLabel(discriminatedCotes)}`
+        }`,
+    counts.negative === 0
+      ? null
+      : `${tracesCount(counts.negative)} exploitable${plural(
+          counts.negative,
+        )} non identifiée${plural(counts.negative)}${
+          model.negativeCotes.length === 0
+            ? ''
+            : `, ${cotedLabel(model.negativeCotes)}`
+        }`,
+    counts.notExamined === 0
+      ? null
+      : `${tracesCount(counts.notExamined)} exploitable${plural(
+          counts.notExamined,
+        )} non encore examinée${plural(counts.notExamined)}${
+          model.notExaminedCotes.length === 0
+            ? ''
+            : `, ${cotedLabel(model.notExaminedCotes)}`
+        }`,
+  ].filter((finding): finding is string => finding !== null);
+}
+
+function conclusionSection(model: TechnicalReportViewModel): string {
+  const { counts } = model;
+  const comparison = comparisonFindings(model);
+
   return `
     <p>L'examen des traces papillaires versées au dossier
     ${escapeHtml(model.caseHeader.caseNumber)} permet de faire ressortir les éléments
     suivants :</p>
     <ul class="rec">
       <li>Examen de ${tracesCount(counts.total)}, permettant de conclure à :
-        <ul class="rec">
-          <li>${tracesCount(counts.exploitable)} exploitable${plural(
-            counts.exploitable,
-          )}${cotedRange} ;</li>
-          <li>${tracesCount(counts.notExploitable)} déclarée${plural(
-            counts.notExploitable,
-          )} inexploitable${plural(counts.notExploitable)}.</li>
-        </ul>
+        <ul class="rec">${punctuated(examinationFindings(model))}</ul>
       </li>
-      <li>Comparaison avec les empreintes de référence du dossier, permettant de conclure à :
-        <ul class="rec">
-          <li>${tracesCount(counts.identified)} identifiée${plural(counts.identified)}${
-            identifiedDetail.length === 0 ? '' : ` : ${identifiedDetail}`
-          } ;</li>
-          <li>${tracesCount(counts.negative)} exploitable${plural(
-            counts.negative,
-          )} non identifiée${plural(counts.negative)}${
-            negativeCotes.length === 0 ? '' : `, ${cotedLabel(negativeCotes)}`
-          } ;</li>
-          <li>${tracesCount(counts.notExamined)} exploitable${plural(
-            counts.notExamined,
-          )} non encore examinée${plural(counts.notExamined)}${
-            notExaminedCotes.length === 0
-              ? ''
-              : `, ${cotedLabel(notExaminedCotes)}`
-          }.</li>
-        </ul>
-      </li>
+      ${
+        comparison.length === 0
+          ? ''
+          : `<li>Comparaison avec les empreintes de référence du dossier, permettant de
+        conclure à :
+        <ul class="rec">${punctuated(comparison)}</ul>
+      </li>`
+      }
     </ul>`;
 }
 

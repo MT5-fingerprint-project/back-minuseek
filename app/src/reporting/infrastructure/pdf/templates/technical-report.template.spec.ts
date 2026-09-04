@@ -140,6 +140,7 @@ function model(
         },
       },
     ],
+    discriminatedCotes: [],
     negativeCotes: [],
     notExaminedCotes: ['B'],
     independentTimestampAt: new Date('2026-03-15T03:00:00.000Z'),
@@ -1909,5 +1910,74 @@ describe('renderTechnicalReportHtml — encarts et alertes', () => {
     expect(html).not.toContain(
       '<p class="encart">La trace 3455-T2 cotée « B » :',
     );
+  });
+});
+
+describe('renderTechnicalReportHtml — la conclusion ne dit pas les zéros', () => {
+  function withCounts(counts: Partial<TechnicalReportViewModel['counts']>) {
+    return renderTechnicalReportHtml(
+      model({
+        counts: {
+          total: 4,
+          exploitable: 3,
+          notExploitable: 1,
+          identified: 0,
+          discriminated: 0,
+          negative: 0,
+          notExamined: 0,
+          ...counts,
+        },
+        identifications: [],
+        discriminatedCotes: [],
+        negativeCotes: [],
+        notExaminedCotes: [],
+      }),
+    );
+  }
+
+  it('n’imprime aucune ligne dont le compte vaut zéro', () => {
+    const html = withCounts({ negative: 1 });
+
+    expect(html).toContain('non identifiée');
+    expect(html).not.toContain('non encore examinée');
+    expect(html).not.toContain('discriminée');
+    expect(html).not.toContain('(0)');
+    expect(html).not.toContain('ZÉRO');
+  });
+
+  it('compte les traces discriminées à part des traces identifiées', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        counts: {
+          total: 2,
+          exploitable: 2,
+          notExploitable: 0,
+          identified: 0,
+          discriminated: 2,
+          negative: 0,
+          notExamined: 0,
+        },
+        identifications: [],
+        discriminatedCotes: ['A', 'B'],
+        negativeCotes: [],
+        notExaminedCotes: [],
+      }),
+    );
+
+    expect(html).toContain('discriminée');
+    expect(html).toContain('cotées « A » et « B »');
+    expect(html).not.toContain('identifiée');
+  });
+
+  it('affirme qu’aucune trace n’est exploitable au terme de l’examen', () => {
+    const html = withCounts({ exploitable: 0, notExploitable: 4 });
+
+    expect(html).toContain("aucune trace exploitable au terme de l'examen");
+  });
+
+  it('supprime le second niveau quand aucune comparaison n’a de résultat', () => {
+    const html = withCounts({});
+
+    expect(html).not.toContain('Comparaison avec les empreintes de référence');
   });
 });
