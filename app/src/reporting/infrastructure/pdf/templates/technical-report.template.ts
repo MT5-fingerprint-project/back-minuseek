@@ -218,7 +218,57 @@ function recipientSection(header: ReportCaseHeaderViewModel): string {
     }`;
 }
 
-function summarySection(model: TechnicalReportViewModel): string {
+/**
+ * Le corps du rapport, dans l'ordre. Les titres et le sommaire dérivent tous
+ * deux de cette liste : une section qui n'a pas lieu d'être imprimée en sort, et
+ * la numérotation suit sans intervention.
+ */
+interface ReportBodySection {
+  title: string;
+  content: string;
+}
+
+function bodySections(model: TechnicalReportViewModel): ReportBodySection[] {
+  return [
+    { title: 'Saisine', content: saisineSection(model) },
+    { title: 'Objet et pièces examinées', content: objectSection(model) },
+    {
+      title: 'Méthodes et techniques employées',
+      content: methodsSection(model),
+    },
+    {
+      title: 'Traces papillaires examinées',
+      content: examinedTracesSection(model),
+    },
+    {
+      title: 'Exploitabilité et cotation',
+      content: exploitabilitySection(model),
+    },
+    {
+      title: 'Comparaisons et identifications',
+      content: comparisonsSection(model),
+    },
+    {
+      title: 'Traitements appliqués aux images et intégrité des pièces',
+      content: integritySection(model),
+    },
+    { title: 'Conclusion', content: conclusionSection(model) },
+  ];
+}
+
+function renderBodySections(sections: ReportBodySection[]): string {
+  return sections
+    .map(
+      (section, order) =>
+        `<h2>${order + 1}. ${section.title}</h2>${section.content}`,
+    )
+    .join('');
+}
+
+function summarySection(
+  model: TechnicalReportViewModel,
+  sections: ReportBodySection[],
+): string {
   const annexes = [
     model.annexA.length === 0
       ? null
@@ -233,14 +283,9 @@ function summarySection(model: TechnicalReportViewModel): string {
   return `
     <h2>Sommaire</h2>
     <ul class="rec">
-      <li>1. Saisine</li>
-      <li>2. Objet et pièces examinées</li>
-      <li>3. Méthodes et techniques employées</li>
-      <li>4. Traces papillaires examinées</li>
-      <li>5. Exploitabilité et cotation</li>
-      <li>6. Comparaisons et identifications</li>
-      <li>7. Traitements appliqués aux images et intégrité des pièces</li>
-      <li>8. Conclusion</li>
+      ${sections
+        .map((section, order) => `<li>${order + 1}. ${section.title}</li>`)
+        .join('')}
     </ul>
     <p class="champ" style="font-size:9.5pt">${annexes.join('<br />')}</p>`;
 }
@@ -317,8 +362,27 @@ function annexBSection(model: TechnicalReportViewModel): string {
         demonstration.cote,
       )}`;
       const marked = demonstration.trace.marks.length;
+      const retouched = demonstration.rawTrace !== null;
       const pages: string[] = [];
 
+      if (demonstration.rawTrace !== null) {
+        pages.push(
+          renderPlate({
+            title: `Planche ${toRoman(++rank)}`,
+            subtitle,
+            image: demonstration.rawTrace,
+            marks: [],
+            cote: demonstration.cote,
+            caption: `Trace papillaire cotée ${quoted(
+              demonstration.cote,
+            )}, telle qu’elle a été scellée au dossier.`,
+          }),
+        );
+      }
+
+      const traceState = retouched
+        ? `, après les traitements enregistrés au dossier`
+        : '';
       pages.push(
         renderPlate({
           title: `Planche ${toRoman(++rank)}`,
@@ -328,10 +392,12 @@ function annexBSection(model: TechnicalReportViewModel): string {
           cote: demonstration.cote,
           caption:
             marked === 0
-              ? `Trace papillaire cotée ${quoted(demonstration.cote)}.`
+              ? `Trace papillaire cotée ${quoted(
+                  demonstration.cote,
+                )}${traceState}.`
               : `Trace papillaire cotée ${quoted(
                   demonstration.cote,
-                )}. ${spelled(marked)} minuties concordantes numérotées.`,
+                )}${traceState}. ${spelled(marked)} minuties concordantes numérotées.`,
         }),
       );
 
@@ -373,7 +439,6 @@ function objectSection(model: TechnicalReportViewModel): string {
     .join(' et de ');
 
   return `
-    <h2>2. Objet et pièces examinées</h2>
     <p>Le présent rapport rend compte de l'examen dactyloscopique de
     ${tracesCount(counts.total)} révélée${plural(counts.total)} dans le cadre du dossier
     ${escapeHtml(model.caseHeader.caseNumber)}, de la détermination de leur caractère
@@ -403,7 +468,6 @@ function methodsSection(model: TechnicalReportViewModel): string {
     .filter((text) => text !== undefined);
 
   return `
-    <h2>3. Méthodes et techniques employées</h2>
     ${
       described.length === 0
         ? `<p class="empty">Aucune technique de révélation n'est enregistrée pour les traces de ce dossier.</p>`
@@ -430,7 +494,6 @@ function examinedTracesSection(model: TechnicalReportViewModel): string {
         : ` et numérotées ${escapeHtml(first)} à ${escapeHtml(last)}`;
 
   return `
-    <h2>4. Traces papillaires examinées</h2>
     ${
       examinedTraces.length === 0
         ? '<p class="empty">Aucune trace papillaire n\'a été versée à ce dossier.</p>'
@@ -482,12 +545,10 @@ function mentionsNote(exploitability: ReportExploitabilityViewModel[]): string {
 function exploitabilitySection(model: TechnicalReportViewModel): string {
   const { exploitability, counts } = model;
   if (exploitability.length === 0) {
-    return `<h2>5. Exploitabilité et cotation</h2>
-      <p class="empty">Aucune trace papillaire n'a été soumise à examen.</p>`;
+    return `<p class="empty">Aucune trace papillaire n'a été soumise à examen.</p>`;
   }
 
   return `
-    <h2>5. Exploitabilité et cotation</h2>
     <p>Il a été procédé à un examen méthodique et minutieux ${
       counts.total > 1 ? 'des' : 'de'
     } ${tracesCount(counts.total)} afin de déterminer leur caractère
@@ -548,7 +609,6 @@ function comparisonsSection(model: TechnicalReportViewModel): string {
            encore été examinées.</p>`;
 
   return `
-    <h2>6. Comparaisons et identifications</h2>
     <p>Les comparaisons ont été effectuées entre chaque trace papillaire déclarée exploitable
     et les empreintes de référence du dossier.${
       identifications.length === 0
@@ -700,7 +760,6 @@ function integritySection(model: TechnicalReportViewModel): string {
   const pieces = [...integrity.traces, ...integrity.referencePrints];
 
   return `
-    <h2>7. Traitements appliqués aux images et intégrité des pièces</h2>
     ${integrityWarning(integrity)}
     ${INTEGRITY_PREAMBLE.map((paragraph) => `<p>${paragraph}</p>`).join('')}
     ${
@@ -739,7 +798,6 @@ function conclusionSection(model: TechnicalReportViewModel): string {
     .join(', et ');
 
   return `
-    <h2>8. Conclusion</h2>
     <p>L'examen des traces papillaires versées au dossier
     ${escapeHtml(model.caseHeader.caseNumber)} permet de faire ressortir les éléments
     suivants :</p>
@@ -996,10 +1054,9 @@ function oathBylineOf(saisine: ReportSaisineViewModel): string {
 function saisineSection(model: TechnicalReportViewModel): string {
   const { saisine } = model;
   if (!saisine) {
-    return `<h2>1. Saisine</h2>${requisitionParagraph()}`;
+    return requisitionParagraph();
   }
   return `
-    <h2>1. Saisine</h2>
     ${commissionParagraph(saisine)}
     <p>${escapeHtml(saisine.oathStatement)}</p>
     <p class="champ">${oathBylineOf(saisine)}</p>
@@ -1012,6 +1069,7 @@ export function renderTechnicalReportHtml(
   model: TechnicalReportViewModel,
 ): string {
   const { caseHeader } = model;
+  const sections = bodySections(model);
   return `<!DOCTYPE html>
 <html lang="fr">
   <head>
@@ -1022,23 +1080,19 @@ export function renderTechnicalReportHtml(
     <style>${REPORT_STYLES}</style>
   </head>
   <body>
-    ${renderLetterhead(model.header.letterhead)}
-    <h1>RAPPORT D'EXPLOITATION DE TRACES PAPILLAIRES</h1>
-    <p class="subtitle">Examen dactyloscopique, comparaison et démonstration d'identité</p>
+    <div class="garde">
+      ${renderLetterhead(model.header.letterhead)}
+      <h1>RAPPORT D'EXPLOITATION DE TRACES PAPILLAIRES</h1>
+      <p class="subtitle">Examen dactyloscopique, comparaison et démonstration d'identité</p>
 
-    ${referencesSection(model)}
-    ${offenceSection(caseHeader)}
-    ${recipientSection(caseHeader)}
-    ${summarySection(model)}
+      ${referencesSection(model)}
+      ${offenceSection(caseHeader)}
+      ${recipientSection(caseHeader)}
+    </div>
 
-    ${saisineSection(model)}
-    ${objectSection(model)}
-    ${methodsSection(model)}
-    ${examinedTracesSection(model)}
-    ${exploitabilitySection(model)}
-    ${comparisonsSection(model)}
-    ${integritySection(model)}
-    ${conclusionSection(model)}
+    <div class="sommaire">${summarySection(model, sections)}</div>
+
+    ${renderBodySections(sections)}
     ${contributorsSentence(model.contributors)}
     ${signatureSection(model)}
 

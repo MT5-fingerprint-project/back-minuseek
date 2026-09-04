@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import type { ReportImageEmbedderPort } from '../../application/ports/report-image-embedder.port';
+import type { ImageGeometry } from '../../application/ports/report-image-embedder.port';
 import {
   REPORT_STORAGE,
   type ReportStoragePort,
@@ -34,6 +35,7 @@ export class StorageReportImageEmbedder implements ReportImageEmbedderPort {
   async embed(
     storedPath: string,
     resolutionDpi: number | null,
+    geometry: ImageGeometry | null,
   ): Promise<ReportImageViewModel | null> {
     let bytes: Buffer;
     try {
@@ -51,6 +53,7 @@ export class StorageReportImageEmbedder implements ReportImageEmbedderPort {
       mimeType,
       resolutionDpi,
       storedPath,
+      geometry,
     );
     if (printed === null && resolutionDpi !== null) {
       return null;
@@ -78,9 +81,15 @@ export class StorageReportImageEmbedder implements ReportImageEmbedderPort {
     mimeType: string,
     resolutionDpi: number | null,
     storedPath: string,
+    geometry: ImageGeometry | null,
   ): Promise<PrintedImage | null> {
     try {
-      const printed = await prepareForPlate(bytes, mimeType, resolutionDpi);
+      const printed = await prepareForPlate(
+        bytes,
+        mimeType,
+        resolutionDpi,
+        geometry,
+      );
       if (printed === null && resolutionDpi !== null) {
         this.logger.warn(
           `Pièce non imprimée, sa taille réelle dépasse la planche: ${storedPath} (${resolutionDpi} dpi)`,

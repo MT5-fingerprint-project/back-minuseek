@@ -21,6 +21,7 @@ function demonstration(
     location: 'sur la porte-fenêtre du séjour',
     subject: { civility: 'Madame', firstName: 'Hélène', lastName: 'Berger' },
     position: 'index droit',
+    rawTrace: null,
     trace: { image: IMAGE, marks: [] },
     referencePrint: { image: IMAGE, marks: [] },
     ...overrides,
@@ -1440,6 +1441,66 @@ describe('renderTechnicalReportHtml — annexe B', () => {
     expect(html).toContain(
       "L'image n'a pas pu être relue à l'édition du présent rapport.",
     );
+  });
+
+  it('ouvre la démonstration par la trace scellée quand l’atelier l’a retravaillée', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            rawTrace: IMAGE,
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toContain('Planche I');
+    expect(html).toContain('Planche II');
+    expect(html).toContain('Planche III');
+    expect(html).toContain(
+      'Trace papillaire cotée « B », telle qu’elle a été scellée au dossier.',
+    );
+    expect(html).toContain(
+      'Trace papillaire cotée « B », après les traitements enregistrés au dossier. DEUX (2) minuties concordantes numérotées.',
+    );
+  });
+
+  it('ne numérote la démonstration suivante qu’après les trois planches', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            rawTrace: IMAGE,
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+          demonstration({ reference: '3455-T5', cote: 'E' }),
+        ],
+      }),
+    );
+
+    expect(html).toContain('Planche IV');
+    expect(html).toContain('Planche V<');
+    expect(html).not.toContain('Planche VI');
+  });
+
+  it('n’ouvre par la trace scellée que si elle diffère de celle qu’on démontre', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+        ],
+      }),
+    );
+
+    expect(html).not.toContain('telle qu’elle a été scellée au dossier');
+    expect(html).not.toContain('après les traitements enregistrés au dossier');
+    expect(html).not.toContain('Planche III');
   });
 
   it('n’imprime aucune annexe B, ni son renvoi au sommaire, sans identification', () => {

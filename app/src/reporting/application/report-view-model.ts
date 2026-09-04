@@ -172,6 +172,8 @@ export interface ReportDemonstrationViewModel {
     lastName: string;
   } | null;
   position: string | null;
+  /** Trace telle que scellée, imprimée seulement quand l'atelier l'a retournée. */
+  rawTrace: ReportImageViewModel | null;
   trace: ReportDemonstrationPlateViewModel;
   referencePrint: ReportDemonstrationPlateViewModel;
 }

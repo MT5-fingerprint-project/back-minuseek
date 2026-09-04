@@ -143,6 +143,143 @@ function build(
   return buildAnnexB('3455', data, images);
 }
 
+const ROTATED_QUARTER = [
+  {
+    name: 'rotation',
+    type: 'FILTER',
+    zIndex: 0,
+    isVisible: true,
+    settings: { filterKey: 'rotation', value: 90 },
+  },
+];
+
+const TREATED: ReportImageViewModel = {
+  dataUrl: 'data:image/png;base64,retravaillee',
+  width: 600,
+  height: 800,
+  observedSha256: null,
+  lifeSizeMm: null,
+};
+
+describe('buildAnnexB — trace retravaillée', () => {
+  function identifiedCase(layers: PieceData['layers']): CaseReportData {
+    return caseData({
+      traces: [
+        piece({
+          id: 't1',
+          layers,
+          minutiae: [minutia({ id: 'trace-minutia-1', x: 10, y: 20 })],
+        }),
+      ],
+      referencePrints: [
+        piece({
+          id: 'ref-1',
+          status: null,
+          cote: null,
+          minutiae: [minutia({ id: 'ref-minutia-1', x: 30, y: 40 })],
+        }),
+      ],
+      declaredHits: [hit()],
+      minutiaPairs: [pair()],
+    });
+  }
+
+  const bothImages = new Map<string, ReportImageViewModel | null>([
+    ['media/case-1/t1.png', PHOTO],
+    ['media/case-1/t1.png@atelier', TREATED],
+    ['media/case-1/ref-1.png', PHOTO],
+  ]);
+
+  it('démontre sur l’image que l’opérateur a retournée', () => {
+    const [demonstration] = buildAnnexB(
+      '3455',
+      identifiedCase(ROTATED_QUARTER),
+      bothImages,
+    );
+
+    expect(demonstration.trace.image).toBe(TREATED);
+  });
+
+  it('replace les minuties sur la reproduction retournée', () => {
+    const [demonstration] = buildAnnexB(
+      '3455',
+      identifiedCase(ROTATED_QUARTER),
+      bothImages,
+    );
+
+    expect(demonstration.trace.marks[0].x).toBeCloseTo(579, 5);
+    expect(demonstration.trace.marks[0].y).toBeCloseTo(10, 5);
+  });
+
+  it('montre en plus la trace telle qu’elle est scellée', () => {
+    const [demonstration] = buildAnnexB(
+      '3455',
+      identifiedCase(ROTATED_QUARTER),
+      bothImages,
+    );
+
+    expect(demonstration.rawTrace).toBe(PHOTO);
+  });
+
+  it('ne montre pas deux fois la même image quand rien n’a été retravaillé', () => {
+    const [demonstration] = buildAnnexB('3455', identifiedCase([]), bothImages);
+
+    expect(demonstration.rawTrace).toBeNull();
+    expect(demonstration.trace.image).toBe(PHOTO);
+    expect(demonstration.trace.marks[0]).toMatchObject({ x: 10, y: 20 });
+  });
+
+  it('s’en tient à la trace scellée quand la reproduction retravaillée manque', () => {
+    const sansRetravail = new Map<string, ReportImageViewModel | null>([
+      ['media/case-1/t1.png', PHOTO],
+      ['media/case-1/t1.png@atelier', null],
+      ['media/case-1/ref-1.png', PHOTO],
+    ]);
+
+    const [demonstration] = buildAnnexB(
+      '3455',
+      identifiedCase(ROTATED_QUARTER),
+      sansRetravail,
+    );
+
+    expect(demonstration.trace.image).toBe(PHOTO);
+    expect(demonstration.trace.marks[0]).toMatchObject({ x: 10, y: 20 });
+    expect(demonstration.rawTrace).toBeNull();
+  });
+
+  it('retourne aussi l’empreinte de référence que l’opérateur a retournée', () => {
+    const data = caseData({
+      traces: [
+        piece({
+          id: 't1',
+          minutiae: [minutia({ id: 'trace-minutia-1', x: 10, y: 20 })],
+        }),
+      ],
+      referencePrints: [
+        piece({
+          id: 'ref-1',
+          status: null,
+          cote: null,
+          layers: ROTATED_QUARTER,
+          minutiae: [minutia({ id: 'ref-minutia-1', x: 10, y: 20 })],
+        }),
+      ],
+      declaredHits: [hit()],
+      minutiaPairs: [pair()],
+    });
+    const images = new Map<string, ReportImageViewModel | null>([
+      ['media/case-1/t1.png', PHOTO],
+      ['media/case-1/ref-1.png', PHOTO],
+      ['media/case-1/ref-1.png@atelier', TREATED],
+    ]);
+
+    const [demonstration] = buildAnnexB('3455', data, images);
+
+    expect(demonstration.referencePrint.image).toBe(TREATED);
+    expect(demonstration.referencePrint.marks[0].x).toBeCloseTo(579, 5);
+  });
+});
+
 describe('buildAnnexB', () => {
   it('ne retient que les traces identifiées', () => {
     const demonstrations = build(

@@ -48,6 +48,11 @@ export const REPORT_STYLES = `
     .pied { display: none; }
   }
     
+  /* La garde et le sommaire tiennent chacun leur page ; à l'écran ces coupures
+     n'ont aucun effet et le document reste un seul flux. */
+  .garde { break-after: page; }
+  .sommaire { break-after: page; }
+
   .annexe-titre { break-before: page; break-after: page; text-align: center; padding-top: 40mm; }
   .planche { break-before: page; break-inside: avoid; text-align: center; }
   .planche h3 { text-align: center; text-transform: uppercase; letter-spacing: .04em; }

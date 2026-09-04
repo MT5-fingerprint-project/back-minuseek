@@ -279,7 +279,11 @@ export class GenerateReportHandler implements ICommandHandler<GenerateReportComm
         async (request) =>
           [
             request.key,
-            await this.imageEmbedder.embed(request.path, request.resolutionDpi),
+            await this.imageEmbedder.embed(
+              request.path,
+              request.resolutionDpi,
+              request.geometry,
+            ),
           ] as const,
       ),
     );
