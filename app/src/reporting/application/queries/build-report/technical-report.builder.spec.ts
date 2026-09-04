@@ -548,6 +548,34 @@ describe('buildTechnicalReport — discrimination', () => {
     expect(model.exploitability[0].discrimination).toBe('Non examinée');
   });
 
+  it('cesse d’écrire « Non examinée » dès que la trace est identifiée, familiers au dossier', () => {
+    const model = build(
+      caseData({
+        traces: [trace({ id: 't1', number: 1, cote: 'A' })],
+        referencePrints: [
+          referencePrint({ id: 'r1', subjectId: 's1', position: 'RIGHT_INDEX' }),
+          referencePrint({ id: 'r2', subjectId: 's2' }),
+        ],
+        subjects: [
+          subject({ id: 's1' }),
+          subject({ id: 's2', type: 'CLOSE_ASSOCIATE' }),
+        ],
+        declaredHits: [
+          {
+            traceId: 't1',
+            referencePrintId: 'r1',
+            declaredAt: DECLARED_AT,
+            declaredBy: null,
+            withdrawnAt: null,
+          },
+        ],
+      }),
+    );
+
+    expect(model.exploitability[0].discrimination).toBe('/');
+    expect(model.comparisons[0].result).toBe('Index droit — SADIK Samir');
+  });
+
   it('sort la trace retirée du tableau et la porte aux éléments retirés', () => {
     const model = build(
       caseData({

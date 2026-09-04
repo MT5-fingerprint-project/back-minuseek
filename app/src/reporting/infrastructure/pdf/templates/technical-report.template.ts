@@ -259,7 +259,7 @@ function bodySections(model: TechnicalReportViewModel): ReportBodySection[] {
       content: examinedTracesSection(model),
     },
     {
-      title: 'Exploitabilité et cotation',
+      title: 'Exploitabilité et discrimination',
       content: exploitabilitySection(model),
     },
     {

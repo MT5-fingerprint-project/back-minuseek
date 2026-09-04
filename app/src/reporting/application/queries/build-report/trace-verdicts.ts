@@ -170,7 +170,9 @@ export function discriminationOf(
   if (trace.status !== 'EXPLOITABLE' || verdicts.exclusionPrintCount === 0) {
     return NOT_APPLICABLE;
   }
-  return trace.notIdentifiedAt === null ? NOT_EXAMINED_MENTION : NOT_APPLICABLE;
+  // Une trace identifiée a été examinée : la question du familier est tranchée,
+  // et l'écrire « Non examinée » démentirait le chapitre des comparaisons.
+  return isNotExamined(trace, verdicts) ? NOT_EXAMINED_MENTION : NOT_APPLICABLE;
 }
 
 export function comparisonOf(trace: PieceData, verdicts: CaseVerdicts): string {
