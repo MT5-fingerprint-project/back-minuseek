@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { TenantConnectionService } from '../../../tenancy/infrastructure/persistence/tenant-connection.service';
 import { assignCotes } from '../../../shared/domain/forensics/cote';
 import { MINUTIA_SETTINGS_TYPES } from '../../../shared/domain/forensics/minutiae';
+import { numberMinutiaPairs } from '../../../shared/domain/forensics/minutia-pairing';
+import { minutiaTypeLabel } from '../../application/queries/build-report/action-labels';
 import type {
   CaseReportData,
   CaseReportDataReader,
@@ -9,6 +11,7 @@ import type {
   LayerData,
   LocationPhotoData,
   MinutiaData,
+  MinutiaPairData,
   PieceData,
   VerificationReportData,
   VerifierData,
@@ -37,6 +40,7 @@ interface PieceRow {
 }
 
 interface LayerRow {
+  id: string;
   fingerprintId: string;
   name: string;
   type: string;
@@ -45,13 +49,25 @@ interface LayerRow {
   settings: unknown;
 }
 
+interface MinutiaPairRow {
+  id: string;
+  traceId: string;
+  referencePrintId: string;
+  traceMinutiaLayerId: string;
+  referenceMinutiaLayerId: string;
+  createdAt: Date;
+}
+
 const MINUTIA_KINDS = new Set<string>(MINUTIA_SETTINGS_TYPES);
 
 function numberOrNull(value: unknown): number | null {
   return typeof value === 'number' ? value : null;
 }
 
-function toMinutia(settings: Record<string, unknown>): MinutiaData | null {
+function toMinutia(
+  id: string,
+  settings: Record<string, unknown>,
+): MinutiaData | null {
   const kind = settings.type;
   const x = settings.x;
   const y = settings.y;
@@ -62,14 +78,37 @@ function toMinutia(settings: Record<string, unknown>): MinutiaData | null {
     return null;
   }
   return {
+    id,
     kind,
     x,
     y,
     radius: numberOrNull(settings.radius),
-    angleDeg: numberOrNull(settings.angleDeg),
+    angleDeg: numberOrNull(settings.angle),
     color: typeof settings.color === 'string' ? settings.color : null,
-    typeLabel: null,
+    typeLabel: minutiaTypeLabel(settings.minutiaType),
   };
+}
+
+/** Le numéro se dérive par comparaison, comme le fait le comparateur : une même
+ * minutie de trace peut être appariée à plusieurs empreintes de référence, et
+ * chaque planche repart de 1. */
+function numberPairsByComparison(rows: MinutiaPairRow[]): MinutiaPairData[] {
+  const byComparison = new Map<string, MinutiaPairRow[]>();
+  for (const row of rows) {
+    const key = `${row.traceId}:${row.referencePrintId}`;
+    const comparison = byComparison.get(key) ?? [];
+    comparison.push(row);
+    byComparison.set(key, comparison);
+  }
+  return [...byComparison.values()].flatMap((comparison) =>
+    numberMinutiaPairs(comparison).map((pair) => ({
+      traceId: pair.traceId,
+      referencePrintId: pair.referencePrintId,
+      number: pair.number,
+      traceMinutiaLayerId: pair.traceMinutiaLayerId,
+      referenceMinutiaLayerId: pair.referenceMinutiaLayerId,
+    })),
+  );
 }
 
 function toLocationPhoto(row: PieceRow): LocationPhotoData | null {
@@ -170,7 +209,7 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
       });
       layersByPiece.set(layer.fingerprintId, pieceLayers);
 
-      const minutia = toMinutia(settings);
+      const minutia = toMinutia(layer.id, settings);
       if (minutia) {
         const pieceMinutiae = minutiaeByPiece.get(layer.fingerprintId) ?? [];
         pieceMinutiae.push(minutia);
@@ -179,7 +218,7 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
     }
 
     const traceIds = traces.map((trace) => trace.id);
-    const [matchings, hits] = await Promise.all([
+    const [matchings, hits, pairs] = await Promise.all([
       prisma.matching.findMany({
         where: { traceId: { in: traceIds } },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
@@ -187,6 +226,18 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
       prisma.hit.findMany({
         where: { traceId: { in: traceIds } },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
+      prisma.minutiaPair.findMany({
+        where: { traceId: { in: traceIds } },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        select: {
+          id: true,
+          traceId: true,
+          referencePrintId: true,
+          traceMinutiaLayerId: true,
+          referenceMinutiaLayerId: true,
+          createdAt: true,
+        },
       }),
     ]);
 
@@ -211,6 +262,11 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
       hits.map((hit) => `${hit.traceId}:${hit.referencePrintId}`),
     );
     const verifications = await this.readVerifications(prisma, caseId);
+    const servedMinutiaIds = new Set(
+      [...minutiaeByPiece.values()].flatMap((pieceMinutiae) =>
+        pieceMinutiae.map((minutia) => minutia.id),
+      ),
+    );
     const cotes = assignCotes(
       traces.filter((trace) => trace.withdrawnAt === null),
     );
@@ -291,7 +347,11 @@ export class PrismaCaseReportDataReader implements CaseReportDataReader {
           : null,
         withdrawnAt: hit.withdrawnAt,
       })),
-      minutiaPairs: [],
+      minutiaPairs: numberPairsByComparison(pairs).filter(
+        (pair) =>
+          servedMinutiaIds.has(pair.traceMinutiaLayerId) &&
+          servedMinutiaIds.has(pair.referenceMinutiaLayerId),
+      ),
       verifications,
       subjects: subjects.map((subject) => ({
         id: subject.id,

@@ -9,6 +9,9 @@ model Layer {
   createdByUserId String?   @db.Uuid
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  pairsAsTraceMinutia     MinutiaPair[] @relation("TraceSideMinutia")
+  pairsAsReferenceMinutia MinutiaPair[] @relation("ReferenceSideMinutia")
 }
 
 enum LayerType {

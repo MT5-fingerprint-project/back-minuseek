@@ -11,7 +11,9 @@ import { buildAnnexB } from './annex-b';
 
 const AT = new Date('2026-08-01T09:00:00.000Z');
 
-function minutia(overrides: Partial<MinutiaData> = {}): MinutiaData {
+function minutia(
+  overrides: Partial<MinutiaData> & { id: string },
+): MinutiaData {
   return {
     kind: 'minutia',
     x: 10,
@@ -19,7 +21,7 @@ function minutia(overrides: Partial<MinutiaData> = {}): MinutiaData {
     radius: 6,
     angleDeg: null,
     color: '#d92b2b',
-    typeLabel: null,
+    typeLabel: 'indéterminée',
     ...overrides,
   };
 }
@@ -67,8 +69,9 @@ function pair(overrides: Partial<MinutiaPairData> = {}): MinutiaPairData {
   return {
     traceId: 't1',
     referencePrintId: 'ref-1',
-    traceMinutiaRank: 1,
-    referenceMinutiaRank: 1,
+    number: 1,
+    traceMinutiaLayerId: 'trace-minutia-1',
+    referenceMinutiaLayerId: 'ref-minutia-1',
     ...overrides,
   };
 }
@@ -181,9 +184,9 @@ describe('buildAnnexB', () => {
           piece({
             id: 't1',
             minutiae: [
-              minutia({ x: 10 }),
-              minutia({ x: 20 }),
-              minutia({ x: 30 }),
+              minutia({ id: 'tm-1', x: 10 }),
+              minutia({ id: 'tm-2', x: 20 }),
+              minutia({ id: 'tm-3', x: 30 }),
             ],
           }),
         ],
@@ -193,28 +196,104 @@ describe('buildAnnexB', () => {
             status: null,
             cote: null,
             minutiae: [
-              minutia({ x: 110 }),
-              minutia({ x: 120 }),
-              minutia({ x: 130 }),
+              minutia({ id: 'rm-1', x: 110 }),
+              minutia({ id: 'rm-2', x: 120 }),
+              minutia({ id: 'rm-3', x: 130 }),
             ],
           }),
         ],
         declaredHits: [hit()],
         minutiaPairs: [
-          pair({ traceMinutiaRank: 3, referenceMinutiaRank: 2 }),
-          pair({ traceMinutiaRank: 1, referenceMinutiaRank: 3 }),
+          pair({
+            number: 1,
+            traceMinutiaLayerId: 'tm-3',
+            referenceMinutiaLayerId: 'rm-2',
+          }),
+          pair({
+            number: 2,
+            traceMinutiaLayerId: 'tm-1',
+            referenceMinutiaLayerId: 'rm-3',
+          }),
         ],
       }),
     );
 
     const [demonstration] = demonstrations;
     expect(demonstration.trace.marks).toEqual([
-      { number: 1, x: 30, y: 20, radius: 6, label: null },
-      { number: 2, x: 10, y: 20, radius: 6, label: null },
+      { number: 1, x: 30, y: 20, radius: 6, label: 'indéterminée' },
+      { number: 2, x: 10, y: 20, radius: 6, label: 'indéterminée' },
     ]);
     expect(demonstration.referencePrint.marks).toEqual([
-      { number: 1, x: 120, y: 20, radius: 6, label: null },
-      { number: 2, x: 130, y: 20, radius: 6, label: null },
+      { number: 1, x: 120, y: 20, radius: 6, label: 'indéterminée' },
+      { number: 2, x: 130, y: 20, radius: 6, label: 'indéterminée' },
+    ]);
+  });
+
+  it('reprend le numéro déjà porté par la paire au lieu de recompter', () => {
+    const demonstrations = build(
+      caseData({
+        traces: [piece({ id: 't1', minutiae: [minutia({ id: 'tm-7' })] })],
+        referencePrints: [
+          piece({
+            id: 'ref-1',
+            status: null,
+            cote: null,
+            minutiae: [minutia({ id: 'rm-7' })],
+          }),
+        ],
+        declaredHits: [hit()],
+        minutiaPairs: [
+          pair({
+            number: 4,
+            traceMinutiaLayerId: 'tm-7',
+            referenceMinutiaLayerId: 'rm-7',
+          }),
+        ],
+      }),
+    );
+
+    expect(demonstrations[0].trace.marks[0].number).toBe(4);
+    expect(demonstrations[0].referencePrint.marks[0].number).toBe(4);
+  });
+
+  it('désigne la minutie par son identifiant, pas par sa place dans la liste', () => {
+    const shuffled = build(
+      caseData({
+        traces: [
+          piece({
+            id: 't1',
+            minutiae: [
+              minutia({ id: 'tm-2', x: 20 }),
+              minutia({ id: 'tm-1', x: 10 }),
+            ],
+          }),
+        ],
+        referencePrints: [
+          piece({
+            id: 'ref-1',
+            status: null,
+            cote: null,
+            minutiae: [
+              minutia({ id: 'rm-2', x: 120 }),
+              minutia({ id: 'rm-1', x: 110 }),
+            ],
+          }),
+        ],
+        declaredHits: [hit()],
+        minutiaPairs: [
+          pair({
+            traceMinutiaLayerId: 'tm-1',
+            referenceMinutiaLayerId: 'rm-1',
+          }),
+        ],
+      }),
+    );
+
+    expect(shuffled[0].trace.marks).toEqual([
+      { number: 1, x: 10, y: 20, radius: 6, label: 'indéterminée' },
+    ]);
+    expect(shuffled[0].referencePrint.marks).toEqual([
+      { number: 1, x: 110, y: 20, radius: 6, label: 'indéterminée' },
     ]);
   });
 
@@ -224,7 +303,10 @@ describe('buildAnnexB', () => {
         traces: [
           piece({
             id: 't1',
-            minutiae: [minutia({ x: 10 }), minutia({ x: 20 })],
+            minutiae: [
+              minutia({ id: 'tm-1', x: 10 }),
+              minutia({ id: 'tm-2', x: 20 }),
+            ],
           }),
         ],
         referencePrints: [
@@ -232,11 +314,19 @@ describe('buildAnnexB', () => {
             id: 'ref-1',
             status: null,
             cote: null,
-            minutiae: [minutia({ x: 110 }), minutia({ x: 120 })],
+            minutiae: [
+              minutia({ id: 'rm-1', x: 110 }),
+              minutia({ id: 'rm-2', x: 120 }),
+            ],
           }),
         ],
         declaredHits: [hit()],
-        minutiaPairs: [pair()],
+        minutiaPairs: [
+          pair({
+            traceMinutiaLayerId: 'tm-1',
+            referenceMinutiaLayerId: 'rm-1',
+          }),
+        ],
       }),
     );
 
@@ -247,13 +337,18 @@ describe('buildAnnexB', () => {
   it('n’imprime aucun numéro tant que l’appariement n’est pas enregistré', () => {
     const demonstrations = build(
       caseData({
-        traces: [piece({ id: 't1', minutiae: [minutia(), minutia()] })],
+        traces: [
+          piece({
+            id: 't1',
+            minutiae: [minutia({ id: 'tm-1' }), minutia({ id: 'tm-2' })],
+          }),
+        ],
         referencePrints: [
           piece({
             id: 'ref-1',
             status: null,
             cote: null,
-            minutiae: [minutia(), minutia()],
+            minutiae: [minutia({ id: 'rm-1' }), minutia({ id: 'rm-2' })],
           }),
         ],
         declaredHits: [hit()],
@@ -264,19 +359,98 @@ describe('buildAnnexB', () => {
     expect(demonstrations[0].referencePrint.marks).toEqual([]);
   });
 
-  it('écarte une paire dont un côté ne désigne aucune minutie', () => {
+  it('ignore les paires d’une autre comparaison', () => {
     const demonstrations = build(
       caseData({
-        traces: [piece({ id: 't1', minutiae: [minutia()] })],
+        traces: [piece({ id: 't1', minutiae: [minutia({ id: 'tm-1' })] })],
         referencePrints: [
-          piece({ id: 'ref-1', status: null, cote: null, minutiae: [] }),
+          piece({
+            id: 'ref-1',
+            status: null,
+            cote: null,
+            minutiae: [minutia({ id: 'rm-1' })],
+          }),
+          piece({
+            id: 'ref-2',
+            status: null,
+            cote: null,
+            minutiae: [minutia({ id: 'rm-1' })],
+          }),
         ],
         declaredHits: [hit()],
-        minutiaPairs: [pair()],
+        minutiaPairs: [
+          pair({
+            referencePrintId: 'ref-2',
+            traceMinutiaLayerId: 'tm-1',
+            referenceMinutiaLayerId: 'rm-1',
+          }),
+        ],
       }),
     );
 
     expect(demonstrations[0].trace.marks).toEqual([]);
+  });
+
+  it('écarte une paire dont un côté ne désigne aucune minutie', () => {
+    const demonstrations = build(
+      caseData({
+        traces: [piece({ id: 't1', minutiae: [minutia({ id: 'tm-1' })] })],
+        referencePrints: [
+          piece({ id: 'ref-1', status: null, cote: null, minutiae: [] }),
+        ],
+        declaredHits: [hit()],
+        minutiaPairs: [
+          pair({
+            traceMinutiaLayerId: 'tm-1',
+            referenceMinutiaLayerId: 'rm-disparue',
+          }),
+        ],
+      }),
+    );
+
+    expect(demonstrations[0].trace.marks).toEqual([]);
+    expect(demonstrations[0].referencePrint.marks).toEqual([]);
+  });
+
+  it('conserve le numéro des paires complètes quand une paire est écartée', () => {
+    const demonstrations = build(
+      caseData({
+        traces: [
+          piece({
+            id: 't1',
+            minutiae: [
+              minutia({ id: 'tm-1', x: 10 }),
+              minutia({ id: 'tm-2', x: 20 }),
+            ],
+          }),
+        ],
+        referencePrints: [
+          piece({
+            id: 'ref-1',
+            status: null,
+            cote: null,
+            minutiae: [minutia({ id: 'rm-2', x: 120 })],
+          }),
+        ],
+        declaredHits: [hit()],
+        minutiaPairs: [
+          pair({
+            number: 1,
+            traceMinutiaLayerId: 'tm-1',
+            referenceMinutiaLayerId: 'rm-disparue',
+          }),
+          pair({
+            number: 2,
+            traceMinutiaLayerId: 'tm-2',
+            referenceMinutiaLayerId: 'rm-2',
+          }),
+        ],
+      }),
+    );
+
+    expect(demonstrations[0].trace.marks).toEqual([
+      { number: 2, x: 20, y: 20, radius: 6, label: 'indéterminée' },
+    ]);
   });
 
   it('oublie une identification retirée', () => {
@@ -396,7 +570,7 @@ describe('buildAnnexB', () => {
         traces: [
           piece({
             id: 't1',
-            minutiae: [minutia({ typeLabel: 'bifurcation' })],
+            minutiae: [minutia({ id: 'tm-1', typeLabel: 'bifurcation' })],
           }),
         ],
         referencePrints: [
@@ -404,11 +578,16 @@ describe('buildAnnexB', () => {
             id: 'ref-1',
             status: null,
             cote: null,
-            minutiae: [minutia({ typeLabel: 'bifurcation' })],
+            minutiae: [minutia({ id: 'rm-1', typeLabel: 'bifurcation' })],
           }),
         ],
         declaredHits: [hit()],
-        minutiaPairs: [pair()],
+        minutiaPairs: [
+          pair({
+            traceMinutiaLayerId: 'tm-1',
+            referenceMinutiaLayerId: 'rm-1',
+          }),
+        ],
       }),
     );
 

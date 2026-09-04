@@ -7,6 +7,7 @@ import { layerAuditPayload } from '../../../domain/layer/layer-audit-payload';
 import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
 import { assertExpertAdjustmentAllowed } from '../../../domain/expert-adjustment';
 import { FingerprintNotFoundError } from '../../../domain/fingerprint-not-found.error';
+import type { Layer } from '../../../domain/layer/entity/layer';
 import {
   LAYER_REPOSITORY,
   type LayerRepository,
@@ -22,11 +23,19 @@ import {
   CASE_EXPERTISE,
   CaseExpertisePort,
 } from '../../ports/case-expertise.port';
+import { minutiaTypeOf } from '../../../domain/layer/minutia';
+import { PairedMinutiaTypeChangeError } from '../../../domain/minutia-pair/errors/paired-minutia-type-change.error';
+import {
+  MINUTIA_PAIR_REPOSITORY,
+  type MinutiaPairRepository,
+} from '../../../domain/minutia-pair/repository/minutia-pair.repository';
 
 @CommandHandler(UpdateLayerCommand)
 export class UpdateLayerHandler implements ICommandHandler<UpdateLayerCommand> {
   constructor(
     @Inject(LAYER_REPOSITORY) private readonly repository: LayerRepository,
+    @Inject(MINUTIA_PAIR_REPOSITORY)
+    private readonly pairs: MinutiaPairRepository,
     @Inject(FINGERPRINT_LOCATOR)
     private readonly fingerprintLocator: FingerprintLocatorPort,
     @Inject(CASE_STATUS)
@@ -57,6 +66,8 @@ export class UpdateLayerHandler implements ICommandHandler<UpdateLayerCommand> {
       await this.caseExpertise.isUnderExpertise(location.caseId),
     );
 
+    await this.assertTypeStillFree(layer, command);
+
     layer.update({
       name: command.name,
       zIndex: command.zIndex,
@@ -71,5 +82,22 @@ export class UpdateLayerHandler implements ICommandHandler<UpdateLayerCommand> {
       traceId: location.traceId,
       payload: layerAuditPayload(layer),
     });
+  }
+
+  private async assertTypeStillFree(
+    layer: Layer,
+    command: UpdateLayerCommand,
+  ): Promise<void> {
+    if (command.settings === undefined) {
+      return;
+    }
+    const currentType = minutiaTypeOf(layer.toPrimitives().settings);
+    if (minutiaTypeOf(command.settings) === currentType) {
+      return;
+    }
+    const pairs = await this.pairs.findByMinutiaLayerId(command.id);
+    if (pairs.length > 0) {
+      throw new PairedMinutiaTypeChangeError(command.id);
+    }
   }
 }

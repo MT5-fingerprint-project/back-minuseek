@@ -27,6 +27,10 @@ function markOf(
   };
 }
 
+function byId(minutiae: MinutiaData[]): Map<string, MinutiaData> {
+  return new Map(minutiae.map((minutia) => [minutia.id, minutia]));
+}
+
 export function buildAnnexB(
   caseNumber: string,
   data: CaseReportData,
@@ -55,14 +59,18 @@ export function buildAnnexB(
         pair.traceId === hit.traceId &&
         pair.referencePrintId === hit.referencePrintId,
     );
+    const traceMinutiae = byId(trace.minutiae);
+    const printMinutiae = byId(print.minutiae);
     const traceMarks: ReportDemonstrationMarkViewModel[] = [];
     const printMarks: ReportDemonstrationMarkViewModel[] = [];
     for (const pair of pairs) {
-      const number = traceMarks.length + 1;
-      const onTrace = markOf(trace.minutiae[pair.traceMinutiaRank - 1], number);
+      const onTrace = markOf(
+        traceMinutiae.get(pair.traceMinutiaLayerId),
+        pair.number,
+      );
       const onPrint = markOf(
-        print.minutiae[pair.referenceMinutiaRank - 1],
-        number,
+        printMinutiae.get(pair.referenceMinutiaLayerId),
+        pair.number,
       );
       if (onTrace === null || onPrint === null) {
         continue;

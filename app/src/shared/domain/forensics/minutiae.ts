@@ -25,3 +25,16 @@ export enum MinutiaTypeEnum {
   ENCLOSURE = 'ENCLOSURE',
   UNDETERMINED = 'UNDETERMINED',
 }
+
+const MINUTIA_TYPE_LABELS = new Map<string, string>([
+  [MinutiaTypeEnum.RIDGE_ENDING, 'arrêt de ligne'],
+  [MinutiaTypeEnum.BIFURCATION, 'bifurcation'],
+  [MinutiaTypeEnum.TRIFURCATION, 'trifurcation'],
+  [MinutiaTypeEnum.ISLAND, 'îlot'],
+  [MinutiaTypeEnum.ENCLOSURE, 'anneau'],
+  [MinutiaTypeEnum.UNDETERMINED, 'indéterminée'],
+]);
+
+export function minutiaTypeLabel(rawType: string): string {
+  return MINUTIA_TYPE_LABELS.get(rawType) ?? rawType;
+}

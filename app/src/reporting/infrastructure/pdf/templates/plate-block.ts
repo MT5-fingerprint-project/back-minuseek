@@ -57,12 +57,11 @@ function markedImage(
 }
 
 function pointNames(marks: ReportDemonstrationMarkViewModel[]): string | null {
-  const named = marks.filter((mark) => mark.label !== null);
-  if (named.length === 0) {
+  if (marks.length === 0) {
     return null;
   }
-  return named
-    .map((mark) => `${mark.number} — ${escapeHtml(mark.label as string)}`)
+  return marks
+    .map((mark) => `${mark.number} — ${escapeHtml(mark.label)}`)
     .join(', ');
 }
 

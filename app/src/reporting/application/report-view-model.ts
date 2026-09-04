@@ -154,7 +154,7 @@ export interface ReportDemonstrationMarkViewModel {
   x: number;
   y: number;
   radius: number;
-  label: string | null;
+  label: string;
 }
 
 export interface ReportDemonstrationPlateViewModel {

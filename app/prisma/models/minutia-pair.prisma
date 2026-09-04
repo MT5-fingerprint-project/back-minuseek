@@ -1,0 +1,17 @@
+model MinutiaPair {
+  id                      String   @id @default(uuid()) @db.Uuid
+  traceId                 String   @db.Uuid
+  referencePrintId        String   @db.Uuid
+  traceMinutiaLayerId     String   @db.Uuid
+  referenceMinutiaLayerId String   @db.Uuid
+  createdByUserId         String?  @db.Uuid
+  createdAt               DateTime @default(now())
+
+  traceMinutia     Layer @relation("TraceSideMinutia", fields: [traceMinutiaLayerId], references: [id], onDelete: Cascade)
+  referenceMinutia Layer @relation("ReferenceSideMinutia", fields: [referenceMinutiaLayerId], references: [id], onDelete: Cascade)
+
+
+  @@unique([traceMinutiaLayerId, referencePrintId])
+  @@unique([referenceMinutiaLayerId, traceId])
+  @@index([traceId, referencePrintId])
+}

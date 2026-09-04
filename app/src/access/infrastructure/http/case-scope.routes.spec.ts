@@ -8,6 +8,7 @@ import request from 'supertest';
 import { AuditTrailController } from '../../../audit-trail/infrastructure/http/audit-trail.controller';
 import { BiometricsController } from '../../../biometrics/infrastructure/http/biometrics.controller';
 import { LayersController } from '../../../biometrics/infrastructure/http/layers.controller';
+import { MinutiaPairsController } from '../../../biometrics/infrastructure/http/minutia-pairs.controller';
 import type { UserReadModel } from '../../../identity-access/application/queries/get-user-by-provider-id/user-read-model';
 import { UserRoleEnum } from '../../../identity-access/domain/user/value-objects/user-role.vo';
 import { MeController } from '../../../identity-access/infrastructure/http/me.controller';
@@ -34,6 +35,8 @@ const CALQUE = '44444444-4444-4444-8444-444444444444';
 const PERSONNE = '55555555-5555-4555-8555-555555555555';
 const RAPPORT = '66666666-6666-4666-8666-666666666666';
 const MISSION = '77777777-7777-4777-8777-777777777777';
+const CALQUE_REFERENCE = '88888888-8888-4888-8888-888888888888';
+const APPARIEMENT = '99999999-9999-4999-8999-999999999999';
 
 const MARIE: UserReadModel = {
   id: 'marie',
@@ -225,6 +228,26 @@ const ROUTES_GARDEES: Route[] = [
     url: `/traces/${TRACE}/hits`,
   },
   {
+    label: 'GET /traces/:id/minutia-pairs',
+    method: 'get',
+    url: `/traces/${TRACE}/minutia-pairs?referencePrintId=${EMPREINTE}`,
+  },
+  {
+    label: 'POST /traces/:id/minutia-pairs',
+    method: 'post',
+    url: `/traces/${TRACE}/minutia-pairs`,
+    body: {
+      referencePrintId: EMPREINTE,
+      traceMinutiaLayerId: CALQUE,
+      referenceMinutiaLayerId: CALQUE_REFERENCE,
+    },
+  },
+  {
+    label: 'DELETE /traces/:id/minutia-pairs/:pairId',
+    method: 'delete',
+    url: `/traces/${TRACE}/minutia-pairs/${APPARIEMENT}`,
+  },
+  {
     label: 'GET /layers/:fingerprintId',
     method: 'get',
     url: `/layers/${TRACE}`,
@@ -293,6 +316,7 @@ async function bootFor(
       ReportsController,
       BiometricsController,
       LayersController,
+      MinutiaPairsController,
       SubjectController,
       UserController,
       MeController,

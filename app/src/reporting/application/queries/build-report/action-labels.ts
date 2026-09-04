@@ -1,3 +1,8 @@
+import {
+  MinutiaTypeEnum,
+  minutiaTypeLabel as labelOfMinutiaType,
+} from '../../../../shared/domain/forensics/minutiae';
+
 const POSITION_LABELS: Record<string, string> = {
   RIGHT_THUMB: 'pouce droit',
   RIGHT_INDEX: 'index droit',
@@ -152,4 +157,17 @@ const CASE_STATUS_LABELS: Record<string, string> = {
 
 export function caseStatusLabel(status: string): string {
   return CASE_STATUS_LABELS[status] ?? status;
+}
+
+const DECLARED_MINUTIA_TYPES = new Set<string>(Object.values(MinutiaTypeEnum));
+
+/** Un type absent du calque ou hors catalogue vaut « indéterminée », comme à
+ * l'atelier : le rapport ne peut pas nommer un point que l'opérateur n'a pas
+ * qualifié. */
+export function minutiaTypeLabel(declaredType: unknown): string {
+  return labelOfMinutiaType(
+    typeof declaredType === 'string' && DECLARED_MINUTIA_TYPES.has(declaredType)
+      ? declaredType
+      : MinutiaTypeEnum.UNDETERMINED,
+  );
 }

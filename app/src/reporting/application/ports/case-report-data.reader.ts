@@ -33,20 +33,22 @@ export interface LayerData {
 }
 
 export interface MinutiaData {
+  id: string;
   kind: string;
   x: number;
   y: number;
   radius: number | null;
   angleDeg: number | null;
   color: string | null;
-  typeLabel: string | null;
+  typeLabel: string;
 }
 
 export interface MinutiaPairData {
   traceId: string;
   referencePrintId: string;
-  traceMinutiaRank: number;
-  referenceMinutiaRank: number;
+  number: number;
+  traceMinutiaLayerId: string;
+  referenceMinutiaLayerId: string;
 }
 
 export interface LocationPhotoData {

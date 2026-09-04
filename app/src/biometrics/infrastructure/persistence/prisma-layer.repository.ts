@@ -66,11 +66,13 @@ export class PrismaLayerRepository implements LayerRepository {
     });
   }
 
-  async delete(id: string, act: AuditEventDraft): Promise<void> {
+  async delete(id: string, acts: readonly AuditEventDraft[]): Promise<void> {
     await this.transactionRunner.run(async () => {
       const prisma = await this.tenantConnection.getCurrentClient();
       await prisma.layer.delete({ where: { id } });
-      await this.auditTrail.append(act);
+      for (const act of acts) {
+        await this.auditTrail.append(act);
+      }
     });
   }
 

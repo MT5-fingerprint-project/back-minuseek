@@ -25,6 +25,7 @@ import { LayerNotFoundError } from '../../domain/layer/errors/layer-not-found.er
 import { FingerprintNotFoundError } from '../../domain/fingerprint-not-found.error';
 import { CaseNotOpenForWorkError } from '../../domain/errors/case-not-open-for-work.error';
 import { ExpertAdjustmentOutsideExpertiseError } from '../../domain/errors/expert-adjustment-outside-expertise.error';
+import { PairedMinutiaTypeChangeError } from '../../domain/minutia-pair/errors/paired-minutia-type-change.error';
 import { CreateLayerDto } from './dto/create-layer.dto';
 import { UpdateLayerDto } from './dto/update-layer.dto';
 import { CurrentUser } from '../../../auth/infrastructure/http/current-user.decorator';
@@ -113,7 +114,10 @@ export class LayersController {
     description: "Réglage d'expert sur un dossier qui n'est pas en expertise",
   })
   @ApiResponse({ status: 404, description: 'Calque non trouvé' })
-  @ApiResponse({ status: 409, description: 'Affaire close' })
+  @ApiResponse({
+    status: 409,
+    description: 'Affaire close ou minutie engagée dans un appariement',
+  })
   async updateLayer(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateLayerDto,
@@ -134,6 +138,8 @@ export class LayersController {
       );
     } catch (e) {
       if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
+      if (e instanceof PairedMinutiaTypeChangeError)
         throw new ConflictException(e.message);
       if (e instanceof ExpertAdjustmentOutsideExpertiseError)
         throw new ForbiddenException(e.message);
