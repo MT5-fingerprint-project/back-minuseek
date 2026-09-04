@@ -826,29 +826,43 @@ function withIntegrity(overrides: Record<string, unknown> = {}) {
   });
 }
 
-describe('renderTechnicalReportHtml — section 7', () => {
-  it('imprime le préambule d’intégrité', () => {
+describe('renderTechnicalReportHtml — chapitre d’intégrité', () => {
+  it('tient son préambule en deux paragraphes', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
 
     expect(html).toContain(
-      'son empreinte numérique est inscrite au registre chronologique du laboratoire dans la même opération indivisible',
+      'Le registre chronologique du laboratoire est en écriture seule',
     );
     expect(html).toContain(
-      "Le logiciel ne comporte aucune fonction permettant de remplacer le fichier d'une pièce.",
+      "aucune fonction permettant de remplacer le fichier d'une pièce",
     );
-    expect(html).toContain('Le registre chronologique est en écriture seule');
+    expect(html).toContain(
+      'Ils ne sont pas appliqués au fichier reçu, mais conservés sous forme de réglages',
+    );
+    expect(html).not.toContain('ne permet pas de reconstituer l’image');
+    expect(html).not.toContain('fournies en pièce jointe');
   });
 
-  it('imprime l’empreinte du registre et sa date de mise sous scellé', () => {
+  it('range les pièces dans un tableau, avec leur date de mise sous scellé', () => {
+    const html = renderTechnicalReportHtml(withIntegrity());
+    const flat = html.replace(/\s+/g, ' ');
+
+    expect(flat).toContain(
+      '<th>Pièce</th><th style="width:10%">Cote</th> <th style="width:30%">Mise sous scellé le</th>',
+    );
+    expect(flat).toContain('<td>16/03/2026 à 17 h 03</td>');
+  });
+
+  it('n’imprime plus ni empreinte, ni numéro d’inscription au registre', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
 
-    expect(html).toContain(`<span class="hash">${SEALED}</span>`);
-    expect(html).toContain(
-      'Mise sous scellé le 16/03/2026 à 17 h 03, inscription n° 12 du registre.',
-    );
+    expect(html).not.toContain(SEALED);
+    expect(html).not.toContain('class="hash"');
+    expect(html).not.toContain('du registre.');
+    expect(html).not.toContain('inscription n° 12');
   });
 
-  it('imprime celle du registre, pas celle de la fiche, quand elles divergent', () => {
+  it('signale une divergence d’empreinte sans imprimer aucune des deux', () => {
     const html = renderTechnicalReportHtml(
       withIntegrity({
         traces: [
@@ -861,7 +875,7 @@ describe('renderTechnicalReportHtml — section 7', () => {
       }),
     );
 
-    expect(html).toContain(`<span class="hash">${SEALED}</span>`);
+    expect(html).not.toContain(SEALED);
     expect(html).not.toContain('b'.repeat(64));
     expect(html).toContain(
       'cette divergence doit être signalée au responsable du laboratoire',
@@ -883,15 +897,15 @@ describe('renderTechnicalReportHtml — section 7', () => {
     );
 
     expect(html).toContain(
-      "Aucune empreinte n'a été inscrite au registre lors du dépôt de cette pièce.",
+      "Aucune empreinte n'a été inscrite au registre lors du dépôt",
     );
+    expect(html).toContain('La trace 3455-T2 cotée « B » :');
   });
 
   it('range les traitements dans un tableau, avec leur date et leur auteur', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
     const flat = html.replace(/\s+/g, ' ');
 
-    expect(flat).toContain('<p>Traitements enregistrés :</p>');
     expect(flat).toContain(
       '<th>Traitement</th><th style="width:20%">Posé le</th> <th style="width:20%">Par</th><th style="width:28%">État à l\'édition</th>',
     );
@@ -899,7 +913,7 @@ describe('renderTechnicalReportHtml — section 7', () => {
       '<td>Luminosité portée à +20 %</td> <td>16/03/2026 à 17 h 10</td> <td>Sébastien Aguilar</td> <td>Toujours posé</td>',
     );
     expect(flat).toContain(
-      "Ces traitements sont des réglages d'affichage ; ils n'ont pas modifié le fichier scellé ci-dessus.",
+      "Ces traitements sont des réglages d'affichage ; ils n'ont pas modifié le fichier scellé.",
     );
   });
 
@@ -940,19 +954,22 @@ describe('renderTechnicalReportHtml — section 7', () => {
     expect(html).toContain('<td>Masqué</td>');
   });
 
-  it('le dit quand aucun traitement n’a été appliqué', () => {
+  it('laisse une pièce sans traitement à sa seule ligne de tableau', () => {
     const html = renderTechnicalReportHtml(
       withIntegrity({ traces: [{ ...PIECE_INTEGRITY, treatments: [] }] }),
     );
 
-    expect(html).toContain("Aucun traitement n'a été appliqué à cette image.");
+    expect(html).toContain('<td>16/03/2026 à 17 h 03</td>');
+    expect(html).not.toContain("Aucun traitement n'a été appliqué");
+    expect(html).not.toContain('<div class="piece">');
   });
 
-  it('nomme l’autorité et la date de l’ancre couvrante', () => {
+  it('ne parle plus d’horodatage par une autorité extérieure', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
 
-    expect(html).toContain(
-      "l'autorité d'horodatage https://freetsa.org/tsr a daté un état du registre postérieur à ces opérations (inscription n° 40)",
+    expect(html).not.toContain('Horodatage par une autorité extérieure');
+    expect(html).not.toContain(
+      "l'autorité d'horodatage https://freetsa.org/tsr",
     );
   });
 
@@ -983,12 +1000,13 @@ describe('renderTechnicalReportHtml — section 7', () => {
     expect(html).not.toContain('pas encore été horodaté');
   });
 
-  it('affirme le contrôle quand le fichier porte bien l’empreinte inscrite', () => {
+  it('n’affirme plus rien quand le fichier porte bien l’empreinte inscrite', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
 
-    expect(html).toContain(
+    expect(html).not.toContain(
       "le fichier conservé porte bien l'empreinte inscrite au registre",
     );
+    expect(html).not.toContain("Contrôle effectué à l'édition");
   });
 
   it('dénonce une pièce dont le fichier ne porte plus l’empreinte inscrite', () => {
@@ -1001,6 +1019,7 @@ describe('renderTechnicalReportHtml — section 7', () => {
     expect(html).toContain(
       "Cette pièce doit être tenue pour altérée jusqu'à examen.",
     );
+    expect(html).toContain('class="alerte"');
   });
 
   it('n’affirme aucun contrôle quand le fichier n’a pas pu être relu', () => {
@@ -1065,6 +1084,9 @@ describe('renderTechnicalReportHtml — section 7', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
 
     expect(html).toContain('https://minuseek.fr/srpts-paris/verification');
+    expect(html).toContain(
+      "Toute personne détenant le présent rapport, ou l'une des images délivrées avec lui",
+    );
     expect(html).toContain(
       'la page indique en outre si une version antérieure et si une version ultérieure de ce rapport ont été établies',
     );

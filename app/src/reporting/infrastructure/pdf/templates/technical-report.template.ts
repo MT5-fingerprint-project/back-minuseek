@@ -722,12 +722,8 @@ function comparisonsSection(model: TechnicalReportViewModel): string {
 }
 
 const INTEGRITY_PREAMBLE = [
-  "Les images de ce dossier sont conservées dans l'état où elles ont été reçues. Au moment du dépôt, chaque fichier est enregistré sous une désignation qui lui est propre, et son empreinte numérique est inscrite au registre chronologique du laboratoire dans la même opération indivisible. Deux fichiers différents, ne serait-ce que d'un point, donnent deux empreintes différentes ; l'empreinte, elle, ne permet pas de reconstituer l'image.",
-  "Le logiciel ne comporte aucune fonction permettant de remplacer le fichier d'une pièce. L'enregistrement est refusé si la désignation est déjà occupée, et aucune commande de l'application ne modifie ni le fichier, ni l'empreinte inscrite. Une pièce peut être retirée du dossier, et ce retrait est lui-même inscrit au registre ; elle ne peut pas être échangée contre une autre.",
-  "Les traitements effectués ne sont destinés qu'à améliorer la lisibilité. Ils ne sont pas appliqués au fichier original. Les modifications apportées sont enregistrées sous forme de réglages, avec leur valeur, la date à laquelle ils ont été posés et le nom de l'agent qui les a posés.",
-  'Les images originales sont fournies en pièce jointe du présent rapport.Elles peuvent être communiquées à toute autorité judiciaire ou administrative sur demande.',
-
-  "Le registre chronologique est en écriture seule : la base de données refuse la modification comme la suppression d'une inscription déjà faite, et chaque inscription reprend l'empreinte de la précédente, de sorte qu'une inscription retouchée rendrait toutes les suivantes incohérentes. Les dates ci-dessous sont exprimées en temps universel (UTC).",
+  "Le registre chronologique du laboratoire est en écriture seule : la base de données refuse la modification comme la suppression d'une inscription déjà faite, et chaque inscription reprend l'empreinte de la précédente, de sorte qu'une inscription retouchée rendrait toutes les suivantes incohérentes. Le logiciel ne comporte par ailleurs aucune fonction permettant de remplacer le fichier d'une pièce : une pièce peut être retirée du dossier, elle ne peut pas être échangée contre une autre.",
+  "Les traitements ci-dessous ne sont destinés qu'à améliorer la lisibilité. Ils ne sont pas appliqués au fichier reçu, mais conservés sous forme de réglages, avec leur valeur, leur date et le nom de l'agent qui les a posés. Les dates sont exprimées en temps universel (UTC).",
 ];
 
 const INTEGRITY_SCOPE =
@@ -738,7 +734,7 @@ function integrityWarning(integrity: ReportIntegrityViewModel): string {
     return `<p class="alerte">Une vérification du registre du laboratoire a été effectuée à l'édition du présent rapport et a relevé une anomalie à l'inscription n° ${integrity.firstBrokenEntryNumber}. Les affirmations du présent chapitre doivent être tenues pour non vérifiées jusqu'à examen.</p>`;
   }
   if (integrity.anchorsFailed > 0) {
-    return `<p class="alerte">Une vérification effectuée à l'édition du présent rapport n'a pas pu valider ${integrity.anchorsFailed} horodatage(s) extérieur(s). Les empreintes et l'enchaînement des inscriptions restent vérifiés ; les dates extérieures mentionnées ci-dessous, non.</p>`;
+    return `<p class="alerte">Une vérification effectuée à l'édition du présent rapport n'a pas pu valider ${integrity.anchorsFailed} horodatage(s) extérieur(s). Les empreintes et l'enchaînement des inscriptions restent vérifiés ; les dates extérieures, non.</p>`;
   }
   return '';
 }
@@ -750,12 +746,52 @@ function treatmentState(treatment: ReportTreatmentViewModel): string {
   return treatment.hiddenAtEdition ? 'Masqué' : 'Toujours posé';
 }
 
-function treatmentsBlock(piece: ReportPieceIntegrityViewModel): string {
-  if (piece.treatments.length === 0) {
-    return "<p>Aucun traitement n'a été appliqué à cette image.</p>";
-  }
+function sealedPiecesTable(pieces: ReportPieceIntegrityViewModel[]): string {
   return `
-      <p>Traitements enregistrés :</p>
+    <table>
+      <tr>
+        <th>Pièce</th><th style="width:10%">Cote</th>
+        <th style="width:30%">Mise sous scellé le</th>
+      </tr>
+      ${pieces
+        .map(
+          (piece) => `
+      <tr>
+        <td>${capitalized(escapeHtml(piece.designation))}</td>
+        <td>${escapeHtml(piece.cote ?? '/')}</td>
+        <td>${piece.sealedAt === null ? '/' : formatDayTime(piece.sealedAt)}</td>
+      </tr>`,
+        )
+        .join('')}
+    </table>`;
+}
+
+function pieceAlerts(piece: ReportPieceIntegrityViewModel): string {
+  const named = capitalized(escapeHtml(piece.designation));
+  const alerts = [
+    piece.recordedSha256 === null
+      ? `Aucune empreinte n'a été inscrite au registre lors du dépôt : le présent rapport ne peut pas établir que le fichier est resté identique depuis sa réception.`
+      : null,
+    piece.divergesFromRecord
+      ? `L'empreinte figurant dans la fiche courante du dossier diffère de celle inscrite au registre lors du dépôt. C'est la valeur du registre qui fait foi ; cette divergence doit être signalée au responsable du laboratoire.`
+      : null,
+    piece.servedFileIsDerived
+      ? `L'image reproduite dans le présent rapport n'est pas le fichier reçu : celui-ci était au format TIFF, et une version PNG en a été établie par conversion sans perte pour permettre son affichage. Le fichier reçu est conservé.`
+      : null,
+    piece.observedMatchesRecord === false
+      ? `Le fichier conservé ne porte pas l'empreinte inscrite au registre lors du dépôt. Cette pièce doit être tenue pour altérée jusqu'à examen.`
+      : null,
+  ].filter((alert): alert is string => alert !== null);
+
+  return alerts
+    .map((alert) => `<p class="alerte">${named} : ${alert}</p>`)
+    .join('');
+}
+
+function treatedPieceBlock(piece: ReportPieceIntegrityViewModel): string {
+  return `
+    <div class="piece">
+      <h3>${capitalized(escapeHtml(piece.designation))}</h3>
       <table>
         <tr>
           <th>Traitement</th><th style="width:20%">Posé le</th>
@@ -773,70 +809,14 @@ function treatmentsBlock(piece: ReportPieceIntegrityViewModel): string {
           )
           .join('')}
       </table>
-      <p>Ces traitements sont des réglages d'affichage ; ils n'ont pas modifié le fichier scellé ci-dessus.</p>`;
-}
-
-function sealParagraph(piece: ReportPieceIntegrityViewModel): string {
-  if (piece.recordedSha256 === null) {
-    return '<p class="alerte">Aucune empreinte n\'a été inscrite au registre lors du dépôt de cette pièce. Le présent rapport ne peut donc pas établir que le fichier est resté identique depuis sa réception.</p>';
-  }
-  const divergence = piece.divergesFromRecord
-    ? '<p class="alerte">L\'empreinte figurant dans la fiche courante du dossier diffère de celle inscrite au registre lors du dépôt. C\'est la valeur du registre qui est imprimée ci-dessus et qui fait foi ; cette divergence doit être signalée au responsable du laboratoire.</p>'
-    : '';
-  const derived = piece.servedFileIsDerived
-    ? "<p class=\"alerte\">L'image reproduite dans le présent rapport n'est pas le fichier reçu : le fichier reçu était au format TIFF, et une version PNG en a été établie par conversion sans perte pour permettre son affichage. L'empreinte imprimée ci-dessus est celle du fichier reçu, qui est conservé. L'empreinte de la version PNG n'a pas été inscrite au registre : le contrôle décrit ci-dessus ne peut donc pas être effectué sur l'image reproduite.</p>"
-    : '';
-
-  return `
-      <p>Empreinte numérique du fichier reçu : <span class="hash">${escapeHtml(
-        piece.recordedSha256,
-      )}</span></p>
-      <p>Mise sous scellé le ${formatDayTime(piece.sealedAt)}, inscription n° ${
-        piece.recordEntryNumber
-      } du registre.</p>
-      ${divergence}
-      ${derived}`;
-}
-
-function anchorParagraph(piece: ReportPieceIntegrityViewModel): string {
-  if (piece.coveringAnchor === null) {
-    return '';
-  }
-  return `<p>Horodatage par une autorité extérieure : le ${formatDayTime(
-    piece.coveringAnchor.anchoredAt,
-  )}, l'autorité d'horodatage ${escapeHtml(
-    piece.coveringAnchor.authority,
-  )} a daté un état du registre postérieur à ces opérations (inscription n° ${
-    piece.coveringAnchor.entryNumber
-  }). Cette date ne dépend pas de l'horloge du laboratoire.</p>`;
-}
-
-function controlParagraph(piece: ReportPieceIntegrityViewModel): string {
-  if (piece.observedMatchesRecord === true) {
-    return "<p>Contrôle effectué à l'édition du présent rapport : le fichier conservé porte bien l'empreinte inscrite au registre.</p>";
-  }
-  if (piece.observedMatchesRecord === false) {
-    return "<p class=\"alerte\">Contrôle effectué à l'édition du présent rapport : le fichier conservé ne porte pas l'empreinte inscrite au registre lors du dépôt. Cette pièce doit être tenue pour altérée jusqu'à examen.</p>";
-  }
-  return '';
-}
-
-function pieceIntegrityBlock(piece: ReportPieceIntegrityViewModel): string {
-  return `
-    <div class="piece">
-      <h3>${escapeHtml(piece.designation)} — cote ${escapeHtml(
-        piece.cote ?? '/',
-      )}</h3>
-      ${sealParagraph(piece)}
-      ${treatmentsBlock(piece)}
-      ${anchorParagraph(piece)}
-      ${controlParagraph(piece)}
+      <p>Ces traitements sont des réglages d'affichage ; ils n'ont pas modifié le fichier scellé.</p>
     </div>`;
 }
 
 function integritySection(model: TechnicalReportViewModel): string {
   const { integrity } = model;
   const pieces = [...integrity.traces, ...integrity.referencePrints];
+  const treated = pieces.filter((piece) => piece.treatments.length > 0);
 
   return `
     ${integrityWarning(integrity)}
@@ -844,10 +824,12 @@ function integritySection(model: TechnicalReportViewModel): string {
     ${
       pieces.length === 0
         ? '<p class="empty">Aucune image n\'est versée à ce dossier.</p>'
-        : pieces.map((piece) => pieceIntegrityBlock(piece)).join('')
+        : `${sealedPiecesTable(pieces)}
+           ${pieces.map((piece) => pieceAlerts(piece)).join('')}
+           ${treated.map((piece) => treatedPieceBlock(piece)).join('')}`
     }
     <p>${INTEGRITY_SCOPE}</p>
-    <p>Toute personne détenant l'un de ces fichiers peut contrôler elle-même, sans compte et sans solliciter le laboratoire, qu'il a bien été scellé et à quelle date : il suffit de le déposer sur ${escapeHtml(
+    <p>Toute personne détenant le présent rapport, ou l'une des images délivrées avec lui, peut contrôler elle-même, sans compte et sans solliciter le laboratoire, qu'il a bien été scellé et à quelle date : il suffit de le déposer sur ${escapeHtml(
       integrity.verificationUrl,
     )}. Lorsque le fichier déposé est un rapport, la page indique en outre si une version antérieure et si une version ultérieure de ce rapport ont été établies. Le calcul est effectué par le navigateur du lecteur, le fichier ne quitte pas son poste, et la page ne révèle ni le dossier, ni la procédure, ni l'identité des personnes concernées.</p>
     <p>Le détail acte par acte figure en Annexe C.</p>`;
