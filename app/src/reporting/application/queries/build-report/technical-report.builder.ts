@@ -48,8 +48,8 @@ import {
   buildDemonstrations,
   isWithdrawn,
   toPieceViewModel,
-  withdrawalSentence,
 } from './report-pieces';
+import { buildWithdrawnElements } from './withdrawn-elements';
 import { groupExaminedTraces, traceReference } from './trace-grouping';
 import {
   comparisonOf,
@@ -131,14 +131,11 @@ function buildExploitability(
     exploitability:
       EXPLOITABILITY_LABELS[trace.status ?? 'RECEIVED'] ?? NOT_APPLICABLE,
     cote: trace.cote ?? NOT_APPLICABLE,
-    discrimination: isWithdrawn(trace)
-      ? NOT_APPLICABLE
-      : discriminationOf(
-          trace,
-          verdicts.get(trace.id),
-          caseHoldsExclusionPrints,
-        ),
-    withdrawal: withdrawalSentence(trace),
+    discrimination: discriminationOf(
+      trace,
+      verdicts.get(trace.id),
+      caseHoldsExclusionPrints,
+    ),
   }));
 }
 
@@ -360,10 +357,15 @@ export function buildTechnicalReport(
       serviceNumber: input.signer.serviceNumber,
     },
     contributors: buildContributors(input.contributors, input.signer.id),
-    examinedTraces: buildExaminedTraces(caseNumber, orderedTraces),
+    withdrawnElements: buildWithdrawnElements(
+      orderedTraces,
+      data.referencePrints,
+      designations,
+    ),
+    examinedTraces: buildExaminedTraces(caseNumber, workingTraces),
     exploitability: buildExploitability(
       caseNumber,
-      orderedTraces,
+      workingTraces,
       verdicts,
       printCounts.exclusion > 0,
     ),
@@ -398,8 +400,10 @@ export function buildTechnicalReport(
       designations,
     ),
     integrity: buildIntegritySection({
-      traces: data.traces,
-      referencePrints: data.referencePrints,
+      traces: workingTraces,
+      referencePrints: data.referencePrints.filter(
+        (print) => !isWithdrawn(print),
+      ),
       designations: designations,
       events: input.chainEvents,
       anchors: input.anchors,

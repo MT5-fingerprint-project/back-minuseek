@@ -122,7 +122,6 @@ export interface ReportExploitabilityViewModel {
   exploitability: string;
   cote: string;
   discrimination: string;
-  withdrawal: string | null;
 }
 
 export interface ReportReferenceSubjectViewModel {
@@ -130,6 +129,13 @@ export interface ReportReferenceSubjectViewModel {
   firstName: string;
   lastName: string;
   quality: string;
+}
+
+export interface ReportWithdrawnElementViewModel {
+  designation: string;
+  withdrawnAt: Date;
+  motiveLabel: string;
+  imageDestroyed: boolean;
 }
 
 export interface ReportComparisonViewModel {
@@ -339,6 +345,7 @@ export interface TechnicalReportViewModel {
   previousDocument: ReportPreviousDocumentViewModel | null;
   signer: ReportSignerViewModel;
   contributors: ReportContributorViewModel[];
+  withdrawnElements: ReportWithdrawnElementViewModel[];
   examinedTraces: ReportExaminedTraceViewModel[];
   exploitability: ReportExploitabilityViewModel[];
   referenceSubjects: ReportReferenceSubjectViewModel[];

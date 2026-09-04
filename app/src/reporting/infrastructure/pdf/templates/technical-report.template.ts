@@ -13,6 +13,7 @@ import {
   ReportTreatmentViewModel,
   ReportVerificationActGroupViewModel,
   ReportVerificationViewModel,
+  ReportWithdrawnElementViewModel,
   TechnicalReportViewModel,
 } from '../../../application/report-view-model';
 import {
@@ -245,6 +246,14 @@ function bodySections(model: TechnicalReportViewModel): ReportBodySection[] {
       title: 'Méthodes et techniques employées',
       content: methodsSection(model),
     },
+    ...(model.withdrawnElements.length === 0
+      ? []
+      : [
+          {
+            title: 'Éléments retirés du dossier',
+            content: withdrawnElementsSection(model),
+          },
+        ]),
     {
       title: 'Traces papillaires examinées',
       content: examinedTracesSection(model),
@@ -514,6 +523,50 @@ function methodsSection(model: TechnicalReportViewModel): string {
     }`;
 }
 
+function capitalized(sentence: string): string {
+  return sentence.charAt(0).toLocaleUpperCase('fr') + sentence.slice(1);
+}
+
+function destroyedImagesSentence(
+  elements: ReportWithdrawnElementViewModel[],
+): string {
+  const destroyed = elements.filter((element) => element.imageDestroyed);
+  if (destroyed.length === 0) {
+    return '';
+  }
+  const named = destroyed
+    .map((element) => escapeHtml(element.designation))
+    .join(', ');
+  return `<p>L'image de ${named} a été détruite : elle ne peut plus être communiquée.</p>`;
+}
+
+function withdrawnElementsSection(model: TechnicalReportViewModel): string {
+  const { withdrawnElements } = model;
+  return `
+    <p>Les éléments ci-dessous ont été versés à ce dossier, puis retirés. Ils ne sont
+    pas repris dans les chapitres suivants.</p>
+    <table>
+      <tr>
+        <th>Élément</th><th style="width:20%">Retiré le</th>
+        <th style="width:34%">Motif du retrait</th>
+      </tr>
+      ${withdrawnElements
+        .map(
+          (element) => `
+      <tr>
+        <td>${capitalized(escapeHtml(element.designation))}</td>
+        <td>${formatDay(element.withdrawnAt)}</td>
+        <td>${escapeHtml(element.motiveLabel)}</td>
+      </tr>`,
+        )
+        .join('')}
+    </table>
+    <p>Les images de ces éléments ne sont pas délivrées avec le présent rapport : elles
+    peuvent concerner d'autres dossiers. Elles sont communicables sur demande de
+    l'autorité judiciaire.</p>
+    ${destroyedImagesSentence(withdrawnElements)}`;
+}
+
 function examinedTracesSection(model: TechnicalReportViewModel): string {
   const { examinedTraces, exploitability, counts } = model;
   const first = exploitability[0]?.reference;
@@ -593,11 +646,8 @@ function exploitabilitySection(model: TechnicalReportViewModel): string {
       <tr>
         <td>${escapeHtml(row.reference)}</td>
         <td>${escapeHtml(row.exploitability)}</td>
-        ${
-          row.withdrawal === null
-            ? `<td>${escapeHtml(row.cote)}</td><td>${escapeHtml(row.discrimination)}</td>`
-            : `<td colspan="2">${escapeHtml(row.withdrawal)}</td>`
-        }
+        <td>${escapeHtml(row.cote)}</td>
+        <td>${escapeHtml(row.discrimination)}</td>
       </tr>`,
         )
         .join('')}
@@ -806,7 +856,7 @@ function integritySection(model: TechnicalReportViewModel): string {
 function conclusionSection(model: TechnicalReportViewModel): string {
   const { counts, identifications, negativeCotes, notExaminedCotes } = model;
   const cotes = model.exploitability
-    .filter((row) => row.withdrawal === null && row.cote !== '/')
+    .filter((row) => row.cote !== '/')
     .map((row) => row.cote);
   const cotedRange =
     cotes.length === 0

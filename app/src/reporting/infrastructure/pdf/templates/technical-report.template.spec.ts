@@ -83,6 +83,7 @@ function model(
       serviceNumber: '118 402',
     },
     contributors: [],
+    withdrawnElements: [],
     examinedTraces: [
       {
         label: '3455-T1 et T2',
@@ -97,14 +98,12 @@ function model(
         exploitability: 'EXPLOITABLE',
         cote: 'A',
         discrimination: 'Index droit — SADIK Samir',
-        withdrawal: null,
       },
       {
         reference: '3455-T2',
         exploitability: 'EXPLOITABLE',
         cote: 'B',
         discrimination: 'Non examinée',
-        withdrawal: null,
       },
     ],
     referenceSubjects: [
@@ -362,24 +361,51 @@ describe('renderTechnicalReportHtml — les conclusions', () => {
     expect(flat).toContain('non encore examinée, cotée « F »');
   });
 
-  it('remplace la cote et la discrimination d’une trace retirée par la phrase de retrait', () => {
+  it('ouvre une section pour les éléments retirés, avant les traces examinées', () => {
     const html = renderTechnicalReportHtml(
       model({
-        exploitability: [
+        withdrawnElements: [
           {
-            reference: '3455-T1',
-            exploitability: 'EXPLOITABLE',
-            cote: '/',
-            discrimination: '/',
-            withdrawal:
-              "Retirée du dossier le 12 août 2026 — doublon d'une pièce déjà versée",
+            designation: 'la trace 3455-T1',
+            withdrawnAt: new Date('2026-08-12T00:00:00.000Z'),
+            motiveLabel: "doublon d'une pièce déjà versée",
+            imageDestroyed: false,
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('<h2>4. Éléments retirés du dossier</h2>');
+    expect(html).toContain('<li>4. Éléments retirés du dossier</li>');
+    expect(html).toContain('<h2>5. Traces papillaires examinées</h2>');
+    expect(html).toContain('La trace 3455-T1');
+    expect(html).toContain('doublon d&#39;une pièce déjà versée');
+    expect(html).toContain('ne sont pas délivrées avec le présent rapport');
+  });
+
+  it('n’ouvre pas la section quand aucun élément n’a été retiré', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html).not.toContain('Éléments retirés du dossier');
+    expect(html).toContain('<h2>4. Traces papillaires examinées</h2>');
+  });
+
+  it('dit qu’une image détruite ne peut plus être communiquée', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        withdrawnElements: [
+          {
+            designation: "l'empreinte de l'index droit de Monsieur SADIK Samir",
+            withdrawnAt: new Date('2026-08-12T00:00:00.000Z'),
+            motiveLabel: 'rattachement erroné à une personne ou à un doigt',
+            imageDestroyed: true,
           },
         ],
       }),
     );
 
     expect(html).toContain(
-      '<td colspan="2">Retirée du dossier le 12 août 2026 — doublon d&#39;une pièce déjà versée</td>',
+      'a été détruite : elle ne peut plus être communiquée',
     );
   });
 

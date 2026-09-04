@@ -548,7 +548,7 @@ describe('buildTechnicalReport — discrimination', () => {
     expect(model.exploitability[0].discrimination).toBe('Non examinée');
   });
 
-  it('remplace cote et discrimination par la phrase de retrait', () => {
+  it('sort la trace retirée du tableau et la porte aux éléments retirés', () => {
     const model = build(
       caseData({
         traces: [
@@ -564,9 +564,16 @@ describe('buildTechnicalReport — discrimination', () => {
       }),
     );
 
-    expect(model.exploitability[0].withdrawal).toBe(
-      "Retirée du dossier le 12 août 2026 — doublon d'une pièce déjà versée",
-    );
+    expect(model.exploitability).toEqual([]);
+    expect(model.examinedTraces).toEqual([]);
+    expect(model.withdrawnElements).toEqual([
+      {
+        designation: 'la trace 3455-T1',
+        withdrawnAt: new Date('2026-08-12T00:00:00.000Z'),
+        motiveLabel: "doublon d'une pièce déjà versée",
+        imageDestroyed: false,
+      },
+    ]);
     expect(model.counts.total).toBe(0);
   });
 
@@ -587,9 +594,8 @@ describe('buildTechnicalReport — discrimination', () => {
       }),
     );
 
-    expect(model.exploitability[0].withdrawal).toBe(
-      'Retirée du dossier le 12 août 2026 — ' +
-        '« relevée sur un scellé rattaché à une autre procédure »',
+    expect(model.withdrawnElements[0].motiveLabel).toBe(
+      '« relevée sur un scellé rattaché à une autre procédure »',
     );
   });
 });
@@ -1141,5 +1147,53 @@ describe('buildTechnicalReport — familiers et mis en cause', () => {
   it('ne compte pas les empreintes de familiers parmi celles des mis en cause', () => {
     expect(withHitOn('CLOSE_ASSOCIATE').personOfInterestPrintCount).toBe(0);
     expect(withHitOn('PERSON_OF_INTEREST').personOfInterestPrintCount).toBe(1);
+  });
+});
+
+describe('buildTechnicalReport — éléments retirés', () => {
+  it('réunit traces et empreintes retirées, et les sort du chapitre d’intégrité', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            cote: null,
+            withdrawnAt: new Date('2026-08-12T00:00:00.000Z'),
+            withdrawalMotive: 'MISFILED',
+          }),
+          trace({ id: 't2', number: 2, cote: 'A' }),
+        ],
+        referencePrints: [
+          referencePrint({
+            id: 'r1',
+            subjectId: 's1',
+            position: 'RIGHT_INDEX',
+            withdrawnAt: new Date('2026-08-13T00:00:00.000Z'),
+            withdrawalMotive: 'WRONG_ATTRIBUTION',
+            imageDestroyedAt: new Date('2026-08-14T00:00:00.000Z'),
+          }),
+        ],
+        subjects: [subject({ id: 's1' })],
+      }),
+    );
+
+    expect(
+      model.withdrawnElements.map((element) => element.designation),
+    ).toEqual([
+      'la trace 3455-T1',
+      "l'empreinte de l'index droit de Monsieur SADIK Samir",
+    ]);
+    expect(model.withdrawnElements[1].imageDestroyed).toBe(true);
+    expect(model.integrity.traces).toHaveLength(1);
+    expect(model.integrity.referencePrints).toEqual([]);
+  });
+
+  it('ne dresse aucun élément retiré quand le dossier n’en a pas', () => {
+    const model = build(
+      caseData({ traces: [trace({ id: 't1', number: 1, cote: 'A' })] }),
+    );
+
+    expect(model.withdrawnElements).toEqual([]);
   });
 });
