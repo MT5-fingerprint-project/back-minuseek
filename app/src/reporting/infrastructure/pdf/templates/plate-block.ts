@@ -50,7 +50,9 @@ function markedImage(
     )
     .join('');
 
-  return `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+  // Sans dimensions propres, le SVG se replie à zéro dans une boîte qui s'ajuste à
+  // son contenu : la planche n'imprimerait que sa cote.
+  return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
       <image href="${image.dataUrl}" x="0" y="0" width="${width}" height="${height}" />
       ${markers}
     </svg>`;

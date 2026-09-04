@@ -796,15 +796,57 @@ describe('renderTechnicalReportHtml — section 7', () => {
     );
   });
 
-  it('décrit les traitements en français, avec leur date et leur auteur', () => {
+  it('range les traitements dans un tableau, avec leur date et leur auteur', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
+    const flat = html.replace(/\s+/g, ' ');
 
-    expect(html).toContain(
-      'Luminosité portée à +20 %, posé le 16/03/2026 à 17 h 10 par Sébastien Aguilar',
+    expect(flat).toContain('<p>Traitements enregistrés :</p>');
+    expect(flat).toContain(
+      '<th>Traitement</th><th style="width:20%">Posé le</th> <th style="width:20%">Par</th><th style="width:28%">État à l\'édition</th>',
     );
-    expect(html).toContain(
+    expect(flat).toContain(
+      '<td>Luminosité portée à +20 %</td> <td>16/03/2026 à 17 h 10</td> <td>Sébastien Aguilar</td> <td>Toujours posé</td>',
+    );
+    expect(flat).toContain(
       "Ces traitements sont des réglages d'affichage ; ils n'ont pas modifié le fichier scellé ci-dessus.",
     );
+  });
+
+  it('imprime la date du retrait dans la colonne d’état', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        traces: [
+          {
+            ...PIECE_INTEGRITY,
+            treatments: [
+              {
+                ...PIECE_INTEGRITY.treatments[0],
+                removedAt: new Date('2026-03-16T17:40:00.000Z'),
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('<td>Retiré le 16/03/2026 à 17 h 40</td>');
+  });
+
+  it('dit qu’un réglage était masqué à l’édition du rapport', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        traces: [
+          {
+            ...PIECE_INTEGRITY,
+            treatments: [
+              { ...PIECE_INTEGRITY.treatments[0], hiddenAtEdition: true },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('<td>Masqué</td>');
   });
 
   it('le dit quand aucun traitement n’a été appliqué', () => {
@@ -1222,6 +1264,40 @@ describe('renderTechnicalReportHtml — annexe B', () => {
     expect(printed).not.toContain('120');
     expect(printed).not.toContain('340');
     expect(printed).not.toContain('<pre');
+  });
+
+  it('donne au dessin une taille imprimable', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toContain(
+      '<svg width="800" height="1200" viewBox="0 0 800 1200"',
+    );
+  });
+
+  it('ajuste le dessin à la planche comme une image simple', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toContain(
+      '.planche-image img, .planche-image svg { max-height: 150mm; max-width: 100%; width: auto; height: auto; }',
+    );
   });
 
   it('écrit le repli quand les dimensions natives de l’image sont illisibles', () => {

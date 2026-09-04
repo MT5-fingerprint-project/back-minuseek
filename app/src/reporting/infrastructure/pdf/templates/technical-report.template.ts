@@ -581,30 +581,37 @@ function integrityWarning(integrity: ReportIntegrityViewModel): string {
   return '';
 }
 
-function treatmentLine(treatment: ReportTreatmentViewModel): string {
-  const parts = [
-    `${escapeHtml(treatment.sentence)}, posé le ${formatDayTime(
-      treatment.appliedAt,
-    )} par ${escapeHtml(treatment.actorDisplayName)}`,
-    treatment.removedAt === null
-      ? null
-      : `retiré le ${formatDayTime(treatment.removedAt)}`,
-    treatment.hiddenAtEdition
-      ? "masqué à la date d'édition du présent rapport"
-      : null,
-  ].filter((part): part is string => part !== null);
-  return parts.join(', ');
+function treatmentState(treatment: ReportTreatmentViewModel): string {
+  if (treatment.removedAt !== null) {
+    return `Retiré le ${formatDayTime(treatment.removedAt)}`;
+  }
+  return treatment.hiddenAtEdition ? 'Masqué' : 'Toujours posé';
 }
 
-function treatmentsParagraph(piece: ReportPieceIntegrityViewModel): string {
+function treatmentsBlock(piece: ReportPieceIntegrityViewModel): string {
   if (piece.treatments.length === 0) {
     return "<p>Aucun traitement n'a été appliqué à cette image.</p>";
   }
-  return `<p>Traitements enregistrés : ${piece.treatments
-    .map(treatmentLine)
-    .join(
-      ' — ',
-    )}. Ces traitements sont des réglages d'affichage ; ils n'ont pas modifié le fichier scellé ci-dessus.</p>`;
+  return `
+      <p>Traitements enregistrés :</p>
+      <table>
+        <tr>
+          <th>Traitement</th><th style="width:20%">Posé le</th>
+          <th style="width:20%">Par</th><th style="width:28%">État à l'édition</th>
+        </tr>
+        ${piece.treatments
+          .map(
+            (treatment) => `
+        <tr>
+          <td>${escapeHtml(treatment.sentence)}</td>
+          <td>${formatDayTime(treatment.appliedAt)}</td>
+          <td>${escapeHtml(treatment.actorDisplayName)}</td>
+          <td>${treatmentState(treatment)}</td>
+        </tr>`,
+          )
+          .join('')}
+      </table>
+      <p>Ces traitements sont des réglages d'affichage ; ils n'ont pas modifié le fichier scellé ci-dessus.</p>`;
 }
 
 function sealParagraph(piece: ReportPieceIntegrityViewModel): string {
@@ -659,7 +666,7 @@ function pieceIntegrityBlock(piece: ReportPieceIntegrityViewModel): string {
         piece.cote ?? '/',
       )}</h3>
       ${sealParagraph(piece)}
-      ${treatmentsParagraph(piece)}
+      ${treatmentsBlock(piece)}
       ${anchorParagraph(piece)}
       ${controlParagraph(piece)}
     </div>`;
