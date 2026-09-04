@@ -1,5 +1,8 @@
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
-import { MINUTIA_SETTINGS_TYPES } from '../../../../shared/domain/forensics/minutiae';
+import {
+  MINUTIA_SETTINGS_TYPES,
+  minutiaTypeLabel,
+} from '../../../../shared/domain/forensics/minutiae';
 import { AuditEventData } from '../../ports/traceability-data.reader';
 import {
   caseStatusLabel,
@@ -101,6 +104,15 @@ function layerRule(
       ? `${minutia} ${preposition} ${piece}`
       : `${mark} ${mark.endsWith('retiré') ? 'de' : 'sur'} ${piece}`;
   };
+}
+
+function pairedMinutiaType(event: AuditEventData): string | null {
+  const side = event.payload.traceMinutia;
+  if (typeof side !== 'object' || side === null) {
+    return null;
+  }
+  const type = (side as Record<string, unknown>).minutiaType;
+  return typeof type === 'string' && type.length > 0 ? type : null;
 }
 
 function dpi(event: AuditEventData, key: string): string | null {
@@ -266,6 +278,21 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
     `Identification retirée : ${trace(event, named).full} / ${
       print(event, named).full
     }`,
+  [AuditEventTypeEnum.MINUTIA_PAIRED]: (event, named) => {
+    const paired = `Minutie de ${trace(event, named).bare} appariée à une minutie de ${
+      print(event, named).bare
+    }`;
+    const type = pairedMinutiaType(event);
+    return type === null ? paired : `${paired} — ${minutiaTypeLabel(type)}`;
+  },
+  [AuditEventTypeEnum.MINUTIA_UNPAIRED]: (event, named) => {
+    const undone = `Appariement défait entre une minutie de ${
+      trace(event, named).bare
+    } et une minutie de ${print(event, named).bare}`;
+    return text(event, 'cause') === 'MINUTIA_DELETED'
+      ? `${undone} — la minutie a été retirée`
+      : undone;
+  },
   [AuditEventTypeEnum.REPORT_GENERATED]: () =>
     "Édition d'un rapport d'exploitation de traces papillaires",
   [AuditEventTypeEnum.CHAIN_ANCHORED]: () =>

@@ -515,6 +515,60 @@ describe('journalSentence — la comparaison', () => {
   });
 });
 
+describe('journalSentence — l’appariement des minuties', () => {
+  const pairPayload = {
+    pairId: 'pair-1',
+    traceId: 'trace-7',
+    referencePrintId: 'ref-1',
+    traceMinutiaLayerId: 'layer-trace-1',
+    referenceMinutiaLayerId: 'layer-ref-1',
+    traceMinutia: { x: 120, y: 240, minutiaType: 'BIFURCATION' },
+    referenceMinutia: { x: 310, y: 118, minutiaType: 'BIFURCATION' },
+  };
+
+  it('dit l’appariement en nommant les deux pièces et le type retenu', () => {
+    expect(say(AuditEventTypeEnum.MINUTIA_PAIRED, pairPayload, 'trace-7')).toBe(
+      "Minutie de la trace 3455-T7 appariée à une minutie de l'empreinte de l'index droit de Madame BERGER Hélène — bifurcation",
+    );
+  });
+
+  it('dit l’appariement sans type quand le maillon n’en porte pas', () => {
+    expect(
+      say(
+        AuditEventTypeEnum.MINUTIA_PAIRED,
+        { traceId: 'trace-7', referencePrintId: 'ref-1' },
+        'trace-7',
+      ),
+    ).toBe(
+      "Minutie de la trace 3455-T7 appariée à une minutie de l'empreinte de l'index droit de Madame BERGER Hélène",
+    );
+  });
+
+  it('dit le dépariement décidé par l’opérateur', () => {
+    expect(
+      say(
+        AuditEventTypeEnum.MINUTIA_UNPAIRED,
+        { ...pairPayload, cause: 'OPERATOR' },
+        'trace-7',
+      ),
+    ).toBe(
+      "Appariement défait entre une minutie de la trace 3455-T7 et une minutie de l'empreinte de l'index droit de Madame BERGER Hélène",
+    );
+  });
+
+  it('dit la cause quand le dépariement suit la suppression d’une minutie', () => {
+    expect(
+      say(
+        AuditEventTypeEnum.MINUTIA_UNPAIRED,
+        { ...pairPayload, cause: 'MINUTIA_DELETED' },
+        'trace-7',
+      ),
+    ).toBe(
+      "Appariement défait entre une minutie de la trace 3455-T7 et une minutie de l'empreinte de l'index droit de Madame BERGER Hélène — la minutie a été retirée",
+    );
+  });
+});
+
 describe('journalSentence — le registre', () => {
   it('dit l’édition d’un rapport sans son empreinte ni son chemin', () => {
     const sentence = say(AuditEventTypeEnum.REPORT_GENERATED, {

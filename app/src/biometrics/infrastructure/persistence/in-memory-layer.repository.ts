@@ -12,6 +12,8 @@ import type { LayerReadModel } from '../../application/queries/list-layers/layer
 export class InMemoryLayerRepository implements LayerRepository, LayerReader {
   readonly store = new Map<string, Layer>();
 
+  private readonly deletionListeners: ((layerId: string) => void)[] = [];
+
   constructor(
     readonly auditTrail: AuditTrailPort = new InMemoryAuditTrailAppender(),
   ) {}
@@ -29,9 +31,19 @@ export class InMemoryLayerRepository implements LayerRepository, LayerReader {
     return Promise.resolve(this.store.get(id) ?? null);
   }
 
-  async delete(id: string, act: AuditEventDraft): Promise<void> {
+  async delete(id: string, acts: readonly AuditEventDraft[]): Promise<void> {
     this.store.delete(id);
-    await this.auditTrail.append(act);
+    for (const cascade of this.deletionListeners) {
+      cascade(id);
+    }
+    for (const act of acts) {
+      await this.auditTrail.append(act);
+    }
+  }
+
+  /** Imite la clé étrangère `ON DELETE CASCADE` que porte `MinutiaPair`. */
+  onLayerDeleted(cascade: (layerId: string) => void): void {
+    this.deletionListeners.push(cascade);
   }
 
   countMinutiae(fingerprintId: string): Promise<number> {
