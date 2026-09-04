@@ -1,4 +1,6 @@
 import { CaseReportData, PieceData } from '../../ports/case-report-data.reader';
+import { ImageGeometry } from '../../ports/report-image-embedder.port';
+import { geometryOf } from './image-treatments';
 
 function stillInTheCase(piece: PieceData): boolean {
   return piece.withdrawnAt === null && piece.imageDestroyedAt === null;
@@ -55,10 +57,20 @@ export function lifeSizeKey(path: string): string {
   return `${path}@1:1`;
 }
 
+/**
+ * Clé de la reproduction retravaillée : la même pièce est embarquée telle que
+ * scellée pour la planche de constatation, et telle que l'opérateur l'a
+ * retournée pour la démonstration.
+ */
+export function treatedKey(path: string): string {
+  return `${path}@atelier`;
+}
+
 export interface PrintedImageRequest {
   key: string;
   path: string;
   resolutionDpi: number | null;
+  geometry: ImageGeometry | null;
 }
 
 export function printedImages(data: CaseReportData): PrintedImageRequest[] {
@@ -66,7 +78,26 @@ export function printedImages(data: CaseReportData): PrintedImageRequest[] {
   const fitted = [
     ...printedPieces(data).map((piece) => piece.path),
     ...located.map((trace) => (trace.locationPhoto as { path: string }).path),
-  ].map((path) => ({ key: path, path, resolutionDpi: null }));
+  ].map((path) => ({ key: path, path, resolutionDpi: null, geometry: null }));
+
+  // Seules les pièces d'une démonstration sont imprimées retravaillées : rendre les
+  // autres coûterait un rééchantillonnage par pièce sans que rien ne s'en serve.
+  const demonstrated = identifiedPieceIds(data);
+  const treated = printedPieces(data).flatMap((piece) => {
+    const shown =
+      demonstrated.traces.has(piece.id) || demonstrated.prints.has(piece.id);
+    const geometry = shown ? geometryOf(piece) : null;
+    return geometry === null
+      ? []
+      : [
+          {
+            key: treatedKey(piece.path),
+            path: piece.path,
+            resolutionDpi: null,
+            geometry,
+          },
+        ];
+  });
 
   const lifeSize = located.flatMap((trace) =>
     trace.resolutionDpi === null
@@ -76,9 +107,10 @@ export function printedImages(data: CaseReportData): PrintedImageRequest[] {
             key: lifeSizeKey(trace.path),
             path: trace.path,
             resolutionDpi: trace.resolutionDpi,
+            geometry: null,
           },
         ],
   );
 
-  return [...fitted, ...lifeSize];
+  return [...fitted, ...treated, ...lifeSize];
 }

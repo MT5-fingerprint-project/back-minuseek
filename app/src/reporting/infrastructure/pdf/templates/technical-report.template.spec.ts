@@ -2,6 +2,7 @@ import {
   ReportDemonstrationViewModel,
   TechnicalReportViewModel,
 } from '../../../application/report-view-model';
+import { REPORT_STYLES } from './report-styles';
 import { renderTechnicalReportHtml } from './technical-report.template';
 
 const IMAGE = {
@@ -21,6 +22,7 @@ function demonstration(
     location: 'sur la porte-fenêtre du séjour',
     subject: { civility: 'Madame', firstName: 'Hélène', lastName: 'Berger' },
     position: 'index droit',
+    rawTrace: null,
     trace: { image: IMAGE, marks: [] },
     referencePrint: { image: IMAGE, marks: [] },
     ...overrides,
@@ -66,6 +68,7 @@ function model(
       offenseDateTo: null,
       interventionDate: new Date('2026-03-14T00:00:00.000Z'),
       caseAgainst: 'X',
+      description: null,
       victims: ['Madame BERGER Hélène, née le 04/09/1958'],
       recipient: {
         authority: 'Le Commissaire Général',
@@ -81,6 +84,7 @@ function model(
       serviceNumber: '118 402',
     },
     contributors: [],
+    withdrawnElements: [],
     examinedTraces: [
       {
         label: '3455-T1 et T2',
@@ -95,14 +99,12 @@ function model(
         exploitability: 'EXPLOITABLE',
         cote: 'A',
         discrimination: 'Index droit — SADIK Samir',
-        withdrawal: null,
       },
       {
         reference: '3455-T2',
         exploitability: 'EXPLOITABLE',
         cote: 'B',
         discrimination: 'Non examinée',
-        withdrawal: null,
       },
     ],
     referenceSubjects: [
@@ -115,15 +117,30 @@ function model(
     ],
     unattachedReferencePrintCount: 0,
     automaticComparatorUsed: false,
+    personOfInterestPrintCount: 1,
+    comparisons: [
+      {
+        reference: '3455-T1',
+        cote: 'A',
+        result: "À l'index droit — SADIK Samir",
+      },
+      { reference: '3455-T2', cote: 'B', result: 'Non examinée' },
+    ],
     identifications: [
       {
         cote: 'A',
         position: "à l'index droit",
-        civility: 'Monsieur',
-        firstName: 'Samir',
-        lastName: 'Sadik',
+        subject: {
+          civility: 'Monsieur',
+          firstName: 'Samir',
+          lastName: 'Sadik',
+          sex: 'MALE',
+          birthDate: null,
+          birthPlace: null,
+        },
       },
     ],
+    discriminatedCotes: [],
     negativeCotes: [],
     notExaminedCotes: ['B'],
     independentTimestampAt: new Date('2026-03-15T03:00:00.000Z'),
@@ -134,6 +151,7 @@ function model(
       identified: 1,
       negative: 0,
       notExamined: 1,
+      discriminated: 0,
     },
     traces: [],
     referencePrints: [],
@@ -166,7 +184,7 @@ const SECTION_TITLES = [
   '2. Objet et pièces examinées',
   '3. Méthodes et techniques employées',
   '4. Traces papillaires examinées',
-  '5. Exploitabilité et cotation',
+  '5. Exploitabilité et discrimination',
   '6. Comparaisons et identifications',
   '7. Traitements appliqués aux images et intégrité des pièces',
   '8. Conclusion',
@@ -332,37 +350,64 @@ describe('renderTechnicalReportHtml — les conclusions', () => {
 
   it('distingue une trace déclarée négative d’une trace non examinée', () => {
     const html = renderTechnicalReportHtml(
-      model({ negativeCotes: ['C'], notExaminedCotes: ['F'] }),
+      model({
+        negativeCotes: ['C'],
+        notExaminedCotes: ['F'],
+        counts: { ...model().counts, negative: 1, notExamined: 1 },
+      }),
     );
 
     const flat = html.replace(/\s+/g, ' ');
 
-    expect(flat).toContain(
-      "La trace papillaire cotée <b>« C »</b> n'a pas été identifiée au terme des comparaisons effectuées.",
-    );
-    expect(flat).toContain(
-      "La trace papillaire cotée <b>« F »</b> n'a pas encore été examinée.",
-    );
+    expect(flat).toContain('non identifiée, cotée « C »');
+    expect(flat).toContain('non encore examinée, cotée « F »');
   });
 
-  it('remplace la cote et la discrimination d’une trace retirée par la phrase de retrait', () => {
+  it('ouvre une section pour les éléments retirés, avant les traces examinées', () => {
     const html = renderTechnicalReportHtml(
       model({
-        exploitability: [
+        withdrawnElements: [
           {
-            reference: '3455-T1',
-            exploitability: 'EXPLOITABLE',
-            cote: '/',
-            discrimination: '/',
-            withdrawal:
-              "Retirée du dossier le 12 août 2026 — doublon d'une pièce déjà versée",
+            designation: 'la trace 3455-T1',
+            withdrawnAt: new Date('2026-08-12T00:00:00.000Z'),
+            motiveLabel: "doublon d'une pièce déjà versée",
+            imageDestroyed: false,
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('<h2>4. Éléments retirés du dossier</h2>');
+    expect(html).toContain('<li>4. Éléments retirés du dossier</li>');
+    expect(html).toContain('<h2>5. Traces papillaires examinées</h2>');
+    expect(html).toContain('La trace 3455-T1');
+    expect(html).toContain('doublon d&#39;une pièce déjà versée');
+    expect(html).toContain('ne sont pas délivrées avec le présent rapport');
+  });
+
+  it('n’ouvre pas la section quand aucun élément n’a été retiré', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html).not.toContain('Éléments retirés du dossier');
+    expect(html).toContain('<h2>4. Traces papillaires examinées</h2>');
+  });
+
+  it('dit qu’une image détruite ne peut plus être communiquée', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        withdrawnElements: [
+          {
+            designation: "l'empreinte de l'index droit de Monsieur SADIK Samir",
+            withdrawnAt: new Date('2026-08-12T00:00:00.000Z'),
+            motiveLabel: 'rattachement erroné à une personne ou à un doigt',
+            imageDestroyed: true,
           },
         ],
       }),
     );
 
     expect(html).toContain(
-      '<td colspan="2">Retirée du dossier le 12 août 2026 — doublon d&#39;une pièce déjà versée</td>',
+      'a été détruite : elle ne peut plus être communiquée',
     );
   });
 
@@ -370,6 +415,54 @@ describe('renderTechnicalReportHtml — les conclusions', () => {
     const html = renderTechnicalReportHtml(model());
 
     expect(html).toContain('Le détail acte par acte figure en Annexe C.');
+  });
+});
+
+describe('renderTechnicalReportHtml — les mentions du tableau de comparaison', () => {
+  function withResults(...results: string[]) {
+    return renderTechnicalReportHtml(
+      model({
+        comparisons: results.map((result, order) => ({
+          reference: `3455-T${order + 1}`,
+          cote: String.fromCharCode(65 + order),
+          result,
+        })),
+      }),
+    );
+  }
+
+  it('n’explique la mention « NÉGATIVE » que si une trace la porte', () => {
+    const html = withResults('NÉGATIVE');
+
+    expect(html).toContain('La mention « NÉGATIVE » indique');
+    expect(html).not.toContain('La mention « non examinée » indique');
+  });
+
+  it('n’explique la mention « non examinée » que si une trace la porte', () => {
+    const html = withResults('Non examinée');
+
+    expect(html).toContain('La mention « non examinée » indique');
+    expect(html).not.toContain('La mention « NÉGATIVE » indique');
+  });
+
+  it('explique les deux mentions quand les deux figurent au tableau', () => {
+    const html = withResults('NÉGATIVE', 'Non examinée');
+
+    expect(html).toContain('La mention « NÉGATIVE » indique');
+    expect(html).toContain('La mention « non examinée » indique');
+  });
+
+  it('n’explique rien quand aucune des deux mentions ne figure au tableau', () => {
+    const html = withResults('Index droit — SADIK Samir');
+
+    expect(html).not.toContain('La mention « NÉGATIVE » indique');
+    expect(html).not.toContain('La mention « non examinée » indique');
+  });
+
+  it('rapporte la mention NÉGATIVE aux seules empreintes des mis en cause', () => {
+    expect(withResults('NÉGATIVE')).toContain(
+      "des personnes mises en cause et a déclaré n'y relever",
+    );
   });
 });
 
@@ -735,29 +828,43 @@ function withIntegrity(overrides: Record<string, unknown> = {}) {
   });
 }
 
-describe('renderTechnicalReportHtml — section 7', () => {
-  it('imprime le préambule d’intégrité', () => {
+describe('renderTechnicalReportHtml — chapitre d’intégrité', () => {
+  it('tient son préambule en deux paragraphes', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
 
     expect(html).toContain(
-      'son empreinte numérique est inscrite au registre chronologique du laboratoire dans la même opération indivisible',
+      'Le registre chronologique du laboratoire est en écriture seule',
     );
     expect(html).toContain(
-      "Le logiciel ne comporte aucune fonction permettant de remplacer le fichier d'une pièce.",
+      "aucune fonction permettant de remplacer le fichier d'une pièce",
     );
-    expect(html).toContain('Le registre chronologique est en écriture seule');
+    expect(html).toContain(
+      'Ils ne sont pas appliqués au fichier reçu, mais conservés sous forme de réglages',
+    );
+    expect(html).not.toContain('ne permet pas de reconstituer l’image');
+    expect(html).not.toContain('fournies en pièce jointe');
   });
 
-  it('imprime l’empreinte du registre et sa date de mise sous scellé', () => {
+  it('range les pièces dans un tableau, avec leur date de mise sous scellé', () => {
+    const html = renderTechnicalReportHtml(withIntegrity());
+    const flat = html.replace(/\s+/g, ' ');
+
+    expect(flat).toContain(
+      '<th>Pièce</th><th style="width:10%">Cote</th> <th style="width:30%">Mise sous scellé le</th>',
+    );
+    expect(flat).toContain('<td>16/03/2026 à 17 h 03</td>');
+  });
+
+  it('n’imprime plus ni empreinte, ni numéro d’inscription au registre', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
 
-    expect(html).toContain(`<span class="hash">${SEALED}</span>`);
-    expect(html).toContain(
-      'Mise sous scellé le 16/03/2026 à 17 h 03, inscription n° 12 du registre.',
-    );
+    expect(html).not.toContain(SEALED);
+    expect(html).not.toContain('class="hash"');
+    expect(html).not.toContain('du registre.');
+    expect(html).not.toContain('inscription n° 12');
   });
 
-  it('imprime celle du registre, pas celle de la fiche, quand elles divergent', () => {
+  it('signale une divergence d’empreinte sans imprimer aucune des deux', () => {
     const html = renderTechnicalReportHtml(
       withIntegrity({
         traces: [
@@ -770,7 +877,7 @@ describe('renderTechnicalReportHtml — section 7', () => {
       }),
     );
 
-    expect(html).toContain(`<span class="hash">${SEALED}</span>`);
+    expect(html).not.toContain(SEALED);
     expect(html).not.toContain('b'.repeat(64));
     expect(html).toContain(
       'cette divergence doit être signalée au responsable du laboratoire',
@@ -792,34 +899,79 @@ describe('renderTechnicalReportHtml — section 7', () => {
     );
 
     expect(html).toContain(
-      "Aucune empreinte n'a été inscrite au registre lors du dépôt de cette pièce.",
+      "Aucune empreinte n'a été inscrite au registre lors du dépôt",
     );
+    expect(html).toContain('La trace 3455-T2 cotée « B » :');
   });
 
-  it('décrit les traitements en français, avec leur date et leur auteur', () => {
+  it('range les traitements dans un tableau, avec leur date et leur auteur', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
+    const flat = html.replace(/\s+/g, ' ');
 
-    expect(html).toContain(
-      'Luminosité portée à +20 %, posé le 16/03/2026 à 17 h 10 par Sébastien Aguilar',
+    expect(flat).toContain(
+      '<th>Traitement</th><th style="width:20%">Posé le</th> <th style="width:20%">Par</th><th style="width:28%">État à l\'édition</th>',
     );
-    expect(html).toContain(
-      "Ces traitements sont des réglages d'affichage ; ils n'ont pas modifié le fichier scellé ci-dessus.",
+    expect(flat).toContain(
+      '<td>Luminosité portée à +20 %</td> <td>16/03/2026 à 17 h 10</td> <td>Sébastien Aguilar</td> <td>Toujours posé</td>',
+    );
+    expect(flat).toContain(
+      "Ces traitements sont des réglages d'affichage ; ils n'ont pas modifié le fichier scellé.",
     );
   });
 
-  it('le dit quand aucun traitement n’a été appliqué', () => {
+  it('imprime la date du retrait dans la colonne d’état', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        traces: [
+          {
+            ...PIECE_INTEGRITY,
+            treatments: [
+              {
+                ...PIECE_INTEGRITY.treatments[0],
+                removedAt: new Date('2026-03-16T17:40:00.000Z'),
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('<td>Retiré le 16/03/2026 à 17 h 40</td>');
+  });
+
+  it('dit qu’un réglage était masqué à l’édition du rapport', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        traces: [
+          {
+            ...PIECE_INTEGRITY,
+            treatments: [
+              { ...PIECE_INTEGRITY.treatments[0], hiddenAtEdition: true },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('<td>Masqué</td>');
+  });
+
+  it('laisse une pièce sans traitement à sa seule ligne de tableau', () => {
     const html = renderTechnicalReportHtml(
       withIntegrity({ traces: [{ ...PIECE_INTEGRITY, treatments: [] }] }),
     );
 
-    expect(html).toContain("Aucun traitement n'a été appliqué à cette image.");
+    expect(html).toContain('<td>16/03/2026 à 17 h 03</td>');
+    expect(html).not.toContain("Aucun traitement n'a été appliqué");
+    expect(html).not.toContain('<div class="piece">');
   });
 
-  it('nomme l’autorité et la date de l’ancre couvrante', () => {
+  it('ne parle plus d’horodatage par une autorité extérieure', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
 
-    expect(html).toContain(
-      "l'autorité d'horodatage https://freetsa.org/tsr a daté un état du registre postérieur à ces opérations (inscription n° 40)",
+    expect(html).not.toContain('Horodatage par une autorité extérieure');
+    expect(html).not.toContain(
+      "l'autorité d'horodatage https://freetsa.org/tsr",
     );
   });
 
@@ -850,12 +1002,13 @@ describe('renderTechnicalReportHtml — section 7', () => {
     expect(html).not.toContain('pas encore été horodaté');
   });
 
-  it('affirme le contrôle quand le fichier porte bien l’empreinte inscrite', () => {
+  it('n’affirme plus rien quand le fichier porte bien l’empreinte inscrite', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
 
-    expect(html).toContain(
+    expect(html).not.toContain(
       "le fichier conservé porte bien l'empreinte inscrite au registre",
     );
+    expect(html).not.toContain("Contrôle effectué à l'édition");
   });
 
   it('dénonce une pièce dont le fichier ne porte plus l’empreinte inscrite', () => {
@@ -868,6 +1021,7 @@ describe('renderTechnicalReportHtml — section 7', () => {
     expect(html).toContain(
       "Cette pièce doit être tenue pour altérée jusqu'à examen.",
     );
+    expect(html).toContain('class="alerte"');
   });
 
   it('n’affirme aucun contrôle quand le fichier n’a pas pu être relu', () => {
@@ -932,6 +1086,9 @@ describe('renderTechnicalReportHtml — section 7', () => {
     const html = renderTechnicalReportHtml(withIntegrity());
 
     expect(html).toContain('https://minuseek.fr/srpts-paris/verification');
+    expect(html).toContain(
+      "Toute personne détenant le présent rapport, ou l'une des images délivrées avec lui",
+    );
     expect(html).toContain(
       'la page indique en outre si une version antérieure et si une version ultérieure de ce rapport ont été établies',
     );
@@ -1060,14 +1217,13 @@ describe('renderTechnicalReportHtml — annexe A', () => {
     );
   });
 
-  it('le dit plutôt que de laisser un blanc quand la localisation manque', () => {
+  it('ne mentionne pas la localisation quand elle manque', () => {
     const html = renderTechnicalReportHtml(
       model({ annexA: [{ ...PLATE, location: null }] }),
     );
 
-    expect(html).toContain(
-      'Trace papillaire cotée « A », localisation non renseignée.',
-    );
+    expect(html).toContain('Trace papillaire cotée « A ».');
+    expect(html).not.toContain('localisation non renseignée');
   });
 
   it('écrit le repli quand la photographie de localisation est illisible, sans perdre la trace', () => {
@@ -1224,6 +1380,40 @@ describe('renderTechnicalReportHtml — annexe B', () => {
     expect(printed).not.toContain('<pre');
   });
 
+  it('donne au dessin une taille imprimable', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toContain(
+      '<svg width="800" height="1200" viewBox="0 0 800 1200"',
+    );
+  });
+
+  it('ajuste le dessin à la planche comme une image simple', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toContain(
+      '.planche-image img, .planche-image svg { max-height: 150mm; max-width: 100%; width: auto; height: auto; }',
+    );
+  });
+
   it('écrit le repli quand les dimensions natives de l’image sont illisibles', () => {
     const html = renderTechnicalReportHtml(
       model({
@@ -1260,6 +1450,66 @@ describe('renderTechnicalReportHtml — annexe B', () => {
     expect(html).toContain(
       "L'image n'a pas pu être relue à l'édition du présent rapport.",
     );
+  });
+
+  it('ouvre la démonstration par la trace scellée quand l’atelier l’a retravaillée', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            rawTrace: IMAGE,
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toContain('Planche I');
+    expect(html).toContain('Planche II');
+    expect(html).toContain('Planche III');
+    expect(html).toContain(
+      'Trace papillaire cotée « B », telle qu’elle a été scellée au dossier.',
+    );
+    expect(html).toContain(
+      'Trace papillaire cotée « B », après les traitements enregistrés au dossier. DEUX (2) minuties concordantes numérotées.',
+    );
+  });
+
+  it('ne numérote la démonstration suivante qu’après les trois planches', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            rawTrace: IMAGE,
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+          demonstration({ reference: '3455-T5', cote: 'E' }),
+        ],
+      }),
+    );
+
+    expect(html).toContain('Planche IV');
+    expect(html).toContain('Planche V<');
+    expect(html).not.toContain('Planche VI');
+  });
+
+  it('n’ouvre par la trace scellée que si elle diffère de celle qu’on démontre', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        annexB: [
+          demonstration({
+            trace: { image: IMAGE, marks: MARKED },
+            referencePrint: { image: IMAGE, marks: MARKED },
+          }),
+        ],
+      }),
+    );
+
+    expect(html).not.toContain('telle qu’elle a été scellée au dossier');
+    expect(html).not.toContain('après les traitements enregistrés au dossier');
+    expect(html).not.toContain('Planche III');
   });
 
   it('n’imprime aucune annexe B, ni son renvoi au sommaire, sans identification', () => {
@@ -1382,7 +1632,7 @@ describe('renderTechnicalReportHtml — numérotation des sections', () => {
       '<h2>2. Objet et pièces examinées</h2>',
       '<h2>3. Méthodes et techniques employées</h2>',
       '<h2>4. Traces papillaires examinées</h2>',
-      '<h2>5. Exploitabilité et cotation</h2>',
+      '<h2>5. Exploitabilité et discrimination</h2>',
       '<h2>6. Comparaisons et identifications</h2>',
       '<h2>7. Traitements appliqués aux images et intégrité des pièces</h2>',
       '<h2>8. Conclusion</h2>',
@@ -1406,7 +1656,7 @@ describe('renderTechnicalReportHtml — numérotation des sections', () => {
       '<li>2. Objet et pièces examinées</li>',
       '<li>3. Méthodes et techniques employées</li>',
       '<li>4. Traces papillaires examinées</li>',
-      '<li>5. Exploitabilité et cotation</li>',
+      '<li>5. Exploitabilité et discrimination</li>',
       '<li>6. Comparaisons et identifications</li>',
       '<li>7. Traitements appliqués aux images et intégrité des pièces</li>',
       '<li>8. Conclusion</li>',
@@ -1530,5 +1780,204 @@ describe('renderTechnicalReportHtml — annexe D, la vérification', () => {
     expect(html.indexOf('Annexe C — Journal des actes')).toBeLessThan(
       html.indexOf('Annexe D — Vérification par un second regard'),
     );
+  });
+});
+
+describe('renderTechnicalReportHtml — la garde et les champs renseignés', () => {
+  it('porte la date d’intervention sous les références', () => {
+    const html = renderTechnicalReportHtml(model());
+    const garde = html.slice(0, html.indexOf('<div class="sommaire">'));
+
+    expect(garde).toContain('Date d’intervention');
+    expect(garde).toContain('14 mars 2026');
+  });
+
+  it('omet la rubrique du destinataire quand elle n’est pas renseignée', () => {
+    const html = renderTechnicalReportHtml(
+      model({ caseHeader: { ...model().caseHeader, recipient: null } }),
+    );
+
+    expect(html).not.toContain('Destinataire');
+    expect(html).not.toContain('Non renseigné');
+  });
+
+  it('omet « Affaire contre » quand il n’est pas renseigné', () => {
+    const html = renderTechnicalReportHtml(
+      model({ caseHeader: { ...model().caseHeader, caseAgainst: null } }),
+    );
+
+    expect(html).not.toContain('Affaire contre');
+  });
+
+  it('imprime le résumé des faits en sous-section de la saisine', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        caseHeader: {
+          ...model().caseHeader,
+          description: 'Effraction de la porte-fenêtre du séjour.',
+        },
+      }),
+    );
+
+    expect(html).toContain('<h3>Résumé des faits</h3>');
+    expect(html).toContain('Effraction de la porte-fenêtre du séjour.');
+    expect(html.indexOf('<h3>Résumé des faits</h3>')).toBeGreaterThan(
+      html.indexOf('<h2>1. Saisine</h2>'),
+    );
+    expect(html.indexOf('<h3>Résumé des faits</h3>')).toBeLessThan(
+      html.indexOf('<h2>2.'),
+    );
+  });
+
+  it('n’ouvre pas de sous-section quand le résumé des faits est absent', () => {
+    expect(renderTechnicalReportHtml(model())).not.toContain(
+      'Résumé des faits',
+    );
+  });
+
+  it('complète l’état civil de la personne identifiée quand la fiche le porte', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        identifications: [
+          {
+            cote: 'A',
+            position: "à l'index droit",
+            subject: {
+              civility: 'Monsieur',
+              firstName: 'Samir',
+              lastName: 'Sadik',
+              sex: 'MALE',
+              birthDate: new Date('1979-04-02T00:00:00.000Z'),
+              birthPlace: 'Paris',
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('Monsieur SADIK Samir, né le 02/04/1979 à Paris');
+  });
+
+  it('n’écrit rien sur l’état civil que la fiche ne porte pas', () => {
+    const html = renderTechnicalReportHtml(model());
+
+    expect(html).toContain('Monsieur SADIK Samir,');
+    expect(html).not.toContain('né le');
+    expect(html).not.toContain('non renseigné');
+  });
+});
+
+describe('renderTechnicalReportHtml — encarts et alertes', () => {
+  it('distingue l’encart d’information de l’alerte d’anomalie', () => {
+    expect(REPORT_STYLES).toContain('.alerte');
+    expect(REPORT_STYLES).toContain('.encart');
+    const alerte = REPORT_STYLES.slice(REPORT_STYLES.indexOf('.alerte {'));
+    const encart = REPORT_STYLES.slice(REPORT_STYLES.indexOf('.encart {'));
+
+    expect(alerte.slice(0, alerte.indexOf('}'))).toContain('border');
+    expect(encart.slice(0, encart.indexOf('}'))).not.toContain('border');
+    expect(encart.slice(0, encart.indexOf('}'))).toContain('background');
+  });
+
+  it('pose le paragraphe du comparateur en encart', () => {
+    const html = renderTechnicalReportHtml(
+      model({ automaticComparatorUsed: true }),
+    );
+
+    expect(html).toContain(
+      '<p class="encart">Le comparateur automatique de la plateforme',
+    );
+  });
+
+  it('pose les mentions du tableau de comparaison en encart', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        comparisons: [{ reference: '3455-T1', cote: 'A', result: 'NÉGATIVE' }],
+      }),
+    );
+
+    expect(html).toContain('<p class="encart">La mention « NÉGATIVE » indique');
+  });
+
+  it('laisse une anomalie de pièce en alerte encadrée', () => {
+    const html = renderTechnicalReportHtml(
+      withIntegrity({
+        traces: [{ ...PIECE_INTEGRITY, observedMatchesRecord: false }],
+      }),
+    );
+
+    expect(html).toContain('<p class="alerte">');
+    expect(html).not.toContain(
+      '<p class="encart">La trace 3455-T2 cotée « B » :',
+    );
+  });
+});
+
+describe('renderTechnicalReportHtml — la conclusion ne dit pas les zéros', () => {
+  function withCounts(counts: Partial<TechnicalReportViewModel['counts']>) {
+    return renderTechnicalReportHtml(
+      model({
+        counts: {
+          total: 4,
+          exploitable: 3,
+          notExploitable: 1,
+          identified: 0,
+          discriminated: 0,
+          negative: 0,
+          notExamined: 0,
+          ...counts,
+        },
+        identifications: [],
+        discriminatedCotes: [],
+        negativeCotes: [],
+        notExaminedCotes: [],
+      }),
+    );
+  }
+
+  it('n’imprime aucune ligne dont le compte vaut zéro', () => {
+    const html = withCounts({ negative: 1 });
+
+    expect(html).toContain('non identifiée');
+    expect(html).not.toContain('non encore examinée');
+    expect(html).not.toContain('discriminée');
+    expect(html).not.toContain('(0)');
+    expect(html).not.toContain('ZÉRO');
+  });
+
+  it('compte les traces discriminées à part des traces identifiées', () => {
+    const html = renderTechnicalReportHtml(
+      model({
+        counts: {
+          total: 2,
+          exploitable: 2,
+          notExploitable: 0,
+          identified: 0,
+          discriminated: 2,
+          negative: 0,
+          notExamined: 0,
+        },
+        identifications: [],
+        discriminatedCotes: ['A', 'B'],
+        negativeCotes: [],
+        notExaminedCotes: [],
+      }),
+    );
+
+    expect(html).toContain('discriminée');
+    expect(html).toContain('cotées « A » et « B »');
+    expect(html).not.toContain('identifiée');
+  });
+
+  it('affirme qu’aucune trace n’est exploitable au terme de l’examen', () => {
+    const html = withCounts({ exploitable: 0, notExploitable: 4 });
+
+    expect(html).toContain("aucune trace exploitable au terme de l'examen");
+  });
+
+  it('supprime le second niveau quand aucune comparaison n’a de résultat', () => {
+    const html = withCounts({});
+
+    expect(html).not.toContain('Comparaison avec les empreintes de référence');
   });
 });

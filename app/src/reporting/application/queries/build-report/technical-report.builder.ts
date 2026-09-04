@@ -18,6 +18,7 @@ import {
   JournalDetail,
   ReportCountsViewModel,
   ReportExaminedTraceViewModel,
+  ReportComparisonViewModel,
   ReportExploitabilityViewModel,
   ReportIdentificationViewModel,
   ReportImageViewModel,
@@ -30,6 +31,7 @@ import {
   civilityLabel,
   positionWithArticle,
   REVELATION_TECHNIQUE_SEQUENCE,
+  SYSTEMATIC_REVELATION_TECHNIQUE,
   revelationTechniqueLabel,
   subjectTypeLabel,
   traceOriginLabel,
@@ -46,17 +48,20 @@ import {
   buildDemonstrations,
   isWithdrawn,
   toPieceViewModel,
-  withdrawalSentence,
 } from './report-pieces';
+import { buildWithdrawnElements } from './withdrawn-elements';
 import { groupExaminedTraces, traceReference } from './trace-grouping';
 import {
+  caseVerdicts,
+  CaseVerdicts,
+  comparisonOf,
   discriminationOf,
+  identificationOf,
   isDeclaredNegative,
+  isDiscriminated,
   isIdentified,
   isNotExamined,
   NOT_APPLICABLE,
-  TraceVerdict,
-  verdictsByTraceId,
 } from './trace-verdicts';
 
 export interface TechnicalReportInput {
@@ -78,7 +83,6 @@ export interface TechnicalReportInput {
   images: Map<string, ReportImageViewModel | null>;
 }
 
-const NOT_STATED = 'Non renseignée';
 const EXPLOITABILITY_LABELS: Record<string, string> = {
   EXPLOITABLE: 'EXPLOITABLE',
   NOT_EXPLOITABLE: 'INEXPLOITABLE',
@@ -99,15 +103,18 @@ function buildExaminedTraces(
     })),
   ).map((group) => ({
     label: group.label,
-    origin: traceOriginLabel(group.origin) ?? NOT_STATED,
-    location: group.location ?? NOT_STATED,
+    origin: traceOriginLabel(group.origin) ?? NOT_APPLICABLE,
+    location: group.location ?? NOT_APPLICABLE,
     revelationTechnique:
-      revelationTechniqueLabel(group.revelationTechnique) ?? NOT_STATED,
+      revelationTechniqueLabel(group.revelationTechnique) ?? NOT_APPLICABLE,
   }));
 }
 
 function buildRevelationTechniques(traces: PieceData[]): string[] {
-  const employed = new Set(traces.map((trace) => trace.revelationTechnique));
+  const employed = new Set<string | null>([
+    SYSTEMATIC_REVELATION_TECHNIQUE,
+    ...traces.map((trace) => trace.revelationTechnique),
+  ]);
   return REVELATION_TECHNIQUE_SEQUENCE.filter((technique) =>
     employed.has(technique),
   );
@@ -116,17 +123,26 @@ function buildRevelationTechniques(traces: PieceData[]): string[] {
 function buildExploitability(
   caseNumber: string,
   traces: PieceData[],
-  verdicts: Map<string, TraceVerdict>,
+  verdicts: CaseVerdicts,
 ): ReportExploitabilityViewModel[] {
   return traces.map((trace) => ({
     reference: traceReference(caseNumber, trace.number ?? 0),
     exploitability:
       EXPLOITABILITY_LABELS[trace.status ?? 'RECEIVED'] ?? NOT_APPLICABLE,
     cote: trace.cote ?? NOT_APPLICABLE,
-    discrimination: isWithdrawn(trace)
-      ? NOT_APPLICABLE
-      : discriminationOf(trace, verdicts.get(trace.id)),
-    withdrawal: withdrawalSentence(trace),
+    discrimination: discriminationOf(trace, verdicts),
+  }));
+}
+
+function buildComparisons(
+  caseNumber: string,
+  traces: PieceData[],
+  verdicts: CaseVerdicts,
+): ReportComparisonViewModel[] {
+  return traces.map((trace) => ({
+    reference: traceReference(caseNumber, trace.number ?? 0),
+    cote: trace.cote ?? NOT_APPLICABLE,
+    result: comparisonOf(trace, verdicts),
   }));
 }
 
@@ -155,23 +171,29 @@ function buildReferenceSubjects(
 
 function buildIdentifications(
   traces: PieceData[],
-  verdicts: Map<string, TraceVerdict>,
+  verdicts: CaseVerdicts,
 ): ReportIdentificationViewModel[] {
   return traces.flatMap((trace) => {
-    const verdict = verdicts.get(trace.id);
-    if (!verdict?.identified || trace.cote === null || isWithdrawn(trace)) {
+    const identification = identificationOf(trace, verdicts);
+    if (!identification || trace.cote === null || isWithdrawn(trace)) {
       return [];
     }
-    const subject = verdict.identifiedBy;
+    const subject = identification.subject;
     return [
       {
         cote: trace.cote,
-        position:
-          positionWithArticle(verdict.identifiedPosition) ??
-          'à une position non renseignée',
-        civility: subject ? civilityLabel(subject.sex) : '',
-        firstName: subject?.firstName ?? '',
-        lastName: subject?.lastName ?? 'personne non renseignée au dossier',
+        position: positionWithArticle(identification.position),
+        subject:
+          subject === null
+            ? null
+            : {
+                civility: civilityLabel(subject.sex),
+                firstName: subject.firstName,
+                lastName: subject.lastName,
+                sex: subject.sex,
+                birthDate: subject.birthDate,
+                birthPlace: subject.birthPlace,
+              },
       },
     ];
   });
@@ -179,7 +201,7 @@ function buildIdentifications(
 
 function buildCounts(
   traces: PieceData[],
-  verdicts: Map<string, TraceVerdict>,
+  verdicts: CaseVerdicts,
 ): ReportCountsViewModel {
   const exploitable = traces.filter((trace) => trace.status === 'EXPLOITABLE');
   return {
@@ -189,6 +211,9 @@ function buildCounts(
       .length,
     identified: exploitable.filter((trace) => isIdentified(trace, verdicts))
       .length,
+    discriminated: exploitable.filter((trace) =>
+      isDiscriminated(trace, verdicts),
+    ).length,
     negative: exploitable.filter((trace) => isDeclaredNegative(trace, verdicts))
       .length,
     notExamined: exploitable.filter((trace) => isNotExamined(trace, verdicts))
@@ -266,7 +291,7 @@ export function buildTechnicalReport(
     (left, right) => (left.number ?? 0) - (right.number ?? 0),
   );
   const workingTraces = orderedTraces.filter((trace) => !isWithdrawn(trace));
-  const verdicts = verdictsByTraceId(data);
+  const verdicts = caseVerdicts(data);
   const designations = pieceDesignations(data);
   const exploitableTraces = workingTraces.filter(
     (trace) => trace.status === 'EXPLOITABLE',
@@ -299,14 +324,24 @@ export function buildTechnicalReport(
       serviceNumber: input.signer.serviceNumber,
     },
     contributors: buildContributors(input.contributors, input.signer.id),
-    examinedTraces: buildExaminedTraces(caseNumber, orderedTraces),
-    exploitability: buildExploitability(caseNumber, orderedTraces, verdicts),
+    withdrawnElements: buildWithdrawnElements(
+      orderedTraces,
+      data.referencePrints,
+      designations,
+    ),
+    examinedTraces: buildExaminedTraces(caseNumber, workingTraces),
+    exploitability: buildExploitability(caseNumber, workingTraces, verdicts),
     referenceSubjects: buildReferenceSubjects(data),
     unattachedReferencePrintCount: data.referencePrints.filter(
       (print) => !isWithdrawn(print) && print.subjectId === null,
     ).length,
     automaticComparatorUsed: data.comparisons.length > 0,
+    personOfInterestPrintCount: verdicts.personOfInterestPrintCount,
+    comparisons: buildComparisons(caseNumber, exploitableTraces, verdicts),
     identifications: buildIdentifications(workingTraces, verdicts),
+    discriminatedCotes: cotesOf(
+      exploitableTraces.filter((trace) => isDiscriminated(trace, verdicts)),
+    ),
     negativeCotes: cotesOf(
       exploitableTraces.filter((trace) => isDeclaredNegative(trace, verdicts)),
     ),
@@ -330,8 +365,10 @@ export function buildTechnicalReport(
       designations,
     ),
     integrity: buildIntegritySection({
-      traces: data.traces,
-      referencePrints: data.referencePrints,
+      traces: workingTraces,
+      referencePrints: data.referencePrints.filter(
+        (print) => !isWithdrawn(print),
+      ),
       designations: designations,
       events: input.chainEvents,
       anchors: input.anchors,

@@ -13,7 +13,6 @@ import {
   ReportSubjectViewModel,
   ReportWithdrawalViewModel,
 } from '../../report-view-model';
-import { formatLongDay } from '../../report-dates';
 import { positionLabel, withdrawalMotiveLabel } from './action-labels';
 
 function labelOf(piece: PieceData): string {
@@ -35,13 +34,6 @@ function withdrawalOf(piece: PieceData): ReportWithdrawalViewModel | null {
           piece.withdrawalMotiveDetail,
         ),
       };
-}
-
-export function withdrawalSentence(piece: PieceData): string | null {
-  const withdrawal = withdrawalOf(piece);
-  return withdrawal === null
-    ? null
-    : `Retirée du dossier le ${formatLongDay(withdrawal.at)} — ${withdrawal.motiveLabel}`;
 }
 
 export function toPieceViewModel(

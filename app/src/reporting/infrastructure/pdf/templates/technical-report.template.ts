@@ -3,6 +3,8 @@ import {
   ReportCaseHeaderViewModel,
   ReportContributorViewModel,
   ReportDemonstrationViewModel,
+  ReportComparisonViewModel,
+  ReportIdentificationViewModel,
   ReportIntegrityViewModel,
   ReportJournalSummaryViewModel,
   ReportJournalViewModel,
@@ -11,12 +13,18 @@ import {
   ReportTreatmentViewModel,
   ReportVerificationActGroupViewModel,
   ReportVerificationViewModel,
+  ReportWithdrawnElementViewModel,
   TechnicalReportViewModel,
 } from '../../../application/report-view-model';
 import {
   journalRows,
   JournalRow,
 } from '../../../application/queries/build-report/journal-annex.builder';
+import {
+  NEGATIVE_MENTION,
+  NOT_EXAMINED_MENTION,
+} from '../../../application/queries/build-report/trace-verdicts';
+import { bornPhrase } from '../../../application/queries/build-report/civil-identity';
 import { frenchCardinal } from '../french-numbers';
 import {
   formatDay,
@@ -41,7 +49,6 @@ export function reportFooterText(reportNumber: string): string {
 function withDefiniteArticle(grade: string): string {
   return /^[aàâäeéèêëiîïoôöuùûüy]/i.test(grade) ? `l'${grade}` : `le ${grade}`;
 }
-const NOT_STATED = 'Non renseigné';
 
 function spelled(count: number): string {
   return `${frenchCardinal(count)} (${count})`;
@@ -99,6 +106,13 @@ function referencesSection(model: TechnicalReportViewModel): string {
   return `
     <h2>Références</h2>
     ${request}
+    ${
+      header.interventionDate === null
+        ? ''
+        : `<p class="champ"><span class="k">Date d’intervention</span> : ${formatLongDay(
+            header.interventionDate,
+          )}</p>`
+    }
     <p class="champ"><span class="k">Procès-verbal n°</span> : ${escapeHtml(header.pvNumber)}</p>
     <p class="champ"><span class="k">Dossier</span> : ${escapeHtml(header.caseNumber)}</p>
     <p class="champ"><span class="k">Rapport n°</span> : ${escapeHtml(model.header.reportNumber)}</p>
@@ -183,37 +197,96 @@ function offenceSection(header: ReportCaseHeaderViewModel): string {
           )
           .join('');
 
+  const against =
+    header.caseAgainst === null
+      ? ''
+      : `<p class="champ"><span class="k">Affaire contre</span> : ${escapeHtml(
+          header.caseAgainst,
+        )}</p>`;
+  const nature =
+    parts.length === 0 ? '' : `<p class="champ">${parts.join(', ')}.</p>`;
+  if (nature.length === 0 && against.length === 0 && victims.length === 0) {
+    return '';
+  }
+
   return `
     <h2>Nature de l'infraction</h2>
-    ${
-      parts.length === 0
-        ? '<p class="champ">La nature de l\'infraction n\'est pas renseignée.</p>'
-        : `<p class="champ">${parts.join(', ')}.</p>`
-    }
-    <p class="champ"><span class="k">Affaire contre</span> : ${
-      header.caseAgainst === null ? NOT_STATED : escapeHtml(header.caseAgainst)
-    }</p>
+    ${nature}
+    ${against}
     ${victims}`;
 }
 
 function recipientSection(header: ReportCaseHeaderViewModel): string {
   const { recipient } = header;
+  if (recipient === null) {
+    return '';
+  }
   return `
     <h2>Destinataire</h2>
+    <p class="champ">${escapeHtml(recipient.authority)}</p>
     ${
-      recipient === null
-        ? `<p class="champ">${NOT_STATED}</p>`
-        : `<p class="champ">${escapeHtml(recipient.authority)}</p>${
-            recipient.attention === null
-              ? ''
-              : `<p class="champ" style="margin-top:6px">À l'attention du ${escapeHtml(
-                  recipient.attention,
-                )}</p>`
-          }`
+      recipient.attention === null
+        ? ''
+        : `<p class="champ" style="margin-top:6px">À l'attention du ${escapeHtml(
+            recipient.attention,
+          )}</p>`
     }`;
 }
 
-function summarySection(model: TechnicalReportViewModel): string {
+interface ReportBodySection {
+  title: string;
+  content: string;
+}
+
+function bodySections(model: TechnicalReportViewModel): ReportBodySection[] {
+  return [
+    { title: 'Saisine', content: saisineSection(model) },
+    { title: 'Objet et pièces examinées', content: objectSection(model) },
+    {
+      title: 'Méthodes et techniques employées',
+      content: methodsSection(model),
+    },
+    ...(model.withdrawnElements.length === 0
+      ? []
+      : [
+          {
+            title: 'Éléments retirés du dossier',
+            content: withdrawnElementsSection(model),
+          },
+        ]),
+    {
+      title: 'Traces papillaires examinées',
+      content: examinedTracesSection(model),
+    },
+    {
+      title: 'Exploitabilité et discrimination',
+      content: exploitabilitySection(model),
+    },
+    {
+      title: 'Comparaisons et identifications',
+      content: comparisonsSection(model),
+    },
+    {
+      title: 'Traitements appliqués aux images et intégrité des pièces',
+      content: integritySection(model),
+    },
+    { title: 'Conclusion', content: conclusionSection(model) },
+  ];
+}
+
+function renderBodySections(sections: ReportBodySection[]): string {
+  return sections
+    .map(
+      (section, order) =>
+        `<h2>${order + 1}. ${section.title}</h2>${section.content}`,
+    )
+    .join('');
+}
+
+function summarySection(
+  model: TechnicalReportViewModel,
+  sections: ReportBodySection[],
+): string {
   const annexes = [
     model.annexA.length === 0
       ? null
@@ -228,14 +301,9 @@ function summarySection(model: TechnicalReportViewModel): string {
   return `
     <h2>Sommaire</h2>
     <ul class="rec">
-      <li>1. Saisine</li>
-      <li>2. Objet et pièces examinées</li>
-      <li>3. Méthodes et techniques employées</li>
-      <li>4. Traces papillaires examinées</li>
-      <li>5. Exploitabilité et cotation</li>
-      <li>6. Comparaisons et identifications</li>
-      <li>7. Traitements appliqués aux images et intégrité des pièces</li>
-      <li>8. Conclusion</li>
+      ${sections
+        .map((section, order) => `<li>${order + 1}. ${section.title}</li>`)
+        .join('')}
     </ul>
     <p class="champ" style="font-size:9.5pt">${annexes.join('<br />')}</p>`;
 }
@@ -254,9 +322,9 @@ function annexTitlePage(
 }
 
 function locationCaption(cote: string, location: string | null): string {
-  return `Trace papillaire cotée ${quoted(cote)}, ${
-    location === null ? 'localisation non renseignée' : `révélée ${location}`
-  }.`;
+  return location === null
+    ? `Trace papillaire cotée ${quoted(cote)}.`
+    : `Trace papillaire cotée ${quoted(cote)}, révélée ${location}.`;
 }
 
 function annexASection(model: TechnicalReportViewModel): string {
@@ -280,24 +348,27 @@ function annexASection(model: TechnicalReportViewModel): string {
     ${plates}`;
 }
 
-function demonstratedPerson(
+function referencePrintCaption(
   demonstration: ReportDemonstrationViewModel,
 ): string {
-  const { subject } = demonstration;
-  return subject === null
-    ? 'personne non renseignée au dossier'
-    : `${subject.civility} ${subject.lastName.toLocaleUpperCase('fr')} ${
-        subject.firstName
-      }`;
-}
+  const { subject, position } = demonstration;
+  const named =
+    subject === null
+      ? null
+      : `${subject.civility} ${subject.lastName.toLocaleUpperCase('fr')} ${
+          subject.firstName
+        }`;
+  const where =
+    position === null
+      ? null
+      : position.charAt(0).toLocaleUpperCase('fr') + position.slice(1);
 
-function demonstratedPosition(
-  demonstration: ReportDemonstrationViewModel,
-): string {
-  const { position } = demonstration;
-  return position === null
-    ? 'Position non renseignée'
-    : position.charAt(0).toLocaleUpperCase('fr') + position.slice(1);
+  if (where !== null) {
+    return named === null ? `${where}.` : `${where} de ${named}.`;
+  }
+  return named === null
+    ? 'Empreinte de référence.'
+    : `Empreinte de référence de ${named}.`;
 }
 
 function annexBSection(model: TechnicalReportViewModel): string {
@@ -312,8 +383,27 @@ function annexBSection(model: TechnicalReportViewModel): string {
         demonstration.cote,
       )}`;
       const marked = demonstration.trace.marks.length;
+      const retouched = demonstration.rawTrace !== null;
       const pages: string[] = [];
 
+      if (demonstration.rawTrace !== null) {
+        pages.push(
+          renderPlate({
+            title: `Planche ${toRoman(++rank)}`,
+            subtitle,
+            image: demonstration.rawTrace,
+            marks: [],
+            cote: demonstration.cote,
+            caption: `Trace papillaire cotée ${quoted(
+              demonstration.cote,
+            )}, telle qu’elle a été scellée au dossier.`,
+          }),
+        );
+      }
+
+      const traceState = retouched
+        ? `, après les traitements enregistrés au dossier`
+        : '';
       pages.push(
         renderPlate({
           title: `Planche ${toRoman(++rank)}`,
@@ -323,16 +413,16 @@ function annexBSection(model: TechnicalReportViewModel): string {
           cote: demonstration.cote,
           caption:
             marked === 0
-              ? `Trace papillaire cotée ${quoted(demonstration.cote)}.`
+              ? `Trace papillaire cotée ${quoted(
+                  demonstration.cote,
+                )}${traceState}.`
               : `Trace papillaire cotée ${quoted(
                   demonstration.cote,
-                )}. ${spelled(marked)} minuties concordantes numérotées.`,
+                )}${traceState}. ${spelled(marked)} minuties concordantes numérotées.`,
         }),
       );
 
-      const who = `${demonstratedPosition(demonstration)} de ${demonstratedPerson(
-        demonstration,
-      )}.`;
+      const who = referencePrintCaption(demonstration);
       pages.push(
         renderPlate({
           title: `Planche ${toRoman(++rank)}`,
@@ -356,6 +446,28 @@ function annexBSection(model: TechnicalReportViewModel): string {
     ${plates}`;
 }
 
+function identifiedPerson(
+  identification: ReportIdentificationViewModel,
+): string {
+  const { subject } = identification;
+  if (subject === null) {
+    return "d'une empreinte de référence non rattachée à une personne";
+  }
+  const named = `${escapeHtml(subject.civility)} ${escapeHtml(
+    subject.lastName.toLocaleUpperCase('fr'),
+  )} ${escapeHtml(subject.firstName)}`;
+  const born = bornPhrase(subject.sex, subject.birthDate, subject.birthPlace);
+  return born === null ? `de ${named}` : `de ${named}, ${escapeHtml(born)}`;
+}
+
+function identifiedAs(identification: ReportIdentificationViewModel): string {
+  const where =
+    identification.position === null
+      ? 'à une empreinte'
+      : `<b>${escapeHtml(identification.position)}</b>`;
+  return `${where} ${identifiedPerson(identification)}`;
+}
+
 function objectSection(model: TechnicalReportViewModel): string {
   const { counts, referenceSubjects, unattachedReferencePrintCount } = model;
   const subjects = referenceSubjects
@@ -368,7 +480,6 @@ function objectSection(model: TechnicalReportViewModel): string {
     .join(' et de ');
 
   return `
-    <h2>2. Objet et pièces examinées</h2>
     <p>Le présent rapport rend compte de l'examen dactyloscopique de
     ${tracesCount(counts.total)} révélée${plural(counts.total)} dans le cadre du dossier
     ${escapeHtml(model.caseHeader.caseNumber)}, de la détermination de leur caractère
@@ -398,7 +509,6 @@ function methodsSection(model: TechnicalReportViewModel): string {
     .filter((text) => text !== undefined);
 
   return `
-    <h2>3. Méthodes et techniques employées</h2>
     ${
       described.length === 0
         ? `<p class="empty">Aucune technique de révélation n'est enregistrée pour les traces de ce dossier.</p>`
@@ -413,6 +523,50 @@ function methodsSection(model: TechnicalReportViewModel): string {
     }`;
 }
 
+function capitalized(sentence: string): string {
+  return sentence.charAt(0).toLocaleUpperCase('fr') + sentence.slice(1);
+}
+
+function destroyedImagesSentence(
+  elements: ReportWithdrawnElementViewModel[],
+): string {
+  const destroyed = elements.filter((element) => element.imageDestroyed);
+  if (destroyed.length === 0) {
+    return '';
+  }
+  const named = destroyed
+    .map((element) => escapeHtml(element.designation))
+    .join(', ');
+  return `<p>L'image de ${named} a été détruite : elle ne peut plus être communiquée.</p>`;
+}
+
+function withdrawnElementsSection(model: TechnicalReportViewModel): string {
+  const { withdrawnElements } = model;
+  return `
+    <p>Les éléments ci-dessous ont été versés à ce dossier, puis retirés. Ils ne sont
+    pas repris dans les chapitres suivants.</p>
+    <table>
+      <tr>
+        <th>Élément</th><th style="width:20%">Retiré le</th>
+        <th style="width:34%">Motif du retrait</th>
+      </tr>
+      ${withdrawnElements
+        .map(
+          (element) => `
+      <tr>
+        <td>${capitalized(escapeHtml(element.designation))}</td>
+        <td>${formatDay(element.withdrawnAt)}</td>
+        <td>${escapeHtml(element.motiveLabel)}</td>
+      </tr>`,
+        )
+        .join('')}
+    </table>
+    <p>Les images de ces éléments ne sont pas délivrées avec le présent rapport : elles
+    peuvent concerner d'autres dossiers. Elles sont communicables sur demande de
+    l'autorité judiciaire.</p>
+    ${destroyedImagesSentence(withdrawnElements)}`;
+}
+
 function examinedTracesSection(model: TechnicalReportViewModel): string {
   const { examinedTraces, exploitability, counts } = model;
   const first = exploitability[0]?.reference;
@@ -425,7 +579,6 @@ function examinedTracesSection(model: TechnicalReportViewModel): string {
         : ` et numérotées ${escapeHtml(first)} à ${escapeHtml(last)}`;
 
   return `
-    <h2>4. Traces papillaires examinées</h2>
     ${
       examinedTraces.length === 0
         ? '<p class="empty">Aucune trace papillaire n\'a été versée à ce dossier.</p>'
@@ -453,15 +606,30 @@ function examinedTracesSection(model: TechnicalReportViewModel): string {
     }`;
 }
 
+function mentionsNote(comparisons: ReportComparisonViewModel[]): string {
+  const mentioned = new Set(comparisons.map((row) => row.result));
+  const notes = [
+    mentioned.has(NEGATIVE_MENTION)
+      ? `La mention « NÉGATIVE » indique que l'expert a comparé la trace papillaire
+    aux empreintes de référence des personnes mises en cause et a déclaré n'y relever
+    aucune concordance.`
+      : null,
+    mentioned.has(NOT_EXAMINED_MENTION)
+      ? `La mention « non examinée » indique qu'aucune comparaison n'a encore été
+    déclarée sur cette trace : elle ne vaut pas résultat négatif.`
+      : null,
+  ].filter((note): note is string => note !== null);
+
+  return notes.length === 0 ? '' : `<p class="encart">${notes.join(' ')}</p>`;
+}
+
 function exploitabilitySection(model: TechnicalReportViewModel): string {
   const { exploitability, counts } = model;
   if (exploitability.length === 0) {
-    return `<h2>5. Exploitabilité et cotation</h2>
-      <p class="empty">Aucune trace papillaire n'a été soumise à examen.</p>`;
+    return `<p class="empty">Aucune trace papillaire n'a été soumise à examen.</p>`;
   }
 
   return `
-    <h2>5. Exploitabilité et cotation</h2>
     <p>Il a été procédé à un examen méthodique et minutieux ${
       counts.total > 1 ? 'des' : 'de'
     } ${tracesCount(counts.total)} afin de déterminer leur caractère
@@ -478,19 +646,16 @@ function exploitabilitySection(model: TechnicalReportViewModel): string {
       <tr>
         <td>${escapeHtml(row.reference)}</td>
         <td>${escapeHtml(row.exploitability)}</td>
-        ${
-          row.withdrawal === null
-            ? `<td>${escapeHtml(row.cote)}</td><td>${escapeHtml(row.discrimination)}</td>`
-            : `<td colspan="2">${escapeHtml(row.withdrawal)}</td>`
-        }
+        <td>${escapeHtml(row.cote)}</td>
+        <td>${escapeHtml(row.discrimination)}</td>
       </tr>`,
         )
         .join('')}
     </table>
-    <p class="note">La mention « NÉGATIVE » indique que l'expert a comparé la trace papillaire
-    à l'ensemble des empreintes de référence du dossier et a déclaré n'y relever aucune
-    concordance. La mention « non examinée » indique qu'aucune comparaison n'a encore été
-    déclarée sur cette trace : elle ne vaut pas résultat négatif.</p>`;
+    <p class="encart">La colonne « Discrimination » ne rend compte que des concordances
+    relevées avec les empreintes des personnes familières des lieux, dont la présence
+    s'explique. Les comparaisons avec les personnes mises en cause font l'objet du
+    chapitre suivant.</p>`;
 }
 
 const COMPARATOR_PARAGRAPH = `Le comparateur automatique de la plateforme a été employé dans le
@@ -500,72 +665,69 @@ const COMPARATOR_PARAGRAPH = `Le comparateur automatique de la plateforme a ét�
   classement ne constitue pas un examen comparatif et n'a fondé aucune conclusion : l'examen
   comparatif et la conclusion d'identité relèvent exclusivement de l'expert signataire.`;
 
+function comparisonsTable(comparisons: ReportComparisonViewModel[]): string {
+  return `
+    <table>
+      <tr>
+        <th style="width:30%">Trace n°</th><th style="width:12%">Cote</th>
+        <th>Résultat de la comparaison</th>
+      </tr>
+      ${comparisons
+        .map(
+          (row) => `
+      <tr>
+        <td>${escapeHtml(row.reference)}</td>
+        <td>${escapeHtml(row.cote)}</td>
+        <td>${escapeHtml(row.result)}</td>
+      </tr>`,
+        )
+        .join('')}
+    </table>`;
+}
+
 function comparisonsSection(model: TechnicalReportViewModel): string {
-  const { identifications, negativeCotes, notExaminedCotes } = model;
+  const { comparisons, identifications } = model;
   const minutiae = `sur la base d'<b>au moins ${spelled(
     REQUIRED_MINUTIAE,
   )} minuties concordantes, sans aucune discordance inexplicable</b>`;
 
-  const negatives =
-    negativeCotes.length === 0
-      ? ''
-      : negativeCotes.length === 1
-        ? `<p>La trace papillaire cotée <b>${joinCotes(negativeCotes)}</b> n'a pas été
-           identifiée au terme des comparaisons effectuées.</p>`
-        : `<p>Les traces papillaires cotées <b>${joinCotes(negativeCotes)}</b> n'ont pas été
-           identifiées au terme des comparaisons effectuées.</p>`;
+  if (model.personOfInterestPrintCount === 0) {
+    return `<p>Aucune empreinte de référence d'une personne mise en cause n'a été versée
+    à ce dossier : aucune comparaison de cette nature n'a pu être conduite.</p>`;
+  }
 
-  const notExamined =
-    notExaminedCotes.length === 0
+  const identified =
+    identifications.length === 0
       ? ''
-      : notExaminedCotes.length === 1
-        ? `<p>La trace papillaire cotée <b>${joinCotes(notExaminedCotes)}</b> n'a pas encore
-           été examinée.</p>`
-        : `<p>Les traces papillaires cotées <b>${joinCotes(notExaminedCotes)}</b> n'ont pas
-           encore été examinées.</p>`;
-
-  return `
-    <h2>6. Comparaisons et identifications</h2>
-    <p>Les comparaisons ont été effectuées entre chaque trace papillaire déclarée exploitable
-    et les empreintes de référence du dossier.${
-      identifications.length === 0
-        ? " Aucune identification n'a été déclarée."
-        : ' Elles permettent de conclure aux identifications suivantes :'
-    }</p>
-    ${model.automaticComparatorUsed ? `<p class="note">${COMPARATOR_PARAGRAPH}</p>` : ''}
-    ${
-      identifications.length === 0
-        ? ''
-        : `<ul class="rec">
+      : `<ul class="rec">
           ${identifications
             .map(
               (identification, order) => `
           <li>la trace papillaire cotée <b>${quoted(identification.cote)}</b> est identifiée
-          <b>${escapeHtml(identification.position)}</b> de ${escapeHtml(
-            identification.civility,
-          )} ${escapeHtml(identification.lastName.toUpperCase())} ${escapeHtml(
-            identification.firstName,
-          )}, ${minutiae}${order === identifications.length - 1 ? '.' : ' ;'}</li>`,
+          ${identifiedAs(identification)}, ${minutiae}${
+            order === identifications.length - 1 ? '.' : ' ;'
+          }</li>`,
             )
             .join('')}
-        </ul>`
-    }
-    ${negatives}
-    ${notExamined}
+        </ul>
+        <p>La démonstration d'identité de chaque trace identifiée figure en Annexe B.</p>`;
+
+  return `
+    <p>Les comparaisons ont été effectuées entre chaque trace papillaire déclarée exploitable
+    et les empreintes de référence des personnes mises en cause.</p>
+    ${comparisons.length === 0 ? '' : comparisonsTable(comparisons)}
+    ${mentionsNote(comparisons)}
     ${
-      identifications.length === 0
-        ? ''
-        : "<p>La démonstration d'identité de chaque trace identifiée figure en Annexe B.</p>"
-    }`;
+      model.automaticComparatorUsed
+        ? `<p class="encart">${COMPARATOR_PARAGRAPH}</p>`
+        : ''
+    }
+    ${identified}`;
 }
 
 const INTEGRITY_PREAMBLE = [
-  "Les images de ce dossier sont conservées dans l'état où elles ont été reçues. Au moment du dépôt, chaque fichier est enregistré sous une désignation qui lui est propre, et son empreinte numérique est inscrite au registre chronologique du laboratoire dans la même opération indivisible. Deux fichiers différents, ne serait-ce que d'un point, donnent deux empreintes différentes ; l'empreinte, elle, ne permet pas de reconstituer l'image.",
-  "Le logiciel ne comporte aucune fonction permettant de remplacer le fichier d'une pièce. L'enregistrement est refusé si la désignation est déjà occupée, et aucune commande de l'application ne modifie ni le fichier, ni l'empreinte inscrite. Une pièce peut être retirée du dossier, et ce retrait est lui-même inscrit au registre ; elle ne peut pas être échangée contre une autre.",
-  "Les traitements effectués ne sont destinés qu'à améliorer la lisibilité. Ils ne sont pas appliqués au fichier original. Les modifications apportées sont enregistrées sous forme de réglages, avec leur valeur, la date à laquelle ils ont été posés et le nom de l'agent qui les a posés.",
-  'Les images originales sont fournies en pièce jointe du présent rapport.Elles peuvent être communiquées à toute autorité judiciaire ou administrative sur demande.',
-
-  "Le registre chronologique est en écriture seule : la base de données refuse la modification comme la suppression d'une inscription déjà faite, et chaque inscription reprend l'empreinte de la précédente, de sorte qu'une inscription retouchée rendrait toutes les suivantes incohérentes. Les dates ci-dessous sont exprimées en temps universel (UTC).",
+  "Le registre chronologique du laboratoire est en écriture seule : la base de données refuse la modification comme la suppression d'une inscription déjà faite, et chaque inscription reprend l'empreinte de la précédente, de sorte qu'une inscription retouchée rendrait toutes les suivantes incohérentes. Le logiciel ne comporte par ailleurs aucune fonction permettant de remplacer le fichier d'une pièce : une pièce peut être retirée du dossier, elle ne peut pas être échangée contre une autre.",
+  "Les traitements ci-dessous ne sont destinés qu'à améliorer la lisibilité. Ils ne sont pas appliqués au fichier reçu, mais conservés sous forme de réglages, avec leur valeur, leur date et le nom de l'agent qui les a posés. Les dates sont exprimées en temps universel (UTC).",
 ];
 
 const INTEGRITY_SCOPE =
@@ -576,119 +738,120 @@ function integrityWarning(integrity: ReportIntegrityViewModel): string {
     return `<p class="alerte">Une vérification du registre du laboratoire a été effectuée à l'édition du présent rapport et a relevé une anomalie à l'inscription n° ${integrity.firstBrokenEntryNumber}. Les affirmations du présent chapitre doivent être tenues pour non vérifiées jusqu'à examen.</p>`;
   }
   if (integrity.anchorsFailed > 0) {
-    return `<p class="alerte">Une vérification effectuée à l'édition du présent rapport n'a pas pu valider ${integrity.anchorsFailed} horodatage(s) extérieur(s). Les empreintes et l'enchaînement des inscriptions restent vérifiés ; les dates extérieures mentionnées ci-dessous, non.</p>`;
+    return `<p class="alerte">Une vérification effectuée à l'édition du présent rapport n'a pas pu valider ${integrity.anchorsFailed} horodatage(s) extérieur(s). Les empreintes et l'enchaînement des inscriptions restent vérifiés ; les dates extérieures, non.</p>`;
   }
   return '';
 }
 
-function treatmentLine(treatment: ReportTreatmentViewModel): string {
-  const parts = [
-    `${escapeHtml(treatment.sentence)}, posé le ${formatDayTime(
-      treatment.appliedAt,
-    )} par ${escapeHtml(treatment.actorDisplayName)}`,
-    treatment.removedAt === null
-      ? null
-      : `retiré le ${formatDayTime(treatment.removedAt)}`,
-    treatment.hiddenAtEdition
-      ? "masqué à la date d'édition du présent rapport"
-      : null,
-  ].filter((part): part is string => part !== null);
-  return parts.join(', ');
+function treatmentState(treatment: ReportTreatmentViewModel): string {
+  if (treatment.removedAt !== null) {
+    return `Retiré le ${formatDayTime(treatment.removedAt)}`;
+  }
+  return treatment.hiddenAtEdition ? 'Masqué' : 'Toujours posé';
 }
 
-function treatmentsParagraph(piece: ReportPieceIntegrityViewModel): string {
-  if (piece.treatments.length === 0) {
-    return "<p>Aucun traitement n'a été appliqué à cette image.</p>";
-  }
-  return `<p>Traitements enregistrés : ${piece.treatments
-    .map(treatmentLine)
-    .join(
-      ' — ',
-    )}. Ces traitements sont des réglages d'affichage ; ils n'ont pas modifié le fichier scellé ci-dessus.</p>`;
-}
-
-function sealParagraph(piece: ReportPieceIntegrityViewModel): string {
-  if (piece.recordedSha256 === null) {
-    return '<p class="alerte">Aucune empreinte n\'a été inscrite au registre lors du dépôt de cette pièce. Le présent rapport ne peut donc pas établir que le fichier est resté identique depuis sa réception.</p>';
-  }
-  const divergence = piece.divergesFromRecord
-    ? '<p class="alerte">L\'empreinte figurant dans la fiche courante du dossier diffère de celle inscrite au registre lors du dépôt. C\'est la valeur du registre qui est imprimée ci-dessus et qui fait foi ; cette divergence doit être signalée au responsable du laboratoire.</p>'
-    : '';
-  const derived = piece.servedFileIsDerived
-    ? "<p class=\"alerte\">L'image reproduite dans le présent rapport n'est pas le fichier reçu : le fichier reçu était au format TIFF, et une version PNG en a été établie par conversion sans perte pour permettre son affichage. L'empreinte imprimée ci-dessus est celle du fichier reçu, qui est conservé. L'empreinte de la version PNG n'a pas été inscrite au registre : le contrôle décrit ci-dessus ne peut donc pas être effectué sur l'image reproduite.</p>"
-    : '';
-
+function sealedPiecesTable(pieces: ReportPieceIntegrityViewModel[]): string {
   return `
-      <p>Empreinte numérique du fichier reçu : <span class="hash">${escapeHtml(
-        piece.recordedSha256,
-      )}</span></p>
-      <p>Mise sous scellé le ${formatDayTime(piece.sealedAt)}, inscription n° ${
-        piece.recordEntryNumber
-      } du registre.</p>
-      ${divergence}
-      ${derived}`;
+    <table>
+      <tr>
+        <th>Pièce</th><th style="width:10%">Cote</th>
+        <th style="width:30%">Mise sous scellé le</th>
+      </tr>
+      ${pieces
+        .map(
+          (piece) => `
+      <tr>
+        <td>${capitalized(escapeHtml(piece.designation))}</td>
+        <td>${escapeHtml(piece.cote ?? '/')}</td>
+        <td>${piece.sealedAt === null ? '/' : formatDayTime(piece.sealedAt)}</td>
+      </tr>`,
+        )
+        .join('')}
+    </table>`;
 }
 
-function anchorParagraph(piece: ReportPieceIntegrityViewModel): string {
-  if (piece.coveringAnchor === null) {
-    return '';
-  }
-  return `<p>Horodatage par une autorité extérieure : le ${formatDayTime(
-    piece.coveringAnchor.anchoredAt,
-  )}, l'autorité d'horodatage ${escapeHtml(
-    piece.coveringAnchor.authority,
-  )} a daté un état du registre postérieur à ces opérations (inscription n° ${
-    piece.coveringAnchor.entryNumber
-  }). Cette date ne dépend pas de l'horloge du laboratoire.</p>`;
+function pieceAlerts(piece: ReportPieceIntegrityViewModel): string {
+  const named = capitalized(escapeHtml(piece.designation));
+  const alerts = [
+    piece.recordedSha256 === null
+      ? `Aucune empreinte n'a été inscrite au registre lors du dépôt : le présent rapport ne peut pas établir que le fichier est resté identique depuis sa réception.`
+      : null,
+    piece.divergesFromRecord
+      ? `L'empreinte figurant dans la fiche courante du dossier diffère de celle inscrite au registre lors du dépôt. C'est la valeur du registre qui fait foi ; cette divergence doit être signalée au responsable du laboratoire.`
+      : null,
+    piece.servedFileIsDerived
+      ? `L'image reproduite dans le présent rapport n'est pas le fichier reçu : celui-ci était au format TIFF, et une version PNG en a été établie par conversion sans perte pour permettre son affichage. Le fichier reçu est conservé.`
+      : null,
+    piece.observedMatchesRecord === false
+      ? `Le fichier conservé ne porte pas l'empreinte inscrite au registre lors du dépôt. Cette pièce doit être tenue pour altérée jusqu'à examen.`
+      : null,
+  ].filter((alert): alert is string => alert !== null);
+
+  return alerts
+    .map((alert) => `<p class="alerte">${named} : ${alert}</p>`)
+    .join('');
 }
 
-function controlParagraph(piece: ReportPieceIntegrityViewModel): string {
-  if (piece.observedMatchesRecord === true) {
-    return "<p>Contrôle effectué à l'édition du présent rapport : le fichier conservé porte bien l'empreinte inscrite au registre.</p>";
-  }
-  if (piece.observedMatchesRecord === false) {
-    return "<p class=\"alerte\">Contrôle effectué à l'édition du présent rapport : le fichier conservé ne porte pas l'empreinte inscrite au registre lors du dépôt. Cette pièce doit être tenue pour altérée jusqu'à examen.</p>";
-  }
-  return '';
-}
-
-function pieceIntegrityBlock(piece: ReportPieceIntegrityViewModel): string {
+function treatedPieceBlock(piece: ReportPieceIntegrityViewModel): string {
   return `
     <div class="piece">
-      <h3>${escapeHtml(piece.designation)} — cote ${escapeHtml(
-        piece.cote ?? '/',
-      )}</h3>
-      ${sealParagraph(piece)}
-      ${treatmentsParagraph(piece)}
-      ${anchorParagraph(piece)}
-      ${controlParagraph(piece)}
+      <h3>${capitalized(escapeHtml(piece.designation))}</h3>
+      <table>
+        <tr>
+          <th>Traitement</th><th style="width:20%">Posé le</th>
+          <th style="width:20%">Par</th><th style="width:28%">État à l'édition</th>
+        </tr>
+        ${piece.treatments
+          .map(
+            (treatment) => `
+        <tr>
+          <td>${escapeHtml(treatment.sentence)}</td>
+          <td>${formatDayTime(treatment.appliedAt)}</td>
+          <td>${escapeHtml(treatment.actorDisplayName)}</td>
+          <td>${treatmentState(treatment)}</td>
+        </tr>`,
+          )
+          .join('')}
+      </table>
+      <p>Ces traitements sont des réglages d'affichage ; ils n'ont pas modifié le fichier scellé.</p>
     </div>`;
 }
 
 function integritySection(model: TechnicalReportViewModel): string {
   const { integrity } = model;
   const pieces = [...integrity.traces, ...integrity.referencePrints];
+  const treated = pieces.filter((piece) => piece.treatments.length > 0);
 
   return `
-    <h2>7. Traitements appliqués aux images et intégrité des pièces</h2>
     ${integrityWarning(integrity)}
     ${INTEGRITY_PREAMBLE.map((paragraph) => `<p>${paragraph}</p>`).join('')}
     ${
       pieces.length === 0
         ? '<p class="empty">Aucune image n\'est versée à ce dossier.</p>'
-        : pieces.map((piece) => pieceIntegrityBlock(piece)).join('')
+        : `${sealedPiecesTable(pieces)}
+           ${pieces.map((piece) => pieceAlerts(piece)).join('')}
+           ${treated.map((piece) => treatedPieceBlock(piece)).join('')}`
     }
     <p>${INTEGRITY_SCOPE}</p>
-    <p>Toute personne détenant l'un de ces fichiers peut contrôler elle-même, sans compte et sans solliciter le laboratoire, qu'il a bien été scellé et à quelle date : il suffit de le déposer sur ${escapeHtml(
+    <p>Toute personne détenant le présent rapport, ou l'une des images délivrées avec lui, peut contrôler elle-même, sans compte et sans solliciter le laboratoire, qu'il a bien été scellé et à quelle date : il suffit de le déposer sur ${escapeHtml(
       integrity.verificationUrl,
     )}. Lorsque le fichier déposé est un rapport, la page indique en outre si une version antérieure et si une version ultérieure de ce rapport ont été établies. Le calcul est effectué par le navigateur du lecteur, le fichier ne quitte pas son poste, et la page ne révèle ni le dossier, ni la procédure, ni l'identité des personnes concernées.</p>
     <p>Le détail acte par acte figure en Annexe C.</p>`;
 }
 
-function conclusionSection(model: TechnicalReportViewModel): string {
-  const { counts, identifications, negativeCotes, notExaminedCotes } = model;
+function punctuated(items: string[]): string {
+  return items
+    .map(
+      (item, order) =>
+        `<li>${item}${order === items.length - 1 ? '.' : ' ;'}</li>`,
+    )
+    .join('');
+}
+
+function examinationFindings(model: TechnicalReportViewModel): string[] {
+  const { counts } = model;
   const cotes = model.exploitability
-    .filter((row) => row.withdrawal === null && row.cote !== '/')
+    .filter((row) => row.cote !== '/')
     .map((row) => row.cote);
   const cotedRange =
     cotes.length === 0
@@ -697,52 +860,87 @@ function conclusionSection(model: TechnicalReportViewModel): string {
         ? `, cotée ${quoted(cotes[0])}`
         : `, cotées de ${quoted(cotes[0])} à ${quoted(cotes[cotes.length - 1])}`;
 
+  return [
+    counts.exploitable === 0
+      ? "aucune trace exploitable au terme de l'examen"
+      : `${tracesCount(counts.exploitable)} exploitable${plural(
+          counts.exploitable,
+        )}${cotedRange}`,
+    counts.notExploitable === 0
+      ? null
+      : `${tracesCount(counts.notExploitable)} déclarée${plural(
+          counts.notExploitable,
+        )} inexploitable${plural(counts.notExploitable)}`,
+  ].filter((finding): finding is string => finding !== null);
+}
+
+function comparisonFindings(model: TechnicalReportViewModel): string[] {
+  const { counts, identifications, discriminatedCotes } = model;
   const identifiedDetail = identifications
     .map(
       (identification) =>
-        `la trace cotée ${quoted(identification.cote)}, identifiée ${escapeHtml(
-          identification.position,
-        )} de ${escapeHtml(identification.civility)} ${escapeHtml(
-          identification.lastName.toUpperCase(),
-        )} ${escapeHtml(identification.firstName)}`,
+        `la trace cotée ${quoted(identification.cote)}, identifiée ${identifiedAs(
+          identification,
+        )}`,
     )
     .join(', et ');
 
+  return [
+    counts.identified === 0
+      ? null
+      : `${tracesCount(counts.identified)} identifiée${plural(
+          counts.identified,
+        )}${identifiedDetail.length === 0 ? '' : ` : ${identifiedDetail}`}`,
+    counts.discriminated === 0
+      ? null
+      : `${tracesCount(counts.discriminated)} discriminée${plural(
+          counts.discriminated,
+        )}${
+          discriminatedCotes.length === 0
+            ? ''
+            : `, ${cotedLabel(discriminatedCotes)}`
+        }`,
+    counts.negative === 0
+      ? null
+      : `${tracesCount(counts.negative)} exploitable${plural(
+          counts.negative,
+        )} non identifiée${plural(counts.negative)}${
+          model.negativeCotes.length === 0
+            ? ''
+            : `, ${cotedLabel(model.negativeCotes)}`
+        }`,
+    counts.notExamined === 0
+      ? null
+      : `${tracesCount(counts.notExamined)} exploitable${plural(
+          counts.notExamined,
+        )} non encore examinée${plural(counts.notExamined)}${
+          model.notExaminedCotes.length === 0
+            ? ''
+            : `, ${cotedLabel(model.notExaminedCotes)}`
+        }`,
+  ].filter((finding): finding is string => finding !== null);
+}
+
+function conclusionSection(model: TechnicalReportViewModel): string {
+  const { counts } = model;
+  const comparison = comparisonFindings(model);
+
   return `
-    <h2>8. Conclusion</h2>
     <p>L'examen des traces papillaires versées au dossier
     ${escapeHtml(model.caseHeader.caseNumber)} permet de faire ressortir les éléments
     suivants :</p>
     <ul class="rec">
       <li>Examen de ${tracesCount(counts.total)}, permettant de conclure à :
-        <ul class="rec">
-          <li>${tracesCount(counts.exploitable)} exploitable${plural(
-            counts.exploitable,
-          )}${cotedRange} ;</li>
-          <li>${tracesCount(counts.notExploitable)} déclarée${plural(
-            counts.notExploitable,
-          )} inexploitable${plural(counts.notExploitable)}.</li>
-        </ul>
+        <ul class="rec">${punctuated(examinationFindings(model))}</ul>
       </li>
-      <li>Comparaison avec les empreintes de référence du dossier, permettant de conclure à :
-        <ul class="rec">
-          <li>${tracesCount(counts.identified)} identifiée${plural(counts.identified)}${
-            identifiedDetail.length === 0 ? '' : ` : ${identifiedDetail}`
-          } ;</li>
-          <li>${tracesCount(counts.negative)} exploitable${plural(
-            counts.negative,
-          )} non identifiée${plural(counts.negative)}${
-            negativeCotes.length === 0 ? '' : `, ${cotedLabel(negativeCotes)}`
-          } ;</li>
-          <li>${tracesCount(counts.notExamined)} exploitable${plural(
-            counts.notExamined,
-          )} non encore examinée${plural(counts.notExamined)}${
-            notExaminedCotes.length === 0
-              ? ''
-              : `, ${cotedLabel(notExaminedCotes)}`
-          }.</li>
-        </ul>
-      </li>
+      ${
+        comparison.length === 0
+          ? ''
+          : `<li>Comparaison avec les empreintes de référence du dossier, permettant de
+        conclure à :
+        <ul class="rec">${punctuated(comparison)}</ul>
+      </li>`
+      }
     </ul>`;
 }
 
@@ -963,25 +1161,33 @@ function oathBylineOf(saisine: ReportSaisineViewModel): string {
   return `Serment prêté le ${formatLongDay(saisine.swornAt)}${by}.`;
 }
 
+function factsSummary(description: string | null): string {
+  return description === null || description.length === 0
+    ? ''
+    : `<h3>Résumé des faits</h3><p>${escapeHtml(description)}</p>`;
+}
+
 function saisineSection(model: TechnicalReportViewModel): string {
   const { saisine } = model;
+  const facts = factsSummary(model.caseHeader.description);
   if (!saisine) {
-    return `<h2>1. Saisine</h2>${requisitionParagraph()}`;
+    return `${requisitionParagraph()}${facts}`;
   }
   return `
-    <h2>1. Saisine</h2>
     ${commissionParagraph(saisine)}
     <p>${escapeHtml(saisine.oathStatement)}</p>
     <p class="champ">${oathBylineOf(saisine)}</p>
     ${assistantsParagraph(saisine)}
     ${prorogationParagraph(saisine)}
-    ${biologicalPrecautionsParagraph(saisine)}`;
+    ${biologicalPrecautionsParagraph(saisine)}
+    ${facts}`;
 }
 
 export function renderTechnicalReportHtml(
   model: TechnicalReportViewModel,
 ): string {
   const { caseHeader } = model;
+  const sections = bodySections(model);
   return `<!DOCTYPE html>
 <html lang="fr">
   <head>
@@ -992,23 +1198,19 @@ export function renderTechnicalReportHtml(
     <style>${REPORT_STYLES}</style>
   </head>
   <body>
-    ${renderLetterhead(model.header.letterhead)}
-    <h1>RAPPORT D'EXPLOITATION DE TRACES PAPILLAIRES</h1>
-    <p class="subtitle">Examen dactyloscopique, comparaison et démonstration d'identité</p>
+    <div class="garde">
+      ${renderLetterhead(model.header.letterhead)}
+      <h1>RAPPORT D'EXPLOITATION DE TRACES PAPILLAIRES</h1>
+      <p class="subtitle">Examen dactyloscopique, comparaison et démonstration d'identité</p>
 
-    ${referencesSection(model)}
-    ${offenceSection(caseHeader)}
-    ${recipientSection(caseHeader)}
-    ${summarySection(model)}
+      ${referencesSection(model)}
+      ${offenceSection(caseHeader)}
+      ${recipientSection(caseHeader)}
+    </div>
 
-    ${saisineSection(model)}
-    ${objectSection(model)}
-    ${methodsSection(model)}
-    ${examinedTracesSection(model)}
-    ${exploitabilitySection(model)}
-    ${comparisonsSection(model)}
-    ${integritySection(model)}
-    ${conclusionSection(model)}
+    <div class="sommaire">${summarySection(model, sections)}</div>
+
+    ${renderBodySections(sections)}
     ${contributorsSentence(model.contributors)}
     ${signatureSection(model)}
 

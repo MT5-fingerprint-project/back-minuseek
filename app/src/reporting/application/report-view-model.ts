@@ -39,6 +39,7 @@ export interface ReportCaseHeaderViewModel {
   offenseDateTo: Date | null;
   interventionDate: Date | null;
   caseAgainst: string | null;
+  description: string | null;
   victims: string[];
   recipient: ReportRecipientViewModel | null;
 }
@@ -121,7 +122,6 @@ export interface ReportExploitabilityViewModel {
   exploitability: string;
   cote: string;
   discrimination: string;
-  withdrawal: string | null;
 }
 
 export interface ReportReferenceSubjectViewModel {
@@ -131,12 +131,32 @@ export interface ReportReferenceSubjectViewModel {
   quality: string;
 }
 
-export interface ReportIdentificationViewModel {
+export interface ReportWithdrawnElementViewModel {
+  designation: string;
+  withdrawnAt: Date;
+  motiveLabel: string;
+  imageDestroyed: boolean;
+}
+
+export interface ReportComparisonViewModel {
+  reference: string;
   cote: string;
-  position: string;
+  result: string;
+}
+
+export interface ReportIdentifiedSubjectViewModel {
   civility: string;
   firstName: string;
   lastName: string;
+  sex: string;
+  birthDate: Date | null;
+  birthPlace: string | null;
+}
+
+export interface ReportIdentificationViewModel {
+  cote: string;
+  position: string | null;
+  subject: ReportIdentifiedSubjectViewModel | null;
 }
 
 export interface ReportPlateViewModel {
@@ -172,6 +192,8 @@ export interface ReportDemonstrationViewModel {
     lastName: string;
   } | null;
   position: string | null;
+  /** Trace telle que scellée, imprimée seulement quand l'atelier l'a retournée. */
+  rawTrace: ReportImageViewModel | null;
   trace: ReportDemonstrationPlateViewModel;
   referencePrint: ReportDemonstrationPlateViewModel;
 }
@@ -236,6 +258,7 @@ export interface ReportCountsViewModel {
   exploitable: number;
   notExploitable: number;
   identified: number;
+  discriminated: number;
   negative: number;
   notExamined: number;
 }
@@ -322,12 +345,16 @@ export interface TechnicalReportViewModel {
   previousDocument: ReportPreviousDocumentViewModel | null;
   signer: ReportSignerViewModel;
   contributors: ReportContributorViewModel[];
+  withdrawnElements: ReportWithdrawnElementViewModel[];
   examinedTraces: ReportExaminedTraceViewModel[];
   exploitability: ReportExploitabilityViewModel[];
   referenceSubjects: ReportReferenceSubjectViewModel[];
   unattachedReferencePrintCount: number;
   automaticComparatorUsed: boolean;
+  personOfInterestPrintCount: number;
+  comparisons: ReportComparisonViewModel[];
   identifications: ReportIdentificationViewModel[];
+  discriminatedCotes: string[];
   negativeCotes: string[];
   notExaminedCotes: string[];
   independentTimestampAt: Date | null;

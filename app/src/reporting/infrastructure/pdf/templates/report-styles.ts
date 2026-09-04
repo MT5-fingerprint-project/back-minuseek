@@ -48,12 +48,15 @@ export const REPORT_STYLES = `
     .pied { display: none; }
   }
     
+  .garde { break-after: page; }
+  .sommaire { break-after: page; }
+
   .annexe-titre { break-before: page; break-after: page; text-align: center; padding-top: 40mm; }
   .planche { break-before: page; break-inside: avoid; text-align: center; }
   .planche h3 { text-align: center; text-transform: uppercase; letter-spacing: .04em; }
   .planche-sous { text-align: center; font-style: italic; font-size: 9.5pt; }
   .planche-image { position: relative; display: inline-block; max-width: 100%; }
-  .planche-image img { max-height: 150mm; max-width: 100%; width: auto; height: auto; }
+  .planche-image img, .planche-image svg { max-height: 150mm; max-width: 100%; width: auto; height: auto; }
   .planche-cote {
     position: absolute; right: 2mm; bottom: 2mm;
     border: 1px solid #111; background: #fff; padding: 1mm 2.5mm;
@@ -69,6 +72,12 @@ export const REPORT_STYLES = `
   .alerte {
     border: 0.4mm solid #111; padding: 2mm 3mm; margin: 3px 0 6px;
     background: #f4f2ee;
+  }
+
+  /* Sans filet : un encart d'information ne doit pas se lire comme une anomalie. */
+  .encart {
+    padding: 2mm 3mm; margin: 3px 0 6px;
+    background: #f1f0ed; font-size: 8.5pt;
   }
 
   /* Annexe de traçabilité : document technique, pas pièce de procédure. */

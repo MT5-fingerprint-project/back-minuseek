@@ -60,7 +60,11 @@ describe('StorageReportImageEmbedder', () => {
   it('rend l’empreinte des octets qu’il vient de lire', async () => {
     const embedder = new StorageReportImageEmbedder(storage(PNG_1x1));
 
-    const image = await embedder.embed('media/case-1/traces/trace-1.png', null);
+    const image = await embedder.embed(
+      'media/case-1/traces/trace-1.png',
+      null,
+      null,
+    );
 
     expect(image?.observedSha256).toBe(
       createHash('sha256').update(PNG_1x1).digest('hex'),
@@ -70,7 +74,11 @@ describe('StorageReportImageEmbedder', () => {
   it('lit aussi les dimensions natives, qui replacent les minuties', async () => {
     const embedder = new StorageReportImageEmbedder(storage(PNG_1x1));
 
-    const image = await embedder.embed('media/case-1/traces/trace-1.png', null);
+    const image = await embedder.embed(
+      'media/case-1/traces/trace-1.png',
+      null,
+      null,
+    );
 
     expect(image).toMatchObject({ width: 1, height: 1 });
     expect(image?.dataUrl.startsWith('data:image/png;base64,')).toBe(true);
@@ -82,7 +90,7 @@ describe('StorageReportImageEmbedder', () => {
     );
 
     await expect(
-      embedder.embed('media/case-1/traces/trace-1.png', null),
+      embedder.embed('media/case-1/traces/trace-1.png', null, null),
     ).resolves.toBeNull();
   });
 
@@ -90,7 +98,11 @@ describe('StorageReportImageEmbedder', () => {
     const bytes = Buffer.from('pas une image');
     const embedder = new StorageReportImageEmbedder(storage(bytes));
 
-    const image = await embedder.embed('media/case-1/traces/trace-1.tif', null);
+    const image = await embedder.embed(
+      'media/case-1/traces/trace-1.tif',
+      null,
+      null,
+    );
 
     expect(image?.width).toBeNull();
     expect(image?.observedSha256).toBe(
@@ -101,7 +113,11 @@ describe('StorageReportImageEmbedder', () => {
   it('ramène à la planche la pièce trop définie pour y tenir', async () => {
     const embedder = new StorageReportImageEmbedder(storage(overPlatePng));
 
-    const image = await embedder.embed('media/case-1/traces/trace-1.png', null);
+    const image = await embedder.embed(
+      'media/case-1/traces/trace-1.png',
+      null,
+      null,
+    );
 
     const printed = await sharp(decoded(image!.dataUrl)).metadata();
     expect(printed).toMatchObject({ width: 2102, height: 1720 });
@@ -116,7 +132,11 @@ describe('StorageReportImageEmbedder', () => {
       .toBuffer();
     const embedder = new StorageReportImageEmbedder(storage(couchee));
 
-    const image = await embedder.embed('media/case-1/traces/trace-1.jpg', null);
+    const image = await embedder.embed(
+      'media/case-1/traces/trace-1.jpg',
+      null,
+      null,
+    );
 
     expect(image).toMatchObject({ width: 1800, height: 2200 });
     const printed = await sharp(decoded(image!.dataUrl)).metadata();
@@ -127,7 +147,11 @@ describe('StorageReportImageEmbedder', () => {
   it('laisse intacte la pièce qui tient déjà dans la planche', async () => {
     const embedder = new StorageReportImageEmbedder(storage(fittingPng));
 
-    const image = await embedder.embed('media/case-1/traces/trace-1.png', null);
+    const image = await embedder.embed(
+      'media/case-1/traces/trace-1.png',
+      null,
+      null,
+    );
 
     expect(decoded(image!.dataUrl).equals(fittingPng)).toBe(true);
   });
@@ -135,7 +159,11 @@ describe('StorageReportImageEmbedder', () => {
   it('garde le repère natif des minuties malgré la réduction', async () => {
     const embedder = new StorageReportImageEmbedder(storage(overPlatePng));
 
-    const image = await embedder.embed('media/case-1/traces/trace-1.png', null);
+    const image = await embedder.embed(
+      'media/case-1/traces/trace-1.png',
+      null,
+      null,
+    );
 
     expect(image).toMatchObject(OVER_PLATE);
   });
@@ -144,14 +172,18 @@ describe('StorageReportImageEmbedder', () => {
     const embedder = new StorageReportImageEmbedder(storage(overPlatePng));
 
     await expect(
-      embedder.embed('media/case-1/traces/trace-1.png', 300),
+      embedder.embed('media/case-1/traces/trace-1.png', 300, null),
     ).resolves.toBeNull();
   });
 
   it('porte la taille imposée d’une pièce calibrée qui tient dans la planche', async () => {
     const embedder = new StorageReportImageEmbedder(storage(overPlatePng));
 
-    const image = await embedder.embed('media/case-1/traces/trace-1.png', 600);
+    const image = await embedder.embed(
+      'media/case-1/traces/trace-1.png',
+      600,
+      null,
+    );
 
     expect(image!.lifeSizeMm!.width).toBeCloseTo(93.13, 1);
     expect(image!.lifeSizeMm!.height).toBeCloseTo(76.2, 1);
@@ -160,7 +192,11 @@ describe('StorageReportImageEmbedder', () => {
   it('scelle le fichier conservé, pas la reproduction imprimée', async () => {
     const embedder = new StorageReportImageEmbedder(storage(overPlatePng));
 
-    const image = await embedder.embed('media/case-1/traces/trace-1.png', null);
+    const image = await embedder.embed(
+      'media/case-1/traces/trace-1.png',
+      null,
+      null,
+    );
 
     expect(image?.observedSha256).toBe(
       createHash('sha256').update(overPlatePng).digest('hex'),
@@ -171,9 +207,78 @@ describe('StorageReportImageEmbedder', () => {
   it('réduit la pièce JPEG sans changer son format', async () => {
     const embedder = new StorageReportImageEmbedder(storage(overPlateJpeg));
 
-    const image = await embedder.embed('media/case-1/traces/trace-1.jpg', null);
+    const image = await embedder.embed(
+      'media/case-1/traces/trace-1.jpg',
+      null,
+      null,
+    );
 
     const printed = await sharp(decoded(image!.dataUrl)).metadata();
     expect(printed).toMatchObject({ format: 'jpeg', width: 2102 });
+  });
+});
+
+describe('StorageReportImageEmbedder — géométrie de l’atelier', () => {
+  it('imprime la trace dans l’orientation que l’opérateur lui a donnée', async () => {
+    const embedder = new StorageReportImageEmbedder(storage(fittingPng));
+
+    const image = await embedder.embed(
+      'media/case-1/traces/trace-1.png',
+      null,
+      {
+        rotationDeg: 90,
+        mirrored: false,
+      },
+    );
+
+    expect(image).toMatchObject({ width: 900, height: 1200 });
+  });
+
+  it('retourne l’image quand le miroir est enregistré', async () => {
+    const embedder = new StorageReportImageEmbedder(storage(fittingPng));
+
+    const image = await embedder.embed(
+      'media/case-1/traces/trace-1.png',
+      null,
+      {
+        rotationDeg: 0,
+        mirrored: true,
+      },
+    );
+
+    const printed = await sharp(decoded(image!.dataUrl))
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    // Le dégradé va du noir à gauche au blanc à droite : retourné, il commence en clair.
+    expect(printed.data[0]).toBeGreaterThan(200);
+  });
+
+  it('laisse la pièce intacte quand aucune géométrie n’est enregistrée', async () => {
+    const embedder = new StorageReportImageEmbedder(storage(fittingPng));
+
+    const image = await embedder.embed(
+      'media/case-1/traces/trace-1.png',
+      null,
+      null,
+    );
+
+    expect(decoded(image!.dataUrl).equals(fittingPng)).toBe(true);
+  });
+
+  it('scelle toujours l’empreinte du fichier conservé, jamais celle de la reproduction', async () => {
+    const embedder = new StorageReportImageEmbedder(storage(fittingPng));
+
+    const image = await embedder.embed(
+      'media/case-1/traces/trace-1.png',
+      null,
+      {
+        rotationDeg: 90,
+        mirrored: false,
+      },
+    );
+
+    expect(image?.observedSha256).toBe(
+      createHash('sha256').update(fittingPng).digest('hex'),
+    );
   });
 });

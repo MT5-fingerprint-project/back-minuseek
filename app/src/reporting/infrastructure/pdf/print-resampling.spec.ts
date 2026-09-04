@@ -69,7 +69,12 @@ describe('realSizeMm', () => {
 
 describe('prepareForPlate — orientation', () => {
   it('redresse une photographie couchée par son orientation EXIF', async () => {
-    const printed = await prepareForPlate(quarterTurn, 'image/jpeg', null);
+    const printed = await prepareForPlate(
+      quarterTurn,
+      'image/jpeg',
+      null,
+      null,
+    );
 
     // 2200 × 1800 stocké, donc 1800 × 2200 debout.
     expect(printed).toMatchObject({ width: 1800, height: 2200 });
@@ -78,14 +83,24 @@ describe('prepareForPlate — orientation', () => {
   });
 
   it('cuit l’orientation dans les pixels plutôt que de laisser le tag', async () => {
-    const printed = await prepareForPlate(quarterTurn, 'image/jpeg', null);
+    const printed = await prepareForPlate(
+      quarterTurn,
+      'image/jpeg',
+      null,
+      null,
+    );
 
     const metadata = await sharp(printed!.bytes).metadata();
     expect(metadata.orientation ?? 1).toBe(1);
   });
 
   it('redresse aussi une photographie assez petite pour la planche', async () => {
-    const printed = await prepareForPlate(smallQuarterTurn, 'image/jpeg', null);
+    const printed = await prepareForPlate(
+      smallQuarterTurn,
+      'image/jpeg',
+      null,
+      null,
+    );
 
     expect(printed).toMatchObject({
       width: FITS_PLATE.height,
@@ -97,14 +112,14 @@ describe('prepareForPlate — orientation', () => {
     const fitting = await jpeg(FITS_PLATE);
 
     await expect(
-      prepareForPlate(fitting, 'image/jpeg', null),
+      prepareForPlate(fitting, 'image/jpeg', null, null),
     ).resolves.toBeNull();
   });
 });
 
 describe('prepareForPlate — échelle 1', () => {
   it('rend la pièce à sa taille réelle, à la définition d’impression', async () => {
-    const printed = await prepareForPlate(upright, 'image/jpeg', 600);
+    const printed = await prepareForPlate(upright, 'image/jpeg', 600, null);
 
     expect(printed?.widthMm).toBeCloseTo(93.13, 1);
     expect(printed?.heightMm).toBeCloseTo(76.2, 1);
@@ -113,13 +128,13 @@ describe('prepareForPlate — échelle 1', () => {
   });
 
   it('garde le repère natif des minuties malgré la réduction', async () => {
-    const printed = await prepareForPlate(upright, 'image/jpeg', 600);
+    const printed = await prepareForPlate(upright, 'image/jpeg', 600, null);
 
     expect(printed).toMatchObject(OVER_PLATE);
   });
 
   it('mesure la taille réelle sur l’image redressée, pas sur le fichier', async () => {
-    const printed = await prepareForPlate(quarterTurn, 'image/jpeg', 600);
+    const printed = await prepareForPlate(quarterTurn, 'image/jpeg', 600, null);
 
     // 1800 × 2200 affiché à 600 dpi : la pièce est plus haute que large.
     expect(printed!.widthMm).toBeCloseTo(76.2, 1);
@@ -128,13 +143,13 @@ describe('prepareForPlate — échelle 1', () => {
 
   it('refuse la pièce qui dépasse la planche à l’échelle 1', async () => {
     await expect(
-      prepareForPlate(upright, 'image/jpeg', 300),
+      prepareForPlate(upright, 'image/jpeg', 300, null),
     ).resolves.toBeNull();
   });
 
   it('refuse un format que la planche ne sait pas afficher', async () => {
     await expect(
-      prepareForPlate(upright, 'image/tiff', 600),
+      prepareForPlate(upright, 'image/tiff', 600, null),
     ).resolves.toBeNull();
   });
 
@@ -142,7 +157,7 @@ describe('prepareForPlate — échelle 1', () => {
     const small = { width: 100, height: 80 };
     const bytes = await jpeg(small);
 
-    const printed = await prepareForPlate(bytes, 'image/jpeg', 72);
+    const printed = await prepareForPlate(bytes, 'image/jpeg', 72, null);
 
     const metadata = await sharp(printed!.bytes).metadata();
     expect(metadata).toMatchObject(small);
@@ -151,7 +166,7 @@ describe('prepareForPlate — échelle 1', () => {
 
 describe('prepareForPlate — ajustement à la planche', () => {
   it('ajuste la pièce trop définie', async () => {
-    const printed = await prepareForPlate(upright, 'image/jpeg', null);
+    const printed = await prepareForPlate(upright, 'image/jpeg', null, null);
 
     const metadata = await sharp(printed!.bytes).metadata();
     expect(metadata).toMatchObject({ width: 2102, height: 1720 });
@@ -160,7 +175,7 @@ describe('prepareForPlate — ajustement à la planche', () => {
 
   it('rend null sur un contenu qui n’est pas une image', async () => {
     await expect(
-      prepareForPlate(Buffer.from('pas une image'), 'image/jpeg', null),
+      prepareForPlate(Buffer.from('pas une image'), 'image/jpeg', null, null),
     ).rejects.toThrow();
   });
 });

@@ -42,6 +42,10 @@ const REVELATION_TECHNIQUE_LABELS: Record<string, string> = {
   NINHYDRIN: 'Ninhydrine',
 };
 
+/** Tout examen commence par une recherche en lumière visible, qu'un opérateur
+ * pense ou non à la déclarer sur la trace. */
+export const SYSTEMATIC_REVELATION_TECHNIQUE = 'OPTICAL_PROCESS';
+
 export const REVELATION_TECHNIQUE_SEQUENCE = [
   'OPTICAL_PROCESS',
   'FINGERPRINT_POWDER',

@@ -8,6 +8,7 @@ import {
   locatedTraces,
   printedImages,
   printedPieces,
+  treatedKey,
 } from './printed-pieces';
 
 const AT = new Date('2026-08-01T09:00:00.000Z');
@@ -171,6 +172,82 @@ describe('printedImages', () => {
     return printedImages(data).map((request) => request.key);
   }
 
+  const ROTATED = [
+    {
+      name: 'rotation',
+      type: 'FILTER',
+      zIndex: 0,
+      isVisible: true,
+      settings: { filterKey: 'rotation', value: 90 },
+    },
+  ];
+
+  function demonstrated(layers: PieceData['layers']) {
+    return caseData({
+      traces: [piece({ id: 't1', layers })],
+      referencePrints: [piece({ id: 'ref-1', status: null })],
+      declaredHits: [
+        {
+          traceId: 't1',
+          referencePrintId: 'ref-1',
+          declaredAt: AT,
+          declaredBy: null,
+          withdrawnAt: null,
+        },
+      ],
+    });
+  }
+
+  it('embarque en plus la pièce retravaillée quand l’opérateur l’a retournée', () => {
+    const keys = keysOf(demonstrated(ROTATED));
+
+    expect(keys).toContain(treatedKey('media/case-1/t1.png'));
+  });
+
+  it('n’embarque la reproduction retravaillée que des pièces démontrées', () => {
+    const keys = keysOf(
+      caseData({
+        traces: [
+          piece({ id: 't1', layers: ROTATED }),
+          piece({ id: 't2', layers: ROTATED }),
+        ],
+        referencePrints: [piece({ id: 'ref-1', status: null })],
+        declaredHits: [
+          {
+            traceId: 't1',
+            referencePrintId: 'ref-1',
+            declaredAt: AT,
+            declaredBy: null,
+            withdrawnAt: null,
+          },
+        ],
+      }),
+    );
+
+    expect(keys).toContain(treatedKey('media/case-1/t1.png'));
+    expect(keys).not.toContain(treatedKey('media/case-1/t2.png'));
+  });
+
+  it('n’embarque pas de reproduction retravaillée quand rien n’a bougé', () => {
+    const keys = keysOf(demonstrated([]));
+
+    expect(keys).not.toContain(treatedKey('media/case-1/t1.png'));
+  });
+
+  it('porte la géométrie enregistrée sur la demande d’embarquement', () => {
+    const requests = printedImages(demonstrated(ROTATED));
+
+    expect(
+      requests.find(
+        (request) => request.key === treatedKey('media/case-1/t1.png'),
+      ),
+    ).toMatchObject({
+      path: 'media/case-1/t1.png',
+      resolutionDpi: null,
+      geometry: { rotationDeg: 90, mirrored: false },
+    });
+  });
+
   it('embarque la photographie de localisation de toute trace exploitable photographiée', () => {
     const keys = keysOf(
       caseData({
@@ -256,6 +333,7 @@ describe('printedImages', () => {
       key: 'media/case-1/t1.png',
       path: 'media/case-1/t1.png',
       resolutionDpi: null,
+      geometry: null,
     });
   });
 });

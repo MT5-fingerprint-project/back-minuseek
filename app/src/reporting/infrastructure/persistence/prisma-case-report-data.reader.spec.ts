@@ -23,6 +23,22 @@ interface PairSeed {
   createdAt?: Date;
 }
 
+interface CaseSeed {
+  requestDate?: Date | null;
+  requesterQuality?: string | null;
+  requesterName?: string | null;
+  requesterService?: string | null;
+  offenseNature?: string | null;
+  offenseLocation?: string | null;
+  offenseDateFrom?: Date | null;
+  offenseDateTo?: Date | null;
+  interventionDate?: Date | null;
+  caseAgainst?: string | null;
+  recipientAuthority?: string | null;
+  recipientAttentionQuality?: string | null;
+  recipientAttentionName?: string | null;
+}
+
 interface PieceSeed {
   id: string;
   number?: number;
@@ -32,6 +48,7 @@ interface PieceSeed {
 
 class FakePrismaClient {
   minutiaPairFindManyArgs: unknown[] = [];
+  caseSeed: CaseSeed = {};
   traceSeeds: PieceSeed[] = [];
   printSeeds: PieceSeed[] = [];
   layerSeeds: LayerSeed[] = [];
@@ -46,6 +63,20 @@ class FakePrismaClient {
         description: null,
         status: 'OPEN',
         createdAt: AT,
+        requestDate: null,
+        requesterQuality: null,
+        requesterName: null,
+        requesterService: null,
+        offenseNature: null,
+        offenseLocation: null,
+        offenseDateFrom: null,
+        offenseDateTo: null,
+        interventionDate: null,
+        caseAgainst: null,
+        recipientAuthority: null,
+        recipientAttentionQuality: null,
+        recipientAttentionName: null,
+        ...this.caseSeed,
       }),
   };
 
@@ -593,5 +624,99 @@ describe('PrismaCaseReportDataReader — appariements', () => {
     const data = await readCase(prisma, reader);
 
     expect(data.minutiaPairs.map((pair) => pair.number)).toEqual([2]);
+  });
+});
+
+describe('PrismaCaseReportDataReader — destinataire', () => {
+  it('sert l’autorité destinataire enregistrée sur le dossier', async () => {
+    const { prisma, reader } = build();
+    prisma.caseSeed = {
+      recipientAuthority: 'Tribunal judiciaire de Paris',
+      recipientAttentionQuality: 'Madame la juge d’instruction',
+      recipientAttentionName: 'CHEVALIER Anne',
+    };
+
+    const data = await readCase(prisma, reader);
+
+    expect(data.investigationCase.recipient).toEqual({
+      authority: 'Tribunal judiciaire de Paris',
+      attentionQuality: 'Madame la juge d’instruction',
+      attentionName: 'CHEVALIER Anne',
+    });
+  });
+
+  it('n’invente aucun destinataire quand le dossier n’en porte pas', async () => {
+    const { prisma, reader } = build();
+
+    const data = await readCase(prisma, reader);
+
+    expect(data.investigationCase.recipient).toEqual({
+      authority: null,
+      attentionQuality: null,
+      attentionName: null,
+    });
+  });
+});
+
+describe('PrismaCaseReportDataReader — en-tête judiciaire', () => {
+  it('sert la demande d’intervention et le requérant qui l’a signée', async () => {
+    const { prisma, reader } = build();
+    prisma.caseSeed = {
+      requestDate: new Date('2026-03-14T00:00:00.000Z'),
+      requesterQuality: 'Brigadier-Chef de Police',
+      requesterName: 'MARCHAND Claire',
+      requesterService: '3e District de Police Judiciaire',
+    };
+
+    const data = await readCase(prisma, reader);
+
+    expect(data.investigationCase).toMatchObject({
+      requestDate: new Date('2026-03-14T00:00:00.000Z'),
+      requesterQuality: 'Brigadier-Chef de Police',
+      requesterName: 'MARCHAND Claire',
+      requesterService: '3e District de Police Judiciaire',
+    });
+  });
+
+  it('sert la nature des faits, leur lieu, leurs dates et la personne visée', async () => {
+    const { prisma, reader } = build();
+    prisma.caseSeed = {
+      offenseNature: 'Vol par effraction',
+      offenseLocation: '12 rue Léon Frot à Paris 11e',
+      offenseDateFrom: new Date('2026-03-13T00:00:00.000Z'),
+      offenseDateTo: new Date('2026-03-14T00:00:00.000Z'),
+      interventionDate: new Date('2026-03-14T00:00:00.000Z'),
+      caseAgainst: 'X',
+    };
+
+    const data = await readCase(prisma, reader);
+
+    expect(data.investigationCase).toMatchObject({
+      offenseNature: 'Vol par effraction',
+      offenseLocation: '12 rue Léon Frot à Paris 11e',
+      offenseDateFrom: new Date('2026-03-13T00:00:00.000Z'),
+      offenseDateTo: new Date('2026-03-14T00:00:00.000Z'),
+      interventionDate: new Date('2026-03-14T00:00:00.000Z'),
+      caseAgainst: 'X',
+    });
+  });
+
+  it('n’invente aucun en-tête quand le dossier n’en porte pas', async () => {
+    const { prisma, reader } = build();
+
+    const data = await readCase(prisma, reader);
+
+    expect(data.investigationCase).toMatchObject({
+      requestDate: null,
+      requesterQuality: null,
+      requesterName: null,
+      requesterService: null,
+      offenseNature: null,
+      offenseLocation: null,
+      offenseDateFrom: null,
+      offenseDateTo: null,
+      interventionDate: null,
+      caseAgainst: null,
+    });
   });
 });

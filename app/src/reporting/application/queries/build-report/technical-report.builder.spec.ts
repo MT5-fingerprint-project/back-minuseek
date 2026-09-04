@@ -199,6 +199,54 @@ describe('buildTechnicalReport — en-tête du service', () => {
   });
 });
 
+describe('buildTechnicalReport — destinataire', () => {
+  it('adresse le rapport à l’autorité saisie, à l’attention de la personne nommée', () => {
+    const model = build(
+      caseData({
+        investigationCase: {
+          ...caseData().investigationCase,
+          recipient: {
+            authority: 'Tribunal judiciaire de Paris',
+            attentionQuality: 'Madame la juge d’instruction',
+            attentionName: 'CHEVALIER Anne',
+          },
+        },
+      }),
+    );
+
+    expect(model.caseHeader.recipient).toEqual({
+      authority: 'Tribunal judiciaire de Paris',
+      attention: 'Madame la juge d’instruction CHEVALIER Anne',
+    });
+  });
+
+  it('adresse le rapport sans attention quand seule l’autorité est saisie', () => {
+    const model = build(
+      caseData({
+        investigationCase: {
+          ...caseData().investigationCase,
+          recipient: {
+            authority: 'Tribunal judiciaire de Paris',
+            attentionQuality: null,
+            attentionName: null,
+          },
+        },
+      }),
+    );
+
+    expect(model.caseHeader.recipient).toEqual({
+      authority: 'Tribunal judiciaire de Paris',
+      attention: null,
+    });
+  });
+
+  it('n’adresse le rapport à personne quand aucune autorité n’est saisie', () => {
+    const model = build(caseData());
+
+    expect(model.caseHeader.recipient).toBeNull();
+  });
+});
+
 describe('buildTechnicalReport — annexe A (localisation)', () => {
   const PHOTO = {
     path: 'media/case-1/loc.jpg',
@@ -414,16 +462,20 @@ describe('buildTechnicalReport — discrimination', () => {
       }),
     );
 
-    expect(model.exploitability[0].discrimination).toBe(
-      'Index droit — SADIK Samir',
-    );
+    expect(model.exploitability[0].discrimination).toBe('/');
+    expect(model.comparisons[0].result).toBe('Index droit — SADIK Samir');
     expect(model.identifications).toEqual([
       {
         cote: 'A',
         position: "à l'index droit",
-        civility: 'Monsieur',
-        firstName: 'Samir',
-        lastName: 'Sadik',
+        subject: {
+          civility: 'Monsieur',
+          firstName: 'Samir',
+          lastName: 'Sadik',
+          sex: 'MALE',
+          birthDate: new Date('1979-04-02T00:00:00.000Z'),
+          birthPlace: 'Paris',
+        },
       },
     ]);
   });
@@ -454,7 +506,8 @@ describe('buildTechnicalReport — discrimination', () => {
       }),
     );
 
-    expect(model.exploitability[0].discrimination).toBe('NÉGATIVE');
+    expect(model.exploitability[0].discrimination).toBe('/');
+    expect(model.comparisons[0].result).toBe('NÉGATIVE');
     expect(model.negativeCotes).toEqual(['A']);
     expect(model.notExaminedCotes).toEqual([]);
   });
@@ -464,13 +517,13 @@ describe('buildTechnicalReport — discrimination', () => {
       caseData({ traces: [trace({ id: 't1', number: 1, cote: 'A' })] }),
     );
 
-    expect(model.exploitability[0].discrimination).toBe('Non examinée');
-    expect(model.exploitability[0].discrimination).not.toBe('NÉGATIVE');
+    expect(model.comparisons[0].result).toBe('Non examinée');
+    expect(model.comparisons[0].result).not.toBe('NÉGATIVE');
     expect(model.notExaminedCotes).toEqual(['A']);
     expect(model.negativeCotes).toEqual([]);
   });
 
-  it('écrit « Non examinée » même quand le dossier n’a aucune empreinte de référence', () => {
+  it('marque la discrimination d’un tiret quand le dossier n’a aucune empreinte de familier', () => {
     const model = build(
       caseData({
         traces: [trace({ id: 't1', number: 1, cote: 'A' })],
@@ -478,11 +531,52 @@ describe('buildTechnicalReport — discrimination', () => {
       }),
     );
 
-    expect(model.exploitability[0].discrimination).toBe('Non examinée');
+    expect(model.exploitability[0].discrimination).toBe('/');
+    expect(model.comparisons[0].result).toBe('Non examinée');
     expect(model.negativeCotes).toEqual([]);
   });
 
-  it('remplace cote et discrimination par la phrase de retrait', () => {
+  it('écrit « Non examinée » en discrimination quand le dossier porte un familier non comparé', () => {
+    const model = build(
+      caseData({
+        traces: [trace({ id: 't1', number: 1, cote: 'A' })],
+        referencePrints: [referencePrint({ id: 'r1', subjectId: 's1' })],
+        subjects: [subject({ id: 's1', type: 'CLOSE_ASSOCIATE' })],
+      }),
+    );
+
+    expect(model.exploitability[0].discrimination).toBe('Non examinée');
+  });
+
+  it('cesse d’écrire « Non examinée » dès que la trace est identifiée, familiers au dossier', () => {
+    const model = build(
+      caseData({
+        traces: [trace({ id: 't1', number: 1, cote: 'A' })],
+        referencePrints: [
+          referencePrint({ id: 'r1', subjectId: 's1', position: 'RIGHT_INDEX' }),
+          referencePrint({ id: 'r2', subjectId: 's2' }),
+        ],
+        subjects: [
+          subject({ id: 's1' }),
+          subject({ id: 's2', type: 'CLOSE_ASSOCIATE' }),
+        ],
+        declaredHits: [
+          {
+            traceId: 't1',
+            referencePrintId: 'r1',
+            declaredAt: DECLARED_AT,
+            declaredBy: null,
+            withdrawnAt: null,
+          },
+        ],
+      }),
+    );
+
+    expect(model.exploitability[0].discrimination).toBe('/');
+    expect(model.comparisons[0].result).toBe('Index droit — SADIK Samir');
+  });
+
+  it('sort la trace retirée du tableau et la porte aux éléments retirés', () => {
     const model = build(
       caseData({
         traces: [
@@ -498,9 +592,16 @@ describe('buildTechnicalReport — discrimination', () => {
       }),
     );
 
-    expect(model.exploitability[0].withdrawal).toBe(
-      "Retirée du dossier le 12 août 2026 — doublon d'une pièce déjà versée",
-    );
+    expect(model.exploitability).toEqual([]);
+    expect(model.examinedTraces).toEqual([]);
+    expect(model.withdrawnElements).toEqual([
+      {
+        designation: 'la trace 3455-T1',
+        withdrawnAt: new Date('2026-08-12T00:00:00.000Z'),
+        motiveLabel: "doublon d'une pièce déjà versée",
+        imageDestroyed: false,
+      },
+    ]);
     expect(model.counts.total).toBe(0);
   });
 
@@ -521,9 +622,8 @@ describe('buildTechnicalReport — discrimination', () => {
       }),
     );
 
-    expect(model.exploitability[0].withdrawal).toBe(
-      'Retirée du dossier le 12 août 2026 — ' +
-        '« relevée sur un scellé rattaché à une autre procédure »',
+    expect(model.withdrawnElements[0].motiveLabel).toBe(
+      '« relevée sur un scellé rattaché à une autre procédure »',
     );
   });
 });
@@ -568,6 +668,7 @@ describe('buildTechnicalReport — comptes de la conclusion', () => {
       exploitable: 3,
       notExploitable: 1,
       identified: 1,
+      discriminated: 0,
       negative: 1,
       notExamined: 1,
     });
@@ -631,8 +732,8 @@ describe('buildTechnicalReport — en-tête et personnes', () => {
     );
 
     expect(model.caseHeader.victims).toEqual([
-      'Madame BERGER Hélène, née le 04/09/1958',
-      'Monsieur LE GOFF Jean-Pierre',
+      'Madame BERGER Hélène, née le 04/09/1958 à Paris',
+      'Monsieur LE GOFF Jean-Pierre, né à Paris',
     ]);
   });
 
@@ -705,7 +806,11 @@ describe('buildTechnicalReport — méthodes de révélation', () => {
       }),
     );
 
-    expect(model.revelationTechniques).toEqual(['FINGERPRINT_POWDER', 'DFO']);
+    expect(model.revelationTechniques).toEqual([
+      'OPTICAL_PROCESS',
+      'FINGERPRINT_POWDER',
+      'DFO',
+    ]);
   });
 
   it('les sort dans l’ordre de la séquence de traitement, pas dans celui des traces', () => {
@@ -752,17 +857,47 @@ describe('buildTechnicalReport — méthodes de révélation', () => {
       }),
     );
 
-    expect(model.revelationTechniques).toEqual(['NINHYDRIN']);
+    expect(model.revelationTechniques).toEqual([
+      'OPTICAL_PROCESS',
+      'NINHYDRIN',
+    ]);
   });
 
-  it('ne retient rien quand aucune trace ne porte de technique', () => {
+  it('inscrit la détection optique alors qu’aucune trace ne la déclare', () => {
     const model = build(
       caseData({
         traces: [trace({ id: 't1', number: 1, revelationTechnique: null })],
       }),
     );
 
-    expect(model.revelationTechniques).toEqual([]);
+    expect(model.revelationTechniques).toEqual(['OPTICAL_PROCESS']);
+  });
+
+  it('ne la répète pas quand une trace la déclare déjà', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            revelationTechnique: 'OPTICAL_PROCESS',
+          }),
+          trace({
+            id: 't2',
+            number: 2,
+            revelationTechnique: 'OPTICAL_PROCESS',
+          }),
+        ],
+      }),
+    );
+
+    expect(model.revelationTechniques).toEqual(['OPTICAL_PROCESS']);
+  });
+
+  it('l’inscrit encore sur un dossier sans aucune trace', () => {
+    const model = build(caseData({ traces: [] }));
+
+    expect(model.revelationTechniques).toEqual(['OPTICAL_PROCESS']);
   });
 });
 
@@ -794,7 +929,7 @@ describe('buildTechnicalReport — traces examinées', () => {
     ]);
   });
 
-  it('dit qu’une description manque plutôt que d’imprimer un trou', () => {
+  it('marque d’un tiret les cases d’une description manquante', () => {
     const model = build(
       caseData({
         traces: [
@@ -810,9 +945,9 @@ describe('buildTechnicalReport — traces examinées', () => {
     );
 
     expect(model.examinedTraces[0]).toMatchObject({
-      origin: 'Non renseignée',
-      location: 'Non renseignée',
-      revelationTechnique: 'Non renseignée',
+      origin: '/',
+      location: '/',
+      revelationTechnique: '/',
     });
   });
 });
@@ -957,5 +1092,136 @@ describe('buildTechnicalReport — annexe de vérification', () => {
     expect(model.journal.acts.map((act) => act.sentence)).toContain(
       model.verifications[0].actGroups[0].acts[0].sentence,
     );
+  });
+});
+
+describe('buildTechnicalReport — familiers et mis en cause', () => {
+  function withHitOn(subjectType: string) {
+    return build(
+      caseData({
+        traces: [trace({ id: 't1', number: 1, cote: 'A' })],
+        referencePrints: [
+          referencePrint({
+            id: 'r1',
+            subjectId: 's1',
+            position: 'RIGHT_PALM',
+          }),
+        ],
+        subjects: [subject({ id: 's1', type: subjectType })],
+        declaredHits: [
+          {
+            traceId: 't1',
+            referencePrintId: 'r1',
+            declaredAt: DECLARED_AT,
+            declaredBy: null,
+            withdrawnAt: null,
+          },
+        ],
+      }),
+    );
+  }
+
+  it('porte une concordance de familier en discrimination, pas en comparaison', () => {
+    for (const type of ['CLOSE_ASSOCIATE', 'VICTIM']) {
+      const model = withHitOn(type);
+
+      expect(model.exploitability[0].discrimination).toBe(
+        'Paume droite — SADIK Samir',
+      );
+      expect(model.comparisons[0].result).toBe('Non examinée');
+      expect(model.identifications).toEqual([]);
+      expect(model.counts.identified).toBe(0);
+      expect(model.counts.discriminated).toBe(1);
+    }
+  });
+
+  it('porte une concordance de mis en cause en comparaison, pas en discrimination', () => {
+    const model = withHitOn('PERSON_OF_INTEREST');
+
+    expect(model.exploitability[0].discrimination).toBe('/');
+    expect(model.comparisons[0].result).toBe('Paume droite — SADIK Samir');
+    expect(model.counts.identified).toBe(1);
+    expect(model.counts.discriminated).toBe(0);
+  });
+
+  it('ne compte pas une trace discriminée parmi les négatives ni les non examinées', () => {
+    const model = withHitOn('VICTIM');
+
+    expect(model.counts.negative).toBe(0);
+    expect(model.counts.notExamined).toBe(0);
+    expect(model.negativeCotes).toEqual([]);
+    expect(model.notExaminedCotes).toEqual([]);
+  });
+
+  it('ne porte jamais une trace retirée au tableau de comparaison', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            cote: 'A',
+            withdrawnAt: DECLARED_AT,
+            withdrawalMotive: 'DUPLICATE',
+          }),
+          trace({ id: 't2', number: 2, cote: 'B' }),
+        ],
+      }),
+    );
+
+    expect(model.comparisons.map((row) => row.reference)).toEqual(['3455-T2']);
+  });
+
+  it('ne compte pas les empreintes de familiers parmi celles des mis en cause', () => {
+    expect(withHitOn('CLOSE_ASSOCIATE').personOfInterestPrintCount).toBe(0);
+    expect(withHitOn('PERSON_OF_INTEREST').personOfInterestPrintCount).toBe(1);
+  });
+});
+
+describe('buildTechnicalReport — éléments retirés', () => {
+  it('réunit traces et empreintes retirées, et les sort du chapitre d’intégrité', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            cote: null,
+            withdrawnAt: new Date('2026-08-12T00:00:00.000Z'),
+            withdrawalMotive: 'MISFILED',
+          }),
+          trace({ id: 't2', number: 2, cote: 'A' }),
+        ],
+        referencePrints: [
+          referencePrint({
+            id: 'r1',
+            subjectId: 's1',
+            position: 'RIGHT_INDEX',
+            withdrawnAt: new Date('2026-08-13T00:00:00.000Z'),
+            withdrawalMotive: 'WRONG_ATTRIBUTION',
+            imageDestroyedAt: new Date('2026-08-14T00:00:00.000Z'),
+          }),
+        ],
+        subjects: [subject({ id: 's1' })],
+      }),
+    );
+
+    expect(
+      model.withdrawnElements.map((element) => element.designation),
+    ).toEqual([
+      'la trace 3455-T1',
+      "l'empreinte de l'index droit de Monsieur SADIK Samir",
+    ]);
+    expect(model.withdrawnElements[1].imageDestroyed).toBe(true);
+    expect(model.integrity.traces).toHaveLength(1);
+    expect(model.integrity.referencePrints).toEqual([]);
+  });
+
+  it('ne dresse aucun élément retiré quand le dossier n’en a pas', () => {
+    const model = build(
+      caseData({ traces: [trace({ id: 't1', number: 1, cote: 'A' })] }),
+    );
+
+    expect(model.withdrawnElements).toEqual([]);
   });
 });

@@ -1,7 +1,8 @@
 import { PrismaCaseReportDataReader } from '../../src/reporting/infrastructure/persistence/prisma-case-report-data.reader';
 import {
+  caseVerdicts,
+  comparisonOf,
   discriminationOf,
-  verdictsByTraceId,
 } from '../../src/reporting/application/queries/build-report/trace-verdicts';
 import {
   AuditChainHarness,
@@ -67,14 +68,21 @@ describe('le rapport distingue une trace déclarée non identifiée d’une trac
 
     const data = await harness.asTenant(() => reader.read(CASE_ID));
 
-    const verdicts = verdictsByTraceId(data!);
+    const verdicts = caseVerdicts(data!);
     const declared = data!.traces.find((t) => t.id === DECLARED_TRACE_ID)!;
     const untouched = data!.traces.find((t) => t.id === UNTOUCHED_TRACE_ID)!;
-    expect(discriminationOf(declared, verdicts.get(declared.id))).toBe(
-      'NÉGATIVE',
-    );
-    expect(discriminationOf(untouched, verdicts.get(untouched.id))).toBe(
-      'Non examinée',
-    );
+    expect(comparisonOf(declared, verdicts)).toBe('NÉGATIVE');
+    expect(comparisonOf(untouched, verdicts)).toBe('Non examinée');
+  });
+
+  it('ne porte jamais NÉGATIVE en discrimination, faute d’empreinte de familier', async () => {
+    const reader = new PrismaCaseReportDataReader(harness.connection);
+
+    const data = await harness.asTenant(() => reader.read(CASE_ID));
+
+    const verdicts = caseVerdicts(data!);
+    const declared = data!.traces.find((t) => t.id === DECLARED_TRACE_ID)!;
+    expect(verdicts.exclusionPrintCount).toBe(0);
+    expect(discriminationOf(declared, verdicts)).toBe('/');
   });
 });
