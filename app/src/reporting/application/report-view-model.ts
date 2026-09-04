@@ -132,6 +132,12 @@ export interface ReportReferenceSubjectViewModel {
   quality: string;
 }
 
+export interface ReportComparisonViewModel {
+  reference: string;
+  cote: string;
+  result: string;
+}
+
 export interface ReportIdentifiedSubjectViewModel {
   civility: string;
   firstName: string;
@@ -246,6 +252,7 @@ export interface ReportCountsViewModel {
   exploitable: number;
   notExploitable: number;
   identified: number;
+  discriminated: number;
   negative: number;
   notExamined: number;
 }
@@ -337,6 +344,8 @@ export interface TechnicalReportViewModel {
   referenceSubjects: ReportReferenceSubjectViewModel[];
   unattachedReferencePrintCount: number;
   automaticComparatorUsed: boolean;
+  personOfInterestPrintCount: number;
+  comparisons: ReportComparisonViewModel[];
   identifications: ReportIdentificationViewModel[];
   negativeCotes: string[];
   notExaminedCotes: string[];

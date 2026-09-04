@@ -3,7 +3,7 @@ import {
   ReportCaseHeaderViewModel,
   ReportContributorViewModel,
   ReportDemonstrationViewModel,
-  ReportExploitabilityViewModel,
+  ReportComparisonViewModel,
   ReportIdentificationViewModel,
   ReportIntegrityViewModel,
   ReportJournalSummaryViewModel,
@@ -553,17 +553,13 @@ function examinedTracesSection(model: TechnicalReportViewModel): string {
     }`;
 }
 
-function mentionsNote(exploitability: ReportExploitabilityViewModel[]): string {
-  const mentioned = new Set(
-    exploitability
-      .filter((row) => row.withdrawal === null)
-      .map((row) => row.discrimination),
-  );
+function mentionsNote(comparisons: ReportComparisonViewModel[]): string {
+  const mentioned = new Set(comparisons.map((row) => row.result));
   const notes = [
     mentioned.has(NEGATIVE_MENTION)
       ? `La mention « NÉGATIVE » indique que l'expert a comparé la trace papillaire
-    à l'ensemble des empreintes de référence du dossier et a déclaré n'y relever aucune
-    concordance.`
+    aux empreintes de référence des personnes mises en cause et a déclaré n'y relever
+    aucune concordance.`
       : null,
     mentioned.has(NOT_EXAMINED_MENTION)
       ? `La mention « non examinée » indique qu'aucune comparaison n'a encore été
@@ -606,7 +602,10 @@ function exploitabilitySection(model: TechnicalReportViewModel): string {
         )
         .join('')}
     </table>
-    ${mentionsNote(exploitability)}`;
+    <p class="note">La colonne « Discrimination » ne rend compte que des concordances
+    relevées avec les empreintes des personnes familières des lieux, dont la présence
+    s'explique. Les comparaisons avec les personnes mises en cause font l'objet du
+    chapitre suivant.</p>`;
 }
 
 const COMPARATOR_PARAGRAPH = `Le comparateur automatique de la plateforme a été employé dans le
@@ -616,42 +615,41 @@ const COMPARATOR_PARAGRAPH = `Le comparateur automatique de la plateforme a ét�
   classement ne constitue pas un examen comparatif et n'a fondé aucune conclusion : l'examen
   comparatif et la conclusion d'identité relèvent exclusivement de l'expert signataire.`;
 
+function comparisonsTable(comparisons: ReportComparisonViewModel[]): string {
+  return `
+    <table>
+      <tr>
+        <th style="width:30%">Trace n°</th><th style="width:12%">Cote</th>
+        <th>Résultat de la comparaison</th>
+      </tr>
+      ${comparisons
+        .map(
+          (row) => `
+      <tr>
+        <td>${escapeHtml(row.reference)}</td>
+        <td>${escapeHtml(row.cote)}</td>
+        <td>${escapeHtml(row.result)}</td>
+      </tr>`,
+        )
+        .join('')}
+    </table>`;
+}
+
 function comparisonsSection(model: TechnicalReportViewModel): string {
-  const { identifications, negativeCotes, notExaminedCotes } = model;
+  const { comparisons, identifications } = model;
   const minutiae = `sur la base d'<b>au moins ${spelled(
     REQUIRED_MINUTIAE,
   )} minuties concordantes, sans aucune discordance inexplicable</b>`;
 
-  const negatives =
-    negativeCotes.length === 0
-      ? ''
-      : negativeCotes.length === 1
-        ? `<p>La trace papillaire cotée <b>${joinCotes(negativeCotes)}</b> n'a pas été
-           identifiée au terme des comparaisons effectuées.</p>`
-        : `<p>Les traces papillaires cotées <b>${joinCotes(negativeCotes)}</b> n'ont pas été
-           identifiées au terme des comparaisons effectuées.</p>`;
+  if (model.personOfInterestPrintCount === 0) {
+    return `<p>Aucune empreinte de référence d'une personne mise en cause n'a été versée
+    à ce dossier : aucune comparaison de cette nature n'a pu être conduite.</p>`;
+  }
 
-  const notExamined =
-    notExaminedCotes.length === 0
+  const identified =
+    identifications.length === 0
       ? ''
-      : notExaminedCotes.length === 1
-        ? `<p>La trace papillaire cotée <b>${joinCotes(notExaminedCotes)}</b> n'a pas encore
-           été examinée.</p>`
-        : `<p>Les traces papillaires cotées <b>${joinCotes(notExaminedCotes)}</b> n'ont pas
-           encore été examinées.</p>`;
-
-  return `
-    <p>Les comparaisons ont été effectuées entre chaque trace papillaire déclarée exploitable
-    et les empreintes de référence du dossier.${
-      identifications.length === 0
-        ? " Aucune identification n'a été déclarée."
-        : ' Elles permettent de conclure aux identifications suivantes :'
-    }</p>
-    ${model.automaticComparatorUsed ? `<p class="note">${COMPARATOR_PARAGRAPH}</p>` : ''}
-    ${
-      identifications.length === 0
-        ? ''
-        : `<ul class="rec">
+      : `<ul class="rec">
           ${identifications
             .map(
               (identification, order) => `
@@ -661,15 +659,16 @@ function comparisonsSection(model: TechnicalReportViewModel): string {
           }</li>`,
             )
             .join('')}
-        </ul>`
-    }
-    ${negatives}
-    ${notExamined}
-    ${
-      identifications.length === 0
-        ? ''
-        : "<p>La démonstration d'identité de chaque trace identifiée figure en Annexe B.</p>"
-    }`;
+        </ul>
+        <p>La démonstration d'identité de chaque trace identifiée figure en Annexe B.</p>`;
+
+  return `
+    <p>Les comparaisons ont été effectuées entre chaque trace papillaire déclarée exploitable
+    et les empreintes de référence des personnes mises en cause.</p>
+    ${comparisons.length === 0 ? '' : comparisonsTable(comparisons)}
+    ${mentionsNote(comparisons)}
+    ${model.automaticComparatorUsed ? `<p class="note">${COMPARATOR_PARAGRAPH}</p>` : ''}
+    ${identified}`;
 }
 
 const INTEGRITY_PREAMBLE = [

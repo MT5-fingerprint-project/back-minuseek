@@ -462,9 +462,8 @@ describe('buildTechnicalReport — discrimination', () => {
       }),
     );
 
-    expect(model.exploitability[0].discrimination).toBe(
-      'Index droit — SADIK Samir',
-    );
+    expect(model.exploitability[0].discrimination).toBe('/');
+    expect(model.comparisons[0].result).toBe('Index droit — SADIK Samir');
     expect(model.identifications).toEqual([
       {
         cote: 'A',
@@ -507,7 +506,8 @@ describe('buildTechnicalReport — discrimination', () => {
       }),
     );
 
-    expect(model.exploitability[0].discrimination).toBe('NÉGATIVE');
+    expect(model.exploitability[0].discrimination).toBe('/');
+    expect(model.comparisons[0].result).toBe('NÉGATIVE');
     expect(model.negativeCotes).toEqual(['A']);
     expect(model.notExaminedCotes).toEqual([]);
   });
@@ -517,13 +517,13 @@ describe('buildTechnicalReport — discrimination', () => {
       caseData({ traces: [trace({ id: 't1', number: 1, cote: 'A' })] }),
     );
 
-    expect(model.exploitability[0].discrimination).toBe('Non examinée');
-    expect(model.exploitability[0].discrimination).not.toBe('NÉGATIVE');
+    expect(model.comparisons[0].result).toBe('Non examinée');
+    expect(model.comparisons[0].result).not.toBe('NÉGATIVE');
     expect(model.notExaminedCotes).toEqual(['A']);
     expect(model.negativeCotes).toEqual([]);
   });
 
-  it('écrit « Non examinée » même quand le dossier n’a aucune empreinte de référence', () => {
+  it('marque la discrimination d’un tiret quand le dossier n’a aucune empreinte de familier', () => {
     const model = build(
       caseData({
         traces: [trace({ id: 't1', number: 1, cote: 'A' })],
@@ -531,8 +531,21 @@ describe('buildTechnicalReport — discrimination', () => {
       }),
     );
 
-    expect(model.exploitability[0].discrimination).toBe('Non examinée');
+    expect(model.exploitability[0].discrimination).toBe('/');
+    expect(model.comparisons[0].result).toBe('Non examinée');
     expect(model.negativeCotes).toEqual([]);
+  });
+
+  it('écrit « Non examinée » en discrimination quand le dossier porte un familier non comparé', () => {
+    const model = build(
+      caseData({
+        traces: [trace({ id: 't1', number: 1, cote: 'A' })],
+        referencePrints: [referencePrint({ id: 'r1', subjectId: 's1' })],
+        subjects: [subject({ id: 's1', type: 'CLOSE_ASSOCIATE' })],
+      }),
+    );
+
+    expect(model.exploitability[0].discrimination).toBe('Non examinée');
   });
 
   it('remplace cote et discrimination par la phrase de retrait', () => {
@@ -621,6 +634,7 @@ describe('buildTechnicalReport — comptes de la conclusion', () => {
       exploitable: 3,
       notExploitable: 1,
       identified: 1,
+      discriminated: 0,
       negative: 1,
       notExamined: 1,
     });
@@ -1044,5 +1058,88 @@ describe('buildTechnicalReport — annexe de vérification', () => {
     expect(model.journal.acts.map((act) => act.sentence)).toContain(
       model.verifications[0].actGroups[0].acts[0].sentence,
     );
+  });
+});
+
+describe('buildTechnicalReport — familiers et mis en cause', () => {
+  function withHitOn(subjectType: string) {
+    return build(
+      caseData({
+        traces: [trace({ id: 't1', number: 1, cote: 'A' })],
+        referencePrints: [
+          referencePrint({
+            id: 'r1',
+            subjectId: 's1',
+            position: 'RIGHT_PALM',
+          }),
+        ],
+        subjects: [subject({ id: 's1', type: subjectType })],
+        declaredHits: [
+          {
+            traceId: 't1',
+            referencePrintId: 'r1',
+            declaredAt: DECLARED_AT,
+            declaredBy: null,
+            withdrawnAt: null,
+          },
+        ],
+      }),
+    );
+  }
+
+  it('porte une concordance de familier en discrimination, pas en comparaison', () => {
+    for (const type of ['CLOSE_ASSOCIATE', 'VICTIM']) {
+      const model = withHitOn(type);
+
+      expect(model.exploitability[0].discrimination).toBe(
+        'Paume droite — SADIK Samir',
+      );
+      expect(model.comparisons[0].result).toBe('Non examinée');
+      expect(model.identifications).toEqual([]);
+      expect(model.counts.identified).toBe(0);
+      expect(model.counts.discriminated).toBe(1);
+    }
+  });
+
+  it('porte une concordance de mis en cause en comparaison, pas en discrimination', () => {
+    const model = withHitOn('PERSON_OF_INTEREST');
+
+    expect(model.exploitability[0].discrimination).toBe('/');
+    expect(model.comparisons[0].result).toBe('Paume droite — SADIK Samir');
+    expect(model.counts.identified).toBe(1);
+    expect(model.counts.discriminated).toBe(0);
+  });
+
+  it('ne compte pas une trace discriminée parmi les négatives ni les non examinées', () => {
+    const model = withHitOn('VICTIM');
+
+    expect(model.counts.negative).toBe(0);
+    expect(model.counts.notExamined).toBe(0);
+    expect(model.negativeCotes).toEqual([]);
+    expect(model.notExaminedCotes).toEqual([]);
+  });
+
+  it('ne porte jamais une trace retirée au tableau de comparaison', () => {
+    const model = build(
+      caseData({
+        traces: [
+          trace({
+            id: 't1',
+            number: 1,
+            cote: 'A',
+            withdrawnAt: DECLARED_AT,
+            withdrawalMotive: 'DUPLICATE',
+          }),
+          trace({ id: 't2', number: 2, cote: 'B' }),
+        ],
+      }),
+    );
+
+    expect(model.comparisons.map((row) => row.reference)).toEqual(['3455-T2']);
+  });
+
+  it('ne compte pas les empreintes de familiers parmi celles des mis en cause', () => {
+    expect(withHitOn('CLOSE_ASSOCIATE').personOfInterestPrintCount).toBe(0);
+    expect(withHitOn('PERSON_OF_INTEREST').personOfInterestPrintCount).toBe(1);
   });
 });

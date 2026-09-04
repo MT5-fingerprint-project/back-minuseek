@@ -117,6 +117,15 @@ function model(
     ],
     unattachedReferencePrintCount: 0,
     automaticComparatorUsed: false,
+    personOfInterestPrintCount: 1,
+    comparisons: [
+      {
+        reference: '3455-T1',
+        cote: 'A',
+        result: "À l'index droit — SADIK Samir",
+      },
+      { reference: '3455-T2', cote: 'B', result: 'Non examinée' },
+    ],
     identifications: [
       {
         cote: 'A',
@@ -141,6 +150,7 @@ function model(
       identified: 1,
       negative: 0,
       notExamined: 1,
+      discriminated: 0,
     },
     traces: [],
     referencePrints: [],
@@ -339,17 +349,17 @@ describe('renderTechnicalReportHtml — les conclusions', () => {
 
   it('distingue une trace déclarée négative d’une trace non examinée', () => {
     const html = renderTechnicalReportHtml(
-      model({ negativeCotes: ['C'], notExaminedCotes: ['F'] }),
+      model({
+        negativeCotes: ['C'],
+        notExaminedCotes: ['F'],
+        counts: { ...model().counts, negative: 1, notExamined: 1 },
+      }),
     );
 
     const flat = html.replace(/\s+/g, ' ');
 
-    expect(flat).toContain(
-      "La trace papillaire cotée <b>« C »</b> n'a pas été identifiée au terme des comparaisons effectuées.",
-    );
-    expect(flat).toContain(
-      "La trace papillaire cotée <b>« F »</b> n'a pas encore été examinée.",
-    );
+    expect(flat).toContain('non identifiée, cotée « C »');
+    expect(flat).toContain('non encore examinée, cotée « F »');
   });
 
   it('remplace la cote et la discrimination d’une trace retirée par la phrase de retrait', () => {
@@ -380,107 +390,51 @@ describe('renderTechnicalReportHtml — les conclusions', () => {
   });
 });
 
-describe('renderTechnicalReportHtml — les mentions du tableau d’exploitabilité', () => {
-  it('n’explique la mention « NÉGATIVE » que si une trace la porte', () => {
-    const html = renderTechnicalReportHtml(
+describe('renderTechnicalReportHtml — les mentions du tableau de comparaison', () => {
+  function withResults(...results: string[]) {
+    return renderTechnicalReportHtml(
       model({
-        exploitability: [
-          {
-            reference: '3455-T1',
-            exploitability: 'EXPLOITABLE',
-            cote: 'A',
-            discrimination: 'NÉGATIVE',
-            withdrawal: null,
-          },
-        ],
+        comparisons: results.map((result, order) => ({
+          reference: `3455-T${order + 1}`,
+          cote: String.fromCharCode(65 + order),
+          result,
+        })),
       }),
     );
+  }
+
+  it('n’explique la mention « NÉGATIVE » que si une trace la porte', () => {
+    const html = withResults('NÉGATIVE');
 
     expect(html).toContain('La mention « NÉGATIVE » indique');
     expect(html).not.toContain('La mention « non examinée » indique');
   });
 
   it('n’explique la mention « non examinée » que si une trace la porte', () => {
-    const html = renderTechnicalReportHtml(
-      model({
-        exploitability: [
-          {
-            reference: '3455-T1',
-            exploitability: 'EXPLOITABLE',
-            cote: 'A',
-            discrimination: 'Non examinée',
-            withdrawal: null,
-          },
-        ],
-      }),
-    );
+    const html = withResults('Non examinée');
 
     expect(html).toContain('La mention « non examinée » indique');
     expect(html).not.toContain('La mention « NÉGATIVE » indique');
   });
 
   it('explique les deux mentions quand les deux figurent au tableau', () => {
-    const html = renderTechnicalReportHtml(
-      model({
-        exploitability: [
-          {
-            reference: '3455-T1',
-            exploitability: 'EXPLOITABLE',
-            cote: 'A',
-            discrimination: 'NÉGATIVE',
-            withdrawal: null,
-          },
-          {
-            reference: '3455-T2',
-            exploitability: 'EXPLOITABLE',
-            cote: 'B',
-            discrimination: 'Non examinée',
-            withdrawal: null,
-          },
-        ],
-      }),
-    );
+    const html = withResults('NÉGATIVE', 'Non examinée');
 
     expect(html).toContain('La mention « NÉGATIVE » indique');
     expect(html).toContain('La mention « non examinée » indique');
   });
 
   it('n’explique rien quand aucune des deux mentions ne figure au tableau', () => {
-    const html = renderTechnicalReportHtml(
-      model({
-        exploitability: [
-          {
-            reference: '3455-T1',
-            exploitability: 'EXPLOITABLE',
-            cote: 'A',
-            discrimination: 'Index droit — SADIK Samir',
-            withdrawal: null,
-          },
-        ],
-      }),
-    );
+    const html = withResults('Index droit — SADIK Samir');
 
     expect(html).not.toContain('La mention « NÉGATIVE » indique');
     expect(html).not.toContain('La mention « non examinée » indique');
   });
 
-  it('ignore la mention d’une trace retirée, que le tableau n’imprime pas', () => {
-    const html = renderTechnicalReportHtml(
-      model({
-        exploitability: [
-          {
-            reference: '3455-T1',
-            exploitability: 'EXPLOITABLE',
-            cote: '/',
-            discrimination: 'NÉGATIVE',
-            withdrawal:
-              "Retirée du dossier le 12 août 2026 — doublon d'une pièce déjà versée",
-          },
-        ],
-      }),
+  it('rapporte la mention NÉGATIVE aux seules empreintes des mis en cause', () => {
+    expect(withResults('NÉGATIVE')).toContain(
+      "des personnes mises en cause et a déclaré n'y relever",
     );
-
-    expect(html).not.toContain('La mention « NÉGATIVE » indique');
   });
 });
 

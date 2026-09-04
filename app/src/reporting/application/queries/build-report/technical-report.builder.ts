@@ -18,6 +18,7 @@ import {
   JournalDetail,
   ReportCountsViewModel,
   ReportExaminedTraceViewModel,
+  ReportComparisonViewModel,
   ReportExploitabilityViewModel,
   ReportIdentificationViewModel,
   ReportImageViewModel,
@@ -51,8 +52,11 @@ import {
 } from './report-pieces';
 import { groupExaminedTraces, traceReference } from './trace-grouping';
 import {
+  comparisonOf,
   discriminationOf,
   isDeclaredNegative,
+  isDiscriminated,
+  isExclusionSubject,
   isIdentified,
   isNotExamined,
   NOT_APPLICABLE,
@@ -120,6 +124,7 @@ function buildExploitability(
   caseNumber: string,
   traces: PieceData[],
   verdicts: Map<string, TraceVerdict>,
+  caseHoldsExclusionPrints: boolean,
 ): ReportExploitabilityViewModel[] {
   return traces.map((trace) => ({
     reference: traceReference(caseNumber, trace.number ?? 0),
@@ -128,9 +133,52 @@ function buildExploitability(
     cote: trace.cote ?? NOT_APPLICABLE,
     discrimination: isWithdrawn(trace)
       ? NOT_APPLICABLE
-      : discriminationOf(trace, verdicts.get(trace.id)),
+      : discriminationOf(
+          trace,
+          verdicts.get(trace.id),
+          caseHoldsExclusionPrints,
+        ),
     withdrawal: withdrawalSentence(trace),
   }));
+}
+
+function buildComparisons(
+  caseNumber: string,
+  traces: PieceData[],
+  verdicts: Map<string, TraceVerdict>,
+): ReportComparisonViewModel[] {
+  return traces.map((trace) => ({
+    reference: traceReference(caseNumber, trace.number ?? 0),
+    cote: trace.cote ?? NOT_APPLICABLE,
+    result: comparisonOf(trace, verdicts.get(trace.id)),
+  }));
+}
+
+interface ReferencePrintCounts {
+  exclusion: number;
+  personOfInterest: number;
+}
+
+function referencePrintCounts(data: CaseReportData): ReferencePrintCounts {
+  const subjectsById = new Map(
+    data.subjects.map((subject) => [subject.id, subject]),
+  );
+  const counts: ReferencePrintCounts = { exclusion: 0, personOfInterest: 0 };
+  for (const print of data.referencePrints) {
+    if (isWithdrawn(print) || print.subjectId === null) {
+      continue;
+    }
+    const subject = subjectsById.get(print.subjectId) ?? null;
+    if (subject === null) {
+      continue;
+    }
+    if (isExclusionSubject(subject)) {
+      counts.exclusion += 1;
+    } else {
+      counts.personOfInterest += 1;
+    }
+  }
+  return counts;
 }
 
 function buildReferenceSubjects(
@@ -161,15 +209,15 @@ function buildIdentifications(
   verdicts: Map<string, TraceVerdict>,
 ): ReportIdentificationViewModel[] {
   return traces.flatMap((trace) => {
-    const verdict = verdicts.get(trace.id);
-    if (!verdict?.identified || trace.cote === null || isWithdrawn(trace)) {
+    const identification = verdicts.get(trace.id)?.identification;
+    if (!identification || trace.cote === null || isWithdrawn(trace)) {
       return [];
     }
-    const subject = verdict.identifiedBy;
+    const subject = identification.subject;
     return [
       {
         cote: trace.cote,
-        position: positionWithArticle(verdict.identifiedPosition),
+        position: positionWithArticle(identification.position),
         subject:
           subject === null
             ? null
@@ -198,6 +246,9 @@ function buildCounts(
       .length,
     identified: exploitable.filter((trace) => isIdentified(trace, verdicts))
       .length,
+    discriminated: exploitable.filter((trace) =>
+      isDiscriminated(trace, verdicts),
+    ).length,
     negative: exploitable.filter((trace) => isDeclaredNegative(trace, verdicts))
       .length,
     notExamined: exploitable.filter((trace) => isNotExamined(trace, verdicts))
@@ -280,6 +331,7 @@ export function buildTechnicalReport(
   const exploitableTraces = workingTraces.filter(
     (trace) => trace.status === 'EXPLOITABLE',
   );
+  const printCounts = referencePrintCounts(data);
 
   return {
     kind: 'TECHNICAL',
@@ -309,12 +361,19 @@ export function buildTechnicalReport(
     },
     contributors: buildContributors(input.contributors, input.signer.id),
     examinedTraces: buildExaminedTraces(caseNumber, orderedTraces),
-    exploitability: buildExploitability(caseNumber, orderedTraces, verdicts),
+    exploitability: buildExploitability(
+      caseNumber,
+      orderedTraces,
+      verdicts,
+      printCounts.exclusion > 0,
+    ),
     referenceSubjects: buildReferenceSubjects(data),
     unattachedReferencePrintCount: data.referencePrints.filter(
       (print) => !isWithdrawn(print) && print.subjectId === null,
     ).length,
     automaticComparatorUsed: data.comparisons.length > 0,
+    personOfInterestPrintCount: printCounts.personOfInterest,
+    comparisons: buildComparisons(caseNumber, exploitableTraces, verdicts),
     identifications: buildIdentifications(workingTraces, verdicts),
     negativeCotes: cotesOf(
       exploitableTraces.filter((trace) => isDeclaredNegative(trace, verdicts)),

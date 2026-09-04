@@ -84,7 +84,7 @@ function subject(overrides: Partial<SubjectData> = {}): SubjectData {
     birthDate: null,
     birthPlace: null,
     sex: 'FEMALE',
-    type: 'CLOSE_ASSOCIATE',
+    type: 'PERSON_OF_INTEREST',
     ...overrides,
   };
 }
@@ -640,6 +640,29 @@ describe('buildAnnexB', () => {
       lastName: 'Berger',
     });
     expect(demonstrations[0].position).toBe('index droit');
+  });
+
+  it('ne dresse aucune planche pour une concordance avec un familier', () => {
+    for (const type of ['CLOSE_ASSOCIATE', 'VICTIM']) {
+      const demonstrations = build(
+        caseData({
+          traces: [piece({ id: 't1' })],
+          referencePrints: [
+            piece({
+              id: 'ref-1',
+              status: null,
+              cote: null,
+              subjectId: 'subject-1',
+              position: 'RIGHT_INDEX',
+            }),
+          ],
+          subjects: [subject({ type })],
+          declaredHits: [hit()],
+        }),
+      );
+
+      expect(demonstrations).toEqual([]);
+    }
   });
 
   it('ne nomme personne quand l’empreinte n’est rattachée à aucune personne', () => {

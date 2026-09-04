@@ -13,6 +13,7 @@ import { civilityLabel, positionLabel } from './action-labels';
 import { geometryOf, movedByGeometry } from './image-treatments';
 import { treatedKey } from './printed-pieces';
 import { isWithdrawn } from './report-pieces';
+import { isExclusionSubject } from './trace-verdicts';
 import { traceReference } from './trace-grouping';
 
 type Move = (point: { x: number; y: number }) => { x: number; y: number };
@@ -110,6 +111,13 @@ export function buildAnnexB(
       return [];
     }
 
+    const subject = print.subjectId
+      ? subjectsById.get(print.subjectId)
+      : undefined;
+    if (isExclusionSubject(subject ?? null)) {
+      return [];
+    }
+
     const pairs = data.minutiaPairs.filter(
       (pair) =>
         pair.traceId === hit.traceId &&
@@ -138,10 +146,6 @@ export function buildAnnexB(
       traceMarks.push(onTrace);
       printMarks.push(onPrint);
     }
-
-    const subject = print.subjectId
-      ? subjectsById.get(print.subjectId)
-      : undefined;
 
     const demonstration: ReportDemonstrationViewModel = {
       reference: traceReference(caseNumber, trace.number ?? 0),
