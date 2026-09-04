@@ -1,5 +1,6 @@
 import { FileDigest } from '../../file-digest.vo';
 import { ImageResolution } from '../../image-resolution.vo';
+import { ImageSize } from '../../image-size';
 import { ReferencePrintImageAlreadyDestroyedError } from '../errors/reference-print-image-already-destroyed.error';
 import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../withdrawal/errors/not-withdrawn.error';
@@ -20,6 +21,8 @@ export interface ReferencePrintPrimitives {
   imageDestroyedAt: Date | null;
   resolutionDpi: number | null;
   thumbPath: string | null;
+  sourceWidth: number | null;
+  sourceHeight: number | null;
 }
 
 interface CreateReferencePrintProps {
@@ -31,6 +34,7 @@ interface CreateReferencePrintProps {
   subjectId?: string | null;
   position?: FingerPosition | null;
   thumbPath?: string | null;
+  sourceSize?: ImageSize | null;
 }
 
 export class ReferencePrint {
@@ -46,6 +50,7 @@ export class ReferencePrint {
     private _imageDestroyedAt: Date | null,
     private _resolution: ImageResolution | null,
     private _thumbPath: string | null,
+    private readonly _sourceSize: ImageSize | null,
   ) {}
 
   static create(props: CreateReferencePrintProps): ReferencePrint {
@@ -70,6 +75,7 @@ export class ReferencePrint {
       null,
       null,
       props.thumbPath ?? null,
+      props.sourceSize ?? null,
     );
   }
 
@@ -92,6 +98,9 @@ export class ReferencePrint {
       primitives.imageDestroyedAt,
       ImageResolution.fromPersistence(primitives.resolutionDpi),
       primitives.thumbPath,
+      primitives.sourceWidth === null || primitives.sourceHeight === null
+        ? null
+        : { width: primitives.sourceWidth, height: primitives.sourceHeight },
     );
   }
 
@@ -142,6 +151,8 @@ export class ReferencePrint {
       imageDestroyedAt: this._imageDestroyedAt,
       resolutionDpi: this._resolution?.getValue() ?? null,
       thumbPath: this._thumbPath,
+      sourceWidth: this._sourceSize?.width ?? null,
+      sourceHeight: this._sourceSize?.height ?? null,
     };
   }
 

@@ -19,6 +19,9 @@ model ReferencePrint {
 
   imageDestroyedAt DateTime?
 
+  sourceWidth  Int?
+  sourceHeight Int?
+
   // Résolution calibrée par l'opérateur sur la règle photographiée (L5-4), en
   // points par pouce de l'image telle qu'elle a été déposée. L'absence ne se
   // confond pas avec un zéro : une empreinte non calibrée rend `null`.

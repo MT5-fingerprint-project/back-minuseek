@@ -6,7 +6,10 @@ import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-clas
 import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryReferencePrintRepository } from '../../../infrastructure/persistence/in-memory-reference-print.repository';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
-import { InMemoryImageConverter } from '../../../infrastructure/conversion/in-memory-image-converter.adapter';
+import {
+  IN_MEMORY_DISPLAYED_SIZE,
+  InMemoryImageConverter,
+} from '../../../infrastructure/conversion/in-memory-image-converter.adapter';
 import { InvalidImageError } from '../../ports/image-converter.port';
 import { UnsupportedImageFormatError } from '../../services/displayable-image';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
@@ -121,6 +124,33 @@ describe('UploadReferencePrintHandler', () => {
     expect((await repo.findById('ref-456'))?.thumbPath).toBe(
       'media/investigation-case/case-9/reference-prints/ref-456_thumb.webp',
     );
+  });
+
+  it('garde les dimensions du fichier servi sur l’empreinte déposée', async () => {
+    await handler.execute(command());
+
+    expect((await repo.findById('ref-456'))?.toPrimitives()).toMatchObject({
+      sourceWidth: IN_MEMORY_DISPLAYED_SIZE.width,
+      sourceHeight: IN_MEMORY_DISPLAYED_SIZE.height,
+    });
+  });
+
+  it('dépose l’empreinte sans dimensions quand la mesure échoue', async () => {
+    const undecodable = Buffer.concat([PNG_MAGIC, Buffer.from('invalid')]);
+
+    await handler.execute(
+      new UploadReferencePrintCommand(
+        EXPERT_ACTOR,
+        MARIE,
+        undecodable,
+        'case-9',
+      ),
+    );
+
+    expect((await repo.findById('ref-456'))?.toPrimitives()).toMatchObject({
+      sourceWidth: null,
+      sourceHeight: null,
+    });
   });
 
   it('dépose l’empreinte sans vignette quand la vignette échoue', async () => {

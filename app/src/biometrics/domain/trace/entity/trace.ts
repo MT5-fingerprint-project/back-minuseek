@@ -1,6 +1,7 @@
 import { assertCaseAcceptsWork } from '../../case-work-window';
 import { FileDigest } from '../../file-digest.vo';
 import { ImageResolution } from '../../image-resolution.vo';
+import { ImageSize } from '../../image-size';
 import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../withdrawal/errors/not-withdrawn.error';
 import { Withdrawal } from '../../withdrawal/withdrawal.vo';
@@ -34,6 +35,8 @@ export interface TracePrimitives {
   captureFocalLength: number | null;
   captureDeviceModel: string | null;
   captureQuality: CaptureQualityProps | null;
+  sourceWidth: number | null;
+  sourceHeight: number | null;
   withdrawnAt: Date | null;
   withdrawalMotive: string | null;
   withdrawalMotiveDetail: string | null;
@@ -62,6 +65,7 @@ interface UploadTraceProps {
   captureQuality?: CaptureQuality;
   location?: string;
   thumbPath?: string | null;
+  sourceSize?: ImageSize | null;
 }
 
 function assertLocationFitsColumn(location: string): void {
@@ -90,6 +94,7 @@ export class Trace {
     private _revelationTechnique: RevelationTechnique | null,
     private _notIdentifiedAt: Date | null,
     private readonly _thumbPath: string | null,
+    private readonly _sourceSize: ImageSize | null,
   ) {}
 
   static assertCaseCanReceiveTrace(
@@ -131,6 +136,7 @@ export class Trace {
       null,
       null,
       props.thumbPath ?? null,
+      props.sourceSize ?? null,
     );
   }
 
@@ -149,6 +155,8 @@ export class Trace {
     captureFocalLength: number | null;
     captureDeviceModel: string | null;
     captureQuality: unknown;
+    sourceWidth: number | null;
+    sourceHeight: number | null;
     withdrawnAt: Date | null;
     withdrawalMotive: string | null;
     withdrawalMotiveDetail: string | null;
@@ -189,6 +197,9 @@ export class Trace {
       RevelationTechnique.fromPersistence(payload.revelationTechnique),
       payload.notIdentifiedAt,
       payload.thumbPath,
+      payload.sourceWidth === null || payload.sourceHeight === null
+        ? null
+        : { width: payload.sourceWidth, height: payload.sourceHeight },
     );
   }
 
@@ -256,6 +267,8 @@ export class Trace {
       captureFocalLength: this._captureMetadata.focalLength ?? null,
       captureDeviceModel: this._captureMetadata.deviceModel ?? null,
       captureQuality: this._captureQuality?.toPrimitives() ?? null,
+      sourceWidth: this._sourceSize?.width ?? null,
+      sourceHeight: this._sourceSize?.height ?? null,
       withdrawnAt: this._withdrawal?.getAt() ?? null,
       withdrawalMotive: this._withdrawal?.getMotive() ?? null,
       withdrawalMotiveDetail: this._withdrawal?.getDetail() ?? null,

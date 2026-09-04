@@ -109,6 +109,49 @@ interface ThumbnailSources {
 
 let sources: ThumbnailSources;
 
+describe('SharpImageConverterAdapter — dimensions du fichier affiché', () => {
+  it('lit les dimensions d’un PNG', async () => {
+    const size = await converter.displayedSize(await pngFixture(800, 400));
+
+    expect(size).toEqual({ width: 800, height: 400 });
+  });
+
+  it('échange les axes d’une photo couchée dont seul le tag EXIF la redresse', async () => {
+    const size = await converter.displayedSize(
+      await tiltedJpegFixture(800, 400),
+    );
+
+    expect(size).toEqual({ width: 400, height: 800 });
+  });
+
+  it('rend les dimensions de la vignette pour la même source, au ratio près', async () => {
+    const tilted = await tiltedJpegFixture(800, 400);
+
+    const [size, thumbnail] = await Promise.all([
+      converter.displayedSize(tilted),
+      converter.toDisplayThumbnail(tilted),
+    ]);
+    const metadata = await sharp(thumbnail).metadata();
+
+    expect(size.width / size.height).toBeCloseTo(
+      (metadata.width ?? 0) / (metadata.height ?? 1),
+      5,
+    );
+  });
+
+  it.each([
+    [
+      'un contenu qui n’est pas une image',
+      Buffer.from('ceci n’est pas une image'),
+    ],
+    ['un buffer vide', Buffer.alloc(0)],
+  ])('refuse %s', async (_label, bytes) => {
+    await expect(converter.displayedSize(bytes)).rejects.toBeInstanceOf(
+      InvalidImageError,
+    );
+  });
+});
+
 describe('SharpImageConverterAdapter — vignette d’affichage', () => {
   // Les pièces d'essai sont fabriquées une fois, aussi petites que la preuve le
   // permet : encoder des images occupe les workers Jest, et cette suite en

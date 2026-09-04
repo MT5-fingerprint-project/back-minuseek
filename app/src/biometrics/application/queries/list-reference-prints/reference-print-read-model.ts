@@ -18,4 +18,6 @@ export interface ReferencePrintReadModel {
   imageDestroyedAt: Date | null;
   resolutionDpi: number | null;
   thumbPath: string | null;
+  sourceWidth: number | null;
+  sourceHeight: number | null;
 }

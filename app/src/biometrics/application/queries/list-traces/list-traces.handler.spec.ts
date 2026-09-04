@@ -26,6 +26,8 @@ const traceRow = (
   captureFocalLength: null,
   captureDeviceModel: null,
   captureQuality: null,
+  sourceWidth: null,
+  sourceHeight: null,
   withdrawnAt: null,
   withdrawalMotive: null,
   withdrawalMotiveDetail: null,
@@ -64,6 +66,32 @@ describe('ListTracesHandler', () => {
 
     expect(data.map((trace) => trace.hasLocationPhoto)).toEqual([true, false]);
     expect(data[0]).not.toHaveProperty('locationPhoto');
+  });
+
+  it('sert les dimensions du fichier de chaque trace', async () => {
+    const reader = new InMemoryTraceReader([
+      traceRow({ sourceWidth: 5485, sourceHeight: 2987 }),
+    ]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0]).toMatchObject({ sourceWidth: 5485, sourceHeight: 2987 });
+  });
+
+  it('sert des dimensions inconnues à null, jamais à zéro', async () => {
+    const reader = new InMemoryTraceReader([traceRow()]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0]).toMatchObject({ sourceWidth: null, sourceHeight: null });
   });
 
   it('adds a url derived from the path to each trace of the case', async () => {
@@ -176,6 +204,8 @@ describe('ListTracesHandler', () => {
       captureFocalLength: null,
       captureDeviceModel: null,
       captureQuality: null,
+      sourceWidth: null,
+      sourceHeight: null,
     });
   });
 

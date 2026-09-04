@@ -199,6 +199,8 @@ describe('ReferencePrint', () => {
         imageDestroyedAt: null,
         resolutionDpi: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
 
       expect(rp.id).toBe('r-1');
@@ -223,6 +225,8 @@ describe('ReferencePrint', () => {
         imageDestroyedAt: null,
         resolutionDpi: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
 
       expect(rp.sha256).toBeNull();
@@ -244,6 +248,8 @@ describe('ReferencePrint', () => {
           imageDestroyedAt: null,
           resolutionDpi: null,
           thumbPath: null,
+          sourceWidth: null,
+          sourceHeight: null,
         }),
       ).toThrow(InvalidFileDigestError);
     });
@@ -273,6 +279,8 @@ describe('ReferencePrint', () => {
         imageDestroyedAt: null,
         resolutionDpi: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
     });
   });
@@ -367,6 +375,8 @@ describe('ReferencePrint', () => {
         imageDestroyedAt: null,
         resolutionDpi: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
     });
 
@@ -391,6 +401,8 @@ describe('ReferencePrint', () => {
         imageDestroyedAt: null,
         resolutionDpi: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
     });
 
@@ -421,6 +433,8 @@ describe('ReferencePrint', () => {
         imageDestroyedAt: null,
         resolutionDpi: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
 
       expect(rp.isWithdrawn).toBe(true);

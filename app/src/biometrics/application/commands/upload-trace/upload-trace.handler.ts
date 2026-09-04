@@ -158,6 +158,7 @@ export class UploadTraceHandler implements ICommandHandler<
           captureQuality,
           location: cmd.location,
           thumbPath: stored.thumbPath,
+          sourceSize: stored.sourceSize,
         });
         const uploaded = await this.repo.save(trace, {
           eventType: AuditEventTypeEnum.TRACE_UPLOADED,

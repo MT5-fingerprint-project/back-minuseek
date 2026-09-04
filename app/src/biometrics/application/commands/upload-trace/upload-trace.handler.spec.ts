@@ -17,7 +17,10 @@ import { InMemoryTraceNumberAllocatorAdapter } from '../../../infrastructure/per
 import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
 import { TransactionRunner } from '../../../../shared/domain/ports/transaction-runner';
 import { InMemoryImageStorageAdapter } from '../../../infrastructure/storage/in-memory-image-storage.adapter';
-import { InMemoryImageConverter } from '../../../infrastructure/conversion/in-memory-image-converter.adapter';
+import {
+  IN_MEMORY_DISPLAYED_SIZE,
+  InMemoryImageConverter,
+} from '../../../infrastructure/conversion/in-memory-image-converter.adapter';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { IdGenerator } from '../../../../shared/domain/ports/id-generator';
 import { TraceRepository } from '../../../domain/trace/repository/trace.repository';
@@ -161,6 +164,34 @@ describe('UploadTraceHandler', () => {
     const trace = await repo.findById('trace-123');
     expect(trace?.thumbPath).toBeNull();
     expect(trace?.path).toBe(STORED_PATH);
+  });
+
+  it('garde les dimensions du fichier servi sur la trace déposée', async () => {
+    caseStatus.set('case-9', 'OPEN');
+
+    await handler.execute(command());
+
+    expect((await repo.findById('trace-123'))?.toPrimitives()).toMatchObject({
+      sourceWidth: IN_MEMORY_DISPLAYED_SIZE.width,
+      sourceHeight: IN_MEMORY_DISPLAYED_SIZE.height,
+    });
+  });
+
+  it('dépose la trace sans dimensions quand la mesure échoue', async () => {
+    caseStatus.set('case-9', 'OPEN');
+    const undecodable = Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+      Buffer.from('invalid'),
+    ]);
+
+    await handler.execute(
+      new UploadTraceCommand(EXPERT_ACTOR, MARIE, undecodable, 'case-9'),
+    );
+
+    expect((await repo.findById('trace-123'))?.toPrimitives()).toMatchObject({
+      sourceWidth: null,
+      sourceHeight: null,
+    });
   });
 
   it("refuse le dépôt sur une affaire dont l'appelant n'est pas titulaire, sans écrire ni stocker", async () => {

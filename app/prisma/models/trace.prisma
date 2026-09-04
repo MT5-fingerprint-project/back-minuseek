@@ -33,6 +33,9 @@ model Trace {
   // Forme : { blurScore: number >= 0, passed: boolean }
   captureQuality Json?
 
+  sourceWidth  Int?
+  sourceHeight Int?
+
   // Résolution calibrée par l'opérateur sur la règle photographiée (L5-4), en
   // points par pouce de l'image telle qu'elle a été déposée. L'absence ne se
   // confond pas avec un zéro : une trace non calibrée rend `null`.

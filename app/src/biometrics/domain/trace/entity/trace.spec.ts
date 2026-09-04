@@ -71,6 +71,8 @@ describe('Trace', () => {
         revelationTechnique: null,
         notIdentifiedAt: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
     });
 
@@ -111,6 +113,8 @@ describe('Trace', () => {
         revelationTechnique: null,
         notIdentifiedAt: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
     });
 
@@ -381,6 +385,8 @@ describe('Trace', () => {
         revelationTechnique: null,
         notIdentifiedAt: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
 
       expect(trace.status).toBe(TraceStatusEnum.EXPLOITABLE);
@@ -413,6 +419,8 @@ describe('Trace', () => {
         revelationTechnique: null,
         notIdentifiedAt: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
 
       expect(trace.sha256).toBeNull();
@@ -443,6 +451,8 @@ describe('Trace', () => {
         revelationTechnique: null,
         notIdentifiedAt: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
 
       expect(trace.captureQuality?.blurScore).toBe(128.4);
@@ -475,6 +485,8 @@ describe('Trace', () => {
           revelationTechnique: null,
           notIdentifiedAt: null,
           thumbPath: null,
+          sourceWidth: null,
+          sourceHeight: null,
         }),
       ).toThrow(InvalidCaptureQualityError);
     });
@@ -505,6 +517,8 @@ describe('Trace', () => {
           revelationTechnique: null,
           notIdentifiedAt: null,
           thumbPath: null,
+          sourceWidth: null,
+          sourceHeight: null,
         }),
       ).toThrow(InvalidFileDigestError);
     });
@@ -536,6 +550,8 @@ describe('Trace', () => {
         revelationTechnique: null,
         notIdentifiedAt: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
     });
 
@@ -564,6 +580,8 @@ describe('Trace', () => {
         revelationTechnique: null,
         notIdentifiedAt: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
 
       expect(trace.captureMetadata.width).toBeUndefined();
@@ -722,6 +740,8 @@ describe('Trace', () => {
         revelationTechnique: null,
         notIdentifiedAt: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
     });
 
@@ -737,6 +757,8 @@ describe('Trace', () => {
         revelationTechnique: null,
         notIdentifiedAt: null,
         thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
       });
     });
 
