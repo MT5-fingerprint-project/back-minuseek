@@ -1,6 +1,6 @@
 import { CaseReportData, PieceData } from '../../ports/case-report-data.reader';
-import { ImageGeometry } from '../../ports/report-image-embedder.port';
-import { geometryOf } from './image-treatments';
+import { ImageTreatment } from '../../ports/report-image-embedder.port';
+import { treatmentOf } from './image-treatments';
 
 function stillInTheCase(piece: PieceData): boolean {
   return piece.withdrawnAt === null && piece.imageDestroyedAt === null;
@@ -70,7 +70,7 @@ export interface PrintedImageRequest {
   key: string;
   path: string;
   resolutionDpi: number | null;
-  geometry: ImageGeometry | null;
+  treatment: ImageTreatment | null;
 }
 
 export function printedImages(data: CaseReportData): PrintedImageRequest[] {
@@ -78,7 +78,7 @@ export function printedImages(data: CaseReportData): PrintedImageRequest[] {
   const fitted = [
     ...printedPieces(data).map((piece) => piece.path),
     ...located.map((trace) => (trace.locationPhoto as { path: string }).path),
-  ].map((path) => ({ key: path, path, resolutionDpi: null, geometry: null }));
+  ].map((path) => ({ key: path, path, resolutionDpi: null, treatment: null }));
 
   // Seules les pièces d'une démonstration sont imprimées retravaillées : rendre les
   // autres coûterait un rééchantillonnage par pièce sans que rien ne s'en serve.
@@ -86,15 +86,15 @@ export function printedImages(data: CaseReportData): PrintedImageRequest[] {
   const treated = printedPieces(data).flatMap((piece) => {
     const shown =
       demonstrated.traces.has(piece.id) || demonstrated.prints.has(piece.id);
-    const geometry = shown ? geometryOf(piece) : null;
-    return geometry === null
+    const treatment = shown ? treatmentOf(piece) : null;
+    return treatment === null
       ? []
       : [
           {
             key: treatedKey(piece.path),
             path: piece.path,
             resolutionDpi: null,
-            geometry,
+            treatment,
           },
         ];
   });
@@ -107,7 +107,7 @@ export function printedImages(data: CaseReportData): PrintedImageRequest[] {
             key: lifeSizeKey(trace.path),
             path: trace.path,
             resolutionDpi: trace.resolutionDpi,
-            geometry: null,
+            treatment: null,
           },
         ],
   );

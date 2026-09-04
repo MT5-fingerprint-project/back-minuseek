@@ -234,7 +234,7 @@ describe('printedImages', () => {
     expect(keys).not.toContain(treatedKey('media/case-1/t1.png'));
   });
 
-  it('porte la géométrie enregistrée sur la demande d’embarquement', () => {
+  it('porte le traitement enregistré sur la demande d’embarquement', () => {
     const requests = printedImages(demonstrated(ROTATED));
 
     expect(
@@ -244,7 +244,31 @@ describe('printedImages', () => {
     ).toMatchObject({
       path: 'media/case-1/t1.png',
       resolutionDpi: null,
-      geometry: { rotationDeg: 90, mirrored: false },
+      treatment: { geometry: { rotationDeg: 90, mirrored: false }, pixels: [] },
+    });
+  });
+
+  it('embarque la pièce retravaillée quand l’opérateur l’a seulement repeinte', () => {
+    const desaturated = [
+      {
+        name: 'saturation',
+        type: 'FILTER' as const,
+        zIndex: 0,
+        isVisible: true,
+        settings: { filterKey: 'saturation', value: -100 },
+      },
+    ];
+    const requests = printedImages(demonstrated(desaturated));
+
+    expect(
+      requests.find(
+        (request) => request.key === treatedKey('media/case-1/t1.png'),
+      ),
+    ).toMatchObject({
+      treatment: {
+        geometry: null,
+        pixels: [{ kind: 'SATURATION', amount: -1 }],
+      },
     });
   });
 
@@ -333,7 +357,7 @@ describe('printedImages', () => {
       key: 'media/case-1/t1.png',
       path: 'media/case-1/t1.png',
       resolutionDpi: null,
-      geometry: null,
+      treatment: null,
     });
   });
 });

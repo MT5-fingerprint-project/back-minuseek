@@ -1,6 +1,10 @@
 import sharp, { type Sharp } from 'sharp';
-import type { ImageGeometry } from '../../application/ports/report-image-embedder.port';
+import type {
+  ImageGeometry,
+  ImageTreatment,
+} from '../../application/ports/report-image-embedder.port';
 import { ImageSize } from './image-size';
+import { applyPixelTreatments } from './pixel-treatments';
 
 export const PRINT_DPI = 300;
 
@@ -75,13 +79,40 @@ export function geometrySize(
   };
 }
 
-/** L'atelier retourne avant de tourner : la reproduction compose dans le même ordre. */
-function transformed(bytes: Buffer, geometry: ImageGeometry | null): Sharp {
+/**
+ * Pièce repeinte comme à l'écran. L'atelier applique ses filtres au bitmap mis
+ * en cache, puis le nœud tourne : les pixels sont donc retravaillés avant toute
+ * géométrie, et les minuties n'ont pas à bouger d'un pixel pour autant.
+ */
+async function repainted(
+  bytes: Buffer,
+  treatment: ImageTreatment | null,
+): Promise<Sharp> {
   const oriented = sharp(bytes).rotate();
-  if (geometry === null) {
+  if (treatment === null || treatment.pixels.length === 0) {
     return oriented;
   }
-  const flipped = geometry.mirrored ? oriented.flop() : oriented;
+  const { data, info } = await oriented
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  applyPixelTreatments(
+    new Uint8ClampedArray(data.buffer, data.byteOffset, data.length),
+    info.width,
+    info.height,
+    treatment.pixels,
+  );
+  return sharp(data, {
+    raw: { width: info.width, height: info.height, channels: info.channels },
+  });
+}
+
+/** L'atelier retourne avant de tourner : la reproduction compose dans le même ordre. */
+function transformed(pipeline: Sharp, geometry: ImageGeometry | null): Sharp {
+  if (geometry === null) {
+    return pipeline;
+  }
+  const flipped = geometry.mirrored ? pipeline.flop() : pipeline;
   return geometry.rotationDeg === 0
     ? flipped
     : flipped.rotate(geometry.rotationDeg, { background: '#ffffff' });
@@ -91,9 +122,12 @@ async function encode(
   bytes: Buffer,
   mimeType: string,
   target: ImageSize | null,
-  geometry: ImageGeometry | null,
+  treatment: ImageTreatment | null,
 ): Promise<Buffer | null> {
-  const oriented = transformed(bytes, geometry);
+  const oriented = transformed(
+    await repainted(bytes, treatment),
+    treatment?.geometry ?? null,
+  );
   const pipeline = encodedAsSource(
     target === null
       ? oriented
@@ -111,12 +145,13 @@ export async function prepareForPlate(
   bytes: Buffer,
   mimeType: string,
   resolutionDpi: number | null,
-  geometry: ImageGeometry | null,
+  treatment: ImageTreatment | null,
 ): Promise<PrintedImage | null> {
   const { width, height, orientation } = await sharp(bytes).metadata();
   if (width === undefined || height === undefined) {
     return null;
   }
+  const geometry = treatment?.geometry ?? null;
   const displayed = geometrySize(
     displayedSize({ width, height }, orientation),
     geometry,
@@ -137,7 +172,7 @@ export async function prepareForPlate(
           Math.round((real.height / MM_PER_INCH) * PRINT_DPI),
         ),
       },
-      geometry,
+      treatment,
     );
     return encoded === null
       ? null
@@ -152,14 +187,14 @@ export async function prepareForPlate(
   const fits =
     displayed.width <= MAX_WIDTH_PX && displayed.height <= MAX_HEIGHT_PX;
   const upright = (orientation ?? UPRIGHT) === UPRIGHT;
-  if (fits && upright && geometry === null) {
+  if (fits && upright && treatment === null) {
     return null;
   }
   const encoded = await encode(
     bytes,
     mimeType,
     fits ? null : { width: MAX_WIDTH_PX, height: MAX_HEIGHT_PX },
-    geometry,
+    treatment,
   );
   return encoded === null
     ? null

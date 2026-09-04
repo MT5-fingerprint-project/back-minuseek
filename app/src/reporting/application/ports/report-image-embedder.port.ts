@@ -6,6 +6,25 @@ export interface ImageGeometry {
   mirrored: boolean;
 }
 
+/**
+ * Réglages de l'atelier qui changent les pixels sans les déplacer. Les valeurs
+ * sont déjà ramenées à l'échelle de l'atelier (le curseur divisé par cent), et
+ * l'ordre de la liste est celui des calques : deux traitements ne commutent pas.
+ */
+export type PixelTreatment =
+  | { kind: 'BRIGHTNESS'; amount: number }
+  | { kind: 'CONTRAST'; amount: number }
+  | { kind: 'SATURATION'; amount: number }
+  | { kind: 'INVERSION' }
+  | { kind: 'CHANNELS'; red: boolean; green: boolean; blue: boolean }
+  | { kind: 'LEVELS'; blackPoint: number; whitePoint: number; gamma: number }
+  | { kind: 'SHARPENING'; amount: number };
+
+export interface ImageTreatment {
+  geometry: ImageGeometry | null;
+  pixels: PixelTreatment[];
+}
+
 export interface ReportImageEmbedderPort {
   /**
    * Image prête à être embarquée dans le PDF : data-URL et dimensions natives.
@@ -13,13 +32,13 @@ export interface ReportImageEmbedderPort {
    * taille réelle en millimètres. `null` quand la pièce est illisible, dans un
    * format que le rendu ne sait pas afficher, ou trop grande pour la planche à
    * l'échelle 1 : le rapport ne l'imprime pas plutôt que de la montrer à une
-   * échelle qu'il ne peut pas annoncer. `geometry` non nul reproduit la trace
-   * telle que l'opérateur l'a retournée dans le comparateur.
+   * échelle qu'il ne peut pas annoncer. `treatment` non nul reproduit la pièce
+   * telle que l'opérateur l'a retravaillée dans le comparateur.
    */
   embed(
     storedPath: string,
     resolutionDpi: number | null,
-    geometry: ImageGeometry | null,
+    treatment: ImageTreatment | null,
   ): Promise<ReportImageViewModel | null>;
 }
 

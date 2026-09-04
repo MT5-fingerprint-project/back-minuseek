@@ -1,8 +1,27 @@
 import { PieceData } from '../../ports/case-report-data.reader';
-import { ImageGeometry } from '../../ports/report-image-embedder.port';
+import {
+  ImageGeometry,
+  ImageTreatment,
+  PixelTreatment,
+} from '../../ports/report-image-embedder.port';
 
 const ROTATION = 'rotation';
 const MIRROR = 'mirror';
+
+/** Les trois canaux ne sont qu'un seul traitement dans l'atelier. Les trois niveaux aussi. */
+const CHANNEL_KEYS: Record<string, 'red' | 'green' | 'blue'> = {
+  channelRed: 'red',
+  channelGreen: 'green',
+  channelBlue: 'blue',
+};
+
+const LEVEL_KEYS: Record<string, 'blackPoint' | 'whitePoint' | 'gamma'> = {
+  levelsBlack: 'blackPoint',
+  levelsWhite: 'whitePoint',
+  levelsGamma: 'gamma',
+};
+
+const SLIDER_SCALE = 100;
 
 interface Point {
   x: number;
@@ -39,6 +58,75 @@ export function geometryOf(piece: PieceData): ImageGeometry | null {
   }
 
   return rotationDeg === 0 && !mirrored ? null : { rotationDeg, mirrored };
+}
+
+/**
+ * Réglages de l'atelier qui repeignent les pixels, dans l'ordre des calques :
+ * c'est celui dans lequel le comparateur les empile, et deux traitements ne
+ * commutent pas. Un curseur ramené à zéro n'a plus de calque, un calque masqué
+ * n'est pas appliqué à l'écran, ni ici.
+ */
+export function pixelTreatmentsOf(piece: PieceData): PixelTreatment[] {
+  const treatments: PixelTreatment[] = [];
+  let channels: Extract<PixelTreatment, { kind: 'CHANNELS' }> | null = null;
+  let levels: Extract<PixelTreatment, { kind: 'LEVELS' }> | null = null;
+
+  for (const layer of piece.layers) {
+    if (layer.type !== 'FILTER' || !layer.isVisible) {
+      continue;
+    }
+    const { filterKey, value } = layer.settings;
+    if (
+      typeof filterKey !== 'string' ||
+      typeof value !== 'number' ||
+      value === 0
+    ) {
+      continue;
+    }
+    const amount = value / SLIDER_SCALE;
+
+    // Les groupes prennent la place de leur première clé rencontrée et se
+    // complètent ensuite : l'atelier n'applique leur filtre qu'une fois.
+    const channel = CHANNEL_KEYS[filterKey];
+    if (channel !== undefined) {
+      if (channels === null) {
+        channels = { kind: 'CHANNELS', red: false, green: false, blue: false };
+        treatments.push(channels);
+      }
+      channels[channel] = true;
+      continue;
+    }
+
+    const level = LEVEL_KEYS[filterKey];
+    if (level !== undefined) {
+      if (levels === null) {
+        levels = { kind: 'LEVELS', blackPoint: 0, whitePoint: 0, gamma: 0 };
+        treatments.push(levels);
+      }
+      levels[level] = amount;
+      continue;
+    }
+
+    if (filterKey === 'brightness') {
+      treatments.push({ kind: 'BRIGHTNESS', amount });
+    } else if (filterKey === 'contrast') {
+      treatments.push({ kind: 'CONTRAST', amount });
+    } else if (filterKey === 'saturation') {
+      treatments.push({ kind: 'SATURATION', amount });
+    } else if (filterKey === 'inversion') {
+      treatments.push({ kind: 'INVERSION' });
+    } else if (filterKey === 'sharpening') {
+      treatments.push({ kind: 'SHARPENING', amount });
+    }
+  }
+
+  return treatments;
+}
+
+export function treatmentOf(piece: PieceData): ImageTreatment | null {
+  const geometry = geometryOf(piece);
+  const pixels = pixelTreatmentsOf(piece);
+  return geometry === null && pixels.length === 0 ? null : { geometry, pixels };
 }
 
 /**

@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import type { ReportImageEmbedderPort } from '../../application/ports/report-image-embedder.port';
-import type { ImageGeometry } from '../../application/ports/report-image-embedder.port';
+import type { ImageTreatment } from '../../application/ports/report-image-embedder.port';
 import {
   REPORT_STORAGE,
   type ReportStoragePort,
@@ -35,7 +35,7 @@ export class StorageReportImageEmbedder implements ReportImageEmbedderPort {
   async embed(
     storedPath: string,
     resolutionDpi: number | null,
-    geometry: ImageGeometry | null,
+    treatment: ImageTreatment | null,
   ): Promise<ReportImageViewModel | null> {
     let bytes: Buffer;
     try {
@@ -53,7 +53,7 @@ export class StorageReportImageEmbedder implements ReportImageEmbedderPort {
       mimeType,
       resolutionDpi,
       storedPath,
-      geometry,
+      treatment,
     );
     if (printed === null && resolutionDpi !== null) {
       return null;
@@ -81,14 +81,14 @@ export class StorageReportImageEmbedder implements ReportImageEmbedderPort {
     mimeType: string,
     resolutionDpi: number | null,
     storedPath: string,
-    geometry: ImageGeometry | null,
+    treatment: ImageTreatment | null,
   ): Promise<PrintedImage | null> {
     try {
       const printed = await prepareForPlate(
         bytes,
         mimeType,
         resolutionDpi,
-        geometry,
+        treatment,
       );
       if (printed === null && resolutionDpi !== null) {
         this.logger.warn(

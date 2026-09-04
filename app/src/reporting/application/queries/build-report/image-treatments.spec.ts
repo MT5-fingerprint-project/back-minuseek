@@ -1,5 +1,10 @@
 import { PieceData } from '../../ports/case-report-data.reader';
-import { geometryOf, movedByGeometry } from './image-treatments';
+import {
+  geometryOf,
+  movedByGeometry,
+  pixelTreatmentsOf,
+  treatmentOf,
+} from './image-treatments';
 
 function piece(
   layers: { filterKey: string; value: number; isVisible?: boolean }[],
@@ -97,5 +102,106 @@ describe('movedByGeometry', () => {
     );
 
     expect(moved).toEqual({ x: 30, y: 20 });
+  });
+});
+
+describe('pixelTreatmentsOf', () => {
+  it('suit l’ordre des calques, que deux traitements ne commutent pas', () => {
+    expect(
+      pixelTreatmentsOf(
+        piece([
+          { filterKey: 'saturation', value: -100 },
+          { filterKey: 'contrast', value: 20 },
+        ]),
+      ),
+    ).toEqual([
+      { kind: 'SATURATION', amount: -1 },
+      { kind: 'CONTRAST', amount: 0.2 },
+    ]);
+  });
+
+  it('ramène le curseur à l’échelle de l’atelier', () => {
+    expect(
+      pixelTreatmentsOf(piece([{ filterKey: 'brightness', value: 32 }])),
+    ).toEqual([{ kind: 'BRIGHTNESS', amount: 0.32 }]);
+  });
+
+  it('rassemble les trois canaux en un traitement, à la place du premier', () => {
+    expect(
+      pixelTreatmentsOf(
+        piece([
+          { filterKey: 'channelGreen', value: 1 },
+          { filterKey: 'saturation', value: -100 },
+          { filterKey: 'channelBlue', value: 1 },
+        ]),
+      ),
+    ).toEqual([
+      { kind: 'CHANNELS', red: false, green: true, blue: true },
+      { kind: 'SATURATION', amount: -1 },
+    ]);
+  });
+
+  it('rassemble les trois niveaux en un traitement, à la place du premier', () => {
+    expect(
+      pixelTreatmentsOf(
+        piece([
+          { filterKey: 'levelsGamma', value: 82 },
+          { filterKey: 'levelsBlack', value: 37 },
+        ]),
+      ),
+    ).toEqual([
+      { kind: 'LEVELS', blackPoint: 0.37, whitePoint: 0, gamma: 0.82 },
+    ]);
+  });
+
+  it('écarte un calque masqué et un curseur revenu au neutre', () => {
+    expect(
+      pixelTreatmentsOf(
+        piece([
+          { filterKey: 'saturation', value: -100, isVisible: false },
+          { filterKey: 'contrast', value: 0 },
+        ]),
+      ),
+    ).toEqual([]);
+  });
+
+  it('laisse la géométrie de côté : elle ne repeint aucun pixel', () => {
+    expect(
+      pixelTreatmentsOf(
+        piece([
+          { filterKey: 'rotation', value: 90 },
+          { filterKey: 'mirror', value: 1 },
+        ]),
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe('treatmentOf', () => {
+  it('retient une pièce seulement repeinte, sans géométrie', () => {
+    expect(
+      treatmentOf(piece([{ filterKey: 'saturation', value: -100 }])),
+    ).toEqual({
+      geometry: null,
+      pixels: [{ kind: 'SATURATION', amount: -1 }],
+    });
+  });
+
+  it('porte les deux quand l’opérateur a repeint et retourné', () => {
+    expect(
+      treatmentOf(
+        piece([
+          { filterKey: 'saturation', value: -100 },
+          { filterKey: 'rotation', value: 90 },
+        ]),
+      ),
+    ).toEqual({
+      geometry: { rotationDeg: 90, mirrored: false },
+      pixels: [{ kind: 'SATURATION', amount: -1 }],
+    });
+  });
+
+  it('ne retient rien quand l’atelier n’a rien enregistré', () => {
+    expect(treatmentOf(piece([]))).toBeNull();
   });
 });
