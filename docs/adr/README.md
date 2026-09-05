@@ -33,3 +33,4 @@ On consigne ici les **décisions structurantes** du repo : choix techno, trade-o
 - [ADR-0020](0020-mode-aveugle-cote-serveur.md) — Le mode aveugle est décidé et appliqué par le serveur, et le calque porte son auteur
 - [ADR-0021](0021-confrontation-des-conclusions.md) — Ce que « concorder » veut dire, et quand la confrontation se joue
 - [ADR-0022](0022-vignette-d-affichage-hors-piece.md) — La vignette d'affichage est un artefact hors pièce, suffixé avant le point
+- [ADR-0024](0024-le-travail-de-l-appelant-est-une-lecture-sans-parametre.md) — Le travail de l'appelant est une lecture sans paramètre, distincte du pilotage du service
