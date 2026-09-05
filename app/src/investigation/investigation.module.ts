@@ -23,6 +23,10 @@ import { PrismaRecipientBookEntryRepository } from './infrastructure/persistence
 import { PrismaRecipientBookEntriesReader } from './infrastructure/persistence/prisma-recipient-book-entries.reader';
 import { RECIPIENT_BOOK_ENTRY_REPOSITORY } from './domain/recipient-book-entry/repository/recipient-book-entry.repository';
 import { RECIPIENT_BOOK_ENTRIES_READER } from './application/queries/list-recipient-book-entries/recipient-book-entries.reader';
+import { GetMyWorkHandler } from './application/queries/get-my-work/get-my-work.handler';
+import { MY_WORK_READER } from './application/queries/get-my-work/my-work.reader';
+import { MyWorkController } from './infrastructure/http/my-work.controller';
+import { PrismaMyWorkReader } from './infrastructure/persistence/prisma-my-work.reader';
 import { GetServiceActivityHandler } from './application/queries/get-service-activity/get-service-activity.handler';
 import { SERVICE_ACTIVITY_READER } from './application/queries/get-service-activity/service-activity.reader';
 import { ServiceActivityController } from './infrastructure/http/service-activity.controller';
@@ -55,6 +59,7 @@ import { BiometricsModule } from '../biometrics/biometrics.module';
     RecipientBookController,
     VerificationsController,
     ServiceActivityController,
+    MyWorkController,
   ],
   providers: [
     OpenInvestigationCaseHandler,
@@ -67,6 +72,7 @@ import { BiometricsModule } from '../biometrics/biometrics.module';
     ListInvestigationCasesHandler,
     GetInvestigationCaseHandler,
     GetServiceActivityHandler,
+    GetMyWorkHandler,
     RequestCaseVerificationHandler,
     RecordVerificationConclusionHandler,
     CompleteCaseVerificationHandler,
@@ -92,6 +98,10 @@ import { BiometricsModule } from '../biometrics/biometrics.module';
     {
       provide: SERVICE_ACTIVITY_READER,
       useClass: PrismaServiceActivityReader,
+    },
+    {
+      provide: MY_WORK_READER,
+      useClass: PrismaMyWorkReader,
     },
     {
       provide: SERVICE_USER_DIRECTORY,
