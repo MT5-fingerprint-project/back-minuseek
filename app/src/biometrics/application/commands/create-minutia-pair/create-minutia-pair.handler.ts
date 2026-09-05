@@ -150,10 +150,6 @@ export class CreateMinutiaPairHandler implements ICommandHandler<
     };
   }
 
-  // Apparier écrit sur les deux minuties : la branche QUALIFIES réécrit le type
-  // de celle qui reste indéterminée, et la paire verrouille ensuite les deux
-  // contre toute requalification. Un vérificateur en aveugle n'y touche donc pas
-  // plus qu'il ne touche à un calque de l'opérateur.
   private async readMinutia(
     layerId: string,
     expectedFingerprintId: string,
