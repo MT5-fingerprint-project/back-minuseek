@@ -39,6 +39,10 @@ export const SEALING_EVENTS: Record<
     kind: 'EXPORTED_IMAGE',
     digestKey: 'fileSha256',
   },
+  [AuditEventTypeEnum.CONCORDANCE_VIDEO_DEPOSITED]: {
+    kind: 'CONCORDANCE_VIDEO',
+    digestKey: 'fileSha256',
+  },
 };
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;

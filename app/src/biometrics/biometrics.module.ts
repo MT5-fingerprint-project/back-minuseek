@@ -29,6 +29,7 @@ import { CreateMinutiaPairHandler } from './application/commands/create-minutia-
 import { RemoveMinutiaPairHandler } from './application/commands/remove-minutia-pair/remove-minutia-pair.handler';
 import { ListMinutiaPairsHandler } from './application/queries/list-minutia-pairs/list-minutia-pairs.handler';
 import { DepositExportedImageHandler } from './application/commands/deposit-exported-image/deposit-exported-image.handler';
+import { DepositConcordanceVideoHandler } from './application/commands/deposit-concordance-video/deposit-concordance-video.handler';
 import { ListExportedImagesHandler } from './application/queries/list-exported-images/list-exported-images.handler';
 import { IMAGE_STORAGE } from './application/ports/image-storage.port';
 import { IMAGE_CONVERTER } from './application/ports/image-converter.port';
@@ -57,10 +58,12 @@ import { MATCHING_REPOSITORY } from './domain/matching/repository/matching.repos
 import { HIT_REPOSITORY } from './domain/hit/repository/hit.repository';
 import { MINUTIA_PAIR_REPOSITORY } from './domain/minutia-pair/repository/minutia-pair.repository';
 import { EXPORTED_IMAGE_REPOSITORY } from './domain/exported-image/repository/exported-image.repository';
+import { CONCORDANCE_VIDEO_REPOSITORY } from './domain/concordance-video/repository/concordance-video.repository';
 import { BiometricsController } from './infrastructure/http/biometrics.controller';
 import { LayersController } from './infrastructure/http/layers.controller';
 import { MinutiaPairsController } from './infrastructure/http/minutia-pairs.controller';
 import { ExportsController } from './infrastructure/http/exports.controller';
+import { ConcordanceVideosController } from './infrastructure/http/concordance-videos.controller';
 import { PrismaReferencePrintRepository } from './infrastructure/persistence/prisma-reference-print.repository';
 import { PrismaTraceRepository } from './infrastructure/persistence/prisma-trace.repository';
 import { PrismaTraceLocationPhotoRepository } from './infrastructure/persistence/prisma-trace-location-photo.repository';
@@ -78,6 +81,7 @@ import { PrismaHitReader } from './infrastructure/persistence/prisma-hit.reader'
 import { PrismaMinutiaPairRepository } from './infrastructure/persistence/prisma-minutia-pair.repository';
 import { PrismaMinutiaPairReader } from './infrastructure/persistence/prisma-minutia-pair.reader';
 import { PrismaExportedImageRepository } from './infrastructure/persistence/prisma-exported-image.repository';
+import { PrismaConcordanceVideoRepository } from './infrastructure/persistence/prisma-concordance-video.repository';
 import { PrismaExportedImageReader } from './infrastructure/persistence/prisma-exported-image.reader';
 import { SharpImageConverterAdapter } from './infrastructure/conversion/sharp-image-converter.adapter';
 import { GcsImageStorageAdapter } from './infrastructure/storage/gcs-image-storage.adapter';
@@ -93,6 +97,7 @@ import { AccessModule } from '../access/access.module';
     LayersController,
     MinutiaPairsController,
     ExportsController,
+    ConcordanceVideosController,
   ],
   providers: [
     UploadTraceHandler,
@@ -124,6 +129,7 @@ import { AccessModule } from '../access/access.module';
     RemoveMinutiaPairHandler,
     ListMinutiaPairsHandler,
     DepositExportedImageHandler,
+    DepositConcordanceVideoHandler,
     ListExportedImagesHandler,
     { provide: TRACE_REPOSITORY, useClass: PrismaTraceRepository },
     {
@@ -154,6 +160,10 @@ import { AccessModule } from '../access/access.module';
     {
       provide: EXPORTED_IMAGE_REPOSITORY,
       useClass: PrismaExportedImageRepository,
+    },
+    {
+      provide: CONCORDANCE_VIDEO_REPOSITORY,
+      useClass: PrismaConcordanceVideoRepository,
     },
     {
       provide: FAMILIAR_REFERENCE_PRINT_READER,

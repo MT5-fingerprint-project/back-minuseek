@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "SealKind" ADD VALUE 'CONCORDANCE_VIDEO';
