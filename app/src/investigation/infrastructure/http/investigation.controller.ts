@@ -36,12 +36,14 @@ import { UpdateInvestigationCaseCommand } from '../../application/commands/updat
 import { UpdateCaseRecipientCommand } from '../../application/commands/update-case-recipient/update-case-recipient.command';
 import { CloseInvestigationCaseCommand } from '../../application/commands/close-investigation-case/close-investigation-case.command';
 import { ReopenInvestigationCaseCommand } from '../../application/commands/reopen-investigation-case/reopen-investigation-case.command';
+import { ChangeCaseStatusCommand } from '../../application/commands/change-case-status/change-case-status.command';
 import { DeclareCaseExpertiseDto } from './dto/declare-case-expertise.dto';
 import { UpdateCaseSaisineDto } from './dto/update-case-saisine.dto';
 import { OpenInvestigationCaseDto } from './dto/open-investigation-case.dto';
 import { UpdateInvestigationCaseDto } from './dto/update-investigation-case.dto';
 import { UpdateCaseRecipientDto } from './dto/update-case-recipient.dto';
 import { ReopenInvestigationCaseDto } from './dto/reopen-investigation-case.dto';
+import { ChangeCaseStatusDto } from './dto/change-case-status.dto';
 import { ListInvestigationCasesDto } from './dto/list-investigation-cases.dto';
 import { ListInvestigationCasesQuery } from '../../application/queries/list-investigation-cases/list-investigation-cases.query';
 import { GetInvestigationCaseQuery } from '../../application/queries/get-investigation-case/get-investigation-case.query';
@@ -313,6 +315,26 @@ export class InvestigationController {
     );
   }
 
+  @Put(':id/status')
+  @CaseAdministration()
+  @ApiOperation({
+    summary: "Porter l'affaire en cours de traitement ou en vérification",
+  })
+  @ApiResponse({ status: 200, description: "Détail de l'affaire à jour" })
+  @ApiResponse({ status: 400, description: 'Statut hors du catalogue' })
+  @ApiResponse({ status: 404, description: 'Affaire non trouvée' })
+  @ApiResponse({ status: 409, description: 'Transition refusée' })
+  changeWorkStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ChangeCaseStatusDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<InvestigationCaseReadModel> {
+    return this.changeStatus(
+      id,
+      new ChangeCaseStatusCommand(toAuditActor(user), id, dto.status),
+    );
+  }
+
   @Post(':id/expertise')
   @CaseAdministration()
   @ApiOperation({
@@ -419,7 +441,10 @@ export class InvestigationController {
   /** Clore et rouvrir répondent tous deux le détail à jour de l'affaire. */
   private async changeStatus(
     id: string,
-    command: CloseInvestigationCaseCommand | ReopenInvestigationCaseCommand,
+    command:
+      | CloseInvestigationCaseCommand
+      | ReopenInvestigationCaseCommand
+      | ChangeCaseStatusCommand,
   ): Promise<InvestigationCaseReadModel> {
     try {
       await this.commandBus.execute(command);

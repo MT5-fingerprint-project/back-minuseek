@@ -9,6 +9,7 @@ import { OpenInvestigationCaseHandler } from './application/commands/open-invest
 import { UpdateInvestigationCaseHandler } from './application/commands/update-investigation-case/update-investigation-case.handler';
 import { CloseInvestigationCaseHandler } from './application/commands/close-investigation-case/close-investigation-case.handler';
 import { ReopenInvestigationCaseHandler } from './application/commands/reopen-investigation-case/reopen-investigation-case.handler';
+import { ChangeCaseStatusHandler } from './application/commands/change-case-status/change-case-status.handler';
 import { RequestCaseVerificationHandler } from './application/commands/request-case-verification/request-case-verification.handler';
 import { RecordVerificationConclusionHandler } from './application/commands/record-verification-conclusion/record-verification-conclusion.handler';
 import { CompleteCaseVerificationHandler } from './application/commands/complete-case-verification/complete-case-verification.handler';
@@ -62,6 +63,7 @@ import { BiometricsModule } from '../biometrics/biometrics.module';
     UpdateInvestigationCaseHandler,
     CloseInvestigationCaseHandler,
     ReopenInvestigationCaseHandler,
+    ChangeCaseStatusHandler,
     ListInvestigationCasesHandler,
     GetInvestigationCaseHandler,
     GetServiceActivityHandler,
