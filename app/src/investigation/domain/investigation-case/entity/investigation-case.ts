@@ -93,6 +93,20 @@ function statedOr<T>(sent: T | null | undefined, current: T | null): T | null {
   return sent === undefined ? current : sent;
 }
 
+const WORK_STATUS_TRANSITIONS: Record<
+  InvestigationCaseStatusEnum,
+  readonly InvestigationCaseStatusEnum[]
+> = {
+  [InvestigationCaseStatusEnum.OPEN]: [InvestigationCaseStatusEnum.IN_PROGRESS],
+  [InvestigationCaseStatusEnum.IN_PROGRESS]: [
+    InvestigationCaseStatusEnum.UNDER_REVIEW,
+  ],
+  [InvestigationCaseStatusEnum.UNDER_REVIEW]: [
+    InvestigationCaseStatusEnum.IN_PROGRESS,
+  ],
+  [InvestigationCaseStatusEnum.CLOSED]: [],
+};
+
 export class InvestigationCase {
   private constructor(
     private readonly _id: string,
@@ -249,6 +263,14 @@ export class InvestigationCase {
     }
     this._status = InvestigationCaseStatus.inProgress();
     this._closedAt = null;
+    this._updatedAt = new Date();
+  }
+
+  changeStatusTo(target: InvestigationCaseStatusEnum): void {
+    if (!WORK_STATUS_TRANSITIONS[this.status].includes(target)) {
+      throw new InvalidCaseTransitionError(this.status, target);
+    }
+    this._status = InvestigationCaseStatus.from(target);
     this._updatedAt = new Date();
   }
 

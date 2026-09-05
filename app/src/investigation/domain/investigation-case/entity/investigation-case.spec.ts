@@ -293,6 +293,118 @@ describe('InvestigationCase', () => {
     });
   });
 
+  describe('changement de statut de travail', () => {
+    const OUVERTURE = new Date('2026-01-01T10:00:00Z');
+
+    it.each([
+      [
+        InvestigationCaseStatusEnum.OPEN,
+        InvestigationCaseStatusEnum.IN_PROGRESS,
+      ],
+      [
+        InvestigationCaseStatusEnum.IN_PROGRESS,
+        InvestigationCaseStatusEnum.UNDER_REVIEW,
+      ],
+      [
+        InvestigationCaseStatusEnum.UNDER_REVIEW,
+        InvestigationCaseStatusEnum.IN_PROGRESS,
+      ],
+    ])('porte une affaire %s en %s', (from, to) => {
+      const c = aCaseIn(from);
+
+      c.changeStatusTo(to);
+
+      expect(c.status).toBe(to);
+      expect(c.updatedAt.getTime()).toBeGreaterThan(OUVERTURE.getTime());
+    });
+
+    it.each([
+      [InvestigationCaseStatusEnum.OPEN, InvestigationCaseStatusEnum.OPEN],
+      [
+        InvestigationCaseStatusEnum.OPEN,
+        InvestigationCaseStatusEnum.UNDER_REVIEW,
+      ],
+      [InvestigationCaseStatusEnum.OPEN, InvestigationCaseStatusEnum.CLOSED],
+      [
+        InvestigationCaseStatusEnum.IN_PROGRESS,
+        InvestigationCaseStatusEnum.IN_PROGRESS,
+      ],
+      [
+        InvestigationCaseStatusEnum.IN_PROGRESS,
+        InvestigationCaseStatusEnum.OPEN,
+      ],
+      [
+        InvestigationCaseStatusEnum.IN_PROGRESS,
+        InvestigationCaseStatusEnum.CLOSED,
+      ],
+      [
+        InvestigationCaseStatusEnum.UNDER_REVIEW,
+        InvestigationCaseStatusEnum.UNDER_REVIEW,
+      ],
+      [
+        InvestigationCaseStatusEnum.UNDER_REVIEW,
+        InvestigationCaseStatusEnum.OPEN,
+      ],
+      [
+        InvestigationCaseStatusEnum.UNDER_REVIEW,
+        InvestigationCaseStatusEnum.CLOSED,
+      ],
+      [
+        InvestigationCaseStatusEnum.CLOSED,
+        InvestigationCaseStatusEnum.IN_PROGRESS,
+      ],
+      [
+        InvestigationCaseStatusEnum.CLOSED,
+        InvestigationCaseStatusEnum.UNDER_REVIEW,
+      ],
+      [InvestigationCaseStatusEnum.CLOSED, InvestigationCaseStatusEnum.OPEN],
+      [InvestigationCaseStatusEnum.CLOSED, InvestigationCaseStatusEnum.CLOSED],
+    ])('refuse de porter une affaire %s en %s', (from, to) => {
+      expect(() => aCaseIn(from).changeStatusTo(to)).toThrow(
+        InvalidCaseTransitionError,
+      );
+    });
+
+    it.each(['in_progress', ' IN_PROGRESS ', '', 'UNKNOWN', '__proto__'])(
+      'refuse la cible « %s », hors catalogue',
+      (raw) => {
+        const c = aCaseIn(InvestigationCaseStatusEnum.OPEN);
+
+        expect(() =>
+          c.changeStatusTo(raw as InvestigationCaseStatusEnum),
+        ).toThrow(InvalidCaseTransitionError);
+      },
+    );
+
+    it('ne change ni le statut ni la date de mise à jour quand la transition est refusée', () => {
+      const c = aCaseIn(InvestigationCaseStatusEnum.IN_PROGRESS);
+
+      expect(() =>
+        c.changeStatusTo(InvestigationCaseStatusEnum.CLOSED),
+      ).toThrow(InvalidCaseTransitionError);
+      expect(c.status).toBe(InvestigationCaseStatusEnum.IN_PROGRESS);
+      expect(c.updatedAt).toEqual(OUVERTURE);
+    });
+
+    it('ne ressuscite pas une affaire close', () => {
+      const c = aClosedCase();
+
+      expect(() =>
+        c.changeStatusTo(InvestigationCaseStatusEnum.IN_PROGRESS),
+      ).toThrow(InvalidCaseTransitionError);
+      expect(c.status).toBe(InvestigationCaseStatusEnum.CLOSED);
+      expect(c.closedAt).toEqual(CLOTURE_PRECEDENTE);
+    });
+
+    it('laisse la date de clôture vide quand on met le dossier en travail', () => {
+      const c = aCaseIn(InvestigationCaseStatusEnum.OPEN);
+
+      c.changeStatusTo(InvestigationCaseStatusEnum.IN_PROGRESS);
+
+      expect(c.closedAt).toBeNull();
+    });
+  });
+
   describe("l'en-tête judiciaire", () => {
     function aCaseWithHeader(
       header: Partial<InvestigationCasePrimitives> = {},
