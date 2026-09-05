@@ -15,8 +15,8 @@ import { UpdateLayerHandler } from './update-layer.handler';
 import { LayerNotAuthoredByVerifierError } from '../../../domain/layer/errors/layer-not-authored-by-verifier.error';
 import { MinutiaTypeEnum } from '../../../../shared/domain/forensics/minutiae';
 import { MinutiaPair } from '../../../domain/minutia-pair/entity/minutia-pair';
-import { PairedMinutiaTypeChangeError } from '../../../domain/minutia-pair/errors/paired-minutia-type-change.error';
 import { InMemoryMinutiaPairRepository } from '../../../infrastructure/persistence/in-memory-minutia-pair.repository';
+import { InMemoryTransactionRunner } from '../../../../tenancy/infrastructure/persistence/in-memory-transaction-runner';
 
 describe('UpdateLayerHandler', () => {
   const initialSettings = {
@@ -69,8 +69,10 @@ describe('UpdateLayerHandler', () => {
       fingerprintLocator,
       caseStatus,
       caseExpertise,
+      new InMemoryTransactionRunner(),
     );
     fingerprintLocator.setTrace('fp-1', 'case-9');
+    fingerprintLocator.setReferencePrint('ref-1', 'case-9');
   });
 
   it("refuse de basculer un calque ordinaire sur un réglage d'expert hors expertise", async () => {
@@ -216,6 +218,17 @@ describe('UpdateLayerHandler', () => {
           createdByUserId: 'user-marie',
         }),
       );
+      repo.seed(
+        Layer.create({
+          id: 'layer-ref-1',
+          fingerprintId: 'ref-1',
+          name: 'Minutie',
+          type: 'ANNOTATION',
+          zIndex: 0,
+          settings: minutia(MinutiaTypeEnum.BIFURCATION),
+          createdByUserId: 'user-marie',
+        }),
+      );
       pairs.seed(
         MinutiaPair.fromPrimitives({
           id: 'pair-1',
@@ -229,47 +242,147 @@ describe('UpdateLayerHandler', () => {
       );
     };
 
-    it('refuse de requalifier son type', async () => {
+    const typeOf = async (layerId: string) =>
+      (await repo.findById(layerId))?.toPrimitives().settings.minutiaType;
+
+    it("requalifie l'autre minutie de la paire dans la foulée", async () => {
       pairedMinutia();
+
+      await handler.execute(
+        new UpdateLayerCommand(
+          EXPERT_ACTOR,
+          'layer-appariee',
+          undefined,
+          undefined,
+          undefined,
+          minutia(MinutiaTypeEnum.ISLAND),
+        ),
+      );
+
+      expect(await typeOf('layer-appariee')).toBe(MinutiaTypeEnum.ISLAND);
+      expect(await typeOf('layer-ref-1')).toBe(MinutiaTypeEnum.ISLAND);
+    });
+
+    it("chaîne l'acte de la minutie suivie, avec le type qu'elle quitte", async () => {
+      pairedMinutia();
+
+      await handler.execute(
+        new UpdateLayerCommand(
+          EXPERT_ACTOR,
+          'layer-appariee',
+          undefined,
+          undefined,
+          undefined,
+          minutia(MinutiaTypeEnum.ISLAND),
+        ),
+      );
+
+      expect(auditTrail.events).toHaveLength(2);
+      const [, followed] = auditTrail.events;
+      expect(followed.eventType).toBe(AuditEventTypeEnum.LAYER_UPDATED);
+      expect(followed.caseId).toBe('case-9');
+      expect(followed.traceId).toBe('fp-1');
+      expect(followed.payload).toMatchObject({
+        layerId: 'layer-ref-1',
+        settings: minutia(MinutiaTypeEnum.ISLAND),
+        previousMinutiaType: MinutiaTypeEnum.BIFURCATION,
+      });
+    });
+
+    it('rend les deux minuties indéterminées quand le type disparaît', async () => {
+      pairedMinutia();
+
+      await handler.execute(
+        new UpdateLayerCommand(
+          EXPERT_ACTOR,
+          'layer-appariee',
+          undefined,
+          undefined,
+          undefined,
+          { type: 'circle', x: 10, y: 20, radius: 4, color: '#ef4444' },
+        ),
+      );
+
+      expect(await typeOf('layer-appariee')).toBeUndefined();
+      expect(await typeOf('layer-ref-1')).toBe(MinutiaTypeEnum.UNDETERMINED);
+    });
+
+    it("suit aussi quand c'est la minutie de l'empreinte qui change", async () => {
+      pairedMinutia();
+
+      await handler.execute(
+        new UpdateLayerCommand(
+          EXPERT_ACTOR,
+          'layer-ref-1',
+          undefined,
+          undefined,
+          undefined,
+          minutia(MinutiaTypeEnum.RIDGE_ENDING),
+        ),
+      );
+
+      expect(await typeOf('layer-appariee')).toBe(MinutiaTypeEnum.RIDGE_ENDING);
+      expect(auditTrail.events.map((event) => event.traceId)).toEqual([
+        null,
+        'fp-1',
+      ]);
+    });
+
+    it("refuse au vérificateur de requalifier la minutie d'un autre", async () => {
+      repo.seed(
+        Layer.create({
+          id: 'layer-du-verificateur',
+          fingerprintId: 'fp-1',
+          name: 'Minutie',
+          type: 'ANNOTATION',
+          zIndex: 0,
+          settings: minutia(MinutiaTypeEnum.BIFURCATION),
+          createdByUserId: 'user-lucie',
+        }),
+      );
+      repo.seed(
+        Layer.create({
+          id: 'layer-du-titulaire',
+          fingerprintId: 'ref-1',
+          name: 'Minutie',
+          type: 'ANNOTATION',
+          zIndex: 0,
+          settings: minutia(MinutiaTypeEnum.BIFURCATION),
+          createdByUserId: 'user-marie',
+        }),
+      );
+      pairs.seed(
+        MinutiaPair.fromPrimitives({
+          id: 'pair-mixte',
+          traceId: 'fp-1',
+          referencePrintId: 'ref-1',
+          traceMinutiaLayerId: 'layer-du-verificateur',
+          referenceMinutiaLayerId: 'layer-du-titulaire',
+          createdByUserId: 'user-marie',
+          createdAt: new Date('2026-09-01T10:00:00Z'),
+        }),
+      );
 
       await expect(
         handler.execute(
           new UpdateLayerCommand(
             EXPERT_ACTOR,
-            'layer-appariee',
+            'layer-du-verificateur',
             undefined,
             undefined,
             undefined,
             minutia(MinutiaTypeEnum.ISLAND),
+            'user-lucie',
           ),
         ),
-      ).rejects.toBeInstanceOf(PairedMinutiaTypeChangeError);
-      expect(
-        (await repo.findById('layer-appariee'))?.toPrimitives().settings
-          .minutiaType,
-      ).toBe(MinutiaTypeEnum.BIFURCATION);
+      ).rejects.toBeInstanceOf(LayerNotAuthoredByVerifierError);
+      expect(await typeOf('layer-du-verificateur')).toBe(
+        MinutiaTypeEnum.BIFURCATION,
+      );
       expect(auditTrail.events).toEqual([]);
     });
 
-    it('refuse aussi de lui retirer son type', async () => {
-      pairedMinutia();
-
-      await expect(
-        handler.execute(
-          new UpdateLayerCommand(
-            EXPERT_ACTOR,
-            'layer-appariee',
-            undefined,
-            undefined,
-            undefined,
-            { type: 'circle', x: 10, y: 20, radius: 4, color: '#ef4444' },
-          ),
-        ),
-      ).rejects.toBeInstanceOf(PairedMinutiaTypeChangeError);
-      expect(auditTrail.events).toEqual([]);
-    });
-
-    it('laisse la déplacer tant que son type ne bouge pas', async () => {
+    it('laisse la déplacer sans toucher à sa jumelle', async () => {
       pairedMinutia();
 
       await handler.execute(
@@ -286,6 +399,7 @@ describe('UpdateLayerHandler', () => {
       expect(
         (await repo.findById('layer-appariee'))?.toPrimitives().settings.x,
       ).toBe(99);
+      expect(auditTrail.events).toHaveLength(1);
     });
 
     it('laisse la renommer sans toucher à ses réglages', async () => {
