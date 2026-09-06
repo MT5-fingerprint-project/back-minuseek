@@ -48,6 +48,7 @@ const FROZEN_CATALOGUE = [
   'MINUTIA_PAIRED',
   'MINUTIA_UNPAIRED',
   'CONCORDANCE_VIDEO_DEPOSITED',
+  'MARK_RADIUS_SET',
 ];
 
 describe('AuditEventType', () => {

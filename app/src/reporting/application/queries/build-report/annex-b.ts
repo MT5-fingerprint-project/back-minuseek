@@ -21,6 +21,7 @@ function markOf(
   minutia: MinutiaData | undefined,
   number: number,
   move: Move,
+  pieceMarkRadius: number | null,
 ): ReportDemonstrationMarkViewModel | null {
   if (!minutia) {
     return null;
@@ -30,7 +31,7 @@ function markOf(
     number,
     x,
     y,
-    radius: minutia.radius ?? 6,
+    radius: pieceMarkRadius ?? minutia.radius ?? 6,
     label: minutia.typeLabel,
   };
 }
@@ -137,11 +138,13 @@ export function buildAnnexB(
         traceMinutiae.get(pair.traceMinutiaLayerId),
         pair.number,
         printedTrace.move,
+        trace.markRadius,
       );
       const onPrint = markOf(
         printMinutiae.get(pair.referenceMinutiaLayerId),
         pair.number,
         printedReference.move,
+        print.markRadius,
       );
       if (onTrace === null || onPrint === null) {
         continue;

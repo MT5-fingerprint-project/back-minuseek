@@ -45,6 +45,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: null,
         sourceHeight: null,
@@ -80,6 +81,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: 1500,
         sourceHeight: 2000,
@@ -97,6 +99,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: null,
         sourceHeight: null,
@@ -134,6 +137,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        markRadius: null,
         sourceWidth: null,
         sourceHeight: null,
         thumbPath:
@@ -169,6 +173,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: null,
         sourceHeight: null,
@@ -201,6 +206,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: new Date('2026-09-01T09:00:00.000Z'),
         resolutionDpi: null,
+        markRadius: null,
         sourceWidth: null,
         sourceHeight: null,
         thumbPath:
@@ -235,6 +241,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: 1207.34,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: null,
         sourceHeight: null,
@@ -267,6 +274,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: null,
         sourceHeight: null,
@@ -284,6 +292,39 @@ describe('ListReferencePrintsHandler', () => {
     expect(data[0].resolutionDpi).toBeNull();
   });
 
+  it('exposes the marker size set on a reference print', async () => {
+    const reader = new InMemoryReferencePrintReader([
+      {
+        id: 'ref-1',
+        path: 'media/investigation-case/case-9/reference-prints/ref-1.png',
+        caseId: 'case-9',
+        subjectId: null,
+        position: null,
+        createdAt: new Date('2026-07-01T00:00:00.000Z'),
+        matchings: [],
+        withdrawnAt: null,
+        withdrawalMotive: null,
+        withdrawalMotiveDetail: null,
+        imageDestroyedAt: null,
+        resolutionDpi: null,
+        markRadius: 36,
+        thumbPath: null,
+        sourceWidth: null,
+        sourceHeight: null,
+      },
+    ]);
+    const handler = new ListReferencePrintsHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(
+      new ListReferencePrintsQuery('case-9'),
+    );
+
+    expect(data[0].markRadius).toBe(36);
+  });
+
   it('départage deux empreintes versées dans la même seconde par leur identifiant', async () => {
     const versedAt = new Date('2026-07-01T00:00:00.000Z');
     const referencePrint = (id: string): ReferencePrintReadModel => ({
@@ -299,6 +340,7 @@ describe('ListReferencePrintsHandler', () => {
       withdrawalMotiveDetail: null,
       imageDestroyedAt: null,
       resolutionDpi: null,
+      markRadius: null,
       thumbPath: null,
       sourceWidth: null,
       sourceHeight: null,
@@ -334,6 +376,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: null,
         sourceHeight: null,
@@ -351,6 +394,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: null,
         sourceHeight: null,
@@ -384,6 +428,7 @@ describe('ListReferencePrintsHandler', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: new Date('2026-09-01T09:00:00.000Z'),
         resolutionDpi: null,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: null,
         sourceHeight: null,

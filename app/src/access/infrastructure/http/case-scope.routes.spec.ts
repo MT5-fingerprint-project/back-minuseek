@@ -763,6 +763,18 @@ const ROUTES_FERMEES_AU_VERIFICATEUR: Route[] = [
     url: `/reference-prints/${EMPREINTE}/calibration`,
     body: { resolutionDpi: 500 },
   },
+  {
+    label: 'PATCH /traces/:id/mark-radius',
+    method: 'patch',
+    url: `/traces/${TRACE}/mark-radius`,
+    body: { markRadius: 36 },
+  },
+  {
+    label: 'PATCH /reference-prints/:id/mark-radius',
+    method: 'patch',
+    url: `/reference-prints/${EMPREINTE}/mark-radius`,
+    body: { markRadius: 36 },
+  },
 ];
 
 const ROUTES_OUVERTES_AU_VERIFICATEUR: Route[] = [

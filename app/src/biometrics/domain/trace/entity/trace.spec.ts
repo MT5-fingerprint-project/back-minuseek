@@ -1,5 +1,6 @@
 import { FileDigest, InvalidFileDigestError } from '../../file-digest.vo';
 import { InvalidImageResolutionError } from '../../image-resolution.vo';
+import { MarkRadius } from '../../mark-radius.vo';
 import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-trace.error';
 import { CaseNotOpenForWorkError } from '../../errors/case-not-open-for-work.error';
 import { InvalidTraceLocationError } from '../errors/invalid-trace-location.error';
@@ -66,6 +67,7 @@ describe('Trace', () => {
         withdrawalMotive: null,
         withdrawalMotiveDetail: null,
         resolutionDpi: null,
+        markRadius: null,
         origin: null,
         location: null,
         revelationTechnique: null,
@@ -108,6 +110,7 @@ describe('Trace', () => {
         withdrawalMotive: null,
         withdrawalMotiveDetail: null,
         resolutionDpi: null,
+        markRadius: null,
         origin: null,
         location: null,
         revelationTechnique: null,
@@ -380,6 +383,7 @@ describe('Trace', () => {
         withdrawalMotive: null,
         withdrawalMotiveDetail: null,
         resolutionDpi: null,
+        markRadius: null,
         origin: null,
         location: null,
         revelationTechnique: null,
@@ -414,6 +418,7 @@ describe('Trace', () => {
         withdrawalMotive: null,
         withdrawalMotiveDetail: null,
         resolutionDpi: null,
+        markRadius: null,
         origin: null,
         location: null,
         revelationTechnique: null,
@@ -446,6 +451,7 @@ describe('Trace', () => {
         withdrawalMotive: null,
         withdrawalMotiveDetail: null,
         resolutionDpi: null,
+        markRadius: null,
         origin: null,
         location: null,
         revelationTechnique: null,
@@ -480,6 +486,7 @@ describe('Trace', () => {
           withdrawalMotive: null,
           withdrawalMotiveDetail: null,
           resolutionDpi: null,
+          markRadius: null,
           origin: null,
           location: null,
           revelationTechnique: null,
@@ -512,6 +519,7 @@ describe('Trace', () => {
           withdrawalMotive: null,
           withdrawalMotiveDetail: null,
           resolutionDpi: null,
+          markRadius: null,
           origin: null,
           location: null,
           revelationTechnique: null,
@@ -545,6 +553,7 @@ describe('Trace', () => {
         withdrawalMotive: null,
         withdrawalMotiveDetail: null,
         resolutionDpi: null,
+        markRadius: null,
         origin: null,
         location: null,
         revelationTechnique: null,
@@ -575,6 +584,7 @@ describe('Trace', () => {
         withdrawalMotive: null,
         withdrawalMotiveDetail: null,
         resolutionDpi: null,
+        markRadius: null,
         origin: null,
         location: null,
         revelationTechnique: null,
@@ -644,6 +654,54 @@ describe('Trace', () => {
 
       expect(() => trace.calibrate(3)).toThrow(InvalidImageResolutionError);
       expect(trace.resolutionDpi).toBeNull();
+    });
+  });
+
+  describe('setMarkRadius', () => {
+    it('starts without any marker size of its own', () => {
+      expect(Trace.upload(baseProps).markRadius).toBeNull();
+    });
+
+    it('sets the marker size in pixels of the source image', () => {
+      const trace = Trace.upload(baseProps);
+
+      trace.setMarkRadius(MarkRadius.of(36));
+
+      expect(trace.markRadius).toBe(36);
+    });
+
+    it('replaces the previous size when the operator corrects it', () => {
+      const trace = Trace.upload(baseProps);
+      trace.setMarkRadius(MarkRadius.of(36));
+
+      trace.setMarkRadius(MarkRadius.of(48));
+
+      expect(trace.markRadius).toBe(48);
+    });
+
+    it('emits the marker size in the primitives', () => {
+      const trace = Trace.upload(baseProps);
+
+      trace.setMarkRadius(MarkRadius.of(36));
+
+      expect(trace.toPrimitives().markRadius).toBe(36);
+    });
+
+    it('round-trips the marker size through reconstitute', () => {
+      const trace = Trace.upload(baseProps);
+      trace.setMarkRadius(MarkRadius.of(36));
+
+      const rebuilt = Trace.reconstitute(trace.toPrimitives());
+
+      expect(rebuilt.markRadius).toBe(36);
+    });
+
+    it('rebuilds a piece whose size has never been set', () => {
+      const rebuilt = Trace.reconstitute(
+        Trace.upload(baseProps).toPrimitives(),
+      );
+
+      expect(rebuilt.markRadius).toBeNull();
     });
   });
 
@@ -842,6 +900,7 @@ describe('Trace', () => {
         withdrawalMotive: null,
         withdrawalMotiveDetail: null,
         resolutionDpi: null,
+        markRadius: null,
       });
     });
 

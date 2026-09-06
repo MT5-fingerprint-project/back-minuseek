@@ -41,6 +41,11 @@ model Trace {
   // confond pas avec un zéro : une trace non calibrée rend `null`.
   resolutionDpi Float?
 
+  // Rayon des repères de minuties de cette pièce, en pixels de l'image source
+  // (L5-12). Nul tant que l'opérateur n'a rien réglé : l'atelier et la planche
+  // retombent alors sur la règle dérivée du plus grand côté.
+  markRadius Int?
+
   origin              TraceOrigin?
   location            String?
   revelationTechnique RevelationTechnique?

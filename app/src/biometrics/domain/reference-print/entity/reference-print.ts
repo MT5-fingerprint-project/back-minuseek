@@ -1,5 +1,6 @@
 import { FileDigest } from '../../file-digest.vo';
 import { ImageResolution } from '../../image-resolution.vo';
+import { MarkRadius } from '../../mark-radius.vo';
 import { ImageSize } from '../../image-size';
 import { ReferencePrintImageAlreadyDestroyedError } from '../errors/reference-print-image-already-destroyed.error';
 import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn.error';
@@ -20,6 +21,7 @@ export interface ReferencePrintPrimitives {
   withdrawalMotiveDetail: string | null;
   imageDestroyedAt: Date | null;
   resolutionDpi: number | null;
+  markRadius: number | null;
   thumbPath: string | null;
   sourceWidth: number | null;
   sourceHeight: number | null;
@@ -49,6 +51,7 @@ export class ReferencePrint {
     private _withdrawal: Withdrawal | null,
     private _imageDestroyedAt: Date | null,
     private _resolution: ImageResolution | null,
+    private _markRadius: MarkRadius | null,
     private _thumbPath: string | null,
     private readonly _sourceSize: ImageSize | null,
   ) {}
@@ -71,6 +74,7 @@ export class ReferencePrint {
       props.displayableSha256 ?? props.sha256,
       props.subjectId ?? null,
       props.position ?? null,
+      null,
       null,
       null,
       null,
@@ -97,6 +101,7 @@ export class ReferencePrint {
       ),
       primitives.imageDestroyedAt,
       ImageResolution.fromPersistence(primitives.resolutionDpi),
+      MarkRadius.fromPersistence(primitives.markRadius),
       primitives.thumbPath,
       primitives.sourceWidth === null || primitives.sourceHeight === null
         ? null
@@ -108,6 +113,10 @@ export class ReferencePrint {
    * `markImageDestroyed`, `calibrate` n'a aucune garde d'état. */
   calibrate(resolutionDpi: number): void {
     this._resolution = ImageResolution.of(resolutionDpi);
+  }
+
+  setMarkRadius(radius: MarkRadius): void {
+    this._markRadius = radius;
   }
 
   /** On ne réécrit pas une date de destruction : elle sera imprimée telle quelle. */
@@ -150,6 +159,7 @@ export class ReferencePrint {
       withdrawalMotiveDetail: this._withdrawal?.getDetail() ?? null,
       imageDestroyedAt: this._imageDestroyedAt,
       resolutionDpi: this._resolution?.getValue() ?? null,
+      markRadius: this._markRadius?.getValue() ?? null,
       thumbPath: this._thumbPath,
       sourceWidth: this._sourceSize?.width ?? null,
       sourceHeight: this._sourceSize?.height ?? null,
@@ -206,6 +216,10 @@ export class ReferencePrint {
 
   get resolutionDpi(): number | null {
     return this._resolution?.getValue() ?? null;
+  }
+
+  get markRadius(): number | null {
+    return this._markRadius?.getValue() ?? null;
   }
 
   get thumbPath(): string | null {

@@ -52,6 +52,7 @@ function trace(overrides: Partial<PieceData> & { id: string }): PieceData {
     cote: 'A',
     notIdentifiedAt: null,
     resolutionDpi: null,
+    markRadius: null,
     locationPhoto: null,
     ...overrides,
   };

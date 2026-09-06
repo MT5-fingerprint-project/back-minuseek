@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
+import { MarkRadius } from '../../../domain/mark-radius.vo';
 import { ReferencePrintNotFoundError } from '../../../domain/reference-print/errors/reference-print-not-found.error';
 import {
   REFERENCE_PRINT_REPOSITORY,
@@ -9,10 +10,10 @@ import {
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
-import { CalibrateReferencePrintCommand } from './calibrate-reference-print.command';
+import { SetReferencePrintMarkRadiusCommand } from './set-reference-print-mark-radius.command';
 
-@CommandHandler(CalibrateReferencePrintCommand)
-export class CalibrateReferencePrintHandler implements ICommandHandler<CalibrateReferencePrintCommand> {
+@CommandHandler(SetReferencePrintMarkRadiusCommand)
+export class SetReferencePrintMarkRadiusHandler implements ICommandHandler<SetReferencePrintMarkRadiusCommand> {
   constructor(
     @Inject(REFERENCE_PRINT_REPOSITORY)
     private readonly repo: ReferencePrintRepository,
@@ -20,7 +21,7 @@ export class CalibrateReferencePrintHandler implements ICommandHandler<Calibrate
     private readonly caseStatus: CaseStatusPort,
   ) {}
 
-  async execute(cmd: CalibrateReferencePrintCommand): Promise<void> {
+  async execute(cmd: SetReferencePrintMarkRadiusCommand): Promise<void> {
     const rp = await this.repo.findById(cmd.id);
     if (!rp) {
       throw new ReferencePrintNotFoundError(cmd.id);
@@ -30,18 +31,18 @@ export class CalibrateReferencePrintHandler implements ICommandHandler<Calibrate
       await this.caseStatus.findStatus(rp.caseId),
     );
 
-    const previousResolutionDpi = rp.resolutionDpi;
-    rp.calibrate(cmd.resolutionDpi);
+    const previousMarkRadius = rp.markRadius;
+    rp.setMarkRadius(MarkRadius.of(cmd.markRadius));
 
     await this.repo.save(rp, {
-      eventType: AuditEventTypeEnum.REFERENCE_PRINT_CALIBRATED,
+      eventType: AuditEventTypeEnum.MARK_RADIUS_SET,
       evidenceClass: EvidenceClassEnum.DECLARED,
       actor: cmd.actor,
       caseId: rp.caseId,
       payload: {
-        referencePrintId: rp.id,
-        resolutionDpi: rp.resolutionDpi,
-        previousResolutionDpi,
+        fingerprintId: rp.id,
+        markRadius: rp.markRadius,
+        previousMarkRadius,
       },
     });
   }

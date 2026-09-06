@@ -1,6 +1,7 @@
 import { assertCaseAcceptsWork } from '../../case-work-window';
 import { FileDigest } from '../../file-digest.vo';
 import { ImageResolution } from '../../image-resolution.vo';
+import { MarkRadius } from '../../mark-radius.vo';
 import { ImageSize } from '../../image-size';
 import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../withdrawal/errors/not-withdrawn.error';
@@ -41,6 +42,7 @@ export interface TracePrimitives {
   withdrawalMotive: string | null;
   withdrawalMotiveDetail: string | null;
   resolutionDpi: number | null;
+  markRadius: number | null;
   origin: TraceOriginEnum | null;
   location: string | null;
   revelationTechnique: RevelationTechniqueEnum | null;
@@ -89,6 +91,7 @@ export class Trace {
     private readonly _captureQuality: CaptureQuality | null,
     private _withdrawal: Withdrawal | null,
     private _resolution: ImageResolution | null,
+    private _markRadius: MarkRadius | null,
     private _origin: TraceOrigin | null,
     private _location: string | null,
     private _revelationTechnique: RevelationTechnique | null,
@@ -132,6 +135,7 @@ export class Trace {
       null,
       null,
       null,
+      null,
       location.length === 0 ? null : location,
       null,
       null,
@@ -161,6 +165,7 @@ export class Trace {
     withdrawalMotive: string | null;
     withdrawalMotiveDetail: string | null;
     resolutionDpi: number | null;
+    markRadius: number | null;
     origin: string | null;
     location: string | null;
     revelationTechnique: string | null;
@@ -192,6 +197,7 @@ export class Trace {
         payload.withdrawalMotiveDetail,
       ),
       ImageResolution.fromPersistence(payload.resolutionDpi),
+      MarkRadius.fromPersistence(payload.markRadius),
       TraceOrigin.fromPersistence(payload.origin),
       payload.location,
       RevelationTechnique.fromPersistence(payload.revelationTechnique),
@@ -205,6 +211,10 @@ export class Trace {
 
   calibrate(resolutionDpi: number): void {
     this._resolution = ImageResolution.of(resolutionDpi);
+  }
+
+  setMarkRadius(radius: MarkRadius): void {
+    this._markRadius = radius;
   }
 
   describe(description: TraceDescription): void {
@@ -273,6 +283,7 @@ export class Trace {
       withdrawalMotive: this._withdrawal?.getMotive() ?? null,
       withdrawalMotiveDetail: this._withdrawal?.getDetail() ?? null,
       resolutionDpi: this._resolution?.getValue() ?? null,
+      markRadius: this._markRadius?.getValue() ?? null,
       origin: this._origin?.getValue() ?? null,
       location: this._location,
       revelationTechnique: this._revelationTechnique?.getValue() ?? null,
@@ -331,6 +342,10 @@ export class Trace {
 
   get resolutionDpi(): number | null {
     return this._resolution?.getValue() ?? null;
+  }
+
+  get markRadius(): number | null {
+    return this._markRadius?.getValue() ?? null;
   }
 
   get origin(): TraceOriginEnum | null {

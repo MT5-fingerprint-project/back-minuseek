@@ -32,22 +32,28 @@ function plainImage(image: ReportImageViewModel): string {
   )}mm; max-width:none; max-height:none" />`;
 }
 
+// Le trait suit le repère et non la largeur de l'image : sur un rayon réglé
+// court, une épaisseur dérivée de la pièce boucherait l'anneau.
+function strokeOf(radius: number): number {
+  return Math.max(2, Math.round(radius / 4));
+}
+
 function markedImage(
   image: ReportImageViewModel,
   width: number,
   height: number,
   marks: ReportDemonstrationMarkViewModel[],
 ): string {
-  const stroke = Math.max(2, Math.round(width / 400));
   const fontSize = Math.max(12, Math.round(width / 40));
   const markers = marks
-    .map(
-      (mark) => `
+    .map((mark) => {
+      const stroke = strokeOf(mark.radius);
+      return `
         <circle cx="${mark.x}" cy="${mark.y}" r="${mark.radius}"
                 fill="none" stroke="#d92b2b" stroke-width="${stroke}" />
         <text x="${mark.x + mark.radius + stroke}" y="${mark.y - mark.radius}"
-              font-size="${fontSize}" fill="#d92b2b" font-weight="bold">${mark.number}</text>`,
-    )
+              font-size="${fontSize}" fill="#d92b2b" font-weight="bold">${mark.number}</text>`;
+    })
     .join('');
 
   // Sans dimensions propres, le SVG se replie à zéro dans une boîte qui s'ajuste à

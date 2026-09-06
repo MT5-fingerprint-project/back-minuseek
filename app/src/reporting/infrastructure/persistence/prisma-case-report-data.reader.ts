@@ -36,6 +36,7 @@ interface PieceRow {
   revelationTechnique?: string | null;
   notIdentifiedAt?: Date | null;
   resolutionDpi?: number | null;
+  markRadius?: number | null;
   locationPhoto?: { path: string; sha256: string; createdAt: Date } | null;
 }
 
@@ -152,6 +153,7 @@ function toPiece(
     cote,
     notIdentifiedAt: row.notIdentifiedAt ?? null,
     resolutionDpi: row.resolutionDpi ?? null,
+    markRadius: row.markRadius ?? null,
     locationPhoto: toLocationPhoto(row),
   };
 }

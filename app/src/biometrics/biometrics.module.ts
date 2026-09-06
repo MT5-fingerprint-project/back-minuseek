@@ -11,6 +11,8 @@ import { DeclareTraceExploitabilityHandler } from './application/commands/declar
 import { DeclareTraceNotIdentifiedHandler } from './application/commands/declare-trace-not-identified/declare-trace-not-identified.handler';
 import { WithdrawTraceNotIdentifiedHandler } from './application/commands/withdraw-trace-not-identified/withdraw-trace-not-identified.handler';
 import { CalibrateReferencePrintHandler } from './application/commands/calibrate-reference-print/calibrate-reference-print.handler';
+import { SetTraceMarkRadiusHandler } from './application/commands/set-trace-mark-radius/set-trace-mark-radius.handler';
+import { SetReferencePrintMarkRadiusHandler } from './application/commands/set-reference-print-mark-radius/set-reference-print-mark-radius.handler';
 import { RestoreTraceHandler } from './application/commands/restore-trace/restore-trace.handler';
 import { RestoreReferencePrintHandler } from './application/commands/restore-reference-print/restore-reference-print.handler';
 import { WithdrawReferencePrintHandler } from './application/commands/withdraw-reference-print/withdraw-reference-print.handler';
@@ -108,6 +110,8 @@ import { AccessModule } from '../access/access.module';
     RemoveLocationPhotoHandler,
     CalibrateTraceHandler,
     CalibrateReferencePrintHandler,
+    SetTraceMarkRadiusHandler,
+    SetReferencePrintMarkRadiusHandler,
     DescribeTraceHandler,
     DeclareTraceExploitabilityHandler,
     DeclareTraceNotIdentifiedHandler,

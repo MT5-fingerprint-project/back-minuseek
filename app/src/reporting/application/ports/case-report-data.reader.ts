@@ -80,6 +80,7 @@ export interface PieceData {
   cote: string | null;
   notIdentifiedAt: Date | null;
   resolutionDpi: number | null;
+  markRadius: number | null;
   locationPhoto: LocationPhotoData | null;
 }
 

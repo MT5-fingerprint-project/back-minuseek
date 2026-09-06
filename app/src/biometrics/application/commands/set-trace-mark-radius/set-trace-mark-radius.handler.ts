@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
+import { MarkRadius } from '../../../domain/mark-radius.vo';
 import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found.error';
 import {
   TRACE_REPOSITORY,
@@ -9,10 +10,10 @@ import {
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
 import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
-import { CalibrateTraceCommand } from './calibrate-trace.command';
+import { SetTraceMarkRadiusCommand } from './set-trace-mark-radius.command';
 
-@CommandHandler(CalibrateTraceCommand)
-export class CalibrateTraceHandler implements ICommandHandler<CalibrateTraceCommand> {
+@CommandHandler(SetTraceMarkRadiusCommand)
+export class SetTraceMarkRadiusHandler implements ICommandHandler<SetTraceMarkRadiusCommand> {
   constructor(
     @Inject(TRACE_REPOSITORY)
     private readonly repo: TraceRepository,
@@ -20,7 +21,7 @@ export class CalibrateTraceHandler implements ICommandHandler<CalibrateTraceComm
     private readonly caseStatus: CaseStatusPort,
   ) {}
 
-  async execute(cmd: CalibrateTraceCommand): Promise<void> {
+  async execute(cmd: SetTraceMarkRadiusCommand): Promise<void> {
     const trace = await this.repo.findById(cmd.id);
     if (!trace) {
       throw new TraceNotFoundError(cmd.id);
@@ -30,18 +31,19 @@ export class CalibrateTraceHandler implements ICommandHandler<CalibrateTraceComm
       await this.caseStatus.findStatus(trace.caseId),
     );
 
-    const previousResolutionDpi = trace.resolutionDpi;
-    trace.calibrate(cmd.resolutionDpi);
+    const previousMarkRadius = trace.markRadius;
+    trace.setMarkRadius(MarkRadius.of(cmd.markRadius));
 
     await this.repo.save(trace, {
-      eventType: AuditEventTypeEnum.TRACE_CALIBRATED,
+      eventType: AuditEventTypeEnum.MARK_RADIUS_SET,
       evidenceClass: EvidenceClassEnum.DECLARED,
       actor: cmd.actor,
       caseId: trace.caseId,
       traceId: trace.id,
       payload: {
-        resolutionDpi: trace.resolutionDpi,
-        previousResolutionDpi,
+        fingerprintId: trace.id,
+        markRadius: trace.markRadius,
+        previousMarkRadius,
       },
     });
   }

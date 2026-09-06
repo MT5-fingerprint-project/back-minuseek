@@ -49,6 +49,7 @@ function piece(overrides: Partial<PieceData> & { id: string }): PieceData {
     cote: 'A',
     notIdentifiedAt: null,
     resolutionDpi: null,
+    markRadius: null,
     locationPhoto: null,
     ...overrides,
   };
@@ -364,6 +365,100 @@ describe('buildAnnexB', () => {
       { number: 1, x: 120, y: 20, radius: 6, label: 'indéterminée' },
       { number: 2, x: 130, y: 20, radius: 6, label: 'indéterminée' },
     ]);
+  });
+
+  it('cercle au rayon réglé sur la pièce, pas à celui figé dans la minutie', () => {
+    const demonstrations = build(
+      caseData({
+        traces: [
+          piece({
+            id: 't1',
+            markRadius: 36,
+            minutiae: [minutia({ id: 'tm-1', radius: 118 })],
+          }),
+        ],
+        referencePrints: [
+          piece({
+            id: 'ref-1',
+            status: null,
+            cote: null,
+            markRadius: 36,
+            minutiae: [minutia({ id: 'rm-1', radius: 118 })],
+          }),
+        ],
+        declaredHits: [hit()],
+        minutiaPairs: [
+          pair({
+            traceMinutiaLayerId: 'tm-1',
+            referenceMinutiaLayerId: 'rm-1',
+          }),
+        ],
+      }),
+    );
+
+    expect(demonstrations[0].trace.marks[0].radius).toBe(36);
+    expect(demonstrations[0].referencePrint.marks[0].radius).toBe(36);
+  });
+
+  it('garde le rayon de la minutie sur une pièce dont la taille n’a jamais été réglée', () => {
+    const demonstrations = build(
+      caseData({
+        traces: [
+          piece({ id: 't1', minutiae: [minutia({ id: 'tm-1', radius: 118 })] }),
+        ],
+        referencePrints: [
+          piece({
+            id: 'ref-1',
+            status: null,
+            cote: null,
+            minutiae: [minutia({ id: 'rm-1', radius: 118 })],
+          }),
+        ],
+        declaredHits: [hit()],
+        minutiaPairs: [
+          pair({
+            traceMinutiaLayerId: 'tm-1',
+            referenceMinutiaLayerId: 'rm-1',
+          }),
+        ],
+      }),
+    );
+
+    expect(demonstrations[0].trace.marks[0].radius).toBe(118);
+    expect(demonstrations[0].referencePrint.marks[0].radius).toBe(118);
+  });
+
+  it('donne à chaque planche la taille de sa propre pièce', () => {
+    const demonstrations = build(
+      caseData({
+        traces: [
+          piece({
+            id: 't1',
+            markRadius: 36,
+            minutiae: [minutia({ id: 'tm-1' })],
+          }),
+        ],
+        referencePrints: [
+          piece({
+            id: 'ref-1',
+            status: null,
+            cote: null,
+            markRadius: 12,
+            minutiae: [minutia({ id: 'rm-1' })],
+          }),
+        ],
+        declaredHits: [hit()],
+        minutiaPairs: [
+          pair({
+            traceMinutiaLayerId: 'tm-1',
+            referenceMinutiaLayerId: 'rm-1',
+          }),
+        ],
+      }),
+    );
+
+    expect(demonstrations[0].trace.marks[0].radius).toBe(36);
+    expect(demonstrations[0].referencePrint.marks[0].radius).toBe(12);
   });
 
   it('reprend le numéro déjà porté par la paire au lieu de recompter', () => {

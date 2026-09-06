@@ -37,3 +37,4 @@ On consigne ici les **décisions structurantes** du repo : choix techno, trade-o
 - [ADR-0024](0024-le-travail-de-l-appelant-est-une-lecture-sans-parametre.md) — Le travail de l'appelant est une lecture sans paramètre, distincte du pilotage du service
 - [ADR-0025](0025-requalifier-une-minutie-appariee-requalifie-la-paire.md) — Requalifier une minutie appariée requalifie la paire
 - [ADR-0026](0026-la-trace-adopte-le-type-de-l-empreinte-a-l-appariement.md) — À l'appariement, la trace adopte le type de l'empreinte de référence
+- [ADR-0027](0027-la-taille-des-reperes-appartient-a-la-piece.md) — La taille des repères appartient à la pièce
