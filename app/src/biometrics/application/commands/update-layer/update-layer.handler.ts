@@ -84,6 +84,10 @@ export class UpdateLayerHandler implements ICommandHandler<UpdateLayerCommand> {
       requalifiedType === null
         ? []
         : await this.partnersOf(layer, requalifiedType, command);
+    const previousMinutiaType =
+      requalifiedType === null
+        ? null
+        : minutiaTypeOf(layer.toPrimitives().settings);
 
     layer.update({
       name: command.name,
@@ -98,7 +102,10 @@ export class UpdateLayerHandler implements ICommandHandler<UpdateLayerCommand> {
         actor: command.actor,
         caseId: location.caseId,
         traceId: location.traceId,
-        payload: layerAuditPayload(layer),
+        payload:
+          previousMinutiaType === null
+            ? layerAuditPayload(layer)
+            : { ...layerAuditPayload(layer), previousMinutiaType },
       });
       for (const partner of partners) {
         await this.requalify(partner, command, location.caseId);

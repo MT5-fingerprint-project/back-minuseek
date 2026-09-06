@@ -289,6 +289,27 @@ describe('UpdateLayerHandler', () => {
       });
     });
 
+    it('porte aussi le type quitté sur la minutie que l’opérateur édite', async () => {
+      pairedMinutia();
+
+      await handler.execute(
+        new UpdateLayerCommand(
+          EXPERT_ACTOR,
+          'layer-appariee',
+          undefined,
+          undefined,
+          undefined,
+          minutia(MinutiaTypeEnum.ISLAND),
+        ),
+      );
+
+      const [edited] = auditTrail.events;
+      expect(edited.payload).toMatchObject({
+        layerId: 'layer-appariee',
+        previousMinutiaType: MinutiaTypeEnum.BIFURCATION,
+      });
+    });
+
     it('rend les deux minuties indéterminées quand le type disparaît', async () => {
       pairedMinutia();
 

@@ -431,6 +431,57 @@ describe('journalSentence — les réglages et les repères', () => {
     ).toBe(`${expected} la trace 3455-T7 cotée « B »`);
   });
 
+  it('dit la requalification d’une minutie en nommant les deux types', () => {
+    expect(
+      say(AuditEventTypeEnum.LAYER_UPDATED, {
+        layerId: 'layer-1',
+        fingerprintId: 'trace-7',
+        name: 'Minutie',
+        type: 'ANNOTATION',
+        zIndex: 1,
+        isVisible: true,
+        settings: { type: 'minutia', x: 10, y: 20, minutiaType: 'BIFURCATION' },
+        previousMinutiaType: 'RIDGE_ENDING',
+      }),
+    ).toBe(
+      'Minutie requalifiée de « arrêt de ligne » en « bifurcation » sur la trace 3455-T7 cotée « B »',
+    );
+  });
+
+  it('dit la pièce sur laquelle le type a été aligné', () => {
+    expect(
+      say(AuditEventTypeEnum.LAYER_UPDATED, {
+        layerId: 'layer-1',
+        fingerprintId: 'trace-7',
+        name: 'Minutie',
+        type: 'ANNOTATION',
+        zIndex: 1,
+        isVisible: true,
+        settings: { type: 'minutia', x: 10, y: 20, minutiaType: 'BIFURCATION' },
+        previousMinutiaType: 'RIDGE_ENDING',
+        alignedOnFingerprintId: 'ref-1',
+        alignedOnLayerId: 'layer-ref-1',
+      }),
+    ).toBe(
+      "Minutie requalifiée de « arrêt de ligne » en « bifurcation » sur la trace 3455-T7 cotée « B », par alignement sur l'empreinte de l'index droit de Madame BERGER Hélène",
+    );
+  });
+
+  it('dit un simple déplacement quand le type n’a pas changé', () => {
+    expect(
+      say(AuditEventTypeEnum.LAYER_UPDATED, {
+        layerId: 'layer-1',
+        fingerprintId: 'trace-7',
+        name: 'Minutie',
+        type: 'ANNOTATION',
+        zIndex: 1,
+        isVisible: true,
+        settings: { type: 'minutia', x: 10, y: 20, minutiaType: 'BIFURCATION' },
+        previousMinutiaType: 'BIFURCATION',
+      }),
+    ).toBe('Minutie déplacée sur la trace 3455-T7 cotée « B »');
+  });
+
   it('dit le retrait d’une minutie', () => {
     expect(
       say(AuditEventTypeEnum.LAYER_DELETED, {
@@ -529,6 +580,38 @@ describe('journalSentence — l’appariement des minuties', () => {
   it('dit l’appariement en nommant les deux pièces et le type retenu', () => {
     expect(say(AuditEventTypeEnum.MINUTIA_PAIRED, pairPayload, 'trace-7')).toBe(
       "Minutie de la trace 3455-T7 appariée à une minutie de l'empreinte de l'index droit de Madame BERGER Hélène — bifurcation",
+    );
+  });
+
+  it('dit la lecture que la trace portait avant l’appariement', () => {
+    expect(
+      say(
+        AuditEventTypeEnum.MINUTIA_PAIRED,
+        {
+          ...pairPayload,
+          requalifiedSide: 'TRACE',
+          observedMinutiaType: 'RIDGE_ENDING',
+        },
+        'trace-7',
+      ),
+    ).toBe(
+      "Minutie de la trace 3455-T7 appariée à une minutie de l'empreinte de l'index droit de Madame BERGER Hélène — bifurcation, la trace était relevée « arrêt de ligne »",
+    );
+  });
+
+  it('dit la lecture que l’empreinte portait quand c’est elle qui a cédé', () => {
+    expect(
+      say(
+        AuditEventTypeEnum.MINUTIA_PAIRED,
+        {
+          ...pairPayload,
+          requalifiedSide: 'REFERENCE',
+          observedMinutiaType: 'UNDETERMINED',
+        },
+        'trace-7',
+      ),
+    ).toBe(
+      "Minutie de la trace 3455-T7 appariée à une minutie de l'empreinte de l'index droit de Madame BERGER Hélène — bifurcation, l'empreinte était relevée « indéterminée »",
     );
   });
 

@@ -23,7 +23,6 @@ import { CaseNotOpenForWorkError } from '../../domain/errors/case-not-open-for-w
 import { FingerprintNotFoundError } from '../../domain/fingerprint-not-found.error';
 import { LayerNotAuthoredByVerifierError } from '../../domain/layer/errors/layer-not-authored-by-verifier.error';
 import { LayerNotFoundError } from '../../domain/layer/errors/layer-not-found.error';
-import { IncompatibleMinutiaTypesError } from '../../domain/minutia-pair/errors/incompatible-minutia-types.error';
 import { MinutiaOutsidePieceError } from '../../domain/minutia-pair/errors/minutia-outside-piece.error';
 import { MinutiaPairAlreadyExistsError } from '../../domain/minutia-pair/errors/minutia-pair-already-exists.error';
 import { MinutiaPairNotAuthoredByVerifierError } from '../../domain/minutia-pair/errors/minutia-pair-not-authored-by-verifier.error';
@@ -82,7 +81,7 @@ export class MinutiaPairsController {
   @ApiResponse({ status: 404, description: 'Pièce ou calque introuvable' })
   @ApiResponse({
     status: 409,
-    description: 'Affaire close, types incompatibles ou minutie déjà appariée',
+    description: 'Affaire close ou minutie déjà appariée',
   })
   @ApiResponse({
     status: 422,
@@ -143,7 +142,6 @@ export class MinutiaPairsController {
   private translated(error: unknown): unknown {
     if (
       error instanceof CaseNotOpenForWorkError ||
-      error instanceof IncompatibleMinutiaTypesError ||
       error instanceof MinutiaPairAlreadyExistsError
     ) {
       return new ConflictException(error.message);

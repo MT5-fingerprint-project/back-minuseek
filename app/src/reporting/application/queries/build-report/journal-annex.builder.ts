@@ -39,6 +39,11 @@ function summarisableFamily(event: AuditEventData): SummaryFamily | null {
   if (event.payload.type === 'FILTER') {
     return 'ADJUSTMENT';
   }
+  // Écraser un type déclaré n'est pas du bruit de pose : le repli du résumé
+  // effacerait la phrase et son auteur.
+  if (typeof event.payload.previousMinutiaType === 'string') {
+    return null;
+  }
   return event.payload.type === 'ANNOTATION' ? 'MARK' : null;
 }
 

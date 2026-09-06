@@ -67,6 +67,10 @@ le front demande confirmation avant d'appeler. Deux déterminés différents : r
 nommant les deux libellés. L'égalité stricte aurait refusé le cas le plus fréquent —
 `UNDETERMINED` est la valeur par défaut, et une trace dégradée reste souvent indéterminée
 face à une empreinte qualifiée.
+*La dernière branche est caduque depuis
+[ADR-0026](0026-la-trace-adopte-le-type-de-l-empreinte-a-l-appariement.md) : deux types
+déterminés différents ne sont plus refusés, la trace adopte celui de l'empreinte. Les trois
+autres branches tiennent.*
 
 **`UNDETERMINED` est une réponse, pas un silence** : l'opérateur affirme qu'il y a une
 minutie et qu'il ne peut pas dire laquelle. La planche l'imprime donc comme les autres, et

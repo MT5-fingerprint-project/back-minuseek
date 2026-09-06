@@ -22,11 +22,6 @@ export type PairTypeDecision =
       outcome: 'QUALIFIES';
       type: MinutiaTypeEnum;
       sideToQualify: 'TRACE' | 'REFERENCE';
-    }
-  | {
-      outcome: 'REFUSED';
-      traceType: MinutiaTypeEnum;
-      referenceType: MinutiaTypeEnum;
     };
 
 export function resolvePairType(
@@ -43,12 +38,9 @@ export function resolvePairType(
       sideToQualify: 'REFERENCE',
     };
   }
-  if (traceType === MinutiaTypeEnum.UNDETERMINED) {
-    return {
-      outcome: 'QUALIFIES',
-      type: referenceType,
-      sideToQualify: 'TRACE',
-    };
-  }
-  return { outcome: 'REFUSED', traceType, referenceType };
+  return {
+    outcome: 'QUALIFIES',
+    type: referenceType,
+    sideToQualify: 'TRACE',
+  };
 }

@@ -27,7 +27,6 @@ import {
   type LayerRepository,
 } from '../../../domain/layer/repository/layer.repository';
 import { MinutiaPair } from '../../../domain/minutia-pair/entity/minutia-pair';
-import { IncompatibleMinutiaTypesError } from '../../../domain/minutia-pair/errors/incompatible-minutia-types.error';
 import { MinutiaOutsidePieceError } from '../../../domain/minutia-pair/errors/minutia-outside-piece.error';
 import { MinutiaPairNotFoundError } from '../../../domain/minutia-pair/errors/minutia-pair-not-found.error';
 import { NotAMinutiaLayerError } from '../../../domain/minutia-pair/errors/not-a-minutia-layer.error';
@@ -48,6 +47,16 @@ import {
   type MinutiaPairReader,
 } from '../../queries/list-minutia-pairs/minutia-pair.reader';
 import { CreateMinutiaPairCommand } from './create-minutia-pair.command';
+
+/** L'autre minutie d'une paire déjà posée, rattachée à la trace qui la porte. */
+type PairedPartner = {
+  layer: Layer;
+  traceId: string;
+  minutiaType: MinutiaTypeEnum;
+};
+
+/** La minutie dont le type a été lu, et la pièce qui la porte. */
+type AdoptedFrom = { fingerprintId: string; layerId: string };
 
 @CommandHandler(CreateMinutiaPairCommand)
 export class CreateMinutiaPairHandler implements ICommandHandler<
@@ -102,12 +111,6 @@ export class CreateMinutiaPairHandler implements ICommandHandler<
       minutiaMarkOf(traceMinutia).minutiaType,
       minutiaMarkOf(referenceMinutia).minutiaType,
     );
-    if (decision.outcome === 'REFUSED') {
-      throw new IncompatibleMinutiaTypesError(
-        decision.traceType,
-        decision.referenceType,
-      );
-    }
 
     const pair = MinutiaPair.fromPrimitives({
       id: this.idGenerator.generate(),
@@ -119,13 +122,50 @@ export class CreateMinutiaPairHandler implements ICommandHandler<
       createdAt: new Date(),
     });
 
+    const yielding: PairedPartner | null =
+      decision.outcome === 'QUALIFIES'
+        ? {
+            layer:
+              decision.sideToQualify === 'TRACE'
+                ? traceMinutia
+                : referenceMinutia,
+            traceId: command.traceId,
+            minutiaType: decision.type,
+          }
+        : null;
+    const partners =
+      yielding === null ? [] : await this.partnersOf(yielding, command);
+    const adoptedFrom: AdoptedFrom | null =
+      decision.outcome !== 'QUALIFIES'
+        ? null
+        : decision.sideToQualify === 'TRACE'
+          ? {
+              fingerprintId: command.referencePrintId,
+              layerId: command.referenceMinutiaLayerId,
+            }
+          : {
+              fingerprintId: command.traceId,
+              layerId: command.traceMinutiaLayerId,
+            };
+    // Lu avant la transaction : `qualify` mute le calque en place, et l'acte
+    // d'appariement doit garder la lecture d'origine plutôt que celle qu'il crée.
+    const overwritten =
+      yielding === null || decision.outcome !== 'QUALIFIES'
+        ? {}
+        : {
+            requalifiedSide: decision.sideToQualify,
+            observedMinutiaType: minutiaMarkOf(yielding.layer).minutiaType,
+          };
+
     await this.transactionRunner.run(async () => {
-      if (decision.outcome === 'QUALIFIES') {
+      for (const requalified of yielding === null
+        ? []
+        : [yielding, ...partners]) {
         await this.qualify(
-          decision.sideToQualify === 'TRACE' ? traceMinutia : referenceMinutia,
-          decision.type,
+          requalified,
           command,
           traceLocation.caseId,
+          adoptedFrom,
         );
       }
       await this.pairs.save(pair, {
@@ -134,11 +174,14 @@ export class CreateMinutiaPairHandler implements ICommandHandler<
         actor: command.actor,
         caseId: traceLocation.caseId,
         traceId: command.traceId,
-        payload: minutiaPairAuditPayload(
-          pair,
-          minutiaMarkOf(traceMinutia),
-          minutiaMarkOf(referenceMinutia),
-        ),
+        payload: {
+          ...minutiaPairAuditPayload(
+            pair,
+            minutiaMarkOf(traceMinutia),
+            minutiaMarkOf(referenceMinutia),
+          ),
+          ...overwritten,
+        },
       });
     });
 
@@ -170,12 +213,48 @@ export class CreateMinutiaPairHandler implements ICommandHandler<
     return layer;
   }
 
+  /**
+   * Une paire porte un seul type (ADR-0025) : la minutie qui cède entraîne
+   * celles auxquelles elle est déjà appariée, sinon l'annexe B imprimerait deux
+   * libellés de part et d'autre du même point.
+   */
+  private async partnersOf(
+    yielding: PairedPartner,
+    command: CreateMinutiaPairCommand,
+  ): Promise<PairedPartner[]> {
+    const partners: PairedPartner[] = [];
+    for (const pair of await this.pairs.findByMinutiaLayerId(
+      yielding.layer.id,
+    )) {
+      const partnerId =
+        pair.traceMinutiaLayerId === yielding.layer.id
+          ? pair.referenceMinutiaLayerId
+          : pair.traceMinutiaLayerId;
+      const partner = await this.layers.findById(partnerId);
+      if (!partner) throw new LayerNotFoundError(partnerId);
+      if (
+        command.blindVerifierUserId !== null &&
+        partner.createdByUserId !== command.blindVerifierUserId
+      ) {
+        throw new LayerNotAuthoredByVerifierError(partnerId);
+      }
+      if (minutiaMarkOf(partner).minutiaType === yielding.minutiaType) continue;
+      partners.push({
+        layer: partner,
+        traceId: pair.traceId,
+        minutiaType: yielding.minutiaType,
+      });
+    }
+    return partners;
+  }
+
   private async qualify(
-    layer: Layer,
-    minutiaType: MinutiaTypeEnum,
+    requalified: PairedPartner,
     command: CreateMinutiaPairCommand,
     caseId: string,
+    adoptedFrom: AdoptedFrom | null,
   ): Promise<void> {
+    const { layer, minutiaType } = requalified;
     const previousMinutiaType = minutiaMarkOf(layer).minutiaType;
     layer.update({
       settings: { ...layer.toPrimitives().settings, minutiaType },
@@ -185,8 +264,17 @@ export class CreateMinutiaPairHandler implements ICommandHandler<
       evidenceClass: EvidenceClassEnum.OBSERVED,
       actor: command.actor,
       caseId,
-      traceId: command.traceId,
-      payload: { ...layerAuditPayload(layer), previousMinutiaType },
+      traceId: requalified.traceId,
+      payload: {
+        ...layerAuditPayload(layer),
+        previousMinutiaType,
+        ...(adoptedFrom === null
+          ? {}
+          : {
+              alignedOnFingerprintId: adoptedFrom.fingerprintId,
+              alignedOnLayerId: adoptedFrom.layerId,
+            }),
+      },
     });
   }
 

@@ -9,7 +9,6 @@ import { LayerNotAuthoredByVerifierError } from '../../../domain/layer/errors/la
 import { LayerNotFoundError } from '../../../domain/layer/errors/layer-not-found.error';
 import { CaseNotOpenForWorkError } from '../../../domain/errors/case-not-open-for-work.error';
 import { FingerprintNotFoundError } from '../../../domain/fingerprint-not-found.error';
-import { IncompatibleMinutiaTypesError } from '../../../domain/minutia-pair/errors/incompatible-minutia-types.error';
 import { MinutiaOutsidePieceError } from '../../../domain/minutia-pair/errors/minutia-outside-piece.error';
 import { MinutiaPairAlreadyExistsError } from '../../../domain/minutia-pair/errors/minutia-pair-already-exists.error';
 import { NotAMinutiaLayerError } from '../../../domain/minutia-pair/errors/not-a-minutia-layer.error';
@@ -268,24 +267,265 @@ describe('CreateMinutiaPairHandler', () => {
     ]);
   });
 
-  it('refuses two different determined types and pairs nothing', async () => {
-    layers.seed(
-      Layer.create({
-        id: 'layer-ref-1',
-        fingerprintId: 'ref-1',
-        name: 'Minutie',
-        type: 'ANNOTATION',
-        zIndex: 0,
-        settings: minutiaSettings(MinutiaTypeEnum.TRIFURCATION, 310, 118),
-        createdByUserId: 'user-marie',
-      }),
+  it('gives the trace the determined type of the reference instead of refusing', async () => {
+    seedMinutia(
+      'layer-ref-1',
+      'ref-1',
+      minutiaSettings(MinutiaTypeEnum.TRIFURCATION, 310, 118),
     );
 
+    const created = await handler.execute(command());
+
+    expect(pairs.store.size).toBe(1);
+    expect(created.minutiaType).toBe(MinutiaTypeEnum.TRIFURCATION);
+    const requalified = await layers.findById('layer-trace-1');
+    expect(requalified?.toPrimitives().settings).toEqual({
+      type: 'minutia',
+      x: 120,
+      y: 240,
+      radius: 6,
+      color: '#ef4444',
+      angle: 90,
+      minutiaType: MinutiaTypeEnum.TRIFURCATION,
+    });
+    expect(transactionRunner.runCount).toBe(1);
+  });
+
+  it('journals the overwritten type of the trace, then the pair', async () => {
+    seedMinutia(
+      'layer-ref-1',
+      'ref-1',
+      minutiaSettings(MinutiaTypeEnum.TRIFURCATION, 310, 118),
+    );
+
+    await handler.execute(command());
+
+    expect(auditTrail.events.map((event) => event.eventType)).toEqual([
+      AuditEventTypeEnum.LAYER_UPDATED,
+      AuditEventTypeEnum.MINUTIA_PAIRED,
+    ]);
+    const [requalification, paired] = auditTrail.events;
+    expect(requalification.payload).toMatchObject({
+      layerId: 'layer-trace-1',
+      previousMinutiaType: MinutiaTypeEnum.BIFURCATION,
+    });
+    expect(
+      (requalification.payload.settings as LayerSettings).minutiaType,
+    ).toBe(MinutiaTypeEnum.TRIFURCATION);
+    expect(paired.payload).toMatchObject({
+      traceMinutia: {
+        x: 120,
+        y: 240,
+        minutiaType: MinutiaTypeEnum.TRIFURCATION,
+      },
+    });
+  });
+
+  it('names the piece the adopted type was read from', async () => {
+    seedMinutia(
+      'layer-ref-1',
+      'ref-1',
+      minutiaSettings(MinutiaTypeEnum.TRIFURCATION, 310, 118),
+    );
+
+    await handler.execute(command());
+
+    const [requalification] = auditTrail.events;
+    expect(requalification.payload).toMatchObject({
+      layerId: 'layer-trace-1',
+      alignedOnFingerprintId: 'ref-1',
+      alignedOnLayerId: 'layer-ref-1',
+    });
+  });
+
+  it('names the trace when it is the reference that yields', async () => {
+    seedMinutia(
+      'layer-ref-1',
+      'ref-1',
+      minutiaSettings(MinutiaTypeEnum.UNDETERMINED, 310, 118),
+    );
+
+    await handler.execute(command());
+
+    const [requalification] = auditTrail.events;
+    expect(requalification.payload).toMatchObject({
+      layerId: 'layer-ref-1',
+      alignedOnFingerprintId: 'trace-1',
+      alignedOnLayerId: 'layer-trace-1',
+    });
+  });
+
+  it('keeps in the pairing act the reading the trace carried before', async () => {
+    seedMinutia(
+      'layer-ref-1',
+      'ref-1',
+      minutiaSettings(MinutiaTypeEnum.TRIFURCATION, 310, 118),
+    );
+
+    await handler.execute(command());
+
+    const [, paired] = auditTrail.events;
+    expect(paired.payload).toMatchObject({
+      requalifiedSide: 'TRACE',
+      observedMinutiaType: MinutiaTypeEnum.BIFURCATION,
+      traceMinutia: {
+        x: 120,
+        y: 240,
+        minutiaType: MinutiaTypeEnum.TRIFURCATION,
+      },
+    });
+  });
+
+  it('says nothing of a requalification when both sides already agreed', async () => {
+    await handler.execute(command());
+
+    const [paired] = auditTrail.events;
+    expect(paired.payload).not.toHaveProperty('requalifiedSide');
+    expect(paired.payload).not.toHaveProperty('observedMinutiaType');
+  });
+
+  it('leaves the determined type of the trace alone when the case is closed', async () => {
+    seedMinutia(
+      'layer-ref-1',
+      'ref-1',
+      minutiaSettings(MinutiaTypeEnum.TRIFURCATION, 310, 118),
+    );
+    caseStatus.set('case-9', 'CLOSED');
+
     await expect(handler.execute(command())).rejects.toBeInstanceOf(
-      IncompatibleMinutiaTypesError,
+      CaseNotOpenForWorkError,
+    );
+    const untouched = await layers.findById('layer-trace-1');
+    expect(untouched?.toPrimitives().settings.minutiaType).toBe(
+      MinutiaTypeEnum.BIFURCATION,
     );
     expect(pairs.store.size).toBe(0);
     expect(auditTrail.events).toEqual([]);
+  });
+
+  it('never overwrites a determined type the blind verifier does not own', async () => {
+    seedMinutia(
+      'layer-ref-1',
+      'ref-1',
+      minutiaSettings(MinutiaTypeEnum.TRIFURCATION, 310, 118),
+      'user-lucie',
+    );
+
+    await expect(
+      handler.execute(command({ blindVerifierUserId: 'user-lucie' })),
+    ).rejects.toBeInstanceOf(LayerNotAuthoredByVerifierError);
+    const untouched = await layers.findById('layer-trace-1');
+    expect(untouched?.toPrimitives().settings.minutiaType).toBe(
+      MinutiaTypeEnum.BIFURCATION,
+    );
+    expect(auditTrail.events).toEqual([]);
+  });
+
+  it('overwrites the trace type again on a second reference print', async () => {
+    seedMinutia(
+      'layer-ref-1',
+      'ref-1',
+      minutiaSettings(MinutiaTypeEnum.TRIFURCATION, 310, 118),
+    );
+    locator.setReferencePrint('ref-2', 'case-9');
+    seedMinutia(
+      'layer-ref-2',
+      'ref-2',
+      minutiaSettings(MinutiaTypeEnum.ISLAND, 5, 6),
+    );
+    await handler.execute(command());
+
+    await handler.execute(
+      command({
+        referencePrintId: 'ref-2',
+        referenceMinutiaLayerId: 'layer-ref-2',
+      }),
+    );
+
+    const requalifiedTwice = await layers.findById('layer-trace-1');
+    expect(requalifiedTwice?.toPrimitives().settings.minutiaType).toBe(
+      MinutiaTypeEnum.ISLAND,
+    );
+    const firstReference = await layers.findById('layer-ref-1');
+    expect(firstReference?.toPrimitives().settings.minutiaType).toBe(
+      MinutiaTypeEnum.ISLAND,
+    );
+  });
+
+  it('journals the requalification of a minutia already paired elsewhere', async () => {
+    seedMinutia(
+      'layer-ref-1',
+      'ref-1',
+      minutiaSettings(MinutiaTypeEnum.TRIFURCATION, 310, 118),
+    );
+    locator.setReferencePrint('ref-2', 'case-9');
+    seedMinutia(
+      'layer-ref-2',
+      'ref-2',
+      minutiaSettings(MinutiaTypeEnum.ISLAND, 5, 6),
+    );
+    await handler.execute(command());
+    auditTrail.events.length = 0;
+
+    await handler.execute(
+      command({
+        referencePrintId: 'ref-2',
+        referenceMinutiaLayerId: 'layer-ref-2',
+      }),
+    );
+
+    expect(auditTrail.events.map((event) => event.eventType)).toEqual([
+      AuditEventTypeEnum.LAYER_UPDATED,
+      AuditEventTypeEnum.LAYER_UPDATED,
+      AuditEventTypeEnum.MINUTIA_PAIRED,
+    ]);
+    const [, partner] = auditTrail.events;
+    expect(partner.payload).toMatchObject({
+      layerId: 'layer-ref-1',
+      previousMinutiaType: MinutiaTypeEnum.TRIFURCATION,
+    });
+  });
+
+  it('never requalifies through a pair whose other side belongs to the operator', async () => {
+    seedMinutia(
+      'layer-trace-2',
+      'trace-1',
+      minutiaSettings(MinutiaTypeEnum.TRIFURCATION, 7, 8),
+      'user-lucie',
+    );
+    seedMinutia(
+      'layer-ref-1b',
+      'ref-1',
+      minutiaSettings(MinutiaTypeEnum.TRIFURCATION, 9, 10),
+    );
+    await handler.execute(
+      command({
+        traceMinutiaLayerId: 'layer-trace-2',
+        referenceMinutiaLayerId: 'layer-ref-1b',
+      }),
+    );
+    locator.setReferencePrint('ref-2', 'case-9');
+    seedMinutia(
+      'layer-ref-2',
+      'ref-2',
+      minutiaSettings(MinutiaTypeEnum.ISLAND, 5, 6),
+      'user-lucie',
+    );
+
+    await expect(
+      handler.execute(
+        command({
+          traceMinutiaLayerId: 'layer-trace-2',
+          referencePrintId: 'ref-2',
+          referenceMinutiaLayerId: 'layer-ref-2',
+          blindVerifierUserId: 'user-lucie',
+        }),
+      ),
+    ).rejects.toBeInstanceOf(LayerNotAuthoredByVerifierError);
+    const untouched = await layers.findById('layer-ref-1b');
+    expect(untouched?.toPrimitives().settings.minutiaType).toBe(
+      MinutiaTypeEnum.TRIFURCATION,
+    );
   });
 
   it('refuses a trace minutia that does not exist', async () => {
