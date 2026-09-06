@@ -5,6 +5,8 @@ import { InvalidImageResolutionError } from '../../../domain/image-resolution.vo
 import { ANY_SEAL } from '../../../domain/file-digest.fixture';
 import { ReferencePrint } from '../../../domain/reference-print/entity/reference-print';
 import { ReferencePrintNotFoundError } from '../../../domain/reference-print/errors/reference-print-not-found.error';
+import { CaseNotOpenForWorkError } from '../../../domain/errors/case-not-open-for-work.error';
+import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryReferencePrintRepository } from '../../../infrastructure/persistence/in-memory-reference-print.repository';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { CalibrateReferencePrintCommand } from './calibrate-reference-print.command';
@@ -16,6 +18,7 @@ const STORED_PATH =
 describe('CalibrateReferencePrintHandler', () => {
   let handler: CalibrateReferencePrintHandler;
   let repo: InMemoryReferencePrintRepository;
+  let caseStatus: InMemoryCaseStatusAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
 
   const seededPrint = () =>
@@ -29,7 +32,9 @@ describe('CalibrateReferencePrintHandler', () => {
   beforeEach(() => {
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryReferencePrintRepository(auditTrail);
-    handler = new CalibrateReferencePrintHandler(repo);
+    caseStatus = new InMemoryCaseStatusAdapter();
+    caseStatus.set('case-1', 'OPEN');
+    handler = new CalibrateReferencePrintHandler(repo, caseStatus);
     repo.seed(seededPrint());
   });
 
@@ -87,6 +92,23 @@ describe('CalibrateReferencePrintHandler', () => {
     ).rejects.toBeInstanceOf(ReferencePrintNotFoundError);
 
     expect(auditTrail.events).toHaveLength(0);
+  });
+
+  it('refuses to recalibrate a piece of a closed case, chains nothing and leaves the resolution untouched', async () => {
+    await handler.execute(
+      new CalibrateReferencePrintCommand(EXPERT_ACTOR, 'ref-1', 500),
+    );
+    caseStatus.set('case-1', 'CLOSED');
+
+    await expect(
+      handler.execute(
+        new CalibrateReferencePrintCommand(EXPERT_ACTOR, 'ref-1', 600),
+      ),
+    ).rejects.toBeInstanceOf(CaseNotOpenForWorkError);
+
+    expect(auditTrail.events).toHaveLength(1);
+    const rp = await repo.findById('ref-1');
+    expect(rp?.resolutionDpi).toBe(500);
   });
 
   it('refuses a resolution outside the accepted range, chains nothing and leaves the value untouched', async () => {

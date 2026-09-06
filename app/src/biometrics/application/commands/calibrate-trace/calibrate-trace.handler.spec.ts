@@ -5,6 +5,8 @@ import { InvalidImageResolutionError } from '../../../domain/image-resolution.vo
 import { ANY_SEAL } from '../../../domain/file-digest.fixture';
 import { Trace } from '../../../domain/trace/entity/trace';
 import { TraceNotFoundError } from '../../../domain/trace/errors/trace-not-found.error';
+import { CaseNotOpenForWorkError } from '../../../domain/errors/case-not-open-for-work.error';
+import { InMemoryCaseStatusAdapter } from '../../../infrastructure/persistence/in-memory-case-status.adapter';
 import { InMemoryTraceRepository } from '../../../infrastructure/persistence/in-memory-trace.repository';
 import { InMemoryAuditTrailAppender } from '../../../../audit-trail/infrastructure/persistence/in-memory-audit-trail.appender';
 import { CalibrateTraceCommand } from './calibrate-trace.command';
@@ -15,6 +17,7 @@ const STORED_PATH = 'media/investigation-case/case-1/traces/trace-1.png';
 describe('CalibrateTraceHandler', () => {
   let handler: CalibrateTraceHandler;
   let repo: InMemoryTraceRepository;
+  let caseStatus: InMemoryCaseStatusAdapter;
   let auditTrail: InMemoryAuditTrailAppender;
 
   const seededTrace = () =>
@@ -29,7 +32,9 @@ describe('CalibrateTraceHandler', () => {
   beforeEach(() => {
     auditTrail = new InMemoryAuditTrailAppender();
     repo = new InMemoryTraceRepository(auditTrail);
-    handler = new CalibrateTraceHandler(repo);
+    caseStatus = new InMemoryCaseStatusAdapter();
+    caseStatus.set('case-1', 'OPEN');
+    handler = new CalibrateTraceHandler(repo, caseStatus);
     repo.seed(seededTrace());
   });
 
@@ -83,6 +88,21 @@ describe('CalibrateTraceHandler', () => {
     ).rejects.toBeInstanceOf(TraceNotFoundError);
 
     expect(auditTrail.events).toHaveLength(0);
+  });
+
+  it('refuses to recalibrate a piece of a closed case, chains nothing and leaves the resolution untouched', async () => {
+    await handler.execute(
+      new CalibrateTraceCommand(EXPERT_ACTOR, 'trace-1', 500),
+    );
+    caseStatus.set('case-1', 'CLOSED');
+
+    await expect(
+      handler.execute(new CalibrateTraceCommand(EXPERT_ACTOR, 'trace-1', 600)),
+    ).rejects.toBeInstanceOf(CaseNotOpenForWorkError);
+
+    expect(auditTrail.events).toHaveLength(1);
+    const trace = await repo.findById('trace-1');
+    expect(trace?.resolutionDpi).toBe(500);
   });
 
   it('refuses a resolution outside the accepted range, chains nothing and leaves the value untouched', async () => {

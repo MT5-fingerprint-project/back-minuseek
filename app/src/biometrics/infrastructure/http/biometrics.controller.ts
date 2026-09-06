@@ -336,6 +336,7 @@ export class BiometricsController {
     description: 'Résolution non numérique ou hors intervalle 50–10 000',
   })
   @ApiResponse({ status: 404, description: 'Trace non trouvée' })
+  @ApiResponse({ status: 409, description: "L'affaire est close" })
   async calibrateTrace(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CalibrateImageDto,
@@ -346,7 +347,11 @@ export class BiometricsController {
         new CalibrateTraceCommand(toAuditActor(user), id, dto.resolutionDpi),
       );
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (e instanceof TraceNotFoundError)
+        throw new NotFoundException(e.message);
+      if (e instanceof CaseUnavailableForTraceError)
         throw new NotFoundException(e.message);
       if (e instanceof InvalidImageResolutionError)
         throw new BadRequestException(e.message);
@@ -538,6 +543,7 @@ export class BiometricsController {
     status: 404,
     description: 'Empreinte de référence non trouvée',
   })
+  @ApiResponse({ status: 409, description: "L'affaire est close" })
   async calibrateReferencePrint(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CalibrateImageDto,
@@ -552,7 +558,11 @@ export class BiometricsController {
         ),
       );
     } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
       if (e instanceof ReferencePrintNotFoundError)
+        throw new NotFoundException(e.message);
+      if (e instanceof CaseUnavailableForTraceError)
         throw new NotFoundException(e.message);
       if (e instanceof InvalidImageResolutionError)
         throw new BadRequestException(e.message);

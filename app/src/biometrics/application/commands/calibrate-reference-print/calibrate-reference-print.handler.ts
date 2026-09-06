@@ -1,5 +1,6 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { assertCaseAcceptsWork } from '../../../domain/case-work-window';
 import { ReferencePrintNotFoundError } from '../../../domain/reference-print/errors/reference-print-not-found.error';
 import {
   REFERENCE_PRINT_REPOSITORY,
@@ -7,6 +8,7 @@ import {
 } from '../../../domain/reference-print/repository/reference-print.repository';
 import { AuditEventTypeEnum } from '../../../../shared/domain/audit/audit-event-type.vo';
 import { EvidenceClassEnum } from '../../../../shared/domain/audit/evidence-class.vo';
+import { CASE_STATUS, CaseStatusPort } from '../../ports/case-status.port';
 import { CalibrateReferencePrintCommand } from './calibrate-reference-print.command';
 
 @CommandHandler(CalibrateReferencePrintCommand)
@@ -14,6 +16,8 @@ export class CalibrateReferencePrintHandler implements ICommandHandler<Calibrate
   constructor(
     @Inject(REFERENCE_PRINT_REPOSITORY)
     private readonly repo: ReferencePrintRepository,
+    @Inject(CASE_STATUS)
+    private readonly caseStatus: CaseStatusPort,
   ) {}
 
   async execute(cmd: CalibrateReferencePrintCommand): Promise<void> {
@@ -21,6 +25,10 @@ export class CalibrateReferencePrintHandler implements ICommandHandler<Calibrate
     if (!rp) {
       throw new ReferencePrintNotFoundError(cmd.id);
     }
+    assertCaseAcceptsWork(
+      rp.caseId,
+      await this.caseStatus.findStatus(rp.caseId),
+    );
 
     const previousResolutionDpi = rp.resolutionDpi;
     rp.calibrate(cmd.resolutionDpi);
