@@ -45,6 +45,7 @@ export enum AuditEventTypeEnum {
   MINUTIA_PAIRED = 'MINUTIA_PAIRED',
   MINUTIA_UNPAIRED = 'MINUTIA_UNPAIRED',
   CONCORDANCE_VIDEO_DEPOSITED = 'CONCORDANCE_VIDEO_DEPOSITED',
+  MARK_RADIUS_SET = 'MARK_RADIUS_SET',
 }
 
 export class InvalidAuditEventTypeError extends Error {

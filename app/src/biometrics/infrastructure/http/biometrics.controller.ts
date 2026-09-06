@@ -38,6 +38,8 @@ import { DeclareTraceExploitabilityCommand } from '../../application/commands/de
 import { DeclareTraceNotIdentifiedCommand } from '../../application/commands/declare-trace-not-identified/declare-trace-not-identified.command';
 import { WithdrawTraceNotIdentifiedCommand } from '../../application/commands/withdraw-trace-not-identified/withdraw-trace-not-identified.command';
 import { CalibrateReferencePrintCommand } from '../../application/commands/calibrate-reference-print/calibrate-reference-print.command';
+import { SetTraceMarkRadiusCommand } from '../../application/commands/set-trace-mark-radius/set-trace-mark-radius.command';
+import { SetReferencePrintMarkRadiusCommand } from '../../application/commands/set-reference-print-mark-radius/set-reference-print-mark-radius.command';
 import { UploadReferencePrintCommand } from '../../application/commands/upload-reference-print/upload-reference-print.command';
 import { WithdrawTraceCommand } from '../../application/commands/withdraw-trace/withdraw-trace.command';
 import { AttachLocationPhotoCommand } from '../../application/commands/attach-location-photo/attach-location-photo.command';
@@ -70,6 +72,7 @@ import { ReferencePrintImageDestroyedError } from '../../domain/reference-print/
 import { AlreadyWithdrawnError } from '../../domain/withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../domain/withdrawal/errors/not-withdrawn.error';
 import { InvalidImageResolutionError } from '../../domain/image-resolution.vo';
+import { InvalidMarkRadiusError } from '../../domain/mark-radius.vo';
 import { InvalidImageError } from '../../application/ports/image-converter.port';
 import { UnsupportedImageFormatError } from '../../application/services/displayable-image';
 import { MatchingPrimitives } from '../../domain/matching/entity/matching';
@@ -78,6 +81,7 @@ import { AuthenticatedUser } from '../../../auth/infrastructure/http/auth.types'
 import { toAuditActor } from '../../../auth/infrastructure/http/audit-actor.mapper';
 import { WithdrawPieceDto } from './dto/withdraw-piece.dto';
 import { CalibrateImageDto } from './dto/calibrate-image.dto';
+import { SetMarkRadiusDto } from './dto/set-mark-radius.dto';
 import { DescribeTraceDto } from './dto/describe-trace.dto';
 import { DeclareTraceExploitabilityDto } from './dto/declare-trace-exploitability.dto';
 import { UploadTraceDto } from './dto/upload-trace.dto';
@@ -350,6 +354,39 @@ export class BiometricsController {
     }
   }
 
+  @Patch('traces/:id/mark-radius')
+  @CaseAdministration()
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Régler la taille des repères de la trace' })
+  @ApiResponse({ status: 204, description: 'Taille des repères enregistrée' })
+  @ApiResponse({
+    status: 400,
+    description: 'Taille non entière ou hors intervalle 2–2 000',
+  })
+  @ApiResponse({ status: 404, description: 'Trace non trouvée' })
+  @ApiResponse({ status: 409, description: "L'affaire est close" })
+  async setTraceMarkRadius(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetMarkRadiusDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    try {
+      await this.commandBus.execute(
+        new SetTraceMarkRadiusCommand(toAuditActor(user), id, dto.markRadius),
+      );
+    } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
+      if (e instanceof TraceNotFoundError)
+        throw new NotFoundException(e.message);
+      if (e instanceof CaseUnavailableForTraceError)
+        throw new NotFoundException(e.message);
+      if (e instanceof InvalidMarkRadiusError)
+        throw new BadRequestException(e.message);
+      throw e;
+    }
+  }
+
   @Put('traces/:id/description')
   @CaseAdministration()
   @ApiOperation({
@@ -518,6 +555,48 @@ export class BiometricsController {
       if (e instanceof ReferencePrintNotFoundError)
         throw new NotFoundException(e.message);
       if (e instanceof InvalidImageResolutionError)
+        throw new BadRequestException(e.message);
+      throw e;
+    }
+  }
+
+  @Patch('reference-prints/:id/mark-radius')
+  @CaseAdministration()
+  @HttpCode(204)
+  @ApiOperation({
+    summary: "Régler la taille des repères de l'empreinte de référence",
+  })
+  @ApiResponse({ status: 204, description: 'Taille des repères enregistrée' })
+  @ApiResponse({
+    status: 400,
+    description: 'Taille non entière ou hors intervalle 2–2 000',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Empreinte de référence non trouvée',
+  })
+  @ApiResponse({ status: 409, description: "L'affaire est close" })
+  async setReferencePrintMarkRadius(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetMarkRadiusDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    try {
+      await this.commandBus.execute(
+        new SetReferencePrintMarkRadiusCommand(
+          toAuditActor(user),
+          id,
+          dto.markRadius,
+        ),
+      );
+    } catch (e) {
+      if (e instanceof CaseNotOpenForWorkError)
+        throw new ConflictException(e.message);
+      if (e instanceof ReferencePrintNotFoundError)
+        throw new NotFoundException(e.message);
+      if (e instanceof CaseUnavailableForTraceError)
+        throw new NotFoundException(e.message);
+      if (e instanceof InvalidMarkRadiusError)
         throw new BadRequestException(e.message);
       throw e;
     }

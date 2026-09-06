@@ -786,6 +786,50 @@ describe('journalSentence — une calibration', () => {
   });
 });
 
+describe('journalSentence — la taille des repères', () => {
+  it('dit la taille fixée quand la pièce n’en avait pas', () => {
+    expect(
+      say(AuditEventTypeEnum.MARK_RADIUS_SET, {
+        fingerprintId: 'trace-7',
+        markRadius: 36,
+        previousMarkRadius: null,
+      }),
+    ).toBe(
+      'Taille des repères de la trace 3455-T7 cotée « B » fixée à 36 pixels',
+    );
+  });
+
+  it('dit les deux valeurs quand la taille est corrigée', () => {
+    expect(
+      say(AuditEventTypeEnum.MARK_RADIUS_SET, {
+        fingerprintId: 'trace-7',
+        markRadius: 48,
+        previousMarkRadius: 36,
+      }),
+    ).toBe(
+      'Taille des repères de la trace 3455-T7 cotée « B » corrigée de 36 à 48 pixels',
+    );
+  });
+
+  it('nomme l’empreinte de référence réglée', () => {
+    expect(
+      say(AuditEventTypeEnum.MARK_RADIUS_SET, {
+        fingerprintId: 'ref-1',
+        markRadius: 36,
+        previousMarkRadius: null,
+      }),
+    ).toBe(
+      "Taille des repères de l'empreinte de l'index droit de Madame BERGER Hélène fixée à 36 pixels",
+    );
+  });
+
+  it('n’invente pas de chiffre quand le maillon n’en porte pas', () => {
+    expect(
+      say(AuditEventTypeEnum.MARK_RADIUS_SET, { fingerprintId: 'trace-7' }),
+    ).toBe('Taille des repères de la trace 3455-T7 cotée « B » réglée');
+  });
+});
+
 describe('journalSentence — la vérification', () => {
   it('nomme le collègue à qui la vérification est confiée', () => {
     expect(

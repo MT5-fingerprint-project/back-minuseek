@@ -26,6 +26,7 @@ export interface TraceReadModel {
   withdrawalMotive: string | null;
   withdrawalMotiveDetail: string | null;
   resolutionDpi: number | null;
+  markRadius: number | null;
   origin: string | null;
   location: string | null;
   revelationTechnique: string | null;

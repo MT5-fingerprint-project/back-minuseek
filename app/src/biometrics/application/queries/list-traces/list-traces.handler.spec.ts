@@ -32,6 +32,7 @@ const traceRow = (
   withdrawalMotive: null,
   withdrawalMotiveDetail: null,
   resolutionDpi: null,
+  markRadius: null,
   origin: null,
   location: null,
   revelationTechnique: null,
@@ -233,6 +234,30 @@ describe('ListTracesHandler', () => {
     const { data } = await handler.execute(new ListTracesQuery('case-9'));
 
     expect(data[0].resolutionDpi).toBeNull();
+  });
+
+  it('exposes the marker size set on a trace', async () => {
+    const reader = new InMemoryTraceReader([traceRow({ markRadius: 36 })]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0].markRadius).toBe(36);
+  });
+
+  it('leaves the marker size empty for a trace nobody has set', async () => {
+    const reader = new InMemoryTraceReader([traceRow()]);
+    const handler = new ListTracesHandler(
+      reader,
+      new InMemoryImageStorageAdapter(),
+    );
+
+    const { data } = await handler.execute(new ListTracesQuery('case-9'));
+
+    expect(data[0].markRadius).toBeNull();
   });
 
   it('rend les traces dans l\u2019ordre de leurs numéros', async () => {

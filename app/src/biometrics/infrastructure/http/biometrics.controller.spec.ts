@@ -36,6 +36,7 @@ const aTraceView = (
   withdrawalMotive: null,
   withdrawalMotiveDetail: null,
   resolutionDpi: null,
+  markRadius: null,
   origin: null,
   location: null,
   revelationTechnique: null,

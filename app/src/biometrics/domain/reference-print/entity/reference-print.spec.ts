@@ -2,6 +2,7 @@ import { ReferencePrint } from './reference-print';
 import { ReferencePrintImageAlreadyDestroyedError } from '../errors/reference-print-image-already-destroyed.error';
 import { FileDigest, InvalidFileDigestError } from '../../file-digest.vo';
 import { InvalidImageResolutionError } from '../../image-resolution.vo';
+import { MarkRadius } from '../../mark-radius.vo';
 import { FingerPosition } from '../value-objects/finger-position.vo';
 import { AlreadyWithdrawnError } from '../../withdrawal/errors/already-withdrawn.error';
 import { NotWithdrawnError } from '../../withdrawal/errors/not-withdrawn.error';
@@ -198,6 +199,7 @@ describe('ReferencePrint', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: null,
         sourceHeight: null,
@@ -224,6 +226,7 @@ describe('ReferencePrint', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: null,
         sourceHeight: null,
@@ -247,6 +250,7 @@ describe('ReferencePrint', () => {
           withdrawalMotiveDetail: null,
           imageDestroyedAt: null,
           resolutionDpi: null,
+          markRadius: null,
           thumbPath: null,
           sourceWidth: null,
           sourceHeight: null,
@@ -278,6 +282,7 @@ describe('ReferencePrint', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: null,
         sourceHeight: null,
@@ -350,6 +355,60 @@ describe('ReferencePrint', () => {
     });
   });
 
+  describe('setMarkRadius', () => {
+    const uploaded = () =>
+      ReferencePrint.create({
+        id: 'r-1',
+        path: 'p',
+        caseId: 'c-1',
+        sha256: seal(),
+      });
+
+    it('starts without any marker size of its own', () => {
+      expect(uploaded().markRadius).toBeNull();
+    });
+
+    it('sets the marker size in pixels of the source image', () => {
+      const rp = uploaded();
+
+      rp.setMarkRadius(MarkRadius.of(36));
+
+      expect(rp.markRadius).toBe(36);
+    });
+
+    it('replaces the previous size when the operator corrects it', () => {
+      const rp = uploaded();
+      rp.setMarkRadius(MarkRadius.of(36));
+
+      rp.setMarkRadius(MarkRadius.of(48));
+
+      expect(rp.markRadius).toBe(48);
+    });
+
+    it('emits the marker size in the primitives', () => {
+      const rp = uploaded();
+
+      rp.setMarkRadius(MarkRadius.of(36));
+
+      expect(rp.toPrimitives().markRadius).toBe(36);
+    });
+
+    it('round-trips the marker size through reconstitute', () => {
+      const rp = uploaded();
+      rp.setMarkRadius(MarkRadius.of(36));
+
+      const rebuilt = ReferencePrint.reconstitute(rp.toPrimitives());
+
+      expect(rebuilt.markRadius).toBe(36);
+    });
+
+    it('rebuilds a piece whose size has never been set', () => {
+      const rebuilt = ReferencePrint.reconstitute(uploaded().toPrimitives());
+
+      expect(rebuilt.markRadius).toBeNull();
+    });
+  });
+
   describe('withdrawal', () => {
     const withdrawnPrint = () => {
       const rp = ReferencePrint.create({
@@ -374,6 +433,7 @@ describe('ReferencePrint', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: null,
         sourceHeight: null,
@@ -400,6 +460,7 @@ describe('ReferencePrint', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: null,
         sourceHeight: null,
@@ -432,6 +493,7 @@ describe('ReferencePrint', () => {
         withdrawalMotiveDetail: null,
         imageDestroyedAt: null,
         resolutionDpi: null,
+        markRadius: null,
         thumbPath: null,
         sourceWidth: null,
         sourceHeight: null,

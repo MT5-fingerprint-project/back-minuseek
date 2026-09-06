@@ -165,6 +165,18 @@ function calibrationRule(
   };
 }
 
+function markRadiusRule(event: AuditEventData, named: Designations): string {
+  const opening = `Taille des repères de ${layerPiece(event, named)}`;
+  const radius = count(event, 'markRadius');
+  if (radius === null) {
+    return `${opening} réglée`;
+  }
+  const previous = count(event, 'previousMarkRadius');
+  return previous === null
+    ? `${opening} fixée à ${radius} pixels`
+    : `${opening} corrigée de ${previous} à ${radius} pixels`;
+}
+
 const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
   [AuditEventTypeEnum.TENANT_PROVISIONED]: () => 'Création du laboratoire',
   [AuditEventTypeEnum.CASE_OPENED]: (event) => {
@@ -291,6 +303,7 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
     'Minutie retirée',
     'Repère retiré',
   ),
+  [AuditEventTypeEnum.MARK_RADIUS_SET]: markRadiusRule,
   [AuditEventTypeEnum.COMPARISON_EXECUTED]: (event, named) =>
     `Classement des empreintes de référence par ressemblance apparente pour ${
       trace(event, named).full
