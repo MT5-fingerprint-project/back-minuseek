@@ -123,25 +123,54 @@ describe('resolvePairType', () => {
     });
   });
 
-  it('refuses two different determined types, naming both sides', () => {
+  it('qualifies the trace side when both types are determined and disagree', () => {
     expect(
       resolvePairType(
         MinutiaTypeEnum.RIDGE_ENDING,
         MinutiaTypeEnum.TRIFURCATION,
       ),
     ).toEqual({
-      outcome: 'REFUSED',
-      traceType: MinutiaTypeEnum.RIDGE_ENDING,
-      referenceType: MinutiaTypeEnum.TRIFURCATION,
+      outcome: 'QUALIFIES',
+      type: MinutiaTypeEnum.TRIFURCATION,
+      sideToQualify: 'TRACE',
     });
   });
 
-  it('refuses the same disagreement whichever side is read first', () => {
+  it('gives the reference type whichever side is read first', () => {
     expect(
       resolvePairType(
         MinutiaTypeEnum.TRIFURCATION,
         MinutiaTypeEnum.RIDGE_ENDING,
-      ).outcome,
-    ).toBe('REFUSED');
+      ),
+    ).toEqual({
+      outcome: 'QUALIFIES',
+      type: MinutiaTypeEnum.RIDGE_ENDING,
+      sideToQualify: 'TRACE',
+    });
   });
+
+  it.each(
+    DETERMINED_TYPES.flatMap((traceType) =>
+      DETERMINED_TYPES.filter(
+        (referenceType) => referenceType !== traceType,
+      ).map((referenceType) => [traceType, referenceType]),
+    ),
+  )('gives a %s trace the %s of the reference', (traceType, referenceType) => {
+    expect(resolvePairType(traceType, referenceType)).toEqual({
+      outcome: 'QUALIFIES',
+      type: referenceType,
+      sideToQualify: 'TRACE',
+    });
+  });
+
+  it.each(DETERMINED_TYPES)(
+    'keeps the %s of the trace when the reference is undetermined',
+    (type) => {
+      expect(resolvePairType(type, MinutiaTypeEnum.UNDETERMINED)).toEqual({
+        outcome: 'QUALIFIES',
+        type,
+        sideToQualify: 'REFERENCE',
+      });
+    },
+  );
 });

@@ -106,6 +106,35 @@ function layerRule(
   };
 }
 
+/** Le couple ancien/nouveau type, ou `null` quand l'acte n'a pas changé le type. */
+function requalification(event: AuditEventData): string | null {
+  const previousType = text(event, 'previousMinutiaType');
+  if (previousType === null || !isMinutia(event)) return null;
+  const settings = event.payload.settings as Record<string, unknown>;
+  const newType = settings.minutiaType;
+  if (typeof newType !== 'string' || newType === previousType) return null;
+  return `Minutie requalifiée de « ${minutiaTypeLabel(
+    previousType,
+  )} » en « ${minutiaTypeLabel(newType)} »`;
+}
+
+/** La pièce dont le type a été recopié, quand la requalification vient d'un appariement. */
+function alignedOn(event: AuditEventData, named: Designations): string | null {
+  const fingerprintId = text(event, 'alignedOnFingerprintId');
+  return fingerprintId === null
+    ? null
+    : `, par alignement sur ${designationOf(named, fingerprintId).bare}`;
+}
+
+/** Ce que portait la minutie qui a cédé, avant que l'appariement ne la réécrive. */
+function overwrittenReading(event: AuditEventData): string | null {
+  const side = text(event, 'requalifiedSide');
+  const observed = text(event, 'observedMinutiaType');
+  if (side === null || observed === null) return null;
+  const piece = side === 'TRACE' ? 'la trace' : "l'empreinte";
+  return `, ${piece} était relevée « ${minutiaTypeLabel(observed)} »`;
+}
+
 function pairedMinutiaType(event: AuditEventData): string | null {
   const side = event.payload.traceMinutia;
   if (typeof side !== 'object' || side === null) {
@@ -251,11 +280,12 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
     'Minutie relevée',
     'Repère tracé',
   ),
-  [AuditEventTypeEnum.LAYER_UPDATED]: layerRule(
-    'applied',
-    'Minutie déplacée',
-    'Repère modifié',
-  ),
+  [AuditEventTypeEnum.LAYER_UPDATED]: (event, named) => {
+    const retyped = requalification(event);
+    return retyped === null
+      ? layerRule('applied', 'Minutie déplacée', 'Repère modifié')(event, named)
+      : `${retyped} sur ${layerPiece(event, named)}${alignedOn(event, named) ?? ''}`;
+  },
   [AuditEventTypeEnum.LAYER_DELETED]: layerRule(
     'removed',
     'Minutie retirée',
@@ -283,7 +313,10 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
       print(event, named).bare
     }`;
     const type = pairedMinutiaType(event);
-    return type === null ? paired : `${paired} — ${minutiaTypeLabel(type)}`;
+    if (type === null) return paired;
+    return `${paired} — ${minutiaTypeLabel(type)}${
+      overwrittenReading(event) ?? ''
+    }`;
   },
   [AuditEventTypeEnum.MINUTIA_UNPAIRED]: (event, named) => {
     const undone = `Appariement défait entre une minutie de ${

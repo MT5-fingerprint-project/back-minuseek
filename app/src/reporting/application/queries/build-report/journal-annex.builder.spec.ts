@@ -75,6 +75,22 @@ function minutiaLayer(
   });
 }
 
+function requalifiedMinutia(
+  occurredAt: Date,
+  fingerprintId = 'trace-2',
+): AuditEventData {
+  return event(AuditEventTypeEnum.LAYER_UPDATED, occurredAt, {
+    layerId: 'layer-2',
+    fingerprintId,
+    name: 'Minutie',
+    type: 'ANNOTATION',
+    zIndex: 2,
+    isVisible: true,
+    settings: { type: 'minutia', x: 10, y: 20, minutiaType: 'BIFURCATION' },
+    previousMinutiaType: 'RIDGE_ENDING',
+  });
+}
+
 beforeEach(() => {
   nextSeq = 0;
 });
@@ -110,6 +126,20 @@ describe('PRINTABLE_EVENT_TYPES', () => {
 });
 
 describe('buildJournalAnnex — la variante résumée', () => {
+  it('n’absorbe pas une requalification de minutie dans le résumé', () => {
+    const journal = buildJournalAnnex(
+      [requalifiedMinutia(at(17, 3))],
+      NAMED,
+      'SUMMARY',
+    );
+
+    expect(journal.summaries).toEqual([]);
+    expect(journal.acts).toHaveLength(1);
+    expect(journal.acts[0].sentence).toBe(
+      'Minutie requalifiée de « arrêt de ligne » en « bifurcation » sur la trace 3455-T2 cotée « B »',
+    );
+  });
+
   it('absorbe quinze réglages d’une même trace en une seule ligne', () => {
     const events = Array.from({ length: 15 }, (_unused, index) =>
       filterLayer(AuditEventTypeEnum.LAYER_UPDATED, at(17, 3 + index)),
