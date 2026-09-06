@@ -1,0 +1,11 @@
+model ConcordanceVideo {
+  id               String   @id @db.Uuid
+  caseId           String   @db.Uuid
+  traceId          String   @db.Uuid
+  referencePrintId String   @db.Uuid
+  path             String
+  sha256           String   @db.Char(64)
+  createdAt        DateTime @default(now())
+
+  @@index([traceId, referencePrintId])
+}

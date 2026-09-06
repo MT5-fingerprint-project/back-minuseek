@@ -2,7 +2,8 @@ export type SealKind =
   | 'TRACE'
   | 'REFERENCE_PRINT'
   | 'REPORT'
-  | 'EXPORTED_IMAGE';
+  | 'EXPORTED_IMAGE'
+  | 'CONCORDANCE_VIDEO';
 
 export interface SealToRecord {
   sha256: string;

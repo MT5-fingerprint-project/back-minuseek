@@ -331,6 +331,19 @@ const RULES: Record<AuditEventTypeEnum, SentenceRule> = {
     );
     return `Dépôt de l'image exportée de ${designation.full} et mise sous scellé`;
   },
+  [AuditEventTypeEnum.CONCORDANCE_VIDEO_DEPOSITED]: (event, named) => {
+    const trace = designationOf(
+      named,
+      text(event, 'traceId'),
+      UNNAMED_TRACE_FALLBACK,
+    );
+    const print = designationOf(
+      named,
+      text(event, 'referencePrintId'),
+      UNNAMED_PRINT_FALLBACK,
+    );
+    return `Dépôt de la vidéo de démonstration des concordances entre ${trace.full} et ${print.full}, et mise sous scellé`;
+  },
   [AuditEventTypeEnum.TRACE_NOT_IDENTIFIED]: (event, named) => {
     const designation = trace(event, named).bare;
     return event.payload.notIdentified === false

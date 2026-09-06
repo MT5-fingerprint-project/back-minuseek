@@ -77,7 +77,10 @@ narre pas l'absence » : il n'y a pas d'absence à narrer.
 
 **Requalifier une minutie déjà appariée est refusé** (409). C'est une porte à sens unique
 assumée : il faut défaire la paire d'abord. Une propagation silencieuse au binôme aurait été
-une écriture invisible de plus, sur une donnée qui finit dans un rapport.
+une écriture invisible de plus, sur une donnée qui finit dans un rapport. *Ce paragraphe est
+caduc depuis [ADR-0025](0025-requalifier-une-minutie-appariee-requalifie-la-paire.md) : la
+requalification est propagée à la paire, confirmée avant et journalisée après. Le reste de
+cet ADR tient.*
 
 **L'appariement a ses propres actes**, `MINUTIA_PAIRED` et `MINUTIA_UNPAIRED`, ajoutés en fin
 de catalogue. Leur payload porte les valeurs : les deux identifiants de calque, les
