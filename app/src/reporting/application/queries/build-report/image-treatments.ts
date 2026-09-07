@@ -1,5 +1,6 @@
 import { PieceData } from '../../ports/case-report-data.reader';
 import {
+  CurvePoint,
   ImageGeometry,
   ImageTreatment,
   PixelTreatment,
@@ -21,7 +22,20 @@ const LEVEL_KEYS: Record<string, 'blackPoint' | 'whitePoint' | 'gamma'> = {
   levelsGamma: 'gamma',
 };
 
+const CURVE = 'curve';
 const SLIDER_SCALE = 100;
+
+/** Les points de contrôle tels que l'atelier les a enregistrés, ou rien. */
+export function curvePointsOf(settings: unknown): CurvePoint[] | null {
+  const points = (settings as { points?: unknown })?.points;
+  if (!Array.isArray(points) || points.length < 2) return null;
+  const isPoint = (point: unknown): point is CurvePoint =>
+    typeof point === 'object' &&
+    point !== null &&
+    typeof (point as CurvePoint).x === 'number' &&
+    typeof (point as CurvePoint).y === 'number';
+  return points.every(isPoint) ? points : null;
+}
 
 interface Point {
   x: number;
@@ -76,11 +90,17 @@ export function pixelTreatmentsOf(piece: PieceData): PixelTreatment[] {
       continue;
     }
     const { filterKey, value } = layer.settings;
-    if (
-      typeof filterKey !== 'string' ||
-      typeof value !== 'number' ||
-      value === 0
-    ) {
+    if (typeof filterKey !== 'string') {
+      continue;
+    }
+
+    if (filterKey === CURVE) {
+      const points = curvePointsOf(layer.settings);
+      if (points !== null) treatments.push({ kind: 'CURVE', points });
+      continue;
+    }
+
+    if (typeof value !== 'number' || value === 0) {
       continue;
     }
     const amount = value / SLIDER_SCALE;

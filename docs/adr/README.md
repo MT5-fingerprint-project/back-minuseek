@@ -38,3 +38,4 @@ On consigne ici les **décisions structurantes** du repo : choix techno, trade-o
 - [ADR-0025](0025-requalifier-une-minutie-appariee-requalifie-la-paire.md) — Requalifier une minutie appariée requalifie la paire
 - [ADR-0026](0026-la-trace-adopte-le-type-de-l-empreinte-a-l-appariement.md) — À l'appariement, la trace adopte le type de l'empreinte de référence
 - [ADR-0027](0027-la-taille-des-reperes-appartient-a-la-piece.md) — La taille des repères appartient à la pièce
+- [ADR-0028](0028-la-courbe-tonale-remplace-les-niveaux-comme-reglage-d-expert.md) — La courbe tonale remplace les niveaux comme réglage d'expert

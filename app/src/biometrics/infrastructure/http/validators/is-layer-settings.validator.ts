@@ -12,6 +12,10 @@ import { MinutiaSettingsDto } from '../dto/settings/minutia-settings.dto';
 import { PairSettingsDto } from '../dto/settings/pair-settings.dto';
 import { FilterSettingsDto } from '../dto/settings/filter-settings.dto';
 import {
+  CURVE_FILTER_KEY,
+  CurveSettingsDto,
+} from '../dto/settings/curve-settings.dto';
+import {
   ANNOTATION_FRAME,
   ANNOTATION_SCHEMA_VERSION,
 } from '../dto/settings/annotation-settings.dto';
@@ -31,16 +35,23 @@ const ANNOTATION_DTOS: Record<string, SettingsDto> = {
  * - On create the sibling `type` field (ANNOTATION/FILTER) drives the choice.
  * - On update there is no `type`, so we infer from the settings content.
  */
+/** La courbe tonale porte des points de contrôle là où les autres filtres portent un nombre. */
+function filterDtoFor(value: Record<string, unknown>): SettingsDto {
+  return value.filterKey === CURVE_FILTER_KEY
+    ? CurveSettingsDto
+    : FilterSettingsDto;
+}
+
 function pickSettingsDto(
   value: Record<string, unknown>,
   layerType: unknown,
 ): SettingsDto | null {
-  if (layerType === 'FILTER') return FilterSettingsDto;
+  if (layerType === 'FILTER') return filterDtoFor(value);
   if (layerType === 'ANNOTATION') {
     return ANNOTATION_DTOS[value.type as string] ?? null;
   }
   // Update path: infer the family from the payload itself.
-  if ('filterKey' in value) return FilterSettingsDto;
+  if ('filterKey' in value) return filterDtoFor(value);
   if (typeof value.type === 'string' && value.type in ANNOTATION_DTOS) {
     return ANNOTATION_DTOS[value.type];
   }

@@ -5,10 +5,8 @@ const EXPERT_FILTER_KEYS = [
   'channelRed',
   'channelGreen',
   'channelBlue',
-  'levelsBlack',
-  'levelsGamma',
-  'levelsWhite',
   'sharpening',
+  'curve',
 ];
 
 export function expertFilterKeyOf(

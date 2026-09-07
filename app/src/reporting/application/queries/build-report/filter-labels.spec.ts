@@ -44,7 +44,58 @@ describe('filterSentence', () => {
     expect(filterSentence(key, 20, 'hidden')).toBe(expected);
   });
 
-  it('couvre les six réglages du produit', () => {
+  it.each([
+    ['levelsBlack', 37, 'Point noir porté à 37 %'],
+    ['levelsWhite', 12, 'Point blanc porté à 12 %'],
+    ['levelsGamma', -20, 'Gamma porté à −20 %'],
+    ['sharpening', 150, 'Netteté locale portée à 150 %'],
+  ])(
+    'dit la pose du réglage tonal %p sans lui prêter un écart',
+    (key, value, expected) => {
+      expect(filterSentence(key, value, 'applied')).toBe(expected);
+    },
+  );
+
+  it.each([
+    ['channelRed', 'Canal rouge supprimé'],
+    ['channelGreen', 'Canal vert supprimé'],
+    ['channelBlue', 'Canal bleu supprimé'],
+  ])('dit la suppression du canal %p', (key, expected) => {
+    expect(filterSentence(key, 1, 'applied')).toBe(expected);
+  });
+
+  it('énonce la courbe par ses points de contrôle', () => {
+    expect(
+      filterSentence(
+        'curve',
+        [
+          { x: 0, y: 0 },
+          { x: 90, y: 170 },
+          { x: 255, y: 255 },
+        ],
+        'applied',
+      ),
+    ).toBe('Courbe tonale réglée sur 0 → 0, 90 → 170, 255 → 255');
+  });
+
+  it('compte les points de contrôle quand ils ne tiennent plus dans la phrase', () => {
+    const points = [0, 40, 80, 120, 160, 200, 255].map((level) => ({
+      x: level,
+      y: level,
+    }));
+
+    expect(filterSentence('curve', points, 'applied')).toBe(
+      'Courbe tonale réglée sur 7 points de contrôle',
+    );
+  });
+
+  it('dit le retrait de la courbe', () => {
+    expect(filterSentence('curve', [], 'removed')).toBe(
+      'Courbe tonale retirée',
+    );
+  });
+
+  it('couvre tous les réglages du comparateur', () => {
     const covered = [
       'brightness',
       'contrast',
@@ -52,6 +103,14 @@ describe('filterSentence', () => {
       'rotation',
       'inversion',
       'mirror',
+      'levelsBlack',
+      'levelsWhite',
+      'levelsGamma',
+      'channelRed',
+      'channelGreen',
+      'channelBlue',
+      'sharpening',
+      'curve',
     ];
 
     for (const key of covered) {
