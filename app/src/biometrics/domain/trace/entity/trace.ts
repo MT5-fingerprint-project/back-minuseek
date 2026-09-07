@@ -9,10 +9,6 @@ import { Withdrawal } from '../../withdrawal/withdrawal.vo';
 import { InvalidTraceLocationError } from '../errors/invalid-trace-location.error';
 import { CaptureMetadata } from '../value-objects/capture-metadata.vo';
 import {
-  CaptureQuality,
-  CaptureQualityProps,
-} from '../value-objects/capture-quality.vo';
-import {
   RevelationTechnique,
   RevelationTechniqueEnum,
 } from '../value-objects/revelation-technique.vo';
@@ -35,7 +31,6 @@ export interface TracePrimitives {
   captureOrientation: number | null;
   captureFocalLength: number | null;
   captureDeviceModel: string | null;
-  captureQuality: CaptureQualityProps | null;
   sourceWidth: number | null;
   sourceHeight: number | null;
   withdrawnAt: Date | null;
@@ -64,7 +59,6 @@ interface UploadTraceProps {
   sha256: FileDigest;
   displayableSha256?: FileDigest;
   captureMetadata?: CaptureMetadata;
-  captureQuality?: CaptureQuality;
   location?: string;
   thumbPath?: string | null;
   sourceSize?: ImageSize | null;
@@ -88,7 +82,6 @@ export class Trace {
     private readonly _sha256: FileDigest | null,
     private readonly _displayableSha256: FileDigest | null,
     private readonly _captureMetadata: CaptureMetadata,
-    private readonly _captureQuality: CaptureQuality | null,
     private _withdrawal: Withdrawal | null,
     private _resolution: ImageResolution | null,
     private _markRadius: MarkRadius | null,
@@ -131,7 +124,6 @@ export class Trace {
       props.sha256,
       props.displayableSha256 ?? props.sha256,
       props.captureMetadata ?? CaptureMetadata.empty(),
-      props.captureQuality ?? null,
       null,
       null,
       null,
@@ -158,7 +150,6 @@ export class Trace {
     captureOrientation: number | null;
     captureFocalLength: number | null;
     captureDeviceModel: string | null;
-    captureQuality: unknown;
     sourceWidth: number | null;
     sourceHeight: number | null;
     withdrawnAt: Date | null;
@@ -190,7 +181,6 @@ export class Trace {
         focalLength: payload.captureFocalLength ?? undefined,
         deviceModel: payload.captureDeviceModel ?? undefined,
       }),
-      CaptureQuality.fromPersistence(payload.captureQuality),
       Withdrawal.fromPersistence(
         payload.withdrawalMotive,
         payload.withdrawnAt,
@@ -276,7 +266,6 @@ export class Trace {
       captureOrientation: this._captureMetadata.orientation ?? null,
       captureFocalLength: this._captureMetadata.focalLength ?? null,
       captureDeviceModel: this._captureMetadata.deviceModel ?? null,
-      captureQuality: this._captureQuality?.toPrimitives() ?? null,
       sourceWidth: this._sourceSize?.width ?? null,
       sourceHeight: this._sourceSize?.height ?? null,
       withdrawnAt: this._withdrawal?.getAt() ?? null,
@@ -322,10 +311,6 @@ export class Trace {
 
   get captureMetadata(): CaptureMetadata {
     return this._captureMetadata;
-  }
-
-  get captureQuality(): CaptureQuality | null {
-    return this._captureQuality;
   }
 
   get isWithdrawn(): boolean {

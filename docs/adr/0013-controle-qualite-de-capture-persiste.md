@@ -1,6 +1,6 @@
 # ADR-0013 — Persistance du contrôle qualité de capture sur l'upload d'une trace
 
-- **Statut** : accepté
+- **Statut** : remplacé par ADR-0029
 - **Date** : 2026-08-21
 - **Décideurs** : équipe back Minuseek (ticket B3)
 

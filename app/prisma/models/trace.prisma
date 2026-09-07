@@ -27,10 +27,14 @@ model Trace {
   captureFocalLength Float?
   captureDeviceModel String?
 
-  // Contrôle de netteté relevé on-device au déclenchement (B2/B3), écrit par
-  // POST /traces. Nullable : le chemin galerie et les traces antérieures n'en
-  // portent aucun. La perpendicularité (MOB-11) a été abandonnée en B2.
-  // Forme : { blurScore: number >= 0, passed: boolean }
+  // INUTILISÉE depuis L3-6 (2026-09-07). Elle a porté le contrôle de netteté
+  // relevé on-device au déclenchement (B2/B3), écrit par POST /traces, à la
+  // forme { blurScore: number >= 0, passed: boolean }. L3-4 a établi que ce
+  // qu'on mesure est la netteté d'une image du viseur, pas celle du JPEG versé
+  // au dossier : plus aucun client ne l'envoie, et le back ne l'écrit ni ne la
+  // lit plus. La colonne reste parce que la retirer serait une migration
+  // destructive en fan-out sur toutes les bases tenant ; les lignes déposées
+  // avant le retrait gardent leur valeur. Voir docs/adr/0029.
   captureQuality Json?
 
   sourceWidth  Int?

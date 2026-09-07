@@ -67,7 +67,6 @@ describe('UploadTraceDto', () => {
     expect(dto.orientation).toBeUndefined();
     expect(dto.focalLength).toBeUndefined();
     expect(dto.deviceModel).toBeUndefined();
-    expect(dto.captureQuality).toBeUndefined();
   });
 
   it('rejects a height sent without its width', async () => {
@@ -116,110 +115,21 @@ describe('UploadTraceDto', () => {
     );
   });
 
-  describe('captureQuality', () => {
-    it('parses the JSON string the phone puts in the multipart body', async () => {
-      const dto = await transform({
-        caseId: CASE_ID,
-        captureQuality: '{"blurScore":128.4,"passed":true}',
-      });
-
-      expect(dto.captureQuality).toEqual({ blurScore: 128.4, passed: true });
-    });
-
-    it('keeps a check the phone marked as failed', async () => {
-      const dto = await transform({
-        caseId: CASE_ID,
-        captureQuality: '{"blurScore":12.5,"passed":false}',
-      });
-
-      expect(dto.captureQuality).toEqual({ blurScore: 12.5, passed: false });
-    });
-
-    it('accepts a blur score of zero', async () => {
-      const dto = await transform({
-        caseId: CASE_ID,
-        captureQuality: '{"blurScore":0,"passed":false}',
-      });
-
-      expect(dto.captureQuality?.blurScore).toBe(0);
-    });
-
-    it.each([
-      ['a truncated object', '{"blurScore":128.4'],
-      ['an empty string', ''],
-      ['plain words', 'tres net'],
-    ])(
-      'rejects %s, which is not JSON at all, naming the expected shape',
-      async (_label, captureQuality) => {
-        await expectRejection(
-          { caseId: CASE_ID, captureQuality },
-          'captureQuality doit être un objet JSON',
-        );
-      },
-    );
-
-    it.each([
-      ['a number', '12'],
-      ['a JSON null', 'null'],
-      ['a boolean', 'true'],
-      ['a quoted string', '"tres net"'],
-      ['an array', '[{"blurScore":1,"passed":true}]'],
-    ])(
-      'rejects %s, which is JSON but not an object, naming the expected shape',
-      async (_label, captureQuality) => {
-        await expectRejection(
-          { caseId: CASE_ID, captureQuality },
-          'captureQuality doit être un objet JSON',
-        );
-      },
-    );
-
-    it.each([
-      ['missing', '{"passed":true}'],
-      ['a string', '{"blurScore":"128.4","passed":true}'],
-      ['null', '{"blurScore":null,"passed":true}'],
-    ])(
-      'rejects a blur score that is %s, saying it expects a number',
-      async (_label, captureQuality) => {
-        await expectRejection(
-          { caseId: CASE_ID, captureQuality },
-          'captureQuality.blurScore must be a number',
-        );
-      },
-    );
-
-    it('rejects a negative blur score, saying it expects a positive one', async () => {
-      await expectRejection(
-        { caseId: CASE_ID, captureQuality: '{"blurScore":-1,"passed":true}' },
-        'captureQuality.blurScore must not be less than 0',
-      );
-    });
-
-    it.each([
-      ['missing', '{"blurScore":128.4}'],
-      ['a string', '{"blurScore":128.4,"passed":"true"}'],
-      ['a number', '{"blurScore":128.4,"passed":1}'],
-      ['null', '{"blurScore":128.4,"passed":null}'],
-    ])('rejects a verdict that is %s', async (_label, captureQuality) => {
-      await expectRejection({ caseId: CASE_ID, captureQuality }, 'passed');
-    });
-
-    it('rejects the perpendicularity field dropped in B2, and any other extra key', async () => {
-      await expectRejection(
-        {
-          caseId: CASE_ID,
-          captureQuality:
-            '{"blurScore":128.4,"passed":true,"perpendicularityDeviation":3}',
-        },
-        'perpendicularityDeviation',
-      );
-    });
-  });
-
   it('still rejects an unknown field, metadata or not', async () => {
     await expectRejection(
       { caseId: CASE_ID, nimportequoi: '1' },
       'nimportequoi',
+    );
+  });
+
+  // Le contrôle de netteté a existé (B3) avant que L3-4 n'établisse que la
+  // mesure du viseur ne décrit pas la pièce versée. Le champ est parti : il
+  // n'est plus toléré en silence, il repart en 400 comme n'importe quelle clé
+  // inconnue. C'est ce test qui prouve le retrait.
+  it('rejects captureQuality, the field no client sends any more', async () => {
+    await expectRejection(
+      { caseId: CASE_ID, captureQuality: '{"blurScore":128.4,"passed":true}' },
+      'captureQuality',
     );
   });
 });

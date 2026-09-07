@@ -11,7 +11,6 @@ interface TraceRow {
   sha256: string | null;
   createdAt: Date;
   updatedAt: Date;
-  captureQuality: unknown;
   notIdentifiedAt: Date | null;
   thumbPath: string | null;
   hits: { id: string }[];
@@ -34,7 +33,6 @@ function aTraceRow(overrides: Partial<TraceRow> = {}): TraceRow {
     sha256: 'a'.repeat(64),
     createdAt: new Date('2026-07-01T10:00:00.000Z'),
     updatedAt: new Date('2026-07-02T10:00:00.000Z'),
-    captureQuality: null,
     notIdentifiedAt: null,
     thumbPath: null,
     hits: [],
@@ -122,6 +120,19 @@ describe('PrismaTraceReader', () => {
 
     expect(prisma.findManyArgs[0]).toMatchObject({
       orderBy: { number: 'asc' },
+    });
+  });
+
+  // Les lignes sont projetées par diffusion : ne plus typer la colonne morte ne
+  // suffirait pas à cesser de la rendre, les traces déposées du temps de B3 en
+  // portent encore une. C'est l'omission qui tient l'engagement de L3-6.
+  it('ne lit pas la colonne de netteté abandonnée par L3-4', async () => {
+    const { reader, prisma } = build();
+
+    await reader.findByCaseId('case-9');
+
+    expect(prisma.findManyArgs[0]).toMatchObject({
+      omit: { captureQuality: true },
     });
   });
 
@@ -388,15 +399,5 @@ describe('PrismaTraceReader', () => {
     expect(trace.thumbPath).toBe(
       'media/investigation-case/case-9/traces/trace-1_thumb.webp',
     );
-  });
-
-  it("rend le contrôle de netteté tel que le domaine l'a écrit", async () => {
-    const { reader } = build([
-      aTraceRow({ captureQuality: { blurScore: 128.4, passed: true } }),
-    ]);
-
-    const [trace] = await reader.findByCaseId('case-9');
-
-    expect(trace.captureQuality).toEqual({ blurScore: 128.4, passed: true });
   });
 });

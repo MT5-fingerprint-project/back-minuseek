@@ -10,7 +10,6 @@ import { FileDigest } from '../../../domain/file-digest.vo';
 import { Trace } from '../../../domain/trace/entity/trace';
 import { TraceLocationPhoto } from '../../../domain/trace-location-photo/entity/trace-location-photo';
 import { CaptureMetadata } from '../../../domain/trace/value-objects/capture-metadata.vo';
-import { CaptureQuality } from '../../../domain/trace/value-objects/capture-quality.vo';
 import {
   TRACE_REPOSITORY,
   TraceRepository,
@@ -93,11 +92,6 @@ export class UploadTraceHandler implements ICommandHandler<
     Trace.assertCaseCanReceiveTrace(cmd.caseId, caseStatus);
 
     const captureMetadata = CaptureMetadata.of(cmd.capture ?? {});
-    const captureQuality =
-      cmd.captureQuality === undefined
-        ? undefined
-        : CaptureQuality.of(cmd.captureQuality);
-
     const id = this.idGenerator.generate();
     const mimeType = detectImageMimeType(cmd.fileBuffer);
     // Le format de la photographie est lu avant toute écriture : un second
@@ -155,7 +149,6 @@ export class UploadTraceHandler implements ICommandHandler<
           sha256: FileDigest.from(stored.receivedSha256),
           displayableSha256: FileDigest.from(stored.displayableSha256),
           captureMetadata,
-          captureQuality,
           location: cmd.location,
           thumbPath: stored.thumbPath,
           sourceSize: stored.sourceSize,
