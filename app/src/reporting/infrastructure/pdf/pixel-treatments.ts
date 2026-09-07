@@ -1,4 +1,8 @@
-import type { PixelTreatment } from '../../application/ports/report-image-embedder.port';
+import type {
+  CurvePoint,
+  PixelTreatment,
+} from '../../application/ports/report-image-embedder.port';
+import { buildCurveLut } from './tone-curve';
 
 /**
  * Réplique des filtres de l'atelier (`canvasFilters.ts` du front). Les calculs
@@ -94,6 +98,15 @@ function applyLevels(
   }
 }
 
+function applyCurve(pixels: Pixels, points: CurvePoint[]): void {
+  const remapped = buildCurveLut(points);
+  for (let offset = 0; offset < pixels.length; offset += RGBA) {
+    for (let channel = 0; channel < CHANNELS_PER_PIXEL; channel += 1) {
+      pixels[offset + channel] = remapped[pixels[offset + channel]];
+    }
+  }
+}
+
 /**
  * Masque flou sur un voisinage de trois pixels sur trois. C'est le seul
  * traitement dont le résultat dépend de la résolution : à l'écran le voisinage
@@ -157,6 +170,9 @@ export function applyPixelTreatments(
         break;
       case 'LEVELS':
         applyLevels(pixels, treatment);
+        break;
+      case 'CURVE':
+        applyCurve(pixels, treatment.points);
         break;
       case 'SHARPENING':
         applySharpening(pixels, width, height, treatment.amount);

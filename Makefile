@@ -18,7 +18,7 @@ INTEGRATION_DB_PORT ?= 5433
 INTEGRATION_DATABASE_URL ?= postgresql://$(DB_USER):$(DB_PASSWORD)@localhost:$(INTEGRATION_DB_PORT)/$(INTEGRATION_DB_NAME)
 COMPOSE_TEST = $(COMPOSE) --profile test
 
-.PHONY: setup-dev bootstrap wait-postgres keycloak-relax-ssl network dev dev-build up-watch down reset db exec install keycloak-setup system-realm provision seed-demo-users migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all backfill-thumbnails test test-watch test-integration test-integration-down logs
+.PHONY: setup-dev bootstrap wait-postgres keycloak-relax-ssl network dev dev-build up-watch down reset db exec install keycloak-setup system-realm provision seed-demo-users migrate migrate-deploy migrate-reset migrate-admin-setup migrate-admin migrate-all backfill-thumbnails backfill-source-dimensions test test-watch test-integration test-integration-down logs
 
 ## Setup local complet : install + stack + bootstrap + hot-reload. Rejouable sans danger. Ou a faire apres un reset de la DB. (make setup-dev)
 setup-dev:
@@ -158,6 +158,15 @@ backfill-thumbnails:
 	$(COMPOSE) run --rm \
 		-e DATABASE_URL=postgresql://$(DB_USER):$(DB_PASSWORD)@postgres:5432/$(TENANT_DB) \
 		app pnpm ts-node scripts/backfill-image-thumbnails.ts
+
+## Relève les dimensions source des pièces déposées avant que les colonnes existent,
+## sur la base d'un tenant (make backfill-source-dimensions TENANT_DB=minuseek_tenant_demo)
+## Rejouable : ne reprend que les lignes sans dimensions. Le nom de base se lit dans le registre admin.
+backfill-source-dimensions:
+	@test -n "$(TENANT_DB)" || { echo "❌ TENANT_DB manquant : make backfill-source-dimensions TENANT_DB=minuseek_tenant_demo"; exit 1; }
+	$(COMPOSE) run --rm \
+		-e DATABASE_URL=postgresql://$(DB_USER):$(DB_PASSWORD)@postgres:5432/$(TENANT_DB) \
+		app pnpm ts-node scripts/backfill-source-dimensions.ts
 
 ## Lance les tests — tous par défaut, ou un fichier spécifique (make test FILE=src/foo/foo.spec.ts)
 test:

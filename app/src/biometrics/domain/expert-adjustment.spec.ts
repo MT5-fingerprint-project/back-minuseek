@@ -8,10 +8,8 @@ const EXPERT_KEYS = [
   'channelRed',
   'channelGreen',
   'channelBlue',
-  'levelsBlack',
-  'levelsGamma',
-  'levelsWhite',
   'sharpening',
+  'curve',
 ];
 
 const ORDINARY_KEYS = [
@@ -21,6 +19,9 @@ const ORDINARY_KEYS = [
   'inversion',
   'mirror',
   'rotation',
+  'levelsBlack',
+  'levelsGamma',
+  'levelsWhite',
 ];
 
 describe('expertFilterKeyOf', () => {
@@ -50,7 +51,7 @@ describe('assertExpertAdjustmentAllowed', () => {
     expect(() =>
       assertExpertAdjustmentAllowed(
         'case-9',
-        { filterKey: 'levelsGamma', value: 30 },
+        { filterKey: 'curve', value: 30 },
         false,
       ),
     ).toThrow(ExpertAdjustmentOutsideExpertiseError);

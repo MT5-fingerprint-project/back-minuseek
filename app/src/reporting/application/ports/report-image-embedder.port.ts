@@ -1,5 +1,11 @@
 import { ReportImageViewModel } from '../report-view-model';
 
+/** Point de contrôle d'une courbe tonale, en niveaux d'entrée et de sortie. */
+export interface CurvePoint {
+  x: number;
+  y: number;
+}
+
 /** Réglages de l'atelier qui changent la géométrie de l'image imprimée. */
 export interface ImageGeometry {
   rotationDeg: number;
@@ -18,6 +24,7 @@ export type PixelTreatment =
   | { kind: 'INVERSION' }
   | { kind: 'CHANNELS'; red: boolean; green: boolean; blue: boolean }
   | { kind: 'LEVELS'; blackPoint: number; whitePoint: number; gamma: number }
+  | { kind: 'CURVE'; points: CurvePoint[] }
   | { kind: 'SHARPENING'; amount: number };
 
 export interface ImageTreatment {

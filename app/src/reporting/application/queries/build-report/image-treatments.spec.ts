@@ -6,19 +6,33 @@ import {
   treatmentOf,
 } from './image-treatments';
 
-function piece(
-  layers: { filterKey: string; value: number; isVisible?: boolean }[],
-): PieceData {
+type LayerFixture = {
+  filterKey: string;
+  value?: number;
+  points?: { x: number; y: number }[];
+  isVisible?: boolean;
+};
+
+function piece(layers: LayerFixture[]): PieceData {
   return {
     layers: layers.map((layer, index) => ({
       name: layer.filterKey,
       type: 'FILTER',
       zIndex: index,
       isVisible: layer.isVisible ?? true,
-      settings: { filterKey: layer.filterKey, value: layer.value },
+      settings:
+        layer.points === undefined
+          ? { filterKey: layer.filterKey, value: layer.value }
+          : { filterKey: layer.filterKey, points: layer.points },
     })),
   } as unknown as PieceData;
 }
+
+const CURVE_POINTS = [
+  { x: 0, y: 0 },
+  { x: 90, y: 170 },
+  { x: 255, y: 255 },
+];
 
 describe('geometryOf', () => {
   it('lit la rotation enregistrée sur l’image', () => {
@@ -152,6 +166,42 @@ describe('pixelTreatmentsOf', () => {
     ).toEqual([
       { kind: 'LEVELS', blackPoint: 0.37, whitePoint: 0, gamma: 0.82 },
     ]);
+  });
+
+  it('porte les points de contrôle de la courbe, sans les mettre à l’échelle', () => {
+    expect(
+      pixelTreatmentsOf(piece([{ filterKey: 'curve', points: CURVE_POINTS }])),
+    ).toEqual([{ kind: 'CURVE', points: CURVE_POINTS }]);
+  });
+
+  it('garde la courbe à son rang dans la pile des calques', () => {
+    expect(
+      pixelTreatmentsOf(
+        piece([
+          { filterKey: 'curve', points: CURVE_POINTS },
+          { filterKey: 'contrast', value: 20 },
+        ]),
+      ),
+    ).toEqual([
+      { kind: 'CURVE', points: CURVE_POINTS },
+      { kind: 'CONTRAST', amount: 0.2 },
+    ]);
+  });
+
+  it('écarte une courbe masquée, que l’atelier n’applique pas non plus', () => {
+    expect(
+      pixelTreatmentsOf(
+        piece([{ filterKey: 'curve', points: CURVE_POINTS, isVisible: false }]),
+      ),
+    ).toEqual([]);
+  });
+
+  it('écarte une courbe dont les points sont illisibles', () => {
+    expect(
+      pixelTreatmentsOf(
+        piece([{ filterKey: 'curve', points: [{ x: 0 }] as never }]),
+      ),
+    ).toEqual([]);
   });
 
   it('écarte un calque masqué et un curseur revenu au neutre', () => {

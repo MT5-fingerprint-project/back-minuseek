@@ -84,6 +84,14 @@ describe('IsLayerSettings (CreateLayerDto)', () => {
     schemaVersion: ANNOTATION_SCHEMA_VERSION,
   };
   const validFilter = { filterKey: 'brightness', value: 50 };
+  const validCurve = {
+    filterKey: 'curve',
+    points: [
+      { x: 0, y: 0 },
+      { x: 90, y: 170 },
+      { x: 255, y: 255 },
+    ],
+  };
   const validPair = {
     type: 'pair',
     referencePrintId: FP,
@@ -120,8 +128,61 @@ describe('IsLayerSettings (CreateLayerDto)', () => {
       'ANNOTATION',
     ],
     ['filter', validFilter, 'FILTER'],
+    ['courbe tonale', validCurve, 'FILTER'],
   ])('accepte un payload %s valide', async (_label, settings, type) => {
     expect(await settingsHasError(createDto(type, settings))).toBe(false);
+  });
+
+  it.each<[string, unknown]>([
+    ['une courbe sans point', { filterKey: 'curve' }],
+    [
+      'une courbe réduite à un point',
+      { filterKey: 'curve', points: [{ x: 0, y: 0 }] },
+    ],
+    [
+      'un point hors des 256 niveaux',
+      {
+        filterKey: 'curve',
+        points: [
+          { x: 0, y: 0 },
+          { x: 256, y: 10 },
+        ],
+      },
+    ],
+    [
+      'un point à coordonnée fractionnaire',
+      {
+        filterKey: 'curve',
+        points: [
+          { x: 0, y: 0 },
+          { x: 12.5, y: 10 },
+        ],
+      },
+    ],
+    [
+      'une courbe qui porte aussi une valeur de curseur',
+      { ...validCurve, value: 30 },
+    ],
+    [
+      'plus de seize points de contrôle',
+      {
+        filterKey: 'curve',
+        points: Array.from({ length: 17 }, (_, index) => ({
+          x: index,
+          y: index,
+        })),
+      },
+    ],
+  ])('refuse %s', async (_label, settings) => {
+    expect(await settingsHasError(createDto('FILTER', settings))).toBe(true);
+  });
+
+  it('refuse des points de contrôle sur un filtre à curseur', async () => {
+    expect(
+      await settingsHasError(
+        createDto('FILTER', { filterKey: 'brightness', points: [] }),
+      ),
+    ).toBe(true);
   });
 
   it.each(Object.values(MinutiaTypeEnum))(

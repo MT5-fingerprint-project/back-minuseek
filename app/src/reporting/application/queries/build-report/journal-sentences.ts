@@ -95,7 +95,7 @@ function layerRule(
       >;
       return `${filterSentence(
         settings.filterKey,
-        settings.value,
+        settings.filterKey === 'curve' ? settings.points : settings.value,
         filterState(event, fallback),
       )} sur ${piece}`;
     }
