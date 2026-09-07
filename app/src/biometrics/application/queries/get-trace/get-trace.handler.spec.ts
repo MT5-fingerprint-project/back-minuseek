@@ -26,7 +26,6 @@ const traceRow = (
   captureOrientation: null,
   captureFocalLength: null,
   captureDeviceModel: null,
-  captureQuality: null,
   sourceWidth: null,
   sourceHeight: null,
   withdrawnAt: null,

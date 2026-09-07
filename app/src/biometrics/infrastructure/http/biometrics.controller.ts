@@ -649,13 +649,6 @@ export class BiometricsController {
           maxLength: 120,
           example: 'iPhone 14 Pro',
         },
-        captureQuality: {
-          type: 'string',
-          description:
-            'Contrôle de netteté relevé au déclenchement, sérialisé en JSON : ' +
-            '{ blurScore: number >= 0, passed: boolean }',
-          example: '{"blurScore":128.4,"passed":true}',
-        },
       },
       required: ['file', 'caseId'],
     },
@@ -666,8 +659,7 @@ export class BiometricsController {
     description:
       'Fichier manquant, type non supporté (PNG/JPEG/TIFF), au-delà de 20 Mo, caseId invalide, ' +
       'métadonnées de capture invalides (dimensions non appairées, orientation hors 1–8, ' +
-      'focale négative, capturedAt non ISO 8601), captureQuality mal formé (JSON invalide, ' +
-      'blurScore négatif, passed non booléen), localisation de plus de 300 caractères, ' +
+      'focale négative, capturedAt non ISO 8601), localisation de plus de 300 caractères, ' +
       'photographie de localisation illisible ou champ inconnu',
   })
   @ApiResponse({
@@ -717,7 +709,6 @@ export class BiometricsController {
             focalLength: dto.focalLength,
             deviceModel: dto.deviceModel,
           },
-          dto.captureQuality,
           dto.location,
           locationPhoto?.buffer,
         ),

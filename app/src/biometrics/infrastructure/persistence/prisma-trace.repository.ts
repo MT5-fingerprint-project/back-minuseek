@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Prisma } from '../../../../generated/prisma/client';
 import { WithdrawalMotive as PrismaWithdrawalMotive } from '../../../../generated/prisma/enums';
 import {
   AUDIT_TRAIL,
@@ -28,18 +27,10 @@ export class PrismaTraceRepository implements TraceRepository {
   async save(trace: Trace, act: AuditEventDraft): Promise<AuditLink> {
     return this.transactionRunner.run(async () => {
       const prisma = await this.tenantConnection.getCurrentClient();
-      const { captureQuality, withdrawalMotive, ...columns } =
-        trace.toPrimitives();
-      // `captureQuality` est un `Json?` : Prisma distingue l'absence de valeur
-      // (`DbNull`, un NULL SQL) du littéral JSON `null`, et refuse un `null`
-      // TypeScript qui ne dit pas lequel des deux on veut.
+      const { withdrawalMotive, ...columns } = trace.toPrimitives();
       const data = {
         ...columns,
         withdrawalMotive: withdrawalMotive as PrismaWithdrawalMotive | null,
-        captureQuality:
-          captureQuality === null
-            ? Prisma.DbNull
-            : (captureQuality as unknown as Prisma.InputJsonValue),
       };
       await prisma.trace.upsert({
         where: { id: data.id },

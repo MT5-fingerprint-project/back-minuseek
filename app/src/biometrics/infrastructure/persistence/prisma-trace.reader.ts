@@ -7,12 +7,18 @@ import {
 } from '../../../shared/infrastructure/persistence/withdrawal';
 import { assignCotes } from '../../../shared/domain/forensics/cote';
 import { traceReference } from '../../../shared/domain/forensics/trace-reference';
-import { CaptureQualityProps } from '../../domain/trace/value-objects/capture-quality.vo';
 import {
   TraceDetailReadModel,
   TraceReadModel,
 } from '../../application/queries/list-traces/trace-read-model';
 import type { TraceReader } from '../../application/queries/list-traces/trace.reader';
+
+// `captureQuality` n'est plus alimentée depuis L3-4 : la mesure de netteté vit
+// dans le viseur du mobile et ne décrit pas la pièce versée. La colonne reste en
+// base (la retirer serait une migration destructive en fan-out sur tous les
+// tenants), mais on ne la lit plus — l'omettre ici garantit qu'elle ne peut pas
+// repasser dans une réponse par un spread.
+const DEAD_COLUMNS = { captureQuality: true } as const;
 
 @Injectable()
 export class PrismaTraceReader implements TraceReader {
@@ -33,6 +39,7 @@ export class PrismaTraceReader implements TraceReader {
     const rows = await prisma.trace.findMany({
       where: { caseId, ...(withdrawn ? WITHDRAWN_ONLY : NOT_WITHDRAWN) },
       orderBy: { number: 'asc' },
+      omit: DEAD_COLUMNS,
       include: {
         hits: {
           where: { ...NOT_WITHDRAWN, referencePrint: NOT_WITHDRAWN },
@@ -47,7 +54,6 @@ export class PrismaTraceReader implements TraceReader {
     const cotes = await this.cotesOf(prisma, caseId);
     return rows.map(({ hits, locationPhoto, ...row }) => ({
       ...row,
-      captureQuality: row.captureQuality as CaptureQualityProps | null,
       reference: traceReference(investigationCase.caseNumber, row.number),
       cote: cotes.get(row.number) ?? null,
       identified: hits.length > 0,
@@ -60,6 +66,7 @@ export class PrismaTraceReader implements TraceReader {
     const prisma = await this.tenantConnection.getCurrentClient();
     const row = await prisma.trace.findUnique({
       where: { id },
+      omit: DEAD_COLUMNS,
       include: {
         hits: {
           where: { ...NOT_WITHDRAWN, referencePrint: NOT_WITHDRAWN },
@@ -83,7 +90,6 @@ export class PrismaTraceReader implements TraceReader {
     const cotes = await this.cotesOf(prisma, trace.caseId);
     return {
       ...trace,
-      captureQuality: trace.captureQuality as CaptureQualityProps | null,
       reference: traceReference(investigationCase.caseNumber, trace.number),
       cote: cotes.get(trace.number) ?? null,
       identified: hits.length > 0,

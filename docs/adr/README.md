@@ -39,3 +39,4 @@ On consigne ici les **décisions structurantes** du repo : choix techno, trade-o
 - [ADR-0026](0026-la-trace-adopte-le-type-de-l-empreinte-a-l-appariement.md) — À l'appariement, la trace adopte le type de l'empreinte de référence
 - [ADR-0027](0027-la-taille-des-reperes-appartient-a-la-piece.md) — La taille des repères appartient à la pièce
 - [ADR-0028](0028-la-courbe-tonale-remplace-les-niveaux-comme-reglage-d-expert.md) — La courbe tonale remplace les niveaux comme réglage d'expert
+- [ADR-0029](0029-retrait-du-controle-qualite-de-capture-de-l-api.md) — Le contrôle de netteté sort de l'API : la mesure du viseur ne décrit pas la pièce versée

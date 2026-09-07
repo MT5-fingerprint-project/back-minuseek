@@ -5,8 +5,6 @@ import { CaseUnavailableForTraceError } from '../errors/case-unavailable-for-tra
 import { CaseNotOpenForWorkError } from '../../errors/case-not-open-for-work.error';
 import { InvalidTraceLocationError } from '../errors/invalid-trace-location.error';
 import { CaptureMetadata } from '../value-objects/capture-metadata.vo';
-import { CaptureQuality } from '../value-objects/capture-quality.vo';
-import { InvalidCaptureQualityError } from '../errors/invalid-capture-quality.error';
 import { InvalidRevelationTechniqueError } from '../value-objects/revelation-technique.vo';
 import { InvalidTraceOriginError } from '../value-objects/trace-origin.vo';
 import { TraceStatusEnum } from '../value-objects/trace-status.vo';
@@ -62,7 +60,6 @@ describe('Trace', () => {
         captureOrientation: null,
         captureFocalLength: null,
         captureDeviceModel: null,
-        captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
         withdrawalMotiveDetail: null,
@@ -105,7 +102,6 @@ describe('Trace', () => {
         captureOrientation: 6,
         captureFocalLength: 6.86,
         captureDeviceModel: 'iPhone 14 Pro',
-        captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
         withdrawalMotiveDetail: null,
@@ -119,32 +115,6 @@ describe('Trace', () => {
         sourceWidth: null,
         sourceHeight: null,
       });
-    });
-
-    it('flattens the capture quality check onto the persisted primitives', () => {
-      const trace = Trace.upload({
-        ...baseProps,
-        captureQuality: CaptureQuality.of({ blurScore: 128.4, passed: true }),
-      });
-
-      expect(trace.toPrimitives().captureQuality).toEqual({
-        blurScore: 128.4,
-        passed: true,
-      });
-    });
-
-    it('exposes the capture quality check it was uploaded with', () => {
-      const trace = Trace.upload({
-        ...baseProps,
-        captureQuality: CaptureQuality.of({ blurScore: 12.5, passed: false }),
-      });
-
-      expect(trace.captureQuality?.blurScore).toBe(12.5);
-      expect(trace.captureQuality?.passed).toBe(false);
-    });
-
-    it('carries no capture quality check when the upload provides none', () => {
-      expect(Trace.upload(baseProps).captureQuality).toBeNull();
     });
 
     it('exposes the capture metadata it was uploaded with', () => {
@@ -378,7 +348,6 @@ describe('Trace', () => {
         captureOrientation: null,
         captureFocalLength: null,
         captureDeviceModel: null,
-        captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
         withdrawalMotiveDetail: null,
@@ -413,7 +382,6 @@ describe('Trace', () => {
         captureOrientation: null,
         captureFocalLength: null,
         captureDeviceModel: null,
-        captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
         withdrawalMotiveDetail: null,
@@ -429,73 +397,6 @@ describe('Trace', () => {
       });
 
       expect(trace.sha256).toBeNull();
-    });
-
-    it('rebuilds the capture quality check stored in the column', () => {
-      const trace = Trace.reconstitute({
-        id: 't-1',
-        number: 3,
-        path: 'media/case-9/traces/t-1.png',
-        status: TraceStatusEnum.RECEIVED,
-        caseId: 'case-9',
-        sha256: null,
-        displayableSha256: null,
-        captureWidth: null,
-        captureHeight: null,
-        capturedAt: null,
-        captureOrientation: null,
-        captureFocalLength: null,
-        captureDeviceModel: null,
-        captureQuality: { blurScore: 128.4, passed: true },
-        withdrawnAt: null,
-        withdrawalMotive: null,
-        withdrawalMotiveDetail: null,
-        resolutionDpi: null,
-        markRadius: null,
-        origin: null,
-        location: null,
-        revelationTechnique: null,
-        notIdentifiedAt: null,
-        thumbPath: null,
-        sourceWidth: null,
-        sourceHeight: null,
-      });
-
-      expect(trace.captureQuality?.blurScore).toBe(128.4);
-      expect(trace.captureQuality?.passed).toBe(true);
-    });
-
-    it('refuses a malformed quality column', () => {
-      expect(() =>
-        Trace.reconstitute({
-          id: 't-1',
-          number: 3,
-          path: 'media/case-9/traces/t-1.png',
-          status: TraceStatusEnum.RECEIVED,
-          caseId: 'case-9',
-          sha256: null,
-          displayableSha256: null,
-          captureWidth: null,
-          captureHeight: null,
-          capturedAt: null,
-          captureOrientation: null,
-          captureFocalLength: null,
-          captureDeviceModel: null,
-          captureQuality: { blurScore: 'flou', passed: true },
-          withdrawnAt: null,
-          withdrawalMotive: null,
-          withdrawalMotiveDetail: null,
-          resolutionDpi: null,
-          markRadius: null,
-          origin: null,
-          location: null,
-          revelationTechnique: null,
-          notIdentifiedAt: null,
-          thumbPath: null,
-          sourceWidth: null,
-          sourceHeight: null,
-        }),
-      ).toThrow(InvalidCaptureQualityError);
     });
 
     it('refuses a stored seal that is not a SHA-256', () => {
@@ -514,7 +415,6 @@ describe('Trace', () => {
           captureOrientation: null,
           captureFocalLength: null,
           captureDeviceModel: null,
-          captureQuality: null,
           withdrawnAt: null,
           withdrawalMotive: null,
           withdrawalMotiveDetail: null,
@@ -548,7 +448,6 @@ describe('Trace', () => {
         captureOrientation: null,
         captureFocalLength: null,
         captureDeviceModel: null,
-        captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
         withdrawalMotiveDetail: null,
@@ -579,7 +478,6 @@ describe('Trace', () => {
         captureOrientation: null,
         captureFocalLength: null,
         captureDeviceModel: null,
-        captureQuality: null,
         withdrawnAt: null,
         withdrawalMotive: null,
         withdrawalMotiveDetail: null,
@@ -610,7 +508,6 @@ describe('Trace', () => {
           focalLength: 6.86,
           deviceModel: 'iPhone 14 Pro',
         }),
-        captureQuality: CaptureQuality.of({ blurScore: 128.4, passed: false }),
       });
 
       const rebuilt = Trace.reconstitute(trace.toPrimitives());

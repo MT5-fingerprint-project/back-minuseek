@@ -1,7 +1,6 @@
 import type { CaseRequester } from '../../../../access/application/case-access.service';
 import { AuditActor } from '../../../../shared/domain/audit/audit-actor.vo';
 import { CaptureMetadataProps } from '../../../domain/trace/value-objects/capture-metadata.vo';
-import { CaptureQualityProps } from '../../../domain/trace/value-objects/capture-quality.vo';
 
 export class UploadTraceCommand {
   constructor(
@@ -10,7 +9,6 @@ export class UploadTraceCommand {
     public readonly fileBuffer: Buffer,
     public readonly caseId: string,
     public readonly capture?: CaptureMetadataProps,
-    public readonly captureQuality?: CaptureQualityProps,
     public readonly location?: string,
     public readonly locationPhotoBuffer?: Buffer,
   ) {}

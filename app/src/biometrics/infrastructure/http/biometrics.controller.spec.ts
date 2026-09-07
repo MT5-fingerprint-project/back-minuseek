@@ -29,7 +29,6 @@ const aTraceView = (
   captureOrientation: null,
   captureFocalLength: null,
   captureDeviceModel: null,
-  captureQuality: null,
   sourceWidth: null,
   sourceHeight: null,
   withdrawnAt: null,
