@@ -85,6 +85,13 @@ export class CompareTraceHandler implements ICommandHandler<
       caseId: cmd.caseId,
       traceId: cmd.traceId,
       referencePrintIds: cmd.referencePrintIds,
+      traceDpi: trace.resolutionDpi,
+      referencePrintDpis: Object.fromEntries(
+        referencePrints.map((referencePrint) => [
+          referencePrint!.id,
+          referencePrint!.resolutionDpi,
+        ]),
+      ),
     });
 
     const requestedIds = new Set(cmd.referencePrintIds);
