@@ -43,6 +43,8 @@ export class DataFingerprintMatcherAdapter implements FingerprintMatcherPort {
         trace_id: input.traceId,
         reference_print_ids: input.referencePrintIds,
         top: input.referencePrintIds.length,
+        trace_dpi: input.traceDpi,
+        reference_print_dpis: input.referencePrintDpis,
       }),
     });
 

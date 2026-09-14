@@ -7,6 +7,9 @@ export interface CompareFingerprintsInput {
   caseId: string;
   traceId: string;
   referencePrintIds: string[];
+  /** DPI issus de la calibration au réglet ; null si l'image n'est pas calibrée. */
+  traceDpi: number | null;
+  referencePrintDpis: Record<string, number | null>;
 }
 
 export interface FingerprintComparison {

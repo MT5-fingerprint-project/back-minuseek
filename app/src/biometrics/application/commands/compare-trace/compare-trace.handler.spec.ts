@@ -85,9 +85,54 @@ describe('CompareTraceHandler', () => {
       caseId: 'case-1',
       traceId: 'trace-1',
       referencePrintIds: ['ref-1'],
+      traceDpi: null,
+      referencePrintDpis: { 'ref-1': null },
     });
     const persisted = await matchingRepo.findByTraceId('trace-1');
     expect(persisted).toHaveLength(1);
+  });
+
+  it('transmet au matcher le DPI calibré de chaque image, null pour les non calibrées', async () => {
+    const trace = Trace.upload({
+      id: 'trace-1',
+      number: 1,
+      path: 'media/trace-1.png',
+      caseId: 'case-1',
+      sha256: ANY_SEAL,
+    });
+    trace.calibrate(1040);
+    traceRepo.seed(trace);
+    const calibratedRef = ReferencePrint.create({
+      id: 'ref-1',
+      path: 'media/ref-1.png',
+      caseId: 'case-1',
+      sha256: ANY_SEAL,
+    });
+    calibratedRef.calibrate(1067);
+    referencePrintRepo.seed(calibratedRef);
+    referencePrintRepo.seed(
+      ReferencePrint.create({
+        id: 'ref-2',
+        path: 'media/ref-2.png',
+        caseId: 'case-1',
+        sha256: ANY_SEAL,
+      }),
+    );
+
+    await handler.execute(
+      new CompareTraceCommand(EXPERT_ACTOR, 'case-1', 'trace-1', [
+        'ref-1',
+        'ref-2',
+      ]),
+    );
+
+    expect(matcher.lastInput).toEqual({
+      caseId: 'case-1',
+      traceId: 'trace-1',
+      referencePrintIds: ['ref-1', 'ref-2'],
+      traceDpi: 1040,
+      referencePrintDpis: { 'ref-1': 1067, 'ref-2': null },
+    });
   });
 
   it('rejects when the trace belongs to another case (IDOR)', async () => {
