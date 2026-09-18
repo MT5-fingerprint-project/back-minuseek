@@ -35,12 +35,12 @@ cp .env.example .env
 | `DB_PASSWORD`  | Mot de passe PostgreSQL              | `change_me`                                       |
 | `DATABASE_URL` | URL de connexion complète (Prisma)   | `postgresql://user:pass@localhost:5432/dbname`    |
 | `STORAGE_DRIVER` | Stockage des images : `gcs` (défaut) ou `in-memory` (hors-ligne, sans persistance) | `gcs` |
-| `GCS_BUCKET`   | Bucket GCS des images                | `minuseek-media-dev`                              |
+| `GCS_BUCKET`   | Bucket GCS des images                | `minuseek-dev-media`                              |
 | `GCS_SIGNED_URL_TTL_SECONDS` | Durée de vie des URLs signées | `900`                                     |
 
 ### 2. Accès au bucket d'images : créer l'ADC (une fois par poste)
 
-Les images vont dans le **vrai bucket GCS de dev** (`minuseek-media-dev`),
+Les images vont dans le **vrai bucket GCS de dev** (`minuseek-dev-media`),
 même en local — il n'existe pas d'émulateur GCS local, et utiliser le vrai
 bucket rend le dev représentatif de la prod (URLs signées V4, CORS, IAM
 identiques). Voir `docs/adr/0003-gcs-only-image-storage.md`.
@@ -49,7 +49,7 @@ Chaque dev de l'équipe a déjà les droits d'impersonation. Setup unique :
 
 ```bash
 CLOUDSDK_CONFIG="$HOME/.config/gcloud-minuseek" gcloud auth application-default login \
-  --impersonate-service-account=back-runtime@dev-minuseek.iam.gserviceaccount.com
+  --impersonate-service-account=back-runtime@minuseek-dev.iam.gserviceaccount.com
 ```
 
 Le navigateur s'ouvre : connectez-vous avec votre compte Google d'équipe
