@@ -40,7 +40,7 @@ API du projet Minuseek— **NestJS 11 + Prisma 7 + PostgreSQL 17**, en **DDD / a
 cp .env.example .env          # variables d'env (gitignoré)
 # 1 fois par poste : les images vont dans le bucket GCS dev (ADR-0003)
 CLOUDSDK_CONFIG="$HOME/.config/gcloud-minuseek" gcloud auth application-default login \
-  --impersonate-service-account=back-runtime@dev-minuseek.iam.gserviceaccount.com
+  --impersonate-service-account=back-runtime@minuseek-dev.iam.gserviceaccount.com
 make setup-dev                # 1er lancement : stack + registre admin + client
                               # provisioner + organisation tenant-demo (saga SUP-03)
 make dev                      # lancements suivants (hot-reload)

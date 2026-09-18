@@ -1,7 +1,7 @@
 # Déploiement continu DEV : chaque merge sur main teste, build les images
 # back + migrate (même SHA), exécute la migration PUIS déploie l'API
 # (migrate-before-traffic : un échec de migration bloque le deploy).
-# Secret requis : GCP_SA_KEY_DEV (clé JSON deploy-ci@dev-minuseek).
+# Secret requis : GCP_SA_KEY_DEV (clé JSON deploy-ci@minuseek-dev).
 # Prérequis : docker/prod/Dockerfile présent sur main (PR feat/deployment-foundation).
 name: deploy-dev
 
@@ -13,8 +13,8 @@ concurrency: deploy-dev
 
 env:
   REGION: europe-west1
-  PROJECT: dev-minuseek
-  AR: europe-west1-docker.pkg.dev/dev-minuseek/minuseek
+  PROJECT: minuseek-dev
+  AR: europe-west1-docker.pkg.dev/minuseek-dev/minuseek
 
 jobs:
   test:
